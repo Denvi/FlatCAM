@@ -33,11 +33,16 @@ class App:
         Gtk.main()
         
     def mplpaint(self):
-        f = Figure(figsize=(5,4), dpi=50)
+        f = Figure(dpi=50)
         a = f.add_subplot(111)
-        t = arange(0.0,3.0,0.01)
+        a.set_aspect(1)
+        t = arange(0.0,5.0,0.01)
         s = sin(2*pi*t)
         a.plot(t,s)
+        a.grid()
+        #a.patch.set_visible(False) Background of the axes
+        f.patch.set_visible(False)
+        f.tight_layout()
         
         canvas = FigureCanvas(f)  # a Gtk.DrawingArea
         canvas.set_size_request(600,400)
@@ -102,14 +107,18 @@ class App:
         dialog.destroy()
         
     def plot_gerber(self, gerber):
-        f = Figure(figsize=(5,4), dpi=200)
+        
+        f = Figure(dpi=75)
         a = f.add_subplot(111)
+        a.set_aspect(1)
         for poly in gerber.solid_geometry:
             x, y = poly.exterior.xy
             a.plot(x, y)
             for ints in poly.interiors:
                 x, y = ints.coords.xy
                 a.plot(x, y)
+        a.grid()
+        f.tight_layout()
         canvas = FigureCanvas(f)  # a Gtk.DrawingArea
         canvas.set_size_request(600,400)
         self.grid.attach(canvas,1,1,600,400)

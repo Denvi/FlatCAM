@@ -196,6 +196,36 @@
                     <property name="margin_top">3</property>
                     <property name="orientation">vertical</property>
                     <child>
+                      <object class="GtkCheckButton" id="checkbutton1">
+                        <property name="label" translatable="yes">Merge Geometry</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">False</property>
+                        <property name="xalign">0</property>
+                        <property name="draw_indicator">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkCheckButton" id="checkbutton2">
+                        <property name="label" translatable="yes">Different Colors</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">False</property>
+                        <property name="xalign">0</property>
+                        <property name="draw_indicator">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
                       <object class="GtkBox" id="box4">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
@@ -203,7 +233,7 @@
                           <object class="GtkLabel" id="label2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="label" translatable="yes">Tool dia.:</property>
+                            <property name="label" translatable="yes">Scale (pix./unit): </property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -212,10 +242,13 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkEntry" id="entry2">
+                          <object class="GtkSpinButton" id="spinbutton1">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="hexpand">True</property>
                             <property name="invisible_char">●</property>
+                            <property name="climb_rate">10</property>
+                            <property name="snap_to_ticks">True</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -227,14 +260,8 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">0</property>
+                        <property name="position">2</property>
                       </packing>
-                    </child>
-                    <child>
-                      <placeholder/>
-                    </child>
-                    <child>
-                      <placeholder/>
                     </child>
                   </object>
                 </child>
@@ -242,7 +269,7 @@
                   <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Isolation Routing</property>
+                    <property name="label" translatable="yes">Gerber</property>
                   </object>
                   <packing>
                     <property name="tab_fill">False</property>
@@ -281,21 +308,6 @@
                       <object class="GtkGrid" id="grid1">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
-                        <child>
-                          <placeholder/>
-                        </child>
                         <child>
                           <placeholder/>
                         </child>
