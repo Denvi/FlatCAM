@@ -1,0 +1,4 @@
+Requirements:
+1) GTK+ 3
+2) Shapely
+3) PyObjects (Python GI API)
