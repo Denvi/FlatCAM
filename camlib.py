@@ -16,10 +16,46 @@ from shapely.geometry import box as shply_box
 from shapely.ops import cascaded_union
 
 
-class Gerber():
+class Geometry:
     def __init__(self):
         # Units (in or mm)
-        self.units = 'in'        
+        self.units = 'in'
+        
+        # Final geometry: MultiPolygon
+        self.solid_geometry = None
+        
+    def isolation_geometry(self, offset):
+        '''
+        Creates contours around geometry at a given
+        offset distance.
+        '''
+        return self.solid_geometry.buffer(offset)
+        
+    def bounds(self):
+        '''
+        Returns coordinates of rectangular bounds
+        of geometry: (xmin, ymin, xmax, ymax).
+        '''
+        if self.solid_geometry == None:
+            print "Warning: solid_geometry not computed yet."
+            return (0,0,0,0)
+        return self.solid_geometry.bounds
+        
+    def size(self):
+        '''
+        Returns (width, height) of rectangular
+        bounds of geometry.
+        '''
+        if self.solid_geometry == None:
+            print "Warning: solid_geometry not computed yet."
+            return 0
+        bounds = self.bounds()
+        return (bounds[2]-bounds[0], bounds[3]-bounds[1])
+
+class Gerber (Geometry):
+    def __init__(self):
+        # Initialize parent
+        Geometry.__init__(self)        
         
         # Number format
         self.digits = 3
@@ -44,22 +80,6 @@ class Gerber():
         
         # Flashes [{'loc':[float,float], 'aperture':dict}]
         self.flashes = []
-        
-        # Final geometry: MultiPolygon
-        self.solid_geometry = None
-        
-    def bounds(self):
-        if self.solid_geometry == None:
-            print "Warning: solid_geometry not computed yet."
-            return (0,0,0,0)
-        return self.solid_geometry.bounds
-        
-    def size(self):
-        if self.solid_geometry == None:
-            print "Warning: solid_geometry not computed yet."
-            return 0
-        bounds = self.bounds()
-        return (bounds[2]-bounds[0], bounds[3]-bounds[1])
         
     def fix_regions(self):
         '''
