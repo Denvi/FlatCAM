@@ -106,7 +106,7 @@ class Gerber():
                                     "width":float(gline[indexO+2:indexX]), 
                                     "height":float(gline[indexX+1:indexstar])}
             return apid
-        print "Aperture not implemented:", gline
+        print "WARNING: Aperture not implemented:", gline
         return None
         
     def parse_file(self, filename):
@@ -119,7 +119,6 @@ class Gerber():
         '''
         Main Gerber parser.
         '''
-        
         path = [] # Coordinates of the current path
         last_path_aperture = None
         current_aperture = None
@@ -171,6 +170,8 @@ class Gerber():
                 indexX = gline.find("X")
                 self.digits = int(gline[indexX + 1])
                 self.fraction = int(gline[indexX + 2])
+                continue
+            print "WARNING: Line ignored:", gline
                 
     def create_geometry(self):
         if len(self.buffered_paths) == 0:
@@ -193,11 +194,127 @@ class Gerber():
                 maxy = loc[1] + height/2
                 rectangle = shply_box(minx, miny, maxx, maxy)
                 flash_polys.append(rectangle)
+                continue
+            print "WARNING: Aperture type %s not implemented"%(aperture['type'])
             #TODO: Add support for type='O'
         self.solid_geometry = cascaded_union(
                                 self.buffered_paths + 
                                 [poly['polygon'] for poly in self.regions] +
                                 flash_polys)
+
+class CNCjob():
+    def __init__(self, units="in", kind="generic", z_move = 0.1,
+                 feedrate = 3.0, z_cut = -0.002):
+        # Options
+        self.kind = kind
+        self.units = units
+        self.z_cut = z_cut
+        self.z_move = z_move
+        self.feedrate = feedrate
+        
+        # Constants
+        self.unitcode = {"in": "G20", "mm": "G21"}
+        self.pausecode = "G04 P1"
+        self.feedminutecode = "G94"
+        self.absolutecode = "G90"
+        
+        # Output G-Code
+        self.gcode = ""
+        
+    def generate_from_geometry(self, geometry, append=True):
+        if append == False:
+            self.gcode = ""
+        t = "G0%d X%.4fY%.4f\n"
+        self.gcode = self.unitcode[self.units] + "\n"
+        self.gcode += self.absolutecode + "\n"
+        self.gcode += self.feedminutecode + "\n"
+        self.gcode += "F%.2f\n"%self.feedrate
+        self.gcode += "G00 Z%.4f\n"%self.z_move  # Move to travel height
+        self.gcode += "M03\n" # Spindle start
+        self.gcode += self.pausecode + "\n"
+        for geo in geometry:
+            
+            if type(geo) == Polygon:
+                path = list(geo.exterior.coords)            # Polygon exterior
+                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
+                for pt in path[1:]:
+                    self.gcode += t%(1, pt[0], pt[1])   # Linear motion to point
+                self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
+                for ints in geo.interiors:             # Polygon interiors
+                    path = list(ints.coords)
+                    self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
+                    self.gcode += "G01 Z%.4f\n"%self.z_cut # Start cutting
+                    for pt in path[1:]:
+                        self.gcode += t%(1, pt[0], pt[1]) # Linear motion to point
+                    self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
+                continue
+            
+            if type(geo) == LineString or type(geo) == LineRing:
+                path = list(geo.coords)
+                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
+                for pt in path[1:]:
+                    self.gcode += t%(1, pt[0], pt[1])   # Linear motion to point
+                self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
+                continue
+            
+            if type(geo) == Point:
+                path = list(geo.coords)
+                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
+                self.gcode += "G00 Z%.4f\n"%self.z_move     # Stop cutting
+                continue
+            
+            print "WARNING: G-code generation not implemented for %s"%(str(type(geo)))
+        
+        self.gcode += "M05\n" # Spindle stop
+    
+    def create_gcode_geometry(self):
+        geometry = []        
+        
+        gobjs = gparse1b(self.gcode)
+        
+        # Last known instruction
+        current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
+        
+        # Process every instruction
+        for gobj in gobjs:
+            if 'Z' in gobj:
+                if ('X' in gobj or 'Y' in gobj) and gobj['Z'] != current['Z']:
+                    print "WARNING: No orthogonal motion: From", current
+                    print "         To:", gobj
+                current['Z'] = gobj['Z']
+                
+            if 'G' in gobj:
+                current['G'] = gobj['G']
+                
+            if 'X' in gobj or 'Y' in gobj:
+                x = 0
+                y = 0
+                kind = ["C","F"] # T=travel, C=cut, F=fast, S=slow
+                if 'X' in gobj:
+                    x = gobj['X']
+                else:
+                    x = current['X']
+                if 'Y' in gobj:
+                    y = gobj['Y']
+                else:
+                    y = current['Y']
+                if current['Z'] > 0:
+                    kind[0] = 'T'
+                if current['G'] == 1:
+                    kind[1] = 'S'
+                geometry.append({'geom':LineString([(current['X'],current['Y']),
+                                                    (x,y)]), 'kind':kind})
+            
+            # Update current instruction
+            for code in gobj:
+                current[code] = gobj[code]
+                
+        return geometry
+                
+                
 
 def fix_poly(poly):
     '''
