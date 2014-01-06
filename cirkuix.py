@@ -19,7 +19,7 @@ class App:
         self.builder = Gtk.Builder()
         self.builder.add_from_file(self.gladefile)
         self.window = self.builder.get_object("window1")
-
+        self.positionLabel = self.builder.get_object("label3")
         #self.drawingarea = self.builder.get_object("drawingarea1")
         #self.drawingarea.connect("draw", self.cairopaint)        
         
@@ -46,6 +46,8 @@ class App:
         
         canvas = FigureCanvas(f)  # a Gtk.DrawingArea
         canvas.set_size_request(600,400)
+        canvas.mpl_connect('button_press_event', self.on_click_over_plot)
+        canvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.grid.attach(canvas,1,1,600,400)
     
     def cairopaint(self, da, cr):
@@ -123,6 +125,13 @@ class App:
         canvas.set_size_request(600,400)
         self.grid.attach(canvas,1,1,600,400)
         self.window.show_all()
-
+        
+    def on_mouse_move_over_plot(self, event):
+        self.positionLabel.set_label("X: %.4f   Y: %.4f"%(event.xdata, event.ydata))
+        
+    def on_click_over_plot(self, event):
+        print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f'%(
+        event.button, event.x, event.y, event.xdata, event.ydata)
+        
 
 app = App()

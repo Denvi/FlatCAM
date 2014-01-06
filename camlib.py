@@ -52,6 +52,31 @@ class Geometry:
             return 0
         bounds = self.bounds()
         return (bounds[2]-bounds[0], bounds[3]-bounds[1])
+        
+    def get_empty_area(self, boundary=None):
+        '''
+        Returns the complement of self.solid_geometry within
+        the given boundary polygon. If not specified, it defaults to
+        the rectangular bounding box of self.solid_geometry.
+        '''
+        if boundary == None:
+            boundary = self.solid_geometry.envelope
+        return boundary.difference(g.solid_geometry)
+        
+    def clear_polygon(self, polygon, tooldia, overlap = 0.15):
+        '''
+        Creates geometry inside a polygon for a tool to cover
+        the whole area.
+        '''
+        poly_cuts = [polygon.buffer(-tooldia/2.0)]
+        while(1):
+            polygon = poly_cuts[-1].buffer(-tooldia*(1-overlap))
+            if polygon.area > 0:
+                poly_cuts.append(polygon)
+            else:
+                break
+        return poly_cuts
+        
 
 class Gerber (Geometry):
     def __init__(self):
@@ -131,6 +156,10 @@ class Gerber (Geometry):
         return None
         
     def parse_file(self, filename):
+        '''
+        Calls Gerber.parse_lines() with array of lines
+        read from the given file.
+        '''
         gfile = open(filename, 'r')
         gstr = gfile.readlines()
         gfile.close()
