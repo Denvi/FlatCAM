@@ -7,7 +7,7 @@ import cairo
 #import os
 #import sys
 
-from numpy import arctan2, Inf, array
+from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 from matplotlib.figure import Figure
 
 # See: http://toblerity.org/shapely/manual.html
@@ -16,6 +16,7 @@ from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.geometry import box as shply_box
 from shapely.ops import cascaded_union
 
+from descartes.patch import PolygonPatch
 
 class Geometry:
     def __init__(self):
@@ -117,8 +118,6 @@ class Gerber (Geometry):
         '''
         for region in self.regions:
             if region['polygon'].is_valid == False:
-                #polylist = fix_poly(region['polygon'])
-                #region['polygon'] = fix_poly3(polylist)
                 region['polygon'] = region['polygon'].buffer(0)
     
     def buffer_paths(self):
@@ -232,6 +231,9 @@ class Gerber (Geometry):
                                "aperture":last_path_aperture})
     
     def do_flashes(self):
+        '''
+        Creates geometry for Gerber flashes (aperture on a single point).
+        '''
         self.flash_geometry = []
         for flash in self.flashes:
             aperture = self.apertures[flash['aperture']]
@@ -263,6 +265,81 @@ class Gerber (Geometry):
                                 [poly['polygon'] for poly in self.regions] +
                                 self.flash_geometry)
 
+class Excellon(Geometry):
+    def __init__(self):
+        Geometry.__init__(self)
+        
+        self.tools = {}
+        
+        self.drills = []
+        
+    def parse_file(self, filename):
+        efile = open(filename, 'r')
+        estr = efile.readlines()
+        efile.close()
+        self.parse_lines(estr)
+        
+    def parse_lines(self, elines):
+        '''
+        Main Excellon parser.
+        '''
+        current_tool = ""
+        
+        for eline in elines:
+            
+            ## Tool definitions ##
+            # TODO: Verify all this
+            indexT = eline.find("T")
+            indexC = eline.find("C")
+            indexF = eline.find("F")
+            # Type 1
+            if indexT != -1 and indexC > indexT and indexF > indexF:
+                tool = eline[1:indexC]
+                spec = eline[indexC+1:indexF]
+                self.tools[tool] = spec
+                continue
+            # Type 2
+            # TODO: Is this inches?
+            #indexsp = eline.find(" ")
+            #indexin = eline.find("in")
+            #if indexT != -1 and indexsp > indexT and indexin > indexsp:
+            #    tool = eline[1:indexsp]
+            #    spec = eline[indexsp+1:indexin]
+            #    self.tools[tool] = spec
+            #    continue
+            # Type 3
+            if indexT != -1 and indexC > indexT:
+                tool = eline[1:indexC]
+                spec = eline[indexC+1:-1]
+                self.tools[tool] = spec
+                continue
+            
+            ## Tool change
+            if indexT == 0:
+                current_tool = eline[1:-1]
+                continue
+            
+            ## Drill
+            indexX = eline.find("X")
+            indexY = eline.find("Y")
+            if indexX != -1 and indexY != -1:
+                x = float(int(eline[indexX+1:indexY])/10000.0)
+                y = float(int(eline[indexY+1:-1])/10000.0)
+                self.drills.append({'point':Point((x,y)), 'tool':current_tool})
+                continue
+            
+            print "WARNING: Line ignored:", eline
+        
+    def create_geometry(self):
+        self.solid_geometry = []
+        sizes = {}
+        for tool in self.tools:
+            sizes[tool] = float(self.tools[tool])
+        for drill in self.drills:
+            poly = Point(drill['point']).buffer(sizes[drill['tool']]/2.0)
+            self.solid_geometry.append(poly)
+        self.solid_geometry = cascaded_union(self.solid_geometry)
+
 class CNCjob:
     def __init__(self, units="in", kind="generic", z_move = 0.1,
                  feedrate = 3.0, z_cut = -0.002):
@@ -279,7 +356,7 @@ class CNCjob:
         self.feedminutecode = "G94"
         self.absolutecode = "G90"
         
-        # Output G-Code
+        # Input/Output G-Code
         self.gcode = ""
         
         # Bounds of geometry given to CNCjob.generate_from_geometry()
@@ -393,6 +470,7 @@ class CNCjob:
         self.gcode += "M05\n" # Spindle stop
     
     def create_gcode_geometry(self):
+        steps_per_circ = 20
         '''
         G-Code parser (from self.gcode). Generates dictionary with 
         single-segment LineString's and "kind" indicating cut or travel, 
@@ -415,26 +493,42 @@ class CNCjob:
                 current['Z'] = gobj['Z']
                 
             if 'G' in gobj:
-                current['G'] = gobj['G']
+                current['G'] = int(gobj['G'])
                 
             if 'X' in gobj or 'Y' in gobj:
                 x = 0
                 y = 0
                 kind = ["C","F"] # T=travel, C=cut, F=fast, S=slow
+                
                 if 'X' in gobj:
                     x = gobj['X']
                 else:
                     x = current['X']
+                
                 if 'Y' in gobj:
                     y = gobj['Y']
                 else:
                     y = current['Y']
+                
                 if current['Z'] > 0:
                     kind[0] = 'T'
-                if current['G'] == 1:
+                if current['G'] > 0:
                     kind[1] = 'S'
-                geometry.append({'geom':LineString([(current['X'],current['Y']),
-                                                    (x,y)]), 'kind':kind})
+                   
+                arcdir = [None, None, "cw", "ccw"]
+                if current['G'] in [0,1]: # line
+                    geometry.append({'geom':LineString([(current['X'],current['Y']),
+                                                        (x,y)]), 'kind':kind})
+                if current['G'] in [2,3]: # arc
+                    center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
+                    radius = sqrt(gobj['I']**2 + gobj['J']**2)
+                    start  = arctan2(  -gobj['J'],   -gobj['I'])
+                    stop   = arctan2(-center[1]+y, -center[0]+x)
+                    geometry.append({'geom':arc(center, radius, start, stop, 
+                                                arcdir[current['G']],
+                                                steps_per_circ),
+                                     'kind':kind})
+                
             
             # Update current instruction
             for code in gobj:
@@ -477,153 +571,46 @@ class CNCjob:
                 ax.add_patch(patch)
         
         return fig
-            
-
-class Excellon(Geometry):
-    def __init__(self):
-        Geometry.__init__(self)
         
-        self.tools = {}
-        
-        self.drills = []
-        
-    def parse_file(self, filename):
-        efile = open(filename, 'r')
-        estr = efile.readlines()
-        efile.close()
-        self.parse_lines(estr)
-        
-    def parse_lines(self, elines):
+    def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
+             color={"T":["#F0E24D", "#B5AB3A"], "C":["#5E6CFF", "#4650BD"]},
+             alpha={"T":0.3, "C":1.0}):
         '''
-        Main Excellon parser.
+        Plots the G-code job onto the given axes
         '''
-        current_tool = ""
-        
-        for eline in elines:
+        if tooldia == None:
+            tooldia = self.tooldia
             
-            ## Tool definitions ##
-            # TODO: Verify all this
-            indexT = eline.find("T")
-            indexC = eline.find("C")
-            indexF = eline.find("F")
-            # Type 1
-            if indexT != -1 and indexC > indexT and indexF > indexF:
-                tool = eline[1:indexC]
-                spec = eline[indexC+1:indexF]
-                self.tools[tool] = spec
-                continue
-            # Type 2
-            # TODO: Is this inches?
-            #indexsp = eline.find(" ")
-            #indexin = eline.find("in")
-            #if indexT != -1 and indexsp > indexT and indexin > indexsp:
-            #    tool = eline[1:indexsp]
-            #    spec = eline[indexsp+1:indexin]
-            #    self.tools[tool] = spec
-            #    continue
-            # Type 3
-            if indexT != -1 and indexC > indexT:
-                tool = eline[1:indexC]
-                spec = eline[indexC+1:-1]
-                self.tools[tool] = spec
-                continue
-            
-            ## Tool change
-            if indexT == 0:
-                current_tool = eline[1:-1]
-                continue
-            
-            ## Drill
-            indexX = eline.find("X")
-            indexY = eline.find("Y")
-            if indexX != -1 and indexY != -1:
-                x = float(int(eline[indexX+1:indexY])/10000.0)
-                y = float(int(eline[indexY+1:-1])/10000.0)
-                self.drills.append({'point':Point((x,y)), 'tool':current_tool})
-                continue
-            
-            print "WARNING: Line ignored:", eline
+        #fig = Figure(dpi=dpi)
+        #ax = fig.add_subplot(111)
+        #ax.set_aspect(1)
+        #xmin, ymin, xmax, ymax = self.input_geometry_bounds
+        #ax.set_xlim(xmin-margin, xmax+margin)
+        #ax.set_ylim(ymin-margin, ymax+margin)
         
-    def create_geometry(self):
-        self.solid_geometry = []
-        sizes = {}
-        for tool in self.tools:
-            sizes[tool] = float(self.tools[tool])
-        for drill in self.drills:
-            poly = Point(drill['point']).buffer(sizes[drill['tool']]/2.0)
-            self.solid_geometry.append(poly)
-        self.solid_geometry = cascaded_union(self.solid_geometry)
-
-
-
-class motion:
-    '''
-    Represents a machine motion, which can be cutting or just travelling.
-    '''
-    def __init__(self, start, end, depth, typ='line', offset=None, center=None, 
-                 radius=None, tooldia=0.5):
-        self.typ = typ
-        self.start = start
-        self.end = end
-        self.depth = depth
-        self.center = center
-        self.radius = radius
-        self.tooldia = tooldia
-        self.offset = offset    # (I, J)
+        if tooldia == 0:
+            for geo in self.G_geometry:
+                linespec = '--'
+                linecolor = color[geo['kind'][0]][1]
+                if geo['kind'][0] == 'C':
+                    linespec = 'k-'
+                x, y = geo['geom'].coords.xy
+                axes.plot(x, y, linespec, color=linecolor)
+        else:
+            for geo in self.G_geometry:
+                poly = geo['geom'].buffer(tooldia/2.0)
+                patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
+                                     edgecolor=color[geo['kind'][0]][1],
+                                     alpha=alpha[geo['kind'][0]], zorder=2)
+                axes.add_patch(patch)
         
-        
-def gparse1(filename):
-    '''
-    Parses G-code file into list of dictionaries like
-    Examples: {'G': 1.0, 'X': 0.085, 'Y': -0.125},
-              {'G': 3.0, 'I': -0.01, 'J': 0.0, 'X': 0.0821, 'Y': -0.1179}
-    '''
-    f = open(filename)
-    gcmds = []
-    for line in f:
-        line = line.strip()
-        
-        # Remove comments
-        # NOTE: Limited to 1 bracket pair
-        op = line.find("(")
-        cl = line.find(")")
-        if  op > -1 and  cl > op:
-            #comment = line[op+1:cl]
-            line = line[:op] + line[(cl+1):]
-        
-        # Parse GCode
-        # 0   4       12 
-        # G01 X-0.007 Y-0.057
-        # --> codes_idx = [0, 4, 12]
-        codes = "NMGXYZIJFP"
-        codes_idx = []
-        i = 0
-        for ch in line:
-            if ch in codes:
-                codes_idx.append(i)
-            i += 1
-        n_codes = len(codes_idx)
-        if n_codes == 0:
-            continue
-        
-        # Separate codes in line
-        parts = []
-        for p in range(n_codes-1):
-            parts.append( line[ codes_idx[p]:codes_idx[p+1] ].strip() )
-        parts.append( line[codes_idx[-1]:].strip() )
-        
-        # Separate codes from values
-        cmds = {}
-        for part in parts:
-            cmds[part[0]] = float(part[1:])
-        gcmds.append(cmds)
-        
-    f.close()
-    return gcmds
 
 def gparse1b(gtext):
+    '''
+    gtext is a single string with g-code
+    '''
     gcmds = []
-    lines = gtext.split("\n")
+    lines = gtext.split("\n") # TODO: This is probably a lot of work!
     for line in lines:
         line = line.strip()
         
@@ -662,98 +649,43 @@ def gparse1b(gtext):
             cmds[part[0]] = float(part[1:])
         gcmds.append(cmds)
     return gcmds
-    
-    
-def gparse2(gcmds):
-    
-    x = []
-    y = []
-    z = []
-    xypoints = []
-    motions = []
-    current_g = None
-    
-    for cmds in gcmds:
-        
-        # Destination point
-        x_ = None
-        y_ = None
-        z_ = None
-        
-        if 'X' in cmds:
-            x_ = cmds['X']
-            x.append(x_)
-        if 'Y' in cmds:
-            y_ = cmds['Y']
-            y.append(y_)
-        if 'Z' in cmds:
-            z_ = cmds['Z']
-            z.append(z_)
-                    
-        # Ingnore anything but XY movements from here on
-        if x_ is None and y_ is None:
-            #print "-> no x,y"
-            continue
-            
-        if x_ is None:
-            x_ = xypoints[-1][0]
-            
-        if y_ is None:
-            y_ = xypoints[-1][1]
-            
-        if z_ is None:
-            z_ = z[-1]
-            
-        
-        mot = None
-        
-        if 'G' in cmds:
-            current_g = cmds['G']
-        
-        if current_g == 0: # Fast linear
-            if len(xypoints) > 0:
-                #print "motion(", xypoints[-1], ", (", x_, ",", y_, "),", z_, ")"
-                mot = motion(xypoints[-1], (x_, y_), z_)
-            
-        if current_g == 1: # Feed-rate linear
-            if len(xypoints) > 0:
-                #print "motion(", xypoints[-1], ", (", x_, ",", y_, "),", z_, ")"
-                mot = motion(xypoints[-1], (x_, y_), z_)
-            
-        if current_g == 2: # Clockwise arc
-            if len(xypoints) > 0:
-                if 'I' in cmds and 'J' in cmds:
-                    mot = motion(xypoints[-1], (x_, y_), z_, offset=(cmds['I'], 
-                                 cmds['J']), typ='arccw') 
-            
-        if current_g == 3: # Counter-clockwise arc
-            if len(xypoints) > 0:
-                if 'I' in cmds and 'J' in cmds:
-                    mot = motion(xypoints[-1], (x_, y_), z_, offset=(cmds['I'], 
-                                 cmds['J']), typ='arcacw')
-        
-        if mot is not None:
-            motions.append(mot)
-        
-        xypoints.append((x_, y_))
-        
-    x = array(x)
-    y = array(y)
-    z = array(z)
 
-    xmin = min(x)
-    xmax = max(x)
-    ymin = min(y)
-    ymax = max(y)
-
-    print "x:", min(x), max(x)
-    print "y:", min(y), max(y)
-    print "z:", min(z), max(z)
-
-    print xypoints[-1]
+def get_bounds(geometry_sets):
+    xmin = Inf
+    ymin = Inf
+    xmax = -Inf
+    ymax = -Inf
     
-    return xmin, xmax, ymin, ymax, motions
+    #geometry_sets = [self.gerbers, self.excellons]
+    
+    for gs in geometry_sets:
+        for g in gs:
+            gxmin, gymin, gxmax, gymax = g.solid_geometry.bounds
+            xmin = min([xmin, gxmin])
+            ymin = min([ymin, gymin])
+            xmax = max([xmax, gxmax])
+            ymax = max([ymax, gymax])
+            
+    return [xmin, ymin, xmax, ymax]
 
+def arc(center, radius, start, stop, direction, steps_per_circ):
+    da_sign = {"cw":-1.0, "ccw":1.0}    
+    points = []
+    if direction=="ccw" and stop <= start:
+        stop += 2*pi
+    if direction=="cw" and stop >= start:
+        stop -= 2*pi
+    
+    angle = abs(stop - start)
+        
+    #angle = stop-start
+    steps = max([int(ceil(angle/(2*pi)*steps_per_circ)), 2])
+    delta_angle = da_sign[direction]*angle*1.0/steps
+    for i in range(steps+1):
+        theta = start + delta_angle*i
+        points.append([center[0]+radius*cos(theta), center[1]+radius*sin(theta)])
+    return LineString(points)
+    
 ############### cam.py ####################
 def coord(gstr,digits,fraction):
     '''
