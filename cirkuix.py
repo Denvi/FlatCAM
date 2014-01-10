@@ -231,6 +231,17 @@ class App:
         
         self.canvas.queue_draw()
         
+    def plot_geometry(self, geometry):
+        for geo in geometry.solid_geometry:
+            x, y = geo.exterior.coords.xy
+            self.axes.plot(x, y, 'r-')
+            for ints in geo.interiors:
+                x, y = ints.coords.xy
+                self.axes.plot(x, y, 'r-')
+                
+        self.canvas.queue_draw()
+            
+        
     def setup_component_viewer(self):
         '''
         List or Tree where whatever has been loaded or created is
@@ -290,11 +301,23 @@ class App:
         entry_name.connect("activate", self.on_activate_name)
         box1.show()
         
+    def build_geometry_ui(self):
+        print "build_geometry_ui()"
+        osw = self.builder.get_object("offscrwindow_geometry")
+        box1 = self.builder.get_object("box_geometry")
+        osw.remove(box1)
+        self.notebook.append_page(box1, Gtk.Label("Selection"))
+        entry_name = self.builder.get_object("entry_geometryname")
+        entry_name.set_text(self.selected_item_name)
+        entry_name.connect("activate", self.on_activate_name)
+        box1.show()
+        
     def plot_all(self):
         self.clear_plots()
         plotter = {"gerber":self.plot_gerber,
                    "excellon":self.plot_excellon,
-                   "cncjob":self.plot_cncjob}
+                   "cncjob":self.plot_cncjob,
+                   "geometry":self.plot_geometry}
         
         for i in self.stuff:
             kind = self.stuff[i].kind
@@ -311,6 +334,30 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_eval_update(self, widget):
+        # TODO: error handling here
+        widget.set_text(str(eval(widget.get_text())))
+
+    def on_generate_isolation(self, widget):
+        print "Generating Isolation Geometry:"
+        # Get required info
+        tooldia = self.builder.get_object("entry_gerberisotooldia").get_text()
+        tooldia = eval(tooldia)
+        print "tooldia:", tooldia
+        
+        # Generate
+        iso = self.stuff[self.selected_item_name].isolation_geometry(tooldia/2.0)
+        # TODO: This will break if there is something with this name already        
+        iso_name = self.selected_item_name + "_iso"
+        geo = CirkuixGeometry(iso_name)
+        geo.solid_geometry = iso
+
+        # Add to App and update.        
+        self.stuff[iso_name] = geo        
+        self.build_list()
+        
+        
+
     def on_delete(self, widget):
         self.stuff.pop(self.selected_item_name)
         
@@ -363,7 +410,8 @@ class App:
         # Build the UI
         builder = {"gerber": self.build_gerber_ui,
                    "excellon": self.build_excellon_ui,
-                   "cncjob": self.build_cncjob_ui}
+                   "cncjob": self.build_cncjob_ui,
+                   "geometry": self.build_geometry_ui}
         builder[kind]()
     
     def on_filequit(self, param):
@@ -460,8 +508,27 @@ class App:
         xmin, ymin, xmax, ymax = get_bounds(self.stuff)
         width = xmax-xmin
         height = ymax-ymin
-        self.axes.set_xlim((xmin-0.05*width, xmax+0.05*width))
-        self.axes.set_ylim((ymin-0.05*height, ymax+0.05*height))
+        r = width/height
+        
+        Fw, Fh = self.canvas.get_width_height()
+        Fr = float(Fw)/Fh
+        print "Window aspect ratio:", Fr
+        print "Data aspect ratio:", r
+        
+        #self.axes.set_xlim((xmin-0.05*width, xmax+0.05*width))
+        #self.axes.set_ylim((ymin-0.05*height, ymax+0.05*height))
+        
+        if r > Fr:
+            self.axes.set_xlim((xmin-0.05*width, xmax+0.05*width))
+            ycenter = (ymin+ymax)/2.0
+            newheight = height*r/Fr
+            self.axes.set_ylim((ycenter-newheight/2.0, ycenter+newheight/2.0))
+        else:
+            self.axes.set_ylim((ymin-0.05*height, ymax+0.05*height))
+            xcenter = (xmax+ymin)/2.0
+            newwidth = width*Fr/r
+            self.axes.set_xlim((xcenter-newwidth/2.0, xcenter+newwidth/2.0))
+        
         self.canvas.queue_draw()
         return
         
