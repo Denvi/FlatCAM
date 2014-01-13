@@ -86,10 +86,10 @@ def get_entry_float(entry):
 def get_entry_eval(entry):
     return eval(entry.get_text)
 
-getters = {"entry_text":get_entry_text,
-           "entry_int":get_entry_int,
-           "entry_float":get_entry_float,
-           "entry_eval":get_entry_eval}
+getters = {"entry_text": get_entry_text,
+           "entry_int": get_entry_int,
+           "entry_float": get_entry_float,
+           "entry_eval": get_entry_eval}
 
 setters = {"entry"}
 
@@ -105,7 +105,7 @@ class App:
         self.builder.add_from_file(self.gladefile)
         self.window = self.builder.get_object("window1")
         self.window.set_title("Cirkuix")
-        self.positionLabel = self.builder.get_object("label3")      
+        self.position_label = self.builder.get_object("label3")
         self.grid = self.builder.get_object("grid1")
         self.notebook = self.builder.get_object("notebook1")
         self.info_label = self.builder.get_object("label_status")
@@ -248,20 +248,27 @@ class App:
         
     def plot_geometry(self, geometry):
         for geo in geometry.solid_geometry:
-            x, y = geo.exterior.coords.xy
-            self.axes.plot(x, y, 'r-')
-            for ints in geo.interiors:
-                x, y = ints.coords.xy
+
+            if type(geo) == Polygon:
+                x, y = geo.exterior.coords.xy
                 self.axes.plot(x, y, 'r-')
+                for ints in geo.interiors:
+                    x, y = ints.coords.xy
+                    self.axes.plot(x, y, 'r-')
+                continue
+
+            if type(geo) == LineString or type(geo) == LinearRing:
+                x, y = geo.coords.xy
+                self.axes.plot(x, y, 'r-')
+                continue
                 
         self.canvas.queue_draw()
-            
-        
+
     def setup_component_viewer(self):
-        '''
+        """
         List or Tree where whatever has been loaded or created is
         displayed.
-        '''
+        """
         self.store = Gtk.ListStore(str)
         self.tree = Gtk.TreeView(self.store)
         select = self.tree.get_selection()
@@ -353,7 +360,59 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_gerber_generate_boundary(self, widget):
+        margin = self.get_eval("entry_gerber_cutout_margin")
+        gap_size = self.get_eval("entry_gerber_cutout_gapsize")
+        gerber = self.stuff[self.selected_item_name]
+        minx, miny, maxx, maxy = gerber.bounds()
+        minx -= margin
+        maxx += margin
+        miny -= margin
+        maxy += margin
+        midx = 0.5 * (minx + maxx)
+        midy = 0.5 * (miny + maxy)
+        hgap = 0.5 * gap_size
+        pts = [[midx-hgap, maxy],
+               [minx, maxy],
+               [minx, midy+hgap],
+               [minx, midy-hgap],
+               [minx, miny],
+               [midx-hgap, miny],
+               [midx+hgap, miny],
+               [maxx, miny],
+               [maxx, midy-hgap],
+               [maxx, midy+hgap],
+               [maxx, maxy],
+               [midx+hgap, maxy]]
+        cases = {"tb": [[pts[0], pts[1], pts[4], pts[5]],
+                        [pts[6], pts[7], pts[10], pts[11]]],
+                 "lr": [[pts[9], pts[10], pts[1], pts[2]],
+                        [pts[3], pts[4], pts[7], pts[8]]],
+                 "4": [[pts[0], pts[1], pts[2]],
+                       [pts[3], pts[4], pts[5]],
+                       [pts[6], pts[7], pts[8]],
+                       [pts[9], pts[10], pts[11]]]}
+        name = self.selected_item_name + "_cutout"
+        geometry = CirkuixGeometry(name)
+        cuts = None
+        if self.builder.get_object("rb_2tb").get_active():
+            cuts = cases["tb"]
+        elif self.builder.get_object("rb_2lr").get_active():
+            cuts = cases["lr"]
+        else:
+            cuts = cases["4"]
+        geometry.solid_geometry = cascaded_union([LineString(segment) for segment in cuts])
+
+        # Add to App and update.
+        self.stuff[name] = geometry
+        self.build_list()
+
     def on_eval_update(self, widget):
+        """
+        Modifies the content of a Gtk.Entry by running
+        eval() on its contents and puting it back as a
+        string.
+        """
         # TODO: error handling here
         widget.set_text(str(eval(widget.get_text())))
 
@@ -384,7 +443,7 @@ class App:
         
         geometry = self.stuff[self.selected_item_name]
         job_name = self.selected_item_name + "_cnc"
-        job = CirkuixCNCjob(job_name, z_move = travelz, z_cut = cutz, feedrate = feedrate)
+        job = CirkuixCNCjob(job_name, z_move=travelz, z_cut=cutz, feedrate=feedrate)
         job.generate_from_geometry(geometry.solid_geometry)
         job.gcode_parse()
         job.create_geometry()
@@ -613,11 +672,11 @@ class App:
         
     def on_mouse_move_over_plot(self, event):
         try: # May fail in case mouse not within axes
-            self.positionLabel.set_label("X: %.4f   Y: %.4f"%(
+            self.position_label.set_label("X: %.4f   Y: %.4f"%(
                                          event.xdata, event.ydata))
             self.mouse = [event.xdata, event.ydata]
         except:
-            self.positionLabel.set_label("")
+            self.position_label.set_label("")
             self.mouse = None
         
     def on_click_over_plot(self, event):

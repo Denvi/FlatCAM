@@ -7,7 +7,9 @@ from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.geometry import box as shply_box
 from shapely.ops import cascaded_union
 
+# Used for solid polygons in Matplotlib
 from descartes.patch import PolygonPatch
+
 
 class Geometry:
     def __init__(self):
@@ -18,20 +20,20 @@ class Geometry:
         self.solid_geometry = None
         
     def isolation_geometry(self, offset):
-        '''
+        """
         Creates contours around geometry at a given
         offset distance.
-        '''
+        """
         return self.solid_geometry.buffer(offset)
         
     def bounds(self):
-        '''
+        """
         Returns coordinates of rectangular bounds
         of geometry: (xmin, ymin, xmax, ymax).
-        '''
-        if self.solid_geometry == None:
+        """
+        if self.solid_geometry is None:
             print "Warning: solid_geometry not computed yet."
-            return (0,0,0,0)
+            return (0, 0, 0, 0)
             
         if type(self.solid_geometry) == list:
             return cascaded_union(self.solid_geometry).bounds
@@ -39,33 +41,33 @@ class Geometry:
             return self.solid_geometry.bounds
         
     def size(self):
-        '''
+        """
         Returns (width, height) of rectangular
         bounds of geometry.
-        '''
-        if self.solid_geometry == None:
+        """
+        if self.solid_geometry is None:
             print "Warning: solid_geometry not computed yet."
             return 0
         bounds = self.bounds()
         return (bounds[2]-bounds[0], bounds[3]-bounds[1])
         
     def get_empty_area(self, boundary=None):
-        '''
+        """
         Returns the complement of self.solid_geometry within
         the given boundary polygon. If not specified, it defaults to
         the rectangular bounding box of self.solid_geometry.
-        '''
-        if boundary == None:
+        """
+        if boundary is None:
             boundary = self.solid_geometry.envelope
         return boundary.difference(self.solid_geometry)
         
-    def clear_polygon(self, polygon, tooldia, overlap = 0.15):
-        '''
+    def clear_polygon(self, polygon, tooldia, overlap=0.15):
+        """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
-        '''
+        """
         poly_cuts = [polygon.buffer(-tooldia/2.0)]
-        while(1):
+        while True:
             polygon = poly_cuts[-1].buffer(-tooldia*(1-overlap))
             if polygon.area > 0:
                 poly_cuts.append(polygon)
@@ -107,12 +109,12 @@ class Gerber (Geometry):
         self.flash_geometry = []
         
     def fix_regions(self):
-        '''
+        """
         Overwrites the region polygons with fixed
         versions if found to be invalid (according to Shapely).
-        '''
+        """
         for region in self.regions:
-            if region['polygon'].is_valid == False:
+            if not region['polygon'].is_valid:
                 region['polygon'] = region['polygon'].buffer(0)
     
     def buffer_paths(self):
@@ -122,98 +124,98 @@ class Gerber (Geometry):
             self.buffered_paths.append(path["linestring"].buffer(width/2))
     
     def aperture_parse(self, gline):
-        '''
+        """
         Parse gerber aperture definition
         into dictionary of apertures.
-        '''
+        """
         indexstar = gline.find("*")
         indexC = gline.find("C,")
         if indexC != -1: # Circle, example: %ADD11C,0.1*%
             apid = gline[4:indexC]
-            self.apertures[apid] = {"type":"C", 
-                                    "size":float(gline[indexC+2:indexstar])}
+            self.apertures[apid] = {"type": "C",
+                                    "size": float(gline[indexC+2:indexstar])}
             return apid
         indexR = gline.find("R,")
         if indexR != -1: # Rectangle, example: %ADD15R,0.05X0.12*%
             apid = gline[4:indexR]
             indexX = gline.find("X")
-            self.apertures[apid] = {"type":"R", 
-                                    "width":float(gline[indexR+2:indexX]), 
-                                    "height":float(gline[indexX+1:indexstar])}
+            self.apertures[apid] = {"type": "R",
+                                    "width": float(gline[indexR+2:indexX]),
+                                    "height": float(gline[indexX+1:indexstar])}
             return apid
         indexO = gline.find("O,")
         if indexO != -1: # Obround
             apid = gline[4:indexO]
             indexX = gline.find("X")
-            self.apertures[apid] = {"type":"O", 
-                                    "width":float(gline[indexO+2:indexX]), 
-                                    "height":float(gline[indexX+1:indexstar])}
+            self.apertures[apid] = {"type": "O",
+                                    "width": float(gline[indexO+2:indexX]),
+                                    "height": float(gline[indexX+1:indexstar])}
             return apid
         print "WARNING: Aperture not implemented:", gline
         return None
         
     def parse_file(self, filename):
-        '''
+        """
         Calls Gerber.parse_lines() with array of lines
         read from the given file.
-        '''
+        """
         gfile = open(filename, 'r')
         gstr = gfile.readlines()
         gfile.close()
         self.parse_lines(gstr)
         
     def parse_lines(self, glines):
-        '''
+        """
         Main Gerber parser.
-        '''
-        path = [] # Coordinates of the current path
+        """
+        path = []  # Coordinates of the current path
         last_path_aperture = None
         current_aperture = None
         
         for gline in glines:
             
-            if gline.find("D01*") != -1: # pen down
+            if gline.find("D01*") != -1:  # pen down
                 path.append(coord(gline, self.digits, self.fraction))
                 last_path_aperture = current_aperture
                 continue
         
-            if gline.find("D02*") != -1: # pen up
+            if gline.find("D02*") != -1:  # pen up
                 if len(path) > 1:
                     # Path completed, create shapely LineString
-                    self.paths.append({"linestring":LineString(path), 
-                                       "aperture":last_path_aperture})
+                    self.paths.append({"linestring": LineString(path),
+                                       "aperture": last_path_aperture})
                 path = [coord(gline, self.digits, self.fraction)]
                 continue
             
             indexD3 = gline.find("D03*")
-            if indexD3 > 0: # Flash
-                self.flashes.append({"loc":coord(gline, self.digits, self.fraction),
-                                     "aperture":current_aperture})
+            if indexD3 > 0:  # Flash
+                self.flashes.append({"loc": coord(gline, self.digits, self.fraction),
+                                     "aperture": current_aperture})
                 continue
-            if indexD3 == 0: # Flash?
+            if indexD3 == 0:  # Flash?
                 print "WARNING: Uninplemented flash style:", gline
                 continue
             
-            if gline.find("G37*") != -1: # end region
+            if gline.find("G37*") != -1:  # end region
                 # Only one path defines region?
-                self.regions.append({"polygon":Polygon(path), 
-                                     "aperture":last_path_aperture})
+                self.regions.append({"polygon": Polygon(path),
+                                     "aperture": last_path_aperture})
                 path = []
                 continue
             
-            if gline.find("%ADD") != -1: # aperture definition
-                self.aperture_parse(gline) # adds element to apertures
+            if gline.find("%ADD") != -1:  # aperture definition
+                self.aperture_parse(gline)  # adds element to apertures
                 continue
             
             indexstar = gline.find("*")
-            if gline.find("D") == 0: # Aperture change
+            if gline.find("D") == 0:  # Aperture change
                 current_aperture = gline[1:indexstar]
                 continue
-            if gline.find("G54D") == 0: # Aperture change (deprecated)
+            if gline.find("G54D") == 0:  # Aperture change (deprecated)
                 current_aperture = gline[4:indexstar]
                 continue
             
-            if gline.find("%FS") != -1: # Format statement
+            if gline.find("%FS") != -1:  # Format statement
                 indexX = gline.find("X")
                 self.digits = int(gline[indexX + 1])
                 self.fraction = int(gline[indexX + 2])
@@ -226,17 +228,17 @@ class Gerber (Geometry):
                                "aperture":last_path_aperture})
     
     def do_flashes(self):
-        '''
+        """
         Creates geometry for Gerber flashes (aperture on a single point).
-        '''
+        """
         self.flash_geometry = []
         for flash in self.flashes:
             aperture = self.apertures[flash['aperture']]
-            if aperture['type'] == 'C': # Circles
+            if aperture['type'] == 'C':  # Circles
                 circle = Point(flash['loc']).buffer(aperture['size']/2)
                 self.flash_geometry.append(circle)
                 continue
-            if aperture['type'] == 'R': # Rectangles
+            if aperture['type'] == 'R':  # Rectangles
                 loc = flash['loc']
                 width = aperture['width']
                 height = aperture['height']
@@ -260,6 +262,7 @@ class Gerber (Geometry):
                                 [poly['polygon'] for poly in self.regions] +
                                 self.flash_geometry)
 
+
 class Excellon(Geometry):
     def __init__(self):
         Geometry.__init__(self)
@@ -275,9 +278,9 @@ class Excellon(Geometry):
         self.parse_lines(estr)
         
     def parse_lines(self, elines):
-        '''
+        """
         Main Excellon parser.
-        '''
+        """
         current_tool = ""
         
         for eline in elines:
@@ -320,7 +323,7 @@ class Excellon(Geometry):
             if indexX != -1 and indexY != -1:
                 x = float(int(eline[indexX+1:indexY])/10000.0)
                 y = float(int(eline[indexY+1:-1])/10000.0)
-                self.drills.append({'point':Point((x,y)), 'tool':current_tool})
+                self.drills.append({'point': Point((x, y)), 'tool': current_tool})
                 continue
             
             print "WARNING: Line ignored:", eline
@@ -335,9 +338,10 @@ class Excellon(Geometry):
             self.solid_geometry.append(poly)
         self.solid_geometry = cascaded_union(self.solid_geometry)
 
+
 class CNCjob(Geometry):
-    def __init__(self, units="in", kind="generic", z_move = 0.1,
-                 feedrate = 3.0, z_cut = -0.002, tooldia = 0.0):
+    def __init__(self, units="in", kind="generic", z_move=0.1,
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
         
         # Options
         self.kind = kind
@@ -358,19 +362,17 @@ class CNCjob(Geometry):
         
         # Bounds of geometry given to CNCjob.generate_from_geometry()
         self.input_geometry_bounds = None
-        
-        
-        
+
         # Output generated by CNCjob.create_gcode_geometry()
         #self.G_geometry = None
         self.gcode_parsed = None
         
     def generate_from_excellon(self, exobj):
-        '''
+        """
         Generates G-code for drilling from excellon text.
         self.gcode becomes a list, each element is a
         different job for each tool in the excellon code.
-        '''
+        """
         self.kind = "drill"
         self.gcode = []
         
@@ -399,23 +401,23 @@ class CNCjob(Geometry):
                 gcode += t%point
                 gcode += down + up
             
-            gcode += t%(0,0)
-            gcode += "M05\n" # Spindle stop
+            gcode += t%(0, 0)
+            gcode += "M05\n"  # Spindle stop
             
             self.gcode.append(gcode)
             
     def generate_from_geometry(self, geometry, append=True, tooldia=None):
-        '''
+        """
         Generates G-Code for geometry (Shapely collection).
-        '''
-        if tooldia == None:
+        """
+        if tooldia is None:
             tooldia = self.tooldia
         else:
             self.tooldia = tooldia
             
         self.input_geometry_bounds = geometry.bounds
         
-        if append == False:
+        if not append:
             self.gcode = ""
         t = "G0%d X%.4fY%.4f\n"
         self.gcode = self.unitcode[self.units] + "\n"
@@ -429,50 +431,50 @@ class CNCjob(Geometry):
         for geo in geometry:
             
             if type(geo) == Polygon:
-                path = list(geo.exterior.coords)            # Polygon exterior
-                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
-                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
+                path = list(geo.exterior.coords)             # Polygon exterior
+                self.gcode += t%(0, path[0][0], path[0][1])  # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut       # Start cutting
                 for pt in path[1:]:
-                    self.gcode += t%(1, pt[0], pt[1])   # Linear motion to point
-                self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
-                for ints in geo.interiors:             # Polygon interiors
+                    self.gcode += t%(1, pt[0], pt[1])    # Linear motion to point
+                self.gcode += "G00 Z%.4f\n"%self.z_move  # Stop cutting
+                for ints in geo.interiors:               # Polygon interiors
                     path = list(ints.coords)
-                    self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
-                    self.gcode += "G01 Z%.4f\n"%self.z_cut # Start cutting
+                    self.gcode += t%(0, path[0][0], path[0][1])  # Move to first point
+                    self.gcode += "G01 Z%.4f\n"%self.z_cut       # Start cutting
                     for pt in path[1:]:
-                        self.gcode += t%(1, pt[0], pt[1]) # Linear motion to point
-                    self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
+                        self.gcode += t%(1, pt[0], pt[1])    # Linear motion to point
+                    self.gcode += "G00 Z%.4f\n"%self.z_move  # Stop cutting
                 continue
             
             if type(geo) == LineString or type(geo) == LinearRing:
                 path = list(geo.coords)
-                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
-                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
+                self.gcode += t%(0, path[0][0], path[0][1])  # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut       # Start cutting
                 for pt in path[1:]:
-                    self.gcode += t%(1, pt[0], pt[1])   # Linear motion to point
-                self.gcode += "G00 Z%.4f\n"%self.z_move # Stop cutting
+                    self.gcode += t%(1, pt[0], pt[1])    # Linear motion to point
+                self.gcode += "G00 Z%.4f\n"%self.z_move  # Stop cutting
                 continue
             
             if type(geo) == Point:
                 path = list(geo.coords)
-                self.gcode += t%(0, path[0][0], path[0][1]) # Move to first point
-                self.gcode += "G01 Z%.4f\n"%self.z_cut      # Start cutting
-                self.gcode += "G00 Z%.4f\n"%self.z_move     # Stop cutting
+                self.gcode += t%(0, path[0][0], path[0][1])  # Move to first point
+                self.gcode += "G01 Z%.4f\n"%self.z_cut       # Start cutting
+                self.gcode += "G00 Z%.4f\n"%self.z_move      # Stop cutting
                 continue
             
             print "WARNING: G-code generation not implemented for %s"%(str(type(geo)))
         
         self.gcode += "G00 Z%.4f\n"%self.z_move     # Stop cutting
         self.gcode += "G00 X0Y0\n"
-        self.gcode += "M05\n" # Spindle stop
+        self.gcode += "M05\n"  # Spindle stop
     
     def gcode_parse(self):
         steps_per_circ = 20
-        '''
+        """
         G-Code parser (from self.gcode). Generates dictionary with 
         single-segment LineString's and "kind" indicating cut or travel, 
         fast or feedrate speed.
-        '''
+        """
         geometry = []        
         
         # TODO: ???? bring this into the class??
@@ -513,20 +515,19 @@ class CNCjob(Geometry):
                     kind[1] = 'S'
                    
                 arcdir = [None, None, "cw", "ccw"]
-                if current['G'] in [0,1]: # line
-                    geometry.append({'geom':LineString([(current['X'],current['Y']),
-                                                        (x,y)]), 'kind':kind})
-                if current['G'] in [2,3]: # arc
+                if current['G'] in [0, 1]: # line
+                    geometry.append({'geom': LineString([(current['X'], current['Y']),
+                                                        (x, y)]), 'kind': kind})
+                if current['G'] in [2, 3]:  # arc
                     center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
                     radius = sqrt(gobj['I']**2 + gobj['J']**2)
                     start  = arctan2(  -gobj['J'],   -gobj['I'])
                     stop   = arctan2(-center[1]+y, -center[0]+x)
-                    geometry.append({'geom':arc(center, radius, start, stop, 
+                    geometry.append({'geom': arc(center, radius, start, stop,
                                                 arcdir[current['G']],
                                                 steps_per_circ),
-                                     'kind':kind})
-                
-            
+                                     'kind': kind})
+
             # Update current instruction
             for code in gobj:
                 current[code] = gobj[code]
@@ -536,13 +537,13 @@ class CNCjob(Geometry):
         return geometry
         
     def plot(self, tooldia=None, dpi=75, margin=0.1,
-             color={"T":["#F0E24D", "#B5AB3A"], "C":["#5E6CFF", "#4650BD"]},
-             alpha={"T":0.3, "C":1.0}):
-        '''
+             color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
+             alpha={"T": 0.3, "C": 1.0}):
+        """
         Creates a Matplotlib figure with a plot of the
         G-code job.
-        '''
-        if tooldia == None:
+        """
+        if tooldia is None:
             tooldia = self.tooldia
             
         fig = Figure(dpi=dpi)
@@ -571,12 +572,12 @@ class CNCjob(Geometry):
         return fig
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
-             color={"T":["#F0E24D", "#B5AB3A"], "C":["#5E6CFF", "#4650BD"]},
-             alpha={"T":0.3, "C":1.0}):
-        '''
+             color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
+             alpha={"T": 0.3, "C":1.0}):
+        """
         Plots the G-code job onto the given axes.
-        '''
-        if tooldia == None:
+        """
+        if tooldia is None:
             tooldia = self.tooldia
         
         if tooldia == 0:
@@ -598,14 +599,13 @@ class CNCjob(Geometry):
     def create_geometry(self):
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-                
 
 def gparse1b(gtext):
-    '''
+    """
     gtext is a single string with g-code
-    '''
+    """
     gcmds = []
-    lines = gtext.split("\n") # TODO: This is probably a lot of work!
+    lines = gtext.split("\n")  # TODO: This is probably a lot of work!
     for line in lines:
         line = line.strip()
         
@@ -635,8 +635,8 @@ def gparse1b(gtext):
         # Separate codes in line
         parts = []
         for p in range(n_codes-1):
-            parts.append( line[ codes_idx[p]:codes_idx[p+1] ].strip() )
-        parts.append( line[codes_idx[-1]:].strip() )
+            parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
+        parts.append(line[codes_idx[-1]:].strip())
         
         # Separate codes from values
         cmds = {}
@@ -644,6 +644,7 @@ def gparse1b(gtext):
             cmds[part[0]] = float(part[1:])
         gcmds.append(cmds)
     return gcmds
+
 
 def get_bounds(geometry_set):
     xmin = Inf
@@ -660,12 +661,13 @@ def get_bounds(geometry_set):
             
     return [xmin, ymin, xmax, ymax]
 
+
 def arc(center, radius, start, stop, direction, steps_per_circ):
-    da_sign = {"cw":-1.0, "ccw":1.0}    
+    da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
-    if direction=="ccw" and stop <= start:
+    if direction == "ccw" and stop <= start:
         stop += 2*pi
-    if direction=="cw" and stop >= start:
+    if direction == "cw" and stop >= start:
         stop -= 2*pi
     
     angle = abs(stop - start)
@@ -677,20 +679,21 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
         theta = start + delta_angle*i
         points.append([center[0]+radius*cos(theta), center[1]+radius*sin(theta)])
     return LineString(points)
-    
+
+
 ############### cam.py ####################
 def coord(gstr,digits,fraction):
-    '''
+    """
     Parse Gerber coordinates
-    '''
+    """
     global gerbx, gerby
     xindex = gstr.find("X")
     yindex = gstr.find("Y")
     index = gstr.find("D")
-    if (xindex == -1):
+    if xindex == -1:
         x = gerbx
         y = int(gstr[(yindex+1):index])*(10**(-fraction))
-    elif (yindex == -1):
+    elif yindex == -1:
         y = gerby
         x = int(gstr[(xindex+1):index])*(10**(-fraction))
     else:
@@ -698,7 +701,5 @@ def coord(gstr,digits,fraction):
         y = int(gstr[(yindex+1):index])*(10**(-fraction))
     gerbx = x
     gerby = y
-    return [x,y]
-
-
+    return [x, y]
 ################ end of cam.py #############
