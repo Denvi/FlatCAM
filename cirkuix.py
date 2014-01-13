@@ -1,35 +1,35 @@
-from gi.repository import Gtk
 
-import matplotlib.pyplot as plt
-plt.ioff()
+import threading
+from gi.repository import Gtk
 
 from matplotlib.figure import Figure
 from numpy import arange, sin, pi
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
-#from matplotlib.backends.backend_gtk3 import NavigationToolbar2GTK3 as NavigationToolbar
 #from matplotlib.backends.backend_gtk3cairo import FigureCanvasGTK3Cairo as FigureCanvas
 #from matplotlib.backends.backend_cairo import FigureCanvasCairo as FigureCanvas
-#import cairo
 
 from camlib import *
+
 
 class CirkuixObj:
     def __init__(self, name, kind):
         self.name = name
         self.kind = kind
-        
+
+
 class CirkuixGerber(CirkuixObj, Gerber):
     def __init__(self, name):
         Gerber.__init__(self)
         CirkuixObj.__init__(self, name, "gerber")
-        self.fields = [{"name":"plot", 
-                        "type":bool, 
-                        "value":True, 
-                        "get":None, 
-                        "set":None, 
-                        "onchange":None},
+        self.fields = [{"name": "plot",
+                        "type": bool,
+                        "value": True,
+                        "get": None,
+                        "set": None,
+                        "onchange": None},
                        {}]
-        
+
+
 class CirkuixExcellon(CirkuixObj, Excellon):
     def __init__(self, name):
         Excellon.__init__(self)
@@ -37,12 +37,16 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         self.options = {"plot": True,
                         "solid": False,
                         "multicolored": False}
-        
+
+
 class CirkuixCNCjob(CirkuixObj, CNCjob):
-    def __init__(self, name):
-        CNCjob.__init__(self)
+    def __init__(self, name, units="in", kind="generic", z_move=0.1,
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+        CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
+                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
         CirkuixObj.__init__(self, name, "cncjob")
         self.options = {"plot": True}
+
 
 class CirkuixGeometry(CirkuixObj, Geometry):
     def __init__(self, name):
@@ -51,9 +55,10 @@ class CirkuixGeometry(CirkuixObj, Geometry):
                         "solid": False,
                         "multicolored": False}
 
+
 class CirkuixObjForm:
-    def __init__(self, container, Cobj):
-        self.Cobj = Cobj
+    def __init__(self, container, cobj):
+        self.cobj = cobj
         self.container = container
         self.fields = {}
     
@@ -68,13 +73,16 @@ class CirkuixObjForm:
 
 def get_entry_text(entry):
     return entry.get_text()
-    
+
+
 def get_entry_int(entry):
     return int(entry.get_text())
-    
+
+
 def get_entry_float(entry):
     return float(entry.get_text())
-    
+
+
 def get_entry_eval(entry):
     return eval(entry.get_text)
 
@@ -84,6 +92,7 @@ getters = {"entry_text":get_entry_text,
            "entry_eval":get_entry_eval}
 
 setters = {"entry"}
+
 
 class App:
     def __init__(self):
@@ -99,7 +108,10 @@ class App:
         self.positionLabel = self.builder.get_object("label3")      
         self.grid = self.builder.get_object("grid1")
         self.notebook = self.builder.get_object("notebook1")
-        
+        self.info_label = self.builder.get_object("label_status")
+        self.progress_bar = self.builder.get_object("progressbar")
+        self.progress_bar.set_show_text(True)
+
         ## Event handling ##
         self.builder.connect_signals(self)
         
@@ -115,7 +127,7 @@ class App:
         ########################################
         ##               DATA                 ##
         ########################################
-        self.stuff = {} # CirkuixObj's by name
+        self.stuff = {}  # CirkuixObj's by name
         
         self.mouse = None
         
@@ -131,7 +143,7 @@ class App:
         
     def plot_setup(self):
         self.figure = Figure(dpi=50)
-        self.axes = self.figure.add_axes([0.05,0.05,0.9,0.9])
+        self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9])
         self.axes.set_aspect(1)
         #t = arange(0.0,5.0,0.01)
         #s = sin(2*pi*t)
@@ -148,23 +160,29 @@ class App:
         ########################################
         self.canvas.mpl_connect('button_press_event', self.on_click_over_plot)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
-        self.canvas.set_can_focus(True) # For key press
+        self.canvas.set_can_focus(True)  # For key press
         self.canvas.mpl_connect('key_press_event', self.on_key_over_plot)
         self.canvas.mpl_connect('scroll_event', self.on_scroll_over_plot)
         
-        self.grid.attach(self.canvas,0,0,600,400)
-    
+        self.grid.attach(self.canvas, 0, 0, 600, 400)
+
+    def info(self, text):
+        """
+        Show text on the status bar.
+        """
+        self.info_label.set_text(text)
+
     def zoom(self, factor, center=None):
-        '''
+        """
         Zooms the plot by factor around a given
         center point. Takes care of re-drawing.
-        '''
+        """
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
         width = xmax-xmin
         height = ymax-ymin
         
-        if center == None:
+        if center is None:
             center = [(xmin+xmax)/2.0, (ymin+ymax)/2.0]
         
         # For keeping the point at the pointer location
@@ -225,10 +243,7 @@ class App:
 
     def plot_cncjob(self, job):
         #job.gcode_parse()
-        tooldia_text = self.builder.get_object("entry_tooldia").get_text()
-        tooldia_val = eval(tooldia_text)
-        job.plot2(self.axes, tooldia=tooldia_val)
-        
+        job.plot2(self.axes)
         self.canvas.queue_draw()
         
     def plot_geometry(self, geometry):
@@ -331,6 +346,10 @@ class App:
         self.axes.cla()
         self.canvas.queue_draw()
 
+    def get_eval(self, widget_name):
+        value = self.builder.get_object(widget_name).get_text()
+        return eval(value)
+        
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
@@ -356,7 +375,38 @@ class App:
         self.stuff[iso_name] = geo        
         self.build_list()
         
+    def on_generate_cncjob(self, widget):
+        print "Generating CNC job"
+        # Get required info
+        cutz = self.get_eval("entry_geometry_cutz")
+        travelz = self.get_eval("entry_geometry_travelz")
+        feedrate = self.get_eval("entry_geometry_feedrate")
         
+        geometry = self.stuff[self.selected_item_name]
+        job_name = self.selected_item_name + "_cnc"
+        job = CirkuixCNCjob(job_name, z_move = travelz, z_cut = cutz, feedrate = feedrate)
+        job.generate_from_geometry(geometry.solid_geometry)
+        job.gcode_parse()
+        job.create_geometry()
+        
+        # Add to App and update.        
+        self.stuff[job_name] = job      
+        self.build_list()
+
+    def on_cncjob_tooldia_activate(self, widget):
+        job = self.stuff[self.selected_item_name]
+        tooldia = self.get_eval("entry_cncjob_tooldia")
+        job.tooldia = tooldia
+        print "Changing tool diameter to:", tooldia
+
+    def on_cncjob_exportgcode(self, widget):
+        def on_success(self, filename):
+            cncjob = self.stuff[self.selected_item_name]
+            f = open(filename, 'w')
+            f.write(cncjob.gcode)
+            f.close()
+            print "Saved to:", filename
+        self.file_chooser_save_action(on_success)
 
     def on_delete(self, widget):
         self.stuff.pop(self.selected_item_name)
@@ -426,7 +476,7 @@ class App:
     
     def file_chooser_action(self, on_success):
         '''
-        Opens the file chooser and runs on_success
+        Opens the file chooser and runs on_success on a separate thread
         upon completion of valid file choice.
         '''
         dialog = Gtk.FileChooserDialog("Please choose a file", self.window,
@@ -435,50 +485,130 @@ class App:
              Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
-            on_success(self, dialog.get_filename())
+            filename = dialog.get_filename()
+            dialog.destroy()
+            t = threading.Thread(target=on_success, args=(self, filename))
+            t.daemon = True
+            t.start()
+            #on_success(self, filename)
         elif response == Gtk.ResponseType.CANCEL:
             print("Cancel clicked")
-        dialog.destroy()    
+            dialog.destroy()    
+    
+    def file_chooser_save_action(self, on_success):
+        '''
+        Opens the file chooser and runs on_success
+        upon completion of valid file choice.
+        '''
+        dialog = Gtk.FileChooserDialog("Save file", self.window,
+            Gtk.FileChooserAction.SAVE,
+            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+             Gtk.STOCK_SAVE, Gtk.ResponseType.OK))
+        dialog.set_current_name("Untitled")
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            filename = dialog.get_filename()
+            dialog.destroy()
+            on_success(self, filename)
+        elif response == Gtk.ResponseType.CANCEL:
+            print("Cancel clicked")
+            dialog.destroy()
     
     def on_fileopengerber(self, param):
         def on_success(self, filename):
+            self.progress_bar.set_text("Opening Gerber ...")
+            self.progress_bar.set_fraction(0.1)
+
             name = filename.split('/')[-1].split('\\')[-1]
             gerber = CirkuixGerber(name)
+
+            self.progress_bar.set_text("Parsing ...")
+            self.progress_bar.set_fraction(0.2)
+
             gerber.parse_file(filename)
             self.store.append([name])
-            #self.gerbers.append(gerber)
             self.stuff[name] = gerber
+
+            self.progress_bar.set_text("Plotting ...")
+            self.progress_bar.set_fraction(0.6)
+
             self.plot_gerber(gerber)
             self.on_zoom_fit(None)
+
+            self.progress_bar.set_text("Done!")
+            self.progress_bar.set_fraction(1.0)
+
+            def clear_bar(bar):
+                bar.set_text("")
+                bar.set_fraction(0.0)
+            threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
         self.file_chooser_action(on_success)
     
     def on_fileopenexcellon(self, param):
         def on_success(self, filename):
+            self.progress_bar.set_text("Opening Excellon ...")
+            self.progress_bar.set_fraction(0.1)
+
             name = filename.split('/')[-1].split('\\')[-1]
             excellon = CirkuixExcellon(name)
+
+            self.progress_bar.set_text("Parsing ...")
+            self.progress_bar.set_fraction(0.2)
+
             excellon.parse_file(filename)
             self.store.append([name])
-            #self.excellons.append(excellon)
             self.stuff[name] = excellon
+
+            self.progress_bar.set_text("Plotting ...")
+            self.progress_bar.set_fraction(0.6)
+
             self.plot_excellon(excellon)
             self.on_zoom_fit(None)
+
+            self.progress_bar.set_text("Done!")
+            self.progress_bar.set_fraction(1.0)
+
+            def clear_bar(bar):
+                bar.set_text("")
+                bar.set_fraction(0.0)
+            threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
+
         self.file_chooser_action(on_success)
     
     def on_fileopengcode(self, param):
         def on_success(self, filename):
+            self.progress_bar.set_text("Opening G-Code ...")
+            self.progress_bar.set_fraction(0.1)
+
             name = filename.split('/')[-1].split('\\')[-1]
             f = open(filename)
             gcode = f.read()
             f.close()
-            job = CirkuixCNCjob(name)
+            tooldia = self.get_eval("entry_tooldia")
+            job = CirkuixCNCjob(name, tooldia=tooldia)
             job.gcode = gcode
+
+            self.progress_bar.set_text("Parsing ...")
+            self.progress_bar.set_fraction(0.2)
+
             job.gcode_parse()
             job.create_geometry()
             self.store.append([name])
-            #self.cncjobs.append(job)
             self.stuff[name] = job
+
+            self.progress_bar.set_text("Plotting ...")
+            self.progress_bar.set_fraction(0.6)
+
             self.plot_cncjob(job)
             self.on_zoom_fit(None)
+
+            self.progress_bar.set_text("Done!")
+            self.progress_bar.set_fraction(1.0)
+
+            def clear_bar(bar):
+                bar.set_text("")
+                bar.set_fraction(0.0)
+            threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
         self.file_chooser_action(on_success)
         
     def on_mouse_move_over_plot(self, event):
