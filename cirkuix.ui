@@ -98,7 +98,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_cncjobplot">
+          <object class="GtkCheckButton" id="cb_cncjob_plot">
             <property name="label" translatable="yes">Plot</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -114,7 +114,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="checkbutton4">
+          <object class="GtkCheckButton" id="cb_cncjob_solid">
             <property name="label" translatable="yes">Solid</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -129,7 +129,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_multicolored3">
+          <object class="GtkCheckButton" id="cb_cncjob_multicolored">
             <property name="label" translatable="yes">Multi-colored</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -304,7 +304,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_excellonplot">
+          <object class="GtkCheckButton" id="cb_excellon_plot">
             <property name="label" translatable="yes">Plot</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -320,7 +320,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="checkbutton3">
+          <object class="GtkCheckButton" id="cb_excellon_solid">
             <property name="label" translatable="yes">Solid</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -335,7 +335,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_multicolored2">
+          <object class="GtkCheckButton" id="cb_excellon_multicolored">
             <property name="label" translatable="yes">Multi-colored</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -447,7 +447,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_geometryplot">
+          <object class="GtkCheckButton" id="cb_geometry_plot">
             <property name="label" translatable="yes">Plot</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -463,7 +463,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_geometrysolid">
+          <object class="GtkCheckButton" id="cb_geometry_solid">
             <property name="label" translatable="yes">Solid</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -478,7 +478,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_multicolored4">
+          <object class="GtkCheckButton" id="cb_geometry_multicolored">
             <property name="label" translatable="yes">Multi-colored</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -706,7 +706,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_gerberplot">
+          <object class="GtkCheckButton" id="cb_gerber_plot">
             <property name="label" translatable="yes">Plot</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -722,7 +722,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_mergepolys1">
+          <object class="GtkCheckButton" id="cb_gerber_mergepolys">
             <property name="label" translatable="yes">Merge Polygons</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -738,7 +738,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="checkbutton2">
+          <object class="GtkCheckButton" id="cb_gerber_solid">
             <property name="label" translatable="yes">Solid</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>
@@ -753,7 +753,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkCheckButton" id="cb_multicolored1">
+          <object class="GtkCheckButton" id="cb_gerber_multicolored">
             <property name="label" translatable="yes">Multi-colored</property>
             <property name="visible">True</property>
             <property name="can_focus">True</property>

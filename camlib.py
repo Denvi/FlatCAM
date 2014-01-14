@@ -425,7 +425,7 @@ class CNCjob(Geometry):
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n"%self.feedrate
         self.gcode += "G00 Z%.4f\n"%self.z_move  # Move to travel height
-        self.gcode += "M03\n" # Spindle start
+        self.gcode += "M03\n"  # Spindle start
         self.gcode += self.pausecode + "\n"
         
         for geo in geometry:
@@ -497,7 +497,7 @@ class CNCjob(Geometry):
             if 'X' in gobj or 'Y' in gobj:
                 x = 0
                 y = 0
-                kind = ["C","F"] # T=travel, C=cut, F=fast, S=slow
+                kind = ["C", "F"]  # T=travel, C=cut, F=fast, S=slow
                 
                 if 'X' in gobj:
                     x = gobj['X']
@@ -524,8 +524,8 @@ class CNCjob(Geometry):
                     start  = arctan2(  -gobj['J'],   -gobj['I'])
                     stop   = arctan2(-center[1]+y, -center[0]+x)
                     geometry.append({'geom': arc(center, radius, start, stop,
-                                                arcdir[current['G']],
-                                                steps_per_circ),
+                                                 arcdir[current['G']],
+                                                 steps_per_circ),
                                      'kind': kind})
 
             # Update current instruction
@@ -682,7 +682,7 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
 
 
 ############### cam.py ####################
-def coord(gstr,digits,fraction):
+def coord(gstr, digits, fraction):
     """
     Parse Gerber coordinates
     """
