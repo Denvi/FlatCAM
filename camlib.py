@@ -469,12 +469,14 @@ class CNCjob(Geometry):
         self.gcode += "M05\n"  # Spindle stop
     
     def gcode_parse(self):
-        steps_per_circ = 20
         """
-        G-Code parser (from self.gcode). Generates dictionary with 
-        single-segment LineString's and "kind" indicating cut or travel, 
+        G-Code parser (from self.gcode). Generates dictionary with
+        single-segment LineString's and "kind" indicating cut or travel,
         fast or feedrate speed.
         """
+
+        steps_per_circ = 20
+
         geometry = []        
         
         # TODO: ???? bring this into the class??

@@ -1,7 +1,7 @@
 
 import threading
 from gi.repository import Gtk
-#from gi.repository import Gdk
+from gi.repository import Gdk
 from gi.repository import GLib
 
 from matplotlib.figure import Figure
@@ -12,10 +12,21 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 
 from camlib import *
 
+
 class CirkuixObj:
-    def __init__(self, name, kind):
+    form_getters = {}
+
+    form_setters = {}
+
+    # Instance of the application to which these are related.
+    # The app should set this value.
+    # TODO: Move the definitions of form_getters and form_setters
+    # TODO: to their respective classes and use app to reference
+    # TODO: the builder.
+    app = None
+
+    def __init__(self, name):
         self.name = name
-        self.kind = kind  # TODO: Probably not needed
         self.axes = None  # Matplotlib axes
         self.options = {}
 
@@ -35,11 +46,21 @@ class CirkuixObj:
             self.options[name] = options[name]
         return
 
+    def to_form(self):
+        for name in self.options:
+            if name in self.form_setters:
+                self.form_setters[name](self.options[name])
+
+    def read_form(self):
+        for name in self.form_getters:
+            self.options[name] = self.form_getters[name]()
+
 
 class CirkuixGerber(CirkuixObj, Gerber):
+
     def __init__(self, name):
         Gerber.__init__(self)
-        CirkuixObj.__init__(self, name, "gerber")
+        CirkuixObj.__init__(self, name)
 
         self.options = {
             "plot": True,
@@ -49,8 +70,25 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "isotooldia": 0.4/25.4,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
-            "gaps": "tb"
+            "gaps": "tb",
+            "noncoppermargin": 0.0
         }
+
+    def build_ui(self):
+        print "cirkuixgerber.build_ui()"
+        osw = self.app.builder.get_object("offscrwindow_gerber")
+        #box1 = self.app.builder.get_object("box_gerber")
+        #osw.remove(box1)
+        sw = self.app.builder.get_object("sw_gerber")
+        osw.remove(sw)
+        vp = self.app.builder.get_object("vp_gerber")
+        vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+        self.app.notebook.append_page(sw, Gtk.Label("Selection"))
+        entry_name = self.app.builder.get_object("entry_gerbername")
+        entry_name.set_text(self.name)
+        entry_name.connect("activate", self.app.on_activate_name)
+        self.to_form()
+        sw.show()
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -80,13 +118,35 @@ class CirkuixGerber(CirkuixObj, Gerber):
 
 
 class CirkuixExcellon(CirkuixObj, Excellon):
+
     def __init__(self, name):
         Excellon.__init__(self)
-        CirkuixObj.__init__(self, name, "excellon")
+        CirkuixObj.__init__(self, name)
+
+        self.options = {
+            "plot": True,
+            "solid": False,
+            "multicolored": False
+        }
+
+    def build_ui(self):
+        print "build_excellon_ui()"
+        osw = self.app.builder.get_object("offscrwindow_excellon")
+        #box1 = self.app.builder.get_object("box_excellon")
+        #osw.remove(box1)
+        sw = self.app.builder.get_object("sw_excellon")
+        osw.remove(sw)
+        vp = self.app.builder.get_object("vp_excellon")
+        vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+        self.app.notebook.append_page(sw, Gtk.Label("Selection"))
+        entry_name = self.app.builder.get_object("entry_excellonname")
+        entry_name.set_text(self.name)
+        entry_name.connect("activate", self.app.on_activate_name)
+        self.to_form()
+        sw.show()
 
     def plot(self, figure):
         self.setup_axes(figure)
-
         self.create_geometry()
 
         # Plot excellon
@@ -103,20 +163,66 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
                  feedrate=3.0, z_cut=-0.002, tooldia=0.0):
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
                         feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
-        CirkuixObj.__init__(self, name, "cncjob")
+        CirkuixObj.__init__(self, name)
+
+        self.options = {
+            "plot": True,
+            "solid": False,
+            "tooldia": 0.4/25.4  # 0.4mm in inches
+        }
+
+    def build_ui(self):
+        print "build_cncjob_ui()"
+        osw = self.app.builder.get_object("offscrwindow_cncjob")
+        #box1 = self.app.builder.get_object("box_cncjob")
+        #osw.remove(box1)
+        sw = self.app.builder.get_object("sw_cncjob")
+        osw.remove(sw)
+        vp = self.app.builder.get_object("vp_cncjob")
+        vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+        self.app.notebook.append_page(sw, Gtk.Label("Selection"))
+        entry_name = self.app.builder.get_object("entry_cncjobname")
+        entry_name.set_text(self.name)
+        entry_name.connect("activate", self.app.on_activate_name)
+        self.to_form()
+        sw.show()
 
     def plot(self, figure):
         self.setup_axes(figure)
-
-        self.plot2(self.axes)
+        self.plot2(self.axes, tooldia=self.options["tooldia"])
 
 
 class CirkuixGeometry(CirkuixObj, Geometry):
     def __init__(self, name):
-        CirkuixObj.__init__(self, name, "geometry")
+        CirkuixObj.__init__(self, name)
         self.options = {"plot": True,
                         "solid": False,
                         "multicolored": False}
+
+        self.options = {
+            "plot": True,
+            "solid": False,
+            "multicolored": False,
+            "cutz": -0.002,
+            "travelz": 0.1,
+            "feedrate": 5.0
+        }
+
+    def build_ui(self):
+        print "build_geometry_ui()"
+        osw = self.app.builder.get_object("offscrwindow_geometry")
+        #box1 = self.app.builder.get_object("box_geometry")
+        #osw.remove(box1)
+        sw = self.app.builder.get_object("sw_geometry")
+        osw.remove(sw)
+        vp = self.app.builder.get_object("vp_geometry")
+        vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+        self.app.notebook.append_page(sw, Gtk.Label("Selection"))
+        entry_name = self.app.builder.get_object("entry_geometryname")
+        entry_name.set_text(self.name)
+        entry_name.connect("activate", self.app.on_activate_name)
+        self.to_form()
+        sw.show()
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -164,7 +270,7 @@ class App:
         self.figure = None
         self.axes = None
         self.canvas = None
-        self.plot_setup()
+        self.setup_plot()
         
         self.setup_component_viewer()
         self.setup_component_editor()
@@ -172,9 +278,9 @@ class App:
         ########################################
         ##               DATA                 ##
         ########################################
-        self.stuff = {}  # CirkuixObj's by name
-        
-        self.mouse = None
+        self.setup_obj_classes()
+        self.stuff = {}    # CirkuixObj's by name
+        self.mouse = None  # Mouse coordinates over plot
         
         # What is selected by the user. It is
         # a key if self.stuff
@@ -192,7 +298,7 @@ class App:
         self.window.show_all()
         Gtk.main()
         
-    def plot_setup(self):
+    def setup_plot(self):
         self.figure = Figure(dpi=50)
         self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
         self.axes.set_aspect(1)
@@ -217,113 +323,76 @@ class App:
         
         self.grid.attach(self.canvas, 0, 0, 600, 400)
 
-    def info(self, text):
-        """
-        Show text on the status bar.
-        """
-        self.info_label.set_text(text)
+    def setup_obj_classes(self):
+        CirkuixObj.app = self
 
-    def zoom(self, factor, center=None):
-        """
-        Zooms the plot by factor around a given
-        center point. Takes care of re-drawing.
-        """
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        width = xmax-xmin
-        height = ymax-ymin
-        
-        if center is None:
-            center = [(xmin+xmax)/2.0, (ymin+ymax)/2.0]
-        
-        # For keeping the point at the pointer location
-        relx = (xmax-center[0])/width
-        rely = (ymax-center[1])/height         
-        
-        new_width = width/factor
-        new_height = height/factor
-        
-        #self.axes.set_xlim((center[0]-new_width*(1-relx), center[0]+new_width*relx))
-        #self.axes.set_ylim((center[1]-new_height*(1-rely), center[1]+new_height*rely))
-        xmin = center[0]-new_width*(1-relx)
-        xmax = center[0]+new_width*relx
-        ymin = center[1]-new_height*(1-rely)
-        ymax = center[1]+new_height*rely
+        CirkuixGerber.form_getters = {
+            "plot": self.builder.get_object("cb_gerber_plot").get_active,
+            "mergepolys": self.builder.get_object("cb_gerber_mergepolys").get_active,
+            "solid": self.builder.get_object("cb_gerber_solid").get_active,
+            "multicolored": self.builder.get_object("cb_gerber_multicolored").get_active,
+            "isotooldia": lambda: self.get_eval("entry_gerberisotooldia"),
+            "cutoutmargin": lambda: self.get_eval("entry_gerber_cutout_margin"),
+            "cutoutgapsize": lambda: self.get_eval("entry_gerber_cutout_gapsize"),
+            "gaps": lambda: self.get_radio_value({"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}),
+            "noncoppermargin": lambda: self.get_eval("entry_gerber_noncopper_margin")
+        }
 
-        for name in self.stuff:
-            self.stuff[name].axes.set_xlim((xmin, xmax))
-            self.stuff[name].axes.set_ylim((ymin, ymax))
-        self.axes.set_xlim((xmin, xmax))
-        self.axes.set_ylim((ymin, ymax))
+        CirkuixGerber.form_setters = {
+            "plot": self.builder.get_object("cb_gerber_plot").set_active,
+            "mergepolys": self.builder.get_object("cb_gerber_mergepolys").set_active,
+            "solid": self.builder.get_object("cb_gerber_solid").set_active,
+            "multicolored": self.builder.get_object("cb_gerber_multicolored").set_active,
+            "isotooldia": lambda x: self.builder.get_object("entry_gerberisotooldia").set_text(str(x)),
+            "cutoutmargin": lambda x: self.builder.get_object("entry_gerber_cutout_margin").set_text(str(x)),
+            "cutoutgapsize": lambda x: self.builder.get_object("entry_gerber_cutout_gapsize").set_text(str(x)),
+            "gaps": lambda x: self.builder.get_object("cb_gerber_solid").set_active(
+                                    {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}[x]),
+            "noncoppermargin": lambda x: self.builder.get_object("entry_gerber_noncopper_margin").set_text(str(x))
+        }
 
-        self.canvas.queue_draw()
+        CirkuixExcellon.form_getters = {
+            "plot": self.builder.get_object("cb_excellon_plot").get_active,
+            "solid": self.builder.get_object("cb_excellon_solid").get_active,
+            "multicolored": self.builder.get_object("cb_excellon_multicolored").get_active
+        }
 
-    # def plot_gerber(self, gerber):
-    #     gerber.create_geometry()
-    #
-    #     # Options
-    #     mergepolys = self.builder.get_object("cb_mergepolys").get_active()
-    #     multicolored = self.builder.get_object("cb_multicolored").get_active()
-    #
-    #     geometry = None
-    #     if mergepolys:
-    #         geometry = gerber.solid_geometry
-    #     else:
-    #         geometry = gerber.buffered_paths + \
-    #                    [poly['polygon'] for poly in gerber.regions] + \
-    #                    gerber.flash_geometry
-    #
-    #     linespec = None
-    #     if multicolored:
-    #         linespec = '-'
-    #     else:
-    #         linespec = 'k-'
-    #
-    #     for poly in geometry:
-    #         x, y = poly.exterior.xy
-    #         #a.plot(x, y)
-    #         self.axes.plot(x, y, linespec)
-    #         for ints in poly.interiors:
-    #             x, y = ints.coords.xy
-    #             self.axes.plot(x, y, linespec)
-    #
-    #     self.canvas.queue_draw()
-    #
-    # def plot_excellon(self, excellon):
-    #     excellon.create_geometry()
-    #
-    #     # Plot excellon
-    #     for geo in excellon.solid_geometry:
-    #         x, y = geo.exterior.coords.xy
-    #         self.axes.plot(x, y, 'r-')
-    #         for ints in geo.interiors:
-    #             x, y = ints.coords.xy
-    #             self.axes.plot(x, y, 'g-')
-    #
-    #     self.canvas.queue_draw()
-    #
-    # def plot_cncjob(self, job):
-    #     #job.gcode_parse()
-    #     job.plot2(self.axes)
-    #     self.canvas.queue_draw()
-    #
-    # def plot_geometry(self, geometry):
-    #     for geo in geometry.solid_geometry:
-    #
-    #         if type(geo) == Polygon:
-    #             x, y = geo.exterior.coords.xy
-    #             self.axes.plot(x, y, 'r-')
-    #             for ints in geo.interiors:
-    #                 x, y = ints.coords.xy
-    #                 self.axes.plot(x, y, 'r-')
-    #             continue
-    #
-    #         if type(geo) == LineString or type(geo) == LinearRing:
-    #             x, y = geo.coords.xy
-    #             self.axes.plot(x, y, 'r-')
-    #             continue
-    #
-    #     self.canvas.queue_draw()
+        CirkuixExcellon.form_setters = {
+            "plot": self.builder.get_object("cb_excellon_plot").set_active,
+            "solid": self.builder.get_object("cb_excellon_solid").set_active,
+            "multicolored": self.builder.get_object("cb_excellon_multicolored").set_active
+        }
+
+        CirkuixCNCjob.form_getters = {
+            "plot": self.builder.get_object("cb_cncjob_plot").get_active,
+            "solid": self.builder.get_object("cb_cncjob_solid").get_active,
+            "multicolored": self.builder.get_object("cb_cncjob_multicolored").get_active,
+            "tooldia": lambda: self.get_eval("entry_cncjob_tooldia")
+        }
+
+        CirkuixCNCjob.form_setters = {
+            "plot": self.builder.get_object("cb_cncjob_plot").set_active,
+            "solid": self.builder.get_object("cb_cncjob_solid").set_active,
+            "tooldia": lambda x: self.builder.get_object("entry_cncjob_tooldia").set_text(str(x))
+        }
+
+        CirkuixGeometry.form_getters = {
+            "plot": self.builder.get_object("cb_geometry_plot").get_active,
+            "solid": self.builder.get_object("cb_geometry_solid").get_active,
+            "multicolored": self.builder.get_object("cb_geometry_multicolored").get_active,
+            "cutz": lambda: self.get_eval("entry_geometry_cutz"),
+            "travelz": lambda: self.get_eval("entry_geometry_travelz"),
+            "feedrate": lambda: self.get_eval("entry_geometry_feedrate")
+        }
+
+        CirkuixGeometry.form_setters = {
+            "plot": self.builder.get_object("cb_geometry_plot").set_active,
+            "solid": self.builder.get_object("cb_geometry_solid").set_active,
+            "multicolored": self.builder.get_object("cb_geometry_multicolored").set_active,
+            "cutz": lambda x: self.builder.get_object("entry_geometry_cutz").set_text(str(x)),
+            "travelz": lambda x: self.builder.get_object("entry_geometry_travelz").set_text(str(x)),
+            "feedrate": lambda x: self.builder.get_object("entry_geometry_feedrate").set_text(str(x))
+        }
 
     def setup_component_viewer(self):
         """
@@ -345,64 +414,50 @@ class App:
         label1 = Gtk.Label("Choose an item from Project")
         box1.pack_start(label1, False, False, 1)
         self.builder.get_object("notebook1").append_page(box1, Gtk.Label("Selection"))
-        
+
+    def info(self, text):
+        """
+        Show text on the status bar.
+        """
+        self.info_label.set_text(text)
+
+    def zoom(self, factor, center=None):
+        """
+        Zooms the plot by factor around a given
+        center point. Takes care of re-drawing.
+        """
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax-xmin
+        height = ymax-ymin
+
+        if center is None:
+            center = [(xmin+xmax)/2.0, (ymin+ymax)/2.0]
+
+        # For keeping the point at the pointer location
+        relx = (xmax-center[0])/width
+        rely = (ymax-center[1])/height
+
+        new_width = width/factor
+        new_height = height/factor
+
+        xmin = center[0]-new_width*(1-relx)
+        xmax = center[0]+new_width*relx
+        ymin = center[1]-new_height*(1-rely)
+        ymax = center[1]+new_height*rely
+
+        for name in self.stuff:
+            self.stuff[name].axes.set_xlim((xmin, xmax))
+            self.stuff[name].axes.set_ylim((ymin, ymax))
+        self.axes.set_xlim((xmin, xmax))
+        self.axes.set_ylim((ymin, ymax))
+
+        self.canvas.queue_draw()
+
     def build_list(self):
         self.store.clear()
         for key in self.stuff:
             self.store.append([key])
-        
-    def build_gerber_ui(self):
-        print "build_gerber_ui()"
-        osw = self.builder.get_object("offscrwindow_gerber")
-        box1 = self.builder.get_object("box_gerber")
-        osw.remove(box1)
-        self.notebook.append_page(box1, Gtk.Label("Selection"))
-        gerber = self.stuff[self.selected_item_name]
-        entry_name = self.builder.get_object("entry_gerbername")
-        entry_name.set_text(self.selected_item_name)
-        entry_name.connect("activate", self.on_activate_name)
-        if self.selected_item_name is not None:
-            self.selected_object_to_form()
-        box1.show()
-        
-    def build_excellon_ui(self):
-        print "build_excellon_ui()"
-        osw = self.builder.get_object("offscrwindow_excellon")
-        box1 = self.builder.get_object("box_excellon")
-        osw.remove(box1)
-        self.notebook.append_page(box1, Gtk.Label("Selection"))
-        entry_name = self.builder.get_object("entry_excellonname")
-        entry_name.set_text(self.selected_item_name)
-        entry_name.connect("activate", self.on_activate_name)
-        if self.selected_item_name is not None:
-            self.selected_object_to_form()
-        box1.show()
-        
-    def build_cncjob_ui(self):
-        print "build_cncjob_ui()"
-        osw = self.builder.get_object("offscrwindow_cncjob")
-        box1 = self.builder.get_object("box_cncjob")
-        osw.remove(box1)
-        self.notebook.append_page(box1, Gtk.Label("Selection"))
-        entry_name = self.builder.get_object("entry_cncjobname")
-        entry_name.set_text(self.selected_item_name)
-        entry_name.connect("activate", self.on_activate_name)
-        if self.selected_item_name is not None:
-            self.selected_object_to_form()
-        box1.show()
-        
-    def build_geometry_ui(self):
-        print "build_geometry_ui()"
-        osw = self.builder.get_object("offscrwindow_geometry")
-        box1 = self.builder.get_object("box_geometry")
-        osw.remove(box1)
-        self.notebook.append_page(box1, Gtk.Label("Selection"))
-        entry_name = self.builder.get_object("entry_geometryname")
-        entry_name.set_text(self.selected_item_name)
-        entry_name.connect("activate", self.on_activate_name)
-        if self.selected_item_name is not None:
-            self.selected_object_to_form()
-        box1.show()
 
     def get_radio_value(self, radio_set):
         """
@@ -413,99 +468,10 @@ class App:
             if self.builder.get_object(name).get_active():
                 return radio_set[name]
 
-    def selected_object_to_form(self):
-        print "Object --> Form"
-        obj = self.stuff[self.selected_item_name]
-
-        if obj.__class__.__name__ == 'CirkuixGerber':
-            setters = {
-                "plot": self.builder.get_object("cb_gerber_plot").set_active,
-                "mergepolys": self.builder.get_object("cb_gerber_mergepolys").set_active,
-                "solid": self.builder.get_object("cb_gerber_solid").set_active,
-                "multicolored": self.builder.get_object("cb_gerber_multicolored").set_active,
-                "isotooldia": lambda x: self.builder.get_object("entry_gerberisotooldia").set_text(str(x)),
-                "cutoutmargin": lambda x: self.builder.get_object("entry_gerber_cutout_margin").set_text(str(x)),
-                "cutoutgapsize": lambda x: self.builder.get_object("entry_gerber_cutout_gapsize").set_text(str(x)),
-                "gaps": lambda x: self.builder.get_object("cb_gerber_solid").set_active(
-                                        {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}[x])
-            }
-            for option in obj.options:
-                if option in setters:
-                    setters[option](obj.options[option])
-            return
-
-        if obj.__class__.__name__ == 'CirkuixExcellon':
-            setters = {
-                "plot": self.builder.get_object("cb_excellon_plot").set_active,
-                "solid": self.builder.get_object("cb_excellon_solid").set_active,
-                "multicolored": self.builder.get_object("cb_excellon_multicolored").set_active
-            }
-            for option in obj.options:
-                if option in setters:
-                    setters[option](obj.options[option])
-            return
-
-        if obj.__class__.__name__ == 'CirkuixCNCjob':
-            obj.set_options({
-                "plot": self.builder.get_object("cb_cncjob_plot").set_active,
-                "solid": self.builder.get_object("cb_cncjob_solid").set_active,
-                "tooldia": lambda x: self.builder.get_object("entry_cncjob_tooldia").set_text(str(x))
-            })
-
-    def form_to_selected_object(self):
-        obj = self.stuff[self.selected_item_name]
-
-        if obj.__class__.__name__ == 'CirkuixGerber':
-
-            obj.set_options({
-                "plot": self.builder.get_object("cb_gerber_plot").get_active(),
-                "mergepolys": self.builder.get_object("cb_gerber_mergepolys").get_active(),
-                "solid": self.builder.get_object("cb_gerber_solid").get_active(),
-                "multicolored": self.builder.get_object("cb_gerber_multicolored").get_active(),
-                "isotooldia": self.get_eval("entry_gerberisotooldia"),
-                "cutoutmargin": self.get_eval("entry_gerber_cutout_margin"),
-                "cutoutgapsize": self.get_eval("entry_gerber_cutout_gapsize"),
-                "gaps": lambda x: self.get_radio_value({"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"})
-            })
-            return
-
-        if obj.__class__.__name__ == 'CirkuixExcellon':
-            obj.set_options({
-                "plot": self.builder.get_object("cb_excellon_plot").get_active(),
-                "solid": self.builder.get_object("cb_excellon_solid").get_active(),
-                "multicolored": self.builder.get_object("cb_excellon_multicolored").get_active()
-            })
-
-            return
-
-        if obj.__class__.__name__ == 'CirkuixCNCjob':
-            obj.set_options({
-                "plot": self.builder.get_object("cb_cncjob_plot").get_active(),
-                "solid": self.builder.get_object("cb_cncjob_solid").get_active(),
-                "multicolored": self.builder.get_object("cb_cncjob_multicolored").get_active(),
-                "tooldia": self.get_eval("entry_cncjob_tooldia")
-            })
-
-        if type(obj) is CirkuixGeometry:
-            obj.set_options({
-                "plot": self.builder.get_object("cb_geometry_plot").get_active(),
-                "solid": self.builder.get_object("cb_geometry_solid").get_active(),
-                "multicolored": self.builder.get_object("cb_geometry_multicolored").get_active(),
-                "cutz": self.get_eval("entry_geometry_cutz"),
-                "travelz": self.get_eval("entry_geometry_travelz"),
-                "feedrate": self.get_eval("entry_geometry_feedrate")
-            })
-
     def plot_all(self):
         self.clear_plots()
-        #plotter = {"gerber": self.plot_gerber,
-        #           "excellon": self.plot_excellon,
-        #           "cncjob": self.plot_cncjob,
-        #           "geometry": self.plot_geometry}
         
         for i in self.stuff:
-            #kind = self.stuff[i].kind
-            #plotter[kind](self.stuff[i])
             self.stuff[i].plot(self.figure)
         
         self.on_zoom_fit(None)
@@ -532,7 +498,24 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
-    def on_gerber_generate_boundary(self, widget):
+    def on_gerber_generate_noncopper(self, widget):
+        gerber = self.stuff[self.selected_item_name]
+        gerber.read_form()
+
+        name = self.selected_item_name + "_noncopper"
+
+        bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["noncoppermargin"])
+
+        non_copper = bounding_box.difference(gerber.solid_geometry)
+
+        geometry = CirkuixGeometry(name)
+        geometry.solid_geometry = non_copper
+
+        self.stuff[name] = geometry
+        self.build_list()
+
+
+    def on_gerber_generate_cutout(self, widget):
         margin = self.get_eval("entry_gerber_cutout_margin")
         gap_size = self.get_eval("entry_gerber_cutout_gapsize")
         gerber = self.stuff[self.selected_item_name]
@@ -663,10 +646,10 @@ class App:
         '''
         print "Changing name"
         self.tree.get_selection().disconnect(self.signal_id)
-        new_name = entry.get_text() # Get from form
-        self.stuff[new_name] = self.stuff.pop(self.selected_item_name) # Update dictionary
-        self.selected_item_name = new_name # Update selection name
-        self.build_list() # Update the items list
+        new_name = entry.get_text()  # Get from form
+        self.stuff[new_name] = self.stuff.pop(self.selected_item_name)  # Update dictionary
+        self.selected_item_name = new_name  # Update selection name
+        self.build_list()  # Update the items list
         self.signal_id = self.tree.get_selection().connect(
                              "changed", self.on_tree_selection_changed)
                              
@@ -683,16 +666,18 @@ class App:
         # from the notebook
         # TODO: Assuming it was last page or #2. Find the right page
         self.builder.get_object("notebook1").remove_page(2)
-        
+
+        self.stuff[self.selected_item_name].build_ui()
+
         # Determine the kind of item selected
-        kind = self.stuff[model[treeiter][0]].kind
+        #kind = self.stuff[model[treeiter][0]].kind
         
         # Build the UI
-        builder = {"gerber": self.build_gerber_ui,
-                   "excellon": self.build_excellon_ui,
-                   "cncjob": self.build_cncjob_ui,
-                   "geometry": self.build_geometry_ui}
-        builder[kind]()
+        # builder = {"gerber": self.build_gerber_ui,
+        #            "excellon": self.build_excellon_ui,
+        #            "cncjob": self.build_cncjob_ui,
+        #            "geometry": self.build_geometry_ui}
+        # builder[kind]()
     
     def on_filequit(self, param):
         print "quit from menu"
