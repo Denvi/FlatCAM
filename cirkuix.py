@@ -1,4 +1,3 @@
-
 import threading
 from gi.repository import Gtk, Gdk, GLib, GObject
 
@@ -12,6 +11,9 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 from camlib import *
 
 
+########################################
+##            CirkuixObj              ##
+########################################
 class CirkuixObj:
     """
     Base type of objects handled in Cirkuix. These become interactive
@@ -31,13 +33,17 @@ class CirkuixObj:
     app = None
 
     def __init__(self, name):
-        self.name = name
+        self.options = {"name": name}
+        self.form_kinds = {"name": "entry_text"}  # Kind of form element for each option
+        self.radios = {}  # Name value pairs for radio sets
+        self.radios_inv = {}  # Inverse of self.radios
         self.axes = None  # Matplotlib axes
-        self.options = {}
+        self.kind = None  # Override with proper name
 
     def setup_axes(self, figure):
         if self.axes is None:
-            self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9], label=self.name)
+            self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
+                                        label=self.options["name"])
         elif self.axes not in figure.axes:
             figure.add_axes(self.axes)
 
@@ -52,23 +58,21 @@ class CirkuixObj:
         return
 
     def to_form(self):
-        for name in self.options:
-            if name in self.form_setters:
-                self.form_setters[name](self.options[name])
+        for option in self.options:
+            self.set_form_item(option)
 
     def read_form(self):
-        for name in self.form_getters:
-            self.options[name] = self.form_getters[name]()
+        for option in self.form_getters:
+            self.read_form_item(option)
 
-    def build_ui(self, kind):
+    def build_ui(self):
         """
         Sets up the UI/form for this object.
-        @param kind: Kind of object, i.e. 'gerber'
-        @type kind: str
         @return: None
+        @rtype : None
         """
 
-        # Where to the UI for this object
+        # Where the UI for this object is drawn
         box_selected = self.app.builder.get_object("box_selected")
 
         # Remove anything else in the box
@@ -76,20 +80,52 @@ class CirkuixObj:
         for child in box_children:
             box_selected.remove(child)
 
-        osw = self.app.builder.get_object("offscrwindow_" + kind)  # offscreenwindow
-        sw = self.app.builder.get_object("sw_" + kind)  # scrollwindows
+        osw = self.app.builder.get_object("offscrwindow_" + self.kind)  # offscreenwindow
+        sw = self.app.builder.get_object("sw_" + self.kind)  # scrollwindows
         osw.remove(sw)  # TODO: Is this needed ?
-        vp = self.app.builder.get_object("vp_" + kind)  # Viewport
+        vp = self.app.builder.get_object("vp_" + self.kind)  # Viewport
         vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
 
         # Put in the UI
         box_selected.pack_start(sw, True, True, 0)
 
-        entry_name = self.app.builder.get_object("entry_" + kind + "name")
-        entry_name.set_text(self.name)
+        entry_name = self.app.builder.get_object("entry_text_" + self.kind + "_name")
         entry_name.connect("activate", self.app.on_activate_name)
         self.to_form()
         sw.show()
+
+    def set_form_item(self, option):
+        fkind = self.form_kinds[option]
+        fname = fkind + "_" + self.kind + "_" + option
+
+        if fkind == 'entry_eval' or fkind == 'entry_text':
+            self.app.builder.get_object(fname).set_text(str(self.options[option]))
+            return
+        if fkind == 'cb':
+            self.app.builder.get_object(fname).set_active(self.options[option])
+            return
+        if fkind == 'radio':
+            self.app.builder.get_object(self.radios_inv[option][self.options[option]]).set_active(True)
+            return
+        print "Unknown kind of form item:", fkind
+
+    def read_form_item(self, option):
+        fkind = self.form_kinds[option]
+        fname = fkind + "_" + self.kind + "_" + option
+
+        if fkind == 'entry_text':
+            self.options[option] = self.app.builder(fname).get_text()
+            return
+        if fkind == 'entry_eval':
+            self.options[option] = self.app.get_eval(fname)
+            return
+        if fkind == 'cb':
+            self.options[option] = self.app.builder.get_object(fname).get_active()
+            return
+        if fkind == 'radio':
+            self.options[option] = self.app.get_radio_value(self.radios[option])
+            return
+        print "Unknown kind of form item:", fkind
 
 
 class CirkuixGerber(CirkuixObj, Gerber):
@@ -101,7 +137,10 @@ class CirkuixGerber(CirkuixObj, Gerber):
         Gerber.__init__(self)
         CirkuixObj.__init__(self, name)
 
-        self.options = {
+        self.kind = "gerber"
+
+        # The 'name' is already in self.options
+        self.options.update({
             "plot": True,
             "mergepolys": True,
             "multicolored": False,
@@ -111,20 +150,29 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "cutoutgapsize": 0.15,
             "gaps": "tb",
             "noncoppermargin": 0.0
-        }
+        })
 
-    def build_ui(self):
-        """
-        @return: None
-        """
-        CirkuixObj.build_ui(self, "gerber")
+        self.form_kinds.update({
+            "plot": "cb",
+            "mergepolys": "cb",
+            "multicolored": "cb",
+            "solid": "cb",
+            "isotooldia": "entry_eval",
+            "cutoutmargin": "entry_eval",
+            "cutoutgapsize": "entry_eval",
+            "gaps": "radio",
+            "noncoppermargin": "entry_eval"
+        })
+
+        self.radios = {"gaps": {"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}}
+        self.radios_inv = {"gaps": {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}}
 
     def plot(self, figure):
         self.setup_axes(figure)
 
         self.create_geometry()
 
-        geometry = None
+        geometry = None  # TODO: Test if needed
         if self.options["mergepolys"]:
             geometry = self.solid_geometry
         else:
@@ -132,7 +180,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
                         [poly['polygon'] for poly in self.regions] + \
                         self.flash_geometry
 
-        linespec = None
+        linespec = None  # TODO: Test if needed
         if self.options["multicolored"]:
             linespec = '-'
         else:
@@ -155,14 +203,19 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         Excellon.__init__(self)
         CirkuixObj.__init__(self, name)
 
-        self.options = {
+        self.kind = "excellon"
+
+        self.options.update({
             "plot": True,
             "solid": False,
             "multicolored": False
-        }
+        })
 
-    def build_ui(self):
-        CirkuixObj.build_ui(self, "excellon")
+        self.form_kinds.update({
+            "plot": "cb",
+            "solid": "cb",
+            "multicolored": "cb"
+        })
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -187,14 +240,21 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
                         feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
         CirkuixObj.__init__(self, name)
 
-        self.options = {
+        self.kind = "cncjob"
+
+        self.options.update({
             "plot": True,
             "solid": False,
+            "multicolored": "cb",
             "tooldia": 0.4/25.4  # 0.4mm in inches
-        }
+        })
 
-    def build_ui(self):
-        CirkuixObj.build_ui(self, "cncjob")
+        self.form_kinds.update({
+            "plot": "cb",
+            "solid": "cb",
+            "multicolored": "cb",
+            "tooldia": "entry_eval"
+        })
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -209,21 +269,26 @@ class CirkuixGeometry(CirkuixObj, Geometry):
 
     def __init__(self, name):
         CirkuixObj.__init__(self, name)
-        self.options = {"plot": True,
-                        "solid": False,
-                        "multicolored": False}
 
-        self.options = {
+        self.kind = "geometry"
+
+        self.options.update({
             "plot": True,
             "solid": False,
             "multicolored": False,
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0
-        }
+        })
 
-    def build_ui(self):
-        CirkuixObj.build_ui(self, "geometry")
+        self.form_kinds.update({
+            "plot": "cb",
+            "solid": "cb",
+            "multicolored": "cb",
+            "cutz": "entry_eval",
+            "travelz": "entry_eval",
+            "feedrate": "entry_eval"
+        })
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -244,6 +309,9 @@ class CirkuixGeometry(CirkuixObj, Geometry):
                 continue
 
 
+########################################
+##                App                 ##
+########################################
 class App:
     """
     The main application class. The constructor starts the GUI.
@@ -256,7 +324,7 @@ class App:
         """
 
         # Needed to interact with the GUI from other threads.
-        GLib.threads_init()
+        #GLib.threads_init()
         GObject.threads_init()
         #Gdk.threads_init()
 
@@ -331,10 +399,8 @@ class App:
         self.canvas = FigureCanvas(self.figure)  # a Gtk.DrawingArea
         self.canvas.set_hexpand(1)
         self.canvas.set_vexpand(1)
-        
-        ########################################
-        ##              EVENTS                ##
-        ########################################
+
+        # Events
         self.canvas.mpl_connect('button_press_event', self.on_click_over_plot)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.canvas.set_can_focus(True)  # For key press
@@ -345,74 +411,6 @@ class App:
 
     def setup_obj_classes(self):
         CirkuixObj.app = self
-
-        CirkuixGerber.form_getters = {
-            "plot": self.builder.get_object("cb_gerber_plot").get_active,
-            "mergepolys": self.builder.get_object("cb_gerber_mergepolys").get_active,
-            "solid": self.builder.get_object("cb_gerber_solid").get_active,
-            "multicolored": self.builder.get_object("cb_gerber_multicolored").get_active,
-            "isotooldia": lambda: self.get_eval("entry_gerberisotooldia"),
-            "cutoutmargin": lambda: self.get_eval("entry_gerber_cutout_margin"),
-            "cutoutgapsize": lambda: self.get_eval("entry_gerber_cutout_gapsize"),
-            "gaps": lambda: self.get_radio_value({"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}),
-            "noncoppermargin": lambda: self.get_eval("entry_gerber_noncopper_margin")
-        }
-
-        CirkuixGerber.form_setters = {
-            "plot": self.builder.get_object("cb_gerber_plot").set_active,
-            "mergepolys": self.builder.get_object("cb_gerber_mergepolys").set_active,
-            "solid": self.builder.get_object("cb_gerber_solid").set_active,
-            "multicolored": self.builder.get_object("cb_gerber_multicolored").set_active,
-            "isotooldia": lambda x: self.builder.get_object("entry_gerberisotooldia").set_text(str(x)),
-            "cutoutmargin": lambda x: self.builder.get_object("entry_gerber_cutout_margin").set_text(str(x)),
-            "cutoutgapsize": lambda x: self.builder.get_object("entry_gerber_cutout_gapsize").set_text(str(x)),
-            "gaps": lambda x: self.builder.get_object("cb_gerber_solid").set_active(
-                                    {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}[x]),
-            "noncoppermargin": lambda x: self.builder.get_object("entry_gerber_noncopper_margin").set_text(str(x))
-        }
-
-        CirkuixExcellon.form_getters = {
-            "plot": self.builder.get_object("cb_excellon_plot").get_active,
-            "solid": self.builder.get_object("cb_excellon_solid").get_active,
-            "multicolored": self.builder.get_object("cb_excellon_multicolored").get_active
-        }
-
-        CirkuixExcellon.form_setters = {
-            "plot": self.builder.get_object("cb_excellon_plot").set_active,
-            "solid": self.builder.get_object("cb_excellon_solid").set_active,
-            "multicolored": self.builder.get_object("cb_excellon_multicolored").set_active
-        }
-
-        CirkuixCNCjob.form_getters = {
-            "plot": self.builder.get_object("cb_cncjob_plot").get_active,
-            "solid": self.builder.get_object("cb_cncjob_solid").get_active,
-            "multicolored": self.builder.get_object("cb_cncjob_multicolored").get_active,
-            "tooldia": lambda: self.get_eval("entry_cncjob_tooldia")
-        }
-
-        CirkuixCNCjob.form_setters = {
-            "plot": self.builder.get_object("cb_cncjob_plot").set_active,
-            "solid": self.builder.get_object("cb_cncjob_solid").set_active,
-            "tooldia": lambda x: self.builder.get_object("entry_cncjob_tooldia").set_text(str(x))
-        }
-
-        CirkuixGeometry.form_getters = {
-            "plot": self.builder.get_object("cb_geometry_plot").get_active,
-            "solid": self.builder.get_object("cb_geometry_solid").get_active,
-            "multicolored": self.builder.get_object("cb_geometry_multicolored").get_active,
-            "cutz": lambda: self.get_eval("entry_geometry_cutz"),
-            "travelz": lambda: self.get_eval("entry_geometry_travelz"),
-            "feedrate": lambda: self.get_eval("entry_geometry_feedrate")
-        }
-
-        CirkuixGeometry.form_setters = {
-            "plot": self.builder.get_object("cb_geometry_plot").set_active,
-            "solid": self.builder.get_object("cb_geometry_solid").set_active,
-            "multicolored": self.builder.get_object("cb_geometry_multicolored").set_active,
-            "cutz": lambda x: self.builder.get_object("entry_geometry_cutz").set_text(str(x)),
-            "travelz": lambda x: self.builder.get_object("entry_geometry_travelz").set_text(str(x)),
-            "feedrate": lambda x: self.builder.get_object("entry_geometry_feedrate").set_text(str(x))
-        }
 
     def setup_component_viewer(self):
         """
@@ -429,7 +427,6 @@ class App:
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Title", renderer, text=0)
         self.tree.append_column(column)
-        #self.builder.get_object("notebook1").append_page(self.tree, Gtk.Label("Project"))
         self.builder.get_object("box_project").pack_start(self.tree, False, False, 1)
         
     def setup_component_editor(self):
@@ -567,6 +564,10 @@ class App:
         self.tree_select.unselect_all()
         self.tree_select.select_iter(iter)
 
+        # Need to return False such that GLib.idle_add
+        # or .timeout_add do not repear.
+        return False
+
     def new_object(self, kind, name, initialize):
         """
         Creates a new specalized CirkuixObj and attaches it to the application,
@@ -595,24 +596,34 @@ class App:
         obj = classdict[kind](name)
 
         # Initialize as per user request
+        # User must take care to implement initialize
+        # in a thread-safe way as is is likely that we
+        # have been invoked in a separate thread.
         initialize(obj, self)
 
         # Add to our records
         self.stuff[name] = obj
 
-        # Update GUI list and select it
+        # Update GUI list and select it (Thread-safe?)
         self.store.append([name])
         #self.build_list()
-        self.set_list_selection(name)
+        GLib.idle_add(lambda: self.set_list_selection(name))
+        # TODO: Gtk.notebook.set_current_page is not known to
+        # TODO: return False. Fix this??
         GLib.timeout_add(100, lambda: self.notebook.set_current_page(1))
 
         # Plot
+        # TODO: (Thread-safe?)
         obj.plot(self.figure)
         obj.axes.set_alpha(0.0)
         self.on_zoom_fit(None)
 
         return obj
 
+    def set_progress_bar(self, percentage, text=""):
+        self.progress_bar.set_text(text)
+        self.progress_bar.set_fraction(percentage)
+        return False
 
     ########################################
     ##         EVENT HANDLERS             ##
@@ -637,8 +648,8 @@ class App:
 
         def geo_init(geo_obj, app_obj):
             # TODO: get from object
-            margin = app_obj.get_eval("entry_gerber_cutout_margin")
-            gap_size = app_obj.get_eval("entry_gerber_cutout_gapsize")
+            margin = app_obj.get_eval("entry_eval_gerber_cutoutmargin")
+            gap_size = app_obj.get_eval("entry_eval_gerber_cutoutgapsize")
             gerber = app_obj.stuff[app_obj.selected_item_name]
             minx, miny, maxx, maxy = gerber.bounds()
             minx -= margin
@@ -690,7 +701,7 @@ class App:
         def iso_init(geo_obj, app_obj):
             # TODO: Object must be updated on form change and the options
             # TODO: read from the object.
-            tooldia = app_obj.get_eval("entry_gerberisotooldia")
+            tooldia = app_obj.get_eval("entry_eval_gerber_isotooldia")
             geo_obj.solid_geometry = self.stuff[self.selected_item_name].isolation_geometry(tooldia/2.0)
 
         # TODO: Do something if this is None. Offer changing name?
@@ -705,9 +716,9 @@ class App:
         def job_init(job_obj, app_obj):
             # TODO: Object must be updated on form change and the options
             # TODO: read from the object.
-            z_cut = app_obj.get_eval("entry_geometry_cutz")
-            z_move = app_obj.get_eval("entry_geometry_travelz")
-            feedrate = app_obj.get_eval("entry_geometry_feedrate")
+            z_cut = app_obj.get_eval("entry_eval_geometry_cutz")
+            z_move = app_obj.get_eval("entry_eval_geometry_travelz")
+            feedrate = app_obj.get_eval("entry_eval_geometry_feedrate")
 
             geometry = app_obj.stuff[app_obj.selected_item_name]
             assert isinstance(job_obj, CirkuixCNCjob)
@@ -722,7 +733,7 @@ class App:
 
     def on_cncjob_tooldia_activate(self, widget):
         job = self.stuff[self.selected_item_name]
-        tooldia = self.get_eval("entry_cncjob_tooldia")
+        tooldia = self.get_eval("entry_eval_cncjob_tooldia")
         job.tooldia = tooldia
         print "Changing tool diameter to:", tooldia
 
@@ -753,16 +764,23 @@ class App:
         self.clear_plots()
         
     def on_activate_name(self, entry):
-        '''
+        """
         Hitting 'Enter' after changing the name of an item
         updates the item dictionary and re-builds the item list.
-        '''
-        print "Changing name"
+        """
+
+        # Disconnect event listener
         self.tree.get_selection().disconnect(self.signal_id)
+
         new_name = entry.get_text()  # Get from form
         self.stuff[new_name] = self.stuff.pop(self.selected_item_name)  # Update dictionary
+        self.stuff[new_name].options["name"] = new_name  # update object
+        self.info('Name change: ' + self.selected_item_name + " to " + new_name)
         self.selected_item_name = new_name  # Update selection name
+
         self.build_list()  # Update the items list
+
+        # Reconnect event listener
         self.signal_id = self.tree.get_selection().connect(
                              "changed", self.on_tree_selection_changed)
                              
@@ -833,125 +851,84 @@ class App:
             dialog.destroy()
     
     def on_fileopengerber(self, param):
-        def on_success(self, filename):
-            self.progress_bar.set_text("Opening Gerber ...")
-            self.progress_bar.set_fraction(0.1)
+
+        # IMPORTANT: on_success will run on a separate thread. Use
+        # GLib.idle_add(function, **kwargs) to launch actions that will
+        # updata the GUI.
+        def on_success(app_obj, filename):
+            assert isinstance(app_obj, App)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Gerber ..."))
+
+            def obj_init(gerber_obj, app_obj):
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+                gerber_obj.parse_file(filename)
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
-            gerber = CirkuixGerber(name)
+            app_obj.new_object("gerber", name, obj_init)
 
-            self.progress_bar.set_text("Parsing ...")
-            self.progress_bar.set_fraction(0.2)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
-            gerber.parse_file(filename)
-            self.store.append([name])
-            self.stuff[name] = gerber
-
-            self.progress_bar.set_text("Plotting ...")
-            self.progress_bar.set_fraction(0.6)
-
-            #self.plot_gerber(gerber)
-            gerber.plot(self.figure)
-            gerber.axes.set_alpha(0.0)
-            self.on_zoom_fit(None)
-
-            self.progress_bar.set_text("Done!")
-            self.progress_bar.set_fraction(1.0)
-
-            #self.notebook.set_current_page(0)
-            self.set_list_selection(name)
-            #self.notebook.set_current_page(1)
-            GLib.timeout_add(100, lambda: self.notebook.set_current_page(1))
-
-            def clear_bar(bar):
-                bar.set_text("")
-                bar.set_fraction(0.0)
-                return False
-
-            #threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
-            GLib.timeout_add_seconds(1, clear_bar, self.progress_bar)
+        # on_success gets run on a separate thread
         self.file_chooser_action(on_success)
     
     def on_fileopenexcellon(self, param):
-        def on_success(self, filename):
-            self.progress_bar.set_text("Opening Excellon ...")
-            self.progress_bar.set_fraction(0.1)
+
+        # IMPORTANT: on_success will run on a separate thread. Use
+        # GLib.idle_add(function, **kwargs) to launch actions that will
+        # updata the GUI.
+        def on_success(app_obj, filename):
+            assert isinstance(app_obj, App)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Excellon ..."))
+
+            def obj_init(excellon_obj, app_obj):
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+                excellon_obj.parse_file(filename)
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
-            excellon = CirkuixExcellon(name)
+            app_obj.new_object("excellon", name, obj_init)
 
-            self.progress_bar.set_text("Parsing ...")
-            self.progress_bar.set_fraction(0.2)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
-            excellon.parse_file(filename)
-            self.store.append([name])
-            self.stuff[name] = excellon
-
-            self.progress_bar.set_text("Plotting ...")
-            self.progress_bar.set_fraction(0.6)
-
-            #self.plot_excellon(excellon)
-            excellon.plot(self.figure)
-            self.on_zoom_fit(None)
-
-            self.progress_bar.set_text("Done!")
-            self.progress_bar.set_fraction(1.0)
-
-            #self.notebook.set_current_page(0)
-            self.set_list_selection(name)
-            #self.notebook.set_current_page(1)
-            GLib.timeout_add(100, lambda: self.notebook.set_current_page(1))
-
-            def clear_bar(bar):
-                bar.set_text("")
-                bar.set_fraction(0.0)
-                return False
-            #threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
-            GLib.timeout_add_seconds(1, clear_bar, self.progress_bar)
-
+        # on_success gets run on a separate thread
         self.file_chooser_action(on_success)
     
     def on_fileopengcode(self, param):
-        def on_success(self, filename):
-            self.progress_bar.set_text("Opening G-Code ...")
-            self.progress_bar.set_fraction(0.1)
+
+        # IMPORTANT: on_success will run on a separate thread. Use
+        # GLib.idle_add(function, **kwargs) to launch actions that will
+        # updata the GUI.
+        def on_success(app_obj, filename):
+            assert isinstance(app_obj, App)
+
+            def obj_init(job_obj, app_obj):
+                assert isinstance(app_obj, App)
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening G-Code ..."))
+
+                f = open(filename)
+                gcode = f.read()
+                f.close()
+
+                job_obj.gcode = gcode
+
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+                job_obj.gcode_parse()
+
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating geometry ..."))
+                job_obj.create_geometry()
+
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
-            f = open(filename)
-            gcode = f.read()
-            f.close()
-            tooldia = self.get_eval("entry_tooldia")
-            job = CirkuixCNCjob(name, tooldia=tooldia)
-            job.gcode = gcode
+            app_obj.new_object("cncjob", name, obj_init)
 
-            self.progress_bar.set_text("Parsing ...")
-            self.progress_bar.set_fraction(0.2)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
-            job.gcode_parse()
-            job.create_geometry()
-            self.store.append([name])
-            self.stuff[name] = job
-
-            self.progress_bar.set_text("Plotting ...")
-            self.progress_bar.set_fraction(0.6)
-
-            #self.plot_cncjob(job)
-            job.plot(self.figure)
-            self.on_zoom_fit(None)
-
-            self.progress_bar.set_text("Done!")
-            self.progress_bar.set_fraction(1.0)
-
-            #self.notebook.set_current_page(0)
-            self.set_list_selection(name)
-            #self.notebook.set_current_page(1)
-
-            def clear_bar(bar):
-                bar.set_text("")
-                bar.set_fraction(0.0)
-                return False
-            #threading.Timer(1, clear_bar, args=(self.progress_bar,)).start()
-            GLib.timeout_add_seconds(1, clear_bar, self.progress_bar)
+        # on_success gets run on a separate thread
         self.file_chooser_action(on_success)
         
     def on_mouse_move_over_plot(self, event):

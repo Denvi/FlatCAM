@@ -71,7 +71,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_cncjobname">
+                      <object class="GtkEntry" id="entry_text_cncjob_name">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -174,7 +174,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_cncjob_tooldia">
+                      <object class="GtkEntry" id="entry_eval_cncjob_tooldia">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -292,7 +292,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_excellonname">
+                      <object class="GtkEntry" id="entry_text_excellon_name">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -448,7 +448,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_geometryname">
+                      <object class="GtkEntry" id="entry_text_geometry_name">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -556,7 +556,7 @@
                     <property name="row_spacing">2</property>
                     <property name="column_spacing">4</property>
                     <child>
-                      <object class="GtkEntry" id="entry_geometry_cutz">
+                      <object class="GtkEntry" id="entry_eval_geometry_cutz">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -570,7 +570,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_geometry_travelz">
+                      <object class="GtkEntry" id="entry_eval_geometry_travelz">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -584,7 +584,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_geometry_feedrate">
+                      <object class="GtkEntry" id="entry_eval_geometry_feedrate">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -726,7 +726,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_gerbername">
+                      <object class="GtkEntry" id="entry_text_gerber_name">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -864,7 +864,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_gerberisotooldia">
+                      <object class="GtkEntry" id="entry_eval_gerber_isotooldia">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="margin_top">2</property>
@@ -941,7 +941,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_gerber_cutout_margin">
+                      <object class="GtkEntry" id="entry_eval_gerber_cutoutmargin">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -957,7 +957,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_gerber_cutout_gapsize">
+                      <object class="GtkEntry" id="entry_eval_gerber_cutoutgapsize">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
@@ -1123,7 +1123,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEntry" id="entry_gerber_noncopper_margin">
+                      <object class="GtkEntry" id="entry_eval_gerber_noncoppermargin">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="invisible_char">●</property>
