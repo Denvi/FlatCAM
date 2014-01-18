@@ -278,7 +278,9 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "multicolored": False,
             "cutz": -0.002,
             "travelz": 0.1,
-            "feedrate": 5.0
+            "feedrate": 5.0,
+            "painttooldia": 0.0625,
+            "paintoverlap": 0.15
         })
 
         self.form_kinds.update({
@@ -287,7 +289,9 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "multicolored": "cb",
             "cutz": "entry_eval",
             "travelz": "entry_eval",
-            "feedrate": "entry_eval"
+            "feedrate": "entry_eval",
+            "painttooldia": "entry_eval",
+            "paintoverlap": "entry_eval"
         })
 
     def plot(self, figure):
@@ -365,6 +369,8 @@ class App:
         # What is selected by the user. It is
         # a key if self.stuff
         self.selected_item_name = None
+
+        self.plot_click_subscribers = {}
 
         # For debugging only
         def someThreadFunc(self):
@@ -707,7 +713,6 @@ class App:
         # TODO: Do something if this is None. Offer changing name?
         self.new_object("geometry", iso_name, iso_init)
 
-        
     def on_generate_cncjob(self, widget):
         print "Generating CNC job"
 
@@ -730,6 +735,30 @@ class App:
             job_obj.create_geometry()
 
         self.new_object("cncjob", job_name, job_init)
+
+    def on_generate_paintarea(self, widget):
+        self.info("Click inside the desired polygon.")
+        geo = self.stuff[self.selected_item_name]
+        geo.read_form()
+        tooldia = geo.options["painttooldia"]
+        overlap = geo.options["paintoverlap"]
+
+        def doit(event):
+            self.plot_click_subscribers.pop("generate_paintarea")
+            self.info("")
+            point = [event.xdata, event.ydata]
+            poly = find_polygon(geo.solid_geometry, point)
+
+            def gen_paintarea(geo_obj, app_obj):
+                assert isinstance(geo_obj, CirkuixGeometry)
+                assert isinstance(app_obj, App)
+                cp = clear_poly(poly, tooldia, overlap)
+                geo_obj.solid_geometry = cp
+
+            name = self.selected_item_name + "_paint"
+            self.new_object("geometry", name, gen_paintarea)
+
+        self.plot_click_subscribers["generate_paintarea"] = doit
 
     def on_cncjob_tooldia_activate(self, widget):
         job = self.stuff[self.selected_item_name]
@@ -947,6 +976,9 @@ class App:
         try:
             print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f'%(
             event.button, event.x, event.y, event.xdata, event.ydata)
+
+            for subscriber in self.plot_click_subscribers:
+                self.plot_click_subscribers[subscriber](event)
         except:
             print "Outside plot!"
         

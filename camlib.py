@@ -665,6 +665,22 @@ def get_bounds(geometry_set):
 
 
 def arc(center, radius, start, stop, direction, steps_per_circ):
+    """
+    Creates a Shapely.LineString for the specified arc.
+    @param center: Coordinates of the center [x, y]
+    @type center: list
+    @param radius: Radius of the arc.
+    @type radius: float
+    @param start: Starting angle in radians
+    @type start: float
+    @param stop: End angle in radians
+    @type stop: float
+    @param direction: Orientation of the arc, "CW" or "CCW"
+    @type direction: string
+    @param steps_per_circ: Number of straight line segments to
+        represent a circle.
+    @type steps_per_circ: int
+    """
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
     if direction == "ccw" and stop <= start:
@@ -682,6 +698,41 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
         points.append([center[0]+radius*cos(theta), center[1]+radius*sin(theta)])
     return LineString(points)
 
+
+def clear_poly(poly, tooldia, overlap = 0.1):
+    """
+    Creates a list of Shapely geometry objects covering the inside
+    of a Shapely.Polygon. Use for removing all the copper in a region
+    or bed flattening.
+    @param poly: Target polygon
+    @type poly: Shapely.Polygon
+    @param tooldia: Diameter of the tool
+    @type tooldia: float
+    @param overlap: Fraction of the tool diameter to overlap
+        in each pass.
+    @type overlap: float
+    @return list of Shapely.Polygon
+    """
+    poly_cuts = [poly.buffer(-tooldia/2.0)]
+    while True:
+        poly = poly_cuts[-1].buffer(-tooldia*(1-overlap))
+        if poly.area > 0:
+            poly_cuts.append(poly)
+        else:
+            break
+    return poly_cuts
+
+
+def find_polygon(poly_set, point):
+    """
+    Return the first polygon in the list of polygons poly_set
+    that contains the given point.
+    """
+    p = Point(point)
+    for poly in poly_set:
+        if poly.contains(p):
+            return poly
+    return None
 
 ############### cam.py ####################
 def coord(gstr, digits, fraction):

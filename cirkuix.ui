@@ -662,6 +662,111 @@
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkLabel" id="label6">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="margin_top">5</property>
+                    <property name="xalign">0</property>
+                    <property name="ypad">3</property>
+                    <property name="label" translatable="yes">Paint Area:</property>
+                    <attributes>
+                      <attribute name="weight" value="semibold"/>
+                    </attributes>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">9</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkGrid" id="grid5">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="row_spacing">2</property>
+                    <property name="column_spacing">5</property>
+                    <child>
+                      <object class="GtkLabel" id="label32">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="label" translatable="yes">Tool diam:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">0</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry_eval_geometry_painttooldia">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                        <property name="invisible_char_set">True</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">0</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label33">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="label" translatable="yes">Overlap:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">1</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry_eval_geometry_paintoverlap">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                        <property name="invisible_char_set">True</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">1</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">10</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="button6">
+                    <property name="label" translatable="yes">Generate</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">True</property>
+                    <signal name="activate" handler="on_generate_paintarea" swapped="no"/>
+                    <signal name="clicked" handler="on_generate_paintarea" swapped="no"/>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">11</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
                   <placeholder/>
                 </child>
               </object>
