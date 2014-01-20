@@ -21,15 +21,8 @@ class CirkuixObj:
     by the user in their respective forms.
     """
 
-    form_getters = {}
-
-    form_setters = {}
-
     # Instance of the application to which these are related.
     # The app should set this value.
-    # TODO: Move the definitions of form_getters and form_setters
-    # TODO: to their respective classes and use app to reference
-    # TODO: the builder.
     app = None
 
     def __init__(self, name):
@@ -41,11 +34,25 @@ class CirkuixObj:
         self.kind = None  # Override with proper name
 
     def setup_axes(self, figure):
+        """
+        1) Creates axes if they don't exist. 2) Clears axes. 3) Attaches
+        them to figure if not part of the figure. 4) Sets transparent
+        background. 5) Sets 1:1 scale aspect ratio.
+        @param figure: A Matplotlib.Figure on which to add/configure axes.
+        @type figure: matplotlib.figure.Figure
+        @return: None
+        """
         if self.axes is None:
+            print "New axes"
             self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
                                         label=self.options["name"])
         elif self.axes not in figure.axes:
+            print "Clearing and attaching axes"
+            self.axes.cla()
             figure.add_axes(self.axes)
+        else:
+            print "Clearing Axes"
+            self.axes.cla()
 
         self.axes.patch.set_visible(False)  # No background
         self.axes.set_aspect(1)
@@ -62,7 +69,11 @@ class CirkuixObj:
             self.set_form_item(option)
 
     def read_form(self):
-        for option in self.form_getters:
+        """
+        Reads form into self.options
+        @rtype : None
+        """
+        for option in self.options:
             self.read_form_item(option)
 
     def build_ui(self):
@@ -114,7 +125,7 @@ class CirkuixObj:
         fname = fkind + "_" + self.kind + "_" + option
 
         if fkind == 'entry_text':
-            self.options[option] = self.app.builder(fname).get_text()
+            self.options[option] = self.app.builder.get_object(fname).get_text()
             return
         if fkind == 'entry_eval':
             self.options[option] = self.app.get_eval(fname)
@@ -126,6 +137,18 @@ class CirkuixObj:
             self.options[option] = self.app.get_radio_value(self.radios[option])
             return
         print "Unknown kind of form item:", fkind
+
+    def plot(self, figure):
+        """
+        Extend this method! Sets up axes if needed and
+        clears them. Descendants must do the actual plotting.
+        """
+        # Creates the axes if necessary and sets them up.
+        self.setup_axes(figure)
+
+        # Clear axes.
+        # self.axes.cla()
+        # return
 
 
 class CirkuixGerber(CirkuixObj, Gerber):
@@ -149,9 +172,12 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
             "gaps": "tb",
-            "noncoppermargin": 0.0
+            "noncoppermargin": 0.0,
+            "bboxmargin": 0.0,
+            "bboxrounded": False
         })
 
+        # The 'name' is already in self.form_kinds
         self.form_kinds.update({
             "plot": "cb",
             "mergepolys": "cb",
@@ -161,14 +187,16 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "cutoutmargin": "entry_eval",
             "cutoutgapsize": "entry_eval",
             "gaps": "radio",
-            "noncoppermargin": "entry_eval"
+            "noncoppermargin": "entry_eval",
+            "bboxmargin": "entry_eval",
+            "bboxrounded": "cb"
         })
 
         self.radios = {"gaps": {"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}}
         self.radios_inv = {"gaps": {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}}
 
     def plot(self, figure):
-        self.setup_axes(figure)
+        CirkuixObj.plot(self, figure)
 
         self.create_geometry()
 
@@ -208,14 +236,24 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         self.options.update({
             "plot": True,
             "solid": False,
-            "multicolored": False
+            "multicolored": False,
+            "drillz": -0.1,
+            "travelz": 0.1,
+            "feedrate": 5.0,
+            "toolselection": ""
         })
 
         self.form_kinds.update({
             "plot": "cb",
             "solid": "cb",
-            "multicolored": "cb"
+            "multicolored": "cb",
+            "drillz": "entry_eval",
+            "travelz": "entry_eval",
+            "feedrate": "entry_eval",
+            "toolselection": "entry_text"
         })
+
+        self.tool_cbs = {}
 
     def plot(self, figure):
         self.setup_axes(figure)
@@ -228,6 +266,30 @@ class CirkuixExcellon(CirkuixObj, Excellon):
             for ints in geo.interiors:
                 x, y = ints.coords.xy
                 self.axes.plot(x, y, 'g-')
+
+    def show_tool_chooser(self):
+        win = Gtk.Window()
+        box = Gtk.Box(spacing=2)
+        box.set_orientation(Gtk.Orientation(1))
+        win.add(box)
+        for tool in self.tools:
+            self.tool_cbs[tool] = Gtk.CheckButton(label=tool+": "+self.tools[tool])
+            box.pack_start(self.tool_cbs[tool], False, False, 1)
+        button = Gtk.Button(label="Accept")
+        box.pack_start(button, False, False, 1)
+        win.show_all()
+
+        def on_accept(widget):
+            win.destroy()
+            tool_list = []
+            for tool in self.tool_cbs:
+                if self.tool_cbs[tool].get_active():
+                    tool_list.append(tool)
+            self.options["toolselection"] = ", ".join(tool_list)
+            self.to_form()
+
+        button.connect("activate", on_accept)
+        button.connect("clicked", on_accept)
 
 
 class CirkuixCNCjob(CirkuixObj, CNCjob):
@@ -245,7 +307,7 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
         self.options.update({
             "plot": True,
             "solid": False,
-            "multicolored": "cb",
+            "multicolored": False,
             "tooldia": 0.4/25.4  # 0.4mm in inches
         })
 
@@ -259,6 +321,7 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
     def plot(self, figure):
         self.setup_axes(figure)
         self.plot2(self.axes, tooldia=self.options["tooldia"])
+        app.canvas.queue_draw()
 
 
 class CirkuixGeometry(CirkuixObj, Geometry):
@@ -279,8 +342,10 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0,
+            "cnctooldia": 0.4/25.4,
             "painttooldia": 0.0625,
-            "paintoverlap": 0.15
+            "paintoverlap": 0.15,
+            "paintmargin": 0.01
         })
 
         self.form_kinds.update({
@@ -290,12 +355,19 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "cutz": "entry_eval",
             "travelz": "entry_eval",
             "feedrate": "entry_eval",
+            "cnctooldia": "entry_eval",
             "painttooldia": "entry_eval",
-            "paintoverlap": "entry_eval"
+            "paintoverlap": "entry_eval",
+            "paintmargin": "entry_eval"
         })
 
     def plot(self, figure):
         self.setup_axes(figure)
+
+        try:
+            _ = iter(self.solid_geometry)
+        except TypeError:
+            self.solid_geometry = [self.solid_geometry]
 
         for geo in self.solid_geometry:
 
@@ -311,6 +383,17 @@ class CirkuixGeometry(CirkuixObj, Geometry):
                 x, y = geo.coords.xy
                 self.axes.plot(x, y, 'r-')
                 continue
+
+            if type(geo) == MultiPolygon:
+                for poly in geo:
+                    x, y = poly.exterior.coords.xy
+                    self.axes.plot(x, y, 'r-')
+                    for ints in poly.interiors:
+                        x, y = ints.coords.xy
+                        self.axes.plot(x, y, 'r-')
+                continue
+
+            print "WARNING: Did not plot:", str(type(geo))
 
 
 ########################################
@@ -332,9 +415,7 @@ class App:
         GObject.threads_init()
         #Gdk.threads_init()
 
-        ########################################
-        ##                GUI                 ##
-        ########################################       
+        ## GUI ##
         self.gladefile = "cirkuix.ui"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(self.gladefile)
@@ -359,9 +440,7 @@ class App:
         self.setup_component_viewer()
         self.setup_component_editor()
         
-        ########################################
-        ##               DATA                 ##
-        ########################################
+        ## DATA ##
         self.setup_obj_classes()
         self.stuff = {}    # CirkuixObj's by name
         self.mouse = None  # Mouse coordinates over plot
@@ -634,12 +713,107 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_generate_gerber_bounding_box(self, widget):
+        gerber = self.stuff[self.selected_item_name]
+        gerber.read_form()
+        name = self.selected_item_name + "_bbox"
+
+        def geo_init(geo_obj, app_obj):
+            assert isinstance(geo_obj, CirkuixGeometry)
+            bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["bboxmargin"])
+            if not gerber.options["bboxrounded"]:
+                bounding_box = bounding_box.envelope
+            geo_obj.solid_geometry = bounding_box
+
+        self.new_object("geometry", name, geo_init)
+
+    def on_update_plot(self, widget):
+        """
+        Callback for button on form for all kinds of objects.
+        Re-plot the current object only.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
+        self.stuff[self.selected_item_name].read_form()
+        self.stuff[self.selected_item_name].plot(self.figure)
+
+    def on_generate_excellon_cncjob(self, widget):
+        """
+        Callback for button active/click on Excellon form to
+        create a CNC Job for the Excellon file.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
+
+        job_name = self.selected_item_name + "_cnc"
+        excellon = self.stuff[self.selected_item_name]
+        assert isinstance(excellon, CirkuixExcellon)
+        excellon.read_form()
+
+        # Object initialization function for app.new_object()
+        def job_init(job_obj, app_obj):
+            excellon_ = self.stuff[self.selected_item_name]
+            assert isinstance(excellon_, CirkuixExcellon)
+            assert isinstance(job_obj, CirkuixCNCjob)
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
+            job_obj.z_cut = excellon_.options["drillz"]
+            job_obj.z_move = excellon_.options["travelz"]
+            job_obj.feedrate = excellon_.options["feedrate"]
+            # There could be more than one drill size...
+            # job_obj.tooldia =   # TODO: duplicate variable!
+            # job_obj.options["tooldia"] =
+            job_obj.generate_from_excellon_by_tool(excellon_, excellon_.options["toolselection"])
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
+            job_obj.gcode_parse()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
+            job_obj.create_geometry()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
+
+        # To be run in separate thread
+        def job_thread(app_obj):
+            app_obj.new_object("cncjob", job_name, job_init)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        # Start the thread
+        t = threading.Thread(target=job_thread, args=(self,))
+        t.daemon = True
+        t.start()
+
+    def on_excellon_tool_choose(self, widget):
+        """
+        Callback for button on Excellon form to open up a window for
+        selecting tools.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
+        excellon = self.stuff[self.selected_item_name]
+        assert isinstance(excellon, CirkuixExcellon)
+        excellon.show_tool_chooser()
+
+    def on_entry_eval_activate(self, widget):
+        self.on_eval_update(widget)
+        obj = self.stuff[self.selected_item_name]
+        assert isinstance(obj, CirkuixObj)
+        obj.read_form()
+
     def on_gerber_generate_noncopper(self, widget):
+        """
+        Callback for button on Gerber form to create a geometry object
+        with polygons covering the area without copper or negative of the
+        Gerber.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
         name = self.selected_item_name + "_noncopper"
 
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, CirkuixGeometry)
-            gerber = app_obj.stuff[self.selected_item_name]
+            gerber = app_obj.stuff[app_obj.selected_item_name]
             assert isinstance(gerber, CirkuixGerber)
             gerber.read_form()
             bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["noncoppermargin"])
@@ -650,6 +824,12 @@ class App:
         self.new_object("geometry", name, geo_init)
 
     def on_gerber_generate_cutout(self, widget):
+        """
+        Callback for button on Gerber form to create geometry with lines
+        for cutting off the board.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
         name = self.selected_item_name + "_cutout"
 
         def geo_init(geo_obj, app_obj):
@@ -696,11 +876,18 @@ class App:
         Modifies the content of a Gtk.Entry by running
         eval() on its contents and puting it back as a
         string.
+        @param widget: The widget from which this was called.
+        @return: None
         """
         # TODO: error handling here
         widget.set_text(str(eval(widget.get_text())))
 
     def on_generate_isolation(self, widget):
+        """
+        Callback for button on Gerber form to create isolation routing geometry.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
         print "Generating Isolation Geometry:"
         iso_name = self.selected_item_name + "_iso"
 
@@ -714,57 +901,81 @@ class App:
         self.new_object("geometry", iso_name, iso_init)
 
     def on_generate_cncjob(self, widget):
+        """
+        Callback for button on geometry form to generate CNC job.
+        @param widget: The widget from which this was called.
+        @return: None
+        """
         print "Generating CNC job"
-
         job_name = self.selected_item_name + "_cnc"
 
+        # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            # TODO: Object must be updated on form change and the options
-            # TODO: read from the object.
-            z_cut = app_obj.get_eval("entry_eval_geometry_cutz")
-            z_move = app_obj.get_eval("entry_eval_geometry_travelz")
-            feedrate = app_obj.get_eval("entry_eval_geometry_feedrate")
-
-            geometry = app_obj.stuff[app_obj.selected_item_name]
             assert isinstance(job_obj, CirkuixCNCjob)
-            job_obj.z_cut = z_cut
-            job_obj.z_move = z_move
-            job_obj.feedrate = feedrate
-            job_obj.generate_from_geometry(geometry.solid_geometry)
+            geometry = app_obj.stuff[app_obj.selected_item_name]
+            assert isinstance(geometry, CirkuixGeometry)
+            geometry.read_form()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
+            job_obj.z_cut = geometry.options["cutz"]
+            job_obj.z_move = geometry.options["travelz"]
+            job_obj.feedrate = geometry.options["feedrate"]
+            job_obj.options["tooldia"] = geometry.options["cnctooldia"]
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
+            job_obj.generate_from_geometry(geometry)
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
             job_obj.create_geometry()
 
-        self.new_object("cncjob", job_name, job_init)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
+
+        # To be run in separate thread
+        def job_thread(app_obj):
+            app_obj.new_object("cncjob", job_name, job_init)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        # Start the thread
+        t = threading.Thread(target=job_thread, args=(self,))
+        t.daemon = True
+        t.start()
 
     def on_generate_paintarea(self, widget):
+        """
+        Callback for button on geometry form.
+        Subscribes to the "Click on plot" event and continues
+        after the click. Finds the polygon containing
+        the clicked point and runs clear_poly() on it, resulting
+        in a new CirkuixGeometry object.
+        """
         self.info("Click inside the desired polygon.")
         geo = self.stuff[self.selected_item_name]
         geo.read_form()
         tooldia = geo.options["painttooldia"]
         overlap = geo.options["paintoverlap"]
 
+        # To be called after clicking on the plot.
         def doit(event):
             self.plot_click_subscribers.pop("generate_paintarea")
             self.info("")
             point = [event.xdata, event.ydata]
             poly = find_polygon(geo.solid_geometry, point)
 
+            # Initializes the new geometry object
             def gen_paintarea(geo_obj, app_obj):
                 assert isinstance(geo_obj, CirkuixGeometry)
                 assert isinstance(app_obj, App)
-                cp = clear_poly(poly, tooldia, overlap)
+                cp = clear_poly(poly.buffer(-geo.options["paintmargin"]), tooldia, overlap)
                 geo_obj.solid_geometry = cp
 
             name = self.selected_item_name + "_paint"
             self.new_object("geometry", name, gen_paintarea)
 
         self.plot_click_subscribers["generate_paintarea"] = doit
-
-    def on_cncjob_tooldia_activate(self, widget):
-        job = self.stuff[self.selected_item_name]
-        tooldia = self.get_eval("entry_eval_cncjob_tooldia")
-        job.tooldia = tooldia
-        print "Changing tool diameter to:", tooldia
 
     def on_cncjob_exportgcode(self, widget):
         def on_success(self, filename):
@@ -840,10 +1051,10 @@ class App:
         Gtk.main_quit()
     
     def file_chooser_action(self, on_success):
-        '''
+        """
         Opens the file chooser and runs on_success on a separate thread
         upon completion of valid file choice.
-        '''
+        """
         dialog = Gtk.FileChooserDialog("Please choose a file", self.window,
             Gtk.FileChooserAction.OPEN,
             (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
@@ -979,7 +1190,7 @@ class App:
 
             for subscriber in self.plot_click_subscribers:
                 self.plot_click_subscribers[subscriber](event)
-        except:
+        except Exception, e:
             print "Outside plot!"
         
     def on_zoom_in(self, event):
@@ -1045,15 +1256,15 @@ class App:
     def on_key_over_plot(self, event):
         print 'you pressed', event.key, event.xdata, event.ydata
         
-        if event.key == '1': # 1
+        if event.key == '1':  # 1
             self.on_zoom_fit(None)
             return
             
-        if event.key == '2': # 2
+        if event.key == '2':  # 2
             self.zoom(1/1.5, self.mouse)
             return
             
-        if event.key == '3': # 3
+        if event.key == '3':  # 3
             self.zoom(1.5, self.mouse)
             return
 
