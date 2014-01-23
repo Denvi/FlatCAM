@@ -1,6 +1,6 @@
 import threading
 from gi.repository import Gtk, Gdk, GLib, GObject
-
+import simplejson as json
 
 from matplotlib.figure import Figure
 from numpy import arange, sin, pi
@@ -54,10 +54,13 @@ class CirkuixObj:
             print "Clearing Axes"
             self.axes.cla()
 
+        self.axes.set_frame_on(False)
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
         self.axes.patch.set_visible(False)  # No background
         self.axes.set_aspect(1)
 
-        return self.axes
+        #return self.axes
 
     def set_options(self, options):
         for name in options:
@@ -150,6 +153,24 @@ class CirkuixObj:
         # self.axes.cla()
         # return
 
+    def serialize(self):
+        """
+        Returns a representation of the object as a dictionary so
+        it can be later exported as JSON. Override this method.
+        @return: Dictionary representing the object
+        @rtype: dict
+        """
+        return
+
+    def deserialize(self, obj_dict):
+        """
+        Re-builds an object from its serialized version.
+        @param obj_dict: Dictionary representing a CirkuixObj
+        @type obj_dict: dict
+        @return None
+        """
+        return
+
 
 class CirkuixGerber(CirkuixObj, Gerber):
     """
@@ -220,6 +241,12 @@ class CirkuixGerber(CirkuixObj, Gerber):
             for ints in poly.interiors:
                 x, y = ints.coords.xy
                 self.axes.plot(x, y, linespec)
+
+    def serialize(self):
+        return {
+            "options": self.options,
+            "kind": self.kind
+        }
 
 
 class CirkuixExcellon(CirkuixObj, Excellon):
@@ -408,12 +435,11 @@ class App:
         """
         Starts the application and the Gtk.main().
         @return: app
+        @rtype: App
         """
 
         # Needed to interact with the GUI from other threads.
-        #GLib.threads_init()
         GObject.threads_init()
-        #Gdk.threads_init()
 
         ## GUI ##
         self.gladefile = "cirkuix.ui"
@@ -427,6 +453,7 @@ class App:
         self.info_label = self.builder.get_object("label_status")
         self.progress_bar = self.builder.get_object("progressbar")
         self.progress_bar.set_show_text(True)
+        self.units_label = self.builder.get_object("label_units")
 
         ## Event handling ##
         self.builder.connect_signals(self)
@@ -449,7 +476,17 @@ class App:
         # a key if self.stuff
         self.selected_item_name = None
 
+        self.defaults = {
+            "units": "in"
+        }  # Application defaults
+        self.options = {}  # Project options
+
         self.plot_click_subscribers = {}
+
+        # Initialization
+        self.load_defaults()
+        self.options.update(self.defaults)
+        self.units_label.set_text("[" + self.options["units"] + "]")
 
         # For debugging only
         def someThreadFunc(self):
@@ -460,6 +497,7 @@ class App:
         ########################################
         ##              START                 ##
         ########################################
+        self.window.set_default_size(900, 600)
         self.window.show_all()
         #Gtk.main()
         
@@ -478,7 +516,7 @@ class App:
         #t = arange(0.0,5.0,0.01)
         #s = sin(2*pi*t)
         #self.axes.plot(t,s)
-        self.axes.grid()
+        self.axes.grid(True)
         self.figure.patch.set_visible(False)
         
         self.canvas = FigureCanvas(self.figure)  # a Gtk.DrawingArea
@@ -491,6 +529,7 @@ class App:
         self.canvas.set_can_focus(True)  # For key press
         self.canvas.mpl_connect('key_press_event', self.on_key_over_plot)
         #self.canvas.mpl_connect('scroll_event', self.on_scroll_over_plot)
+        self.canvas.connect("configure-event", self.on_canvas_configure)
         
         self.grid.attach(self.canvas, 0, 0, 600, 400)
 
@@ -499,7 +538,7 @@ class App:
 
     def setup_component_viewer(self):
         """
-        List or Tree where whatever has been loaded or created is
+        Sets up list or Tree where whatever has been loaded or created is
         displayed.
         @return: None
         """
@@ -507,6 +546,7 @@ class App:
         self.store = Gtk.ListStore(str)
         self.tree = Gtk.TreeView(self.store)
         #self.list = Gtk.ListBox()
+        self.tree.connect("row_activated", self.on_row_activated)
         self.tree_select  = self.tree.get_selection()
         self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
         renderer = Gtk.CellRendererText()
@@ -531,8 +571,11 @@ class App:
 
         box1 = Gtk.Box(Gtk.Orientation.VERTICAL)
         label1 = Gtk.Label("Choose an item from Project")
-        box1.pack_start(label1, False, False, 1)
+        box1.pack_start(label1, True, False, 1)
         box_selected.pack_start(box1, True, True, 0)
+        #box_selected.show()
+        box1.show()
+        label1.show()
 
     def info(self, text):
         """
@@ -578,13 +621,18 @@ class App:
 
     def build_list(self):
         """
-        Clears and re-populates the list of objects in tcurrently
+        Clears and re-populates the list of objects in currently
         in the project.
         @return: None
         """
+        print "build_list(): clearing"
+        self.tree_select.unselect_all()
         self.store.clear()
+        print "repopulating...",
         for key in self.stuff:
+            print key,
             self.store.append([key])
+        print
 
     def get_radio_value(self, radio_set):
         """
@@ -602,15 +650,29 @@ class App:
         Re-generates all plots from all objects.
         @return: None
         """
-
         self.clear_plots()
-        
-        for i in self.stuff:
-            self.stuff[i].plot(self.figure)
-        
-        self.on_zoom_fit(None)
-        self.axes.grid()
-        self.canvas.queue_draw()
+        self.set_progress_bar(0.1, "Re-plotting...")
+
+        def thread_func(app_obj):
+            percentage = 0.1
+            try:
+                delta = 0.9/len(self.stuff)
+            except ZeroDivisionError:
+                GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+                return
+            for i in self.stuff:
+                self.stuff[i].plot(self.figure)
+                percentage += delta
+                GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
+
+            self.on_zoom_fit(None)
+            self.axes.grid(True)
+            self.canvas.queue_draw()
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        t = threading.Thread(target=thread_func, args=(self,))
+        t.daemon = True
+        t.start()
         
     def clear_plots(self):
         """
@@ -618,9 +680,12 @@ class App:
         @return: None
         """
 
+        # TODO: Create a setup_axes method that gets called here and in setup_plot?
         self.axes.cla()
         self.figure.clf()
         self.figure.add_axes(self.axes)
+        self.axes.set_aspect(1)
+        self.axes.grid(True)
         self.canvas.queue_draw()
 
     def get_eval(self, widget_name):
@@ -710,11 +775,88 @@ class App:
         self.progress_bar.set_fraction(percentage)
         return False
 
+    def save_project(self):
+        return
+
+    def get_current(self):
+        """
+        Returns the currently selected CirkuixObj in the application.
+        @return: Currently selected CirkuixObj in the application.
+        @rtype: CirkuixObj
+        """
+        try:
+            return self.stuff[self.selected_item_name]
+        except:
+            return None
+
+    def adjust_axes(self, xmin, ymin, xmax, ymax):
+        m_x = 15  # pixels
+        m_y = 25  # pixels
+        width = xmax-xmin
+        height = ymax-ymin
+        r = width/height
+        Fw, Fh = self.canvas.get_width_height()
+        Fr = float(Fw)/Fh
+        x_ratio = float(m_x)/Fw
+        y_ratio = float(m_y)/Fh
+
+        if r > Fr:
+            ycenter = (ymin+ymax)/2.0
+            newheight = height*r/Fr
+            ymin = ycenter-newheight/2.0
+            ymax = ycenter+newheight/2.0
+        else:
+            xcenter = (xmax+ymin)/2.0
+            newwidth = width*Fr/r
+            xmin = xcenter-newwidth/2.0
+            xmax = xcenter+newwidth/2.0
+
+        for name in self.stuff:
+            if self.stuff[name].axes is None:
+                continue
+            self.stuff[name].axes.set_xlim((xmin, xmax))
+            self.stuff[name].axes.set_ylim((ymin, ymax))
+            self.stuff[name].axes.set_position([x_ratio, y_ratio,
+                                                1-2*x_ratio, 1-2*y_ratio])
+        self.axes.set_xlim((xmin, xmax))
+        self.axes.set_ylim((ymin, ymax))
+        self.axes.set_position([x_ratio, y_ratio,
+                                1-2*x_ratio, 1-2*y_ratio])
+
+        self.canvas.queue_draw()
+
+    def load_defaults(self):
+        try:
+            f = open("defaults.json")
+            options = f.read()
+            f.close()
+        except:
+            self.info("ERROR: Could not load defaults file.")
+            return
+
+        try:
+            defaults = json.loads(options)
+        except:
+            self.info("ERROR: Failed to parse defaults file.")
+            return
+        self.defaults.update(defaults)
+
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+
+    def on_canvas_configure(self, widget, event):
+        print "on_canvas_configure()"
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        self.adjust_axes(xmin, ymin, xmax, ymax)
+
+    def on_row_activated(self, widget, path, col):
+        self.notebook.set_current_page(1)
+
     def on_generate_gerber_bounding_box(self, widget):
-        gerber = self.stuff[self.selected_item_name]
+        gerber = self.get_current()
         gerber.read_form()
         name = self.selected_item_name + "_bbox"
 
@@ -734,8 +876,20 @@ class App:
         @param widget: The widget from which this was called.
         @return: None
         """
-        self.stuff[self.selected_item_name].read_form()
-        self.stuff[self.selected_item_name].plot(self.figure)
+        print "Re-plotting"
+
+        self.get_current().read_form()
+        self.set_progress_bar(0.5, "Plotting...")
+        #GLib.idle_add(lambda: self.set_progress_bar(0.5, "Plotting..."))
+
+        def thread_func(app_obj):
+            #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
+            GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        t = threading.Thread(target=thread_func, args=(self,))
+        t.daemon = True
+        t.start()
 
     def on_generate_excellon_cncjob(self, widget):
         """
@@ -746,13 +900,13 @@ class App:
         """
 
         job_name = self.selected_item_name + "_cnc"
-        excellon = self.stuff[self.selected_item_name]
+        excellon = self.get_current()
         assert isinstance(excellon, CirkuixExcellon)
         excellon.read_form()
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            excellon_ = self.stuff[self.selected_item_name]
+            excellon_ = self.get_current()
             assert isinstance(excellon_, CirkuixExcellon)
             assert isinstance(job_obj, CirkuixCNCjob)
 
@@ -791,13 +945,13 @@ class App:
         @param widget: The widget from which this was called.
         @return: None
         """
-        excellon = self.stuff[self.selected_item_name]
+        excellon = self.get_current()
         assert isinstance(excellon, CirkuixExcellon)
         excellon.show_tool_chooser()
 
     def on_entry_eval_activate(self, widget):
         self.on_eval_update(widget)
-        obj = self.stuff[self.selected_item_name]
+        obj = self.get_current()
         assert isinstance(obj, CirkuixObj)
         obj.read_form()
 
@@ -895,7 +1049,7 @@ class App:
             # TODO: Object must be updated on form change and the options
             # TODO: read from the object.
             tooldia = app_obj.get_eval("entry_eval_gerber_isotooldia")
-            geo_obj.solid_geometry = self.stuff[self.selected_item_name].isolation_geometry(tooldia/2.0)
+            geo_obj.solid_geometry = self.get_current().isolation_geometry(tooldia/2.0)
 
         # TODO: Do something if this is None. Offer changing name?
         self.new_object("geometry", iso_name, iso_init)
@@ -953,7 +1107,7 @@ class App:
         in a new CirkuixGeometry object.
         """
         self.info("Click inside the desired polygon.")
-        geo = self.stuff[self.selected_item_name]
+        geo = self.get_current()
         geo.read_form()
         tooldia = geo.options["painttooldia"]
         overlap = geo.options["paintoverlap"]
@@ -979,7 +1133,7 @@ class App:
 
     def on_cncjob_exportgcode(self, widget):
         def on_success(self, filename):
-            cncjob = self.stuff[self.selected_item_name]
+            cncjob = self.get_current()
             f = open(filename, 'w')
             f.write(cncjob.gcode)
             f.close()
@@ -987,15 +1141,22 @@ class App:
         self.file_chooser_save_action(on_success)
 
     def on_delete(self, widget):
+        """
+        Delete the currently selected CirkuixObj.
+        @param widget: The widget from which this was called.
+        @return:
+        """
+        print "on_delete():", self.selected_item_name
+
+        # Remove plot
+        self.figure.delaxes(self.get_current().axes)
+        self.canvas.queue_draw()
+
+        # Remove from dictionary
         self.stuff.pop(self.selected_item_name)
-        
-        #self.tree.get_selection().disconnect(self.signal_id)
+
+        # Update UI
         self.build_list()  # Update the items list
-        #self.signal_id = self.tree.get_selection().connect(
-        #                     "changed", self.on_tree_selection_changed)
-                             
-        self.plot_all()
-        #self.notebook.set_current_page(1)
                              
     def on_replot(self, widget):
         self.plot_all()
@@ -1023,22 +1184,48 @@ class App:
         # Reconnect event listener
         self.signal_id = self.tree.get_selection().connect(
                              "changed", self.on_tree_selection_changed)
-                             
+
     def on_tree_selection_changed(self, selection):
+        """
+        Callback for selection change in the project list. This changes
+        the currently selected CirkuixObj.
+        @param selection: Selection associated to the project tree or list
+        @type selection: Gtk.TreeSelection
+        @return: None
+        """
+        print "on_tree_selection_change(): ",
         model, treeiter = selection.get_selected()
 
         if treeiter is not None:
+            # Save data for previous selection
+            obj = self.get_current()
+            if obj is not None:
+                obj.read_form()
+
             print "You selected", model[treeiter][0]
             self.selected_item_name = model[treeiter][0]
-            #self.stuff[self.selected_item_name].build_ui()
-            GLib.timeout_add(100, lambda: self.stuff[self.selected_item_name].build_ui())
+            GLib.idle_add(lambda: self.get_current().build_ui())
         else:
             print "Nothing selected"
             self.selected_item_name = None
             self.setup_component_editor()
 
     def on_file_new(self, param):
-        print "File->New not implemented yet."
+        # Remove everythong from memory
+        # Clear plot
+        self.clear_plots()
+
+        # Clear object editor
+        #self.setup_component_editor()
+
+        # Clear data
+        self.stuff = {}
+
+        # Clear list
+        #self.tree_select.unselect_all()
+        self.build_list()
+
+        #print "File->New not implemented yet."
 
     def on_filequit(self, param):
         print "quit from menu"
@@ -1204,44 +1391,12 @@ class App:
         xmin, ymin, xmax, ymax = get_bounds(self.stuff)
         width = xmax-xmin
         height = ymax-ymin
-        r = width/height
-        
-        Fw, Fh = self.canvas.get_width_height()
-        Fr = float(Fw)/Fh
-        print "Window aspect ratio:", Fr
-        print "Data aspect ratio:", r
-        
-        #self.axes.set_xlim((xmin-0.05*width, xmax+0.05*width))
-        #self.axes.set_ylim((ymin-0.05*height, ymax+0.05*height))
-        
-        if r > Fr:
-            #self.axes.set_xlim((xmin-0.05*width, xmax+0.05*width))
-            xmin -= 0.05*width
-            xmax += 0.05*width
-            ycenter = (ymin+ymax)/2.0
-            newheight = height*r/Fr
-            ymin = ycenter-newheight/2.0
-            ymax = ycenter+newheight/2.0
-            #self.axes.set_ylim((ycenter-newheight/2.0, ycenter+newheight/2.0))
-        else:
-            #self.axes.set_ylim((ymin-0.05*height, ymax+0.05*height))
-            ymin -= 0.05*height
-            ymax += 0.05*height
-            xcenter = (xmax+ymin)/2.0
-            newwidth = width*Fr/r
-            xmin = xcenter-newwidth/2.0
-            xmax = xcenter+newwidth/2.0
-            #self.axes.set_xlim((xcenter-newwidth/2.0, xcenter+newwidth/2.0))
+        xmin -= 0.05*width
+        xmax += 0.05*width
+        ymin -= 0.05*height
+        ymax += 0.05*height
+        self.adjust_axes(xmin, ymin, xmax, ymax)
 
-        for name in self.stuff:
-            self.stuff[name].axes.set_xlim((xmin, xmax))
-            self.stuff[name].axes.set_ylim((ymin, ymax))
-        self.axes.set_xlim((xmin, xmax))
-        self.axes.set_ylim((ymin, ymax))
-
-        self.canvas.queue_draw()
-        return
-        
     # def on_scroll_over_plot(self, event):
     #     print "Scroll"
     #     center = [event.xdata, event.ydata]
