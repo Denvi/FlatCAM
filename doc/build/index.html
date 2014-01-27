@@ -1,0 +1,905 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Welcome to Cirkuix’s documentation! &mdash; Cirkuix 0.5 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'0.5',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="Cirkuix 0.5 documentation" href="#"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="#" class="icon icon-home"> Cirkuix</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="simple">
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+        <a href="#">Cirkuix</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="#">Docs</a> &raquo;</li>
+      
+    <li>Welcome to Cirkuix&#8217;s documentation!</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/index.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="welcome-to-cirkuix-s-documentation">
+<h1>Welcome to Cirkuix&#8217;s documentation!<a class="headerlink" href="#welcome-to-cirkuix-s-documentation" title="Permalink to this headline">¶</a></h1>
+<p>Contents:</p>
+<div class="toctree-wrapper compound">
+<ul class="simple">
+</ul>
+</div>
+<span class="target" id="module-cirkuix"></span><dl class="class">
+<dt id="cirkuix.App">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">App</tt><a class="headerlink" href="#cirkuix.App" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main application class. The constructor starts the GUI.</p>
+<dl class="method">
+<dt id="cirkuix.App.build_list">
+<tt class="descname">build_list</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.build_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears and re-populates the list of objects in currently
+in the project.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.clear_plots">
+<tt class="descname">clear_plots</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.clear_plots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears self.axes and self.figure.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.file_chooser_action">
+<tt class="descname">file_chooser_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#cirkuix.App.file_chooser_action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens the file chooser and runs on_success on a separate thread
+upon completion of valid file choice.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.file_chooser_save_action">
+<tt class="descname">file_chooser_save_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#cirkuix.App.file_chooser_save_action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens the file chooser and runs on_success
+upon completion of valid file choice.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.get_current">
+<tt class="descname">get_current</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.get_current" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the currently selected CirkuixObj in the application.
+&#64;return: Currently selected CirkuixObj in the application.
+&#64;rtype: CirkuixObj</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.get_eval">
+<tt class="descname">get_eval</tt><big>(</big><em>widget_name</em><big>)</big><a class="headerlink" href="#cirkuix.App.get_eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs eval() on the on the text entry of name &#8216;widget_name&#8217;
+and returns the results.
+&#64;param widget_name: Name of Gtk.Entry
+&#64;return: Depends on contents of the entry text.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.get_radio_value">
+<tt class="descname">get_radio_value</tt><big>(</big><em>radio_set</em><big>)</big><a class="headerlink" href="#cirkuix.App.get_radio_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the radio_set[key] if the radiobutton
+whose name is key is active.
+&#64;return: radio_set[key]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.info">
+<tt class="descname">info</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#cirkuix.App.info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show text on the status bar.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.new_object">
+<tt class="descname">new_object</tt><big>(</big><em>kind</em>, <em>name</em>, <em>initialize</em><big>)</big><a class="headerlink" href="#cirkuix.App.new_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a new specalized CirkuixObj and attaches it to the application,
+this is, updates the GUI accordingly, any other records and plots it.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>kind</strong> (<em>str</em>) &#8211; The kind of object to create. One of &#8216;gerber&#8217;,
+&#8216;excellon&#8217;, &#8216;cncjob&#8217; and &#8216;geometry&#8217;.</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name for the object.</li>
+<li><strong>initialize</strong> (<em>function</em>) &#8211; Function to run after creation of the object
+but before it is attached to the application. The function is
+called with 2 parameters: the new object and the App instance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_activate_name">
+<tt class="descname">on_activate_name</tt><big>(</big><em>entry</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_activate_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hitting &#8216;Enter&#8217; after changing the name of an item
+updates the item dictionary and re-builds the item list.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_delete">
+<tt class="descname">on_delete</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the currently selected CirkuixObj.
+&#64;param widget: The widget from which this was called.
+&#64;return:</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_eval_update">
+<tt class="descname">on_eval_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_eval_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modifies the content of a Gtk.Entry by running
+eval() on its contents and puting it back as a
+string.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_excellon_tool_choose">
+<tt class="descname">on_excellon_tool_choose</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_excellon_tool_choose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Excellon form to open up a window for
+selecting tools.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_generate_cncjob">
+<tt class="descname">on_generate_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_cncjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on geometry form to generate CNC job.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_generate_excellon_cncjob">
+<tt class="descname">on_generate_excellon_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_excellon_cncjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button active/click on Excellon form to
+create a CNC Job for the Excellon file.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_generate_isolation">
+<tt class="descname">on_generate_isolation</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_isolation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create isolation routing geometry.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_generate_paintarea">
+<tt class="descname">on_generate_paintarea</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_paintarea" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on geometry form.
+Subscribes to the &#8220;Click on plot&#8221; event and continues
+after the click. Finds the polygon containing
+the clicked point and runs clear_poly() on it, resulting
+in a new CirkuixGeometry object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_gerber_generate_cutout">
+<tt class="descname">on_gerber_generate_cutout</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_gerber_generate_cutout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create geometry with lines
+for cutting off the board.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_gerber_generate_noncopper">
+<tt class="descname">on_gerber_generate_noncopper</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_gerber_generate_noncopper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create a geometry object
+with polygons covering the area without copper or negative of the
+Gerber.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_tree_selection_changed">
+<tt class="descname">on_tree_selection_changed</tt><big>(</big><em>selection</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_tree_selection_changed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for selection change in the project list. This changes
+the currently selected CirkuixObj.
+&#64;param selection: Selection associated to the project tree or list
+&#64;type selection: Gtk.TreeSelection
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_update_plot">
+<tt class="descname">on_update_plot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_update_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on form for all kinds of objects.
+Re-plot the current object only.
+&#64;param widget: The widget from which this was called.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.plot_all">
+<tt class="descname">plot_all</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.plot_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Re-generates all plots from all objects.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.set_list_selection">
+<tt class="descname">set_list_selection</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.App.set_list_selection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Marks a given object as selected in the list ob objects
+in the GUI. This selection will in turn trigger
+self.on_tree_selection_changed().
+&#64;param name: Name of the object.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.setup_component_editor">
+<tt class="descname">setup_component_editor</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_component_editor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initial configuration of the component editor. Creates
+a page titled &#8220;Selection&#8221; on the notebook on the left
+side of the main window.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.setup_component_viewer">
+<tt class="descname">setup_component_viewer</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_component_viewer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up list or Tree where whatever has been loaded or created is
+displayed.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.setup_plot">
+<tt class="descname">setup_plot</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up the main plotting area by creating a matplotlib
+figure in self.canvas, adding axes and configuring them.
+These axes should not be ploted on and are just there to
+display the axes ticks and grid.
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.zoom">
+<tt class="descname">zoom</tt><big>(</big><em>factor</em>, <em>center=None</em><big>)</big><a class="headerlink" href="#cirkuix.App.zoom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Zooms the plot by factor around a given
+center point. Takes care of re-drawing.
+&#64;return: None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.Geometry">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Geometry</tt><a class="headerlink" href="#cirkuix.Geometry" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="cirkuix.Geometry.bounds">
+<tt class="descname">bounds</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns coordinates of rectangular bounds
+of geometry: (xmin, ymin, xmax, ymax).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.clear_polygon">
+<tt class="descname">clear_polygon</tt><big>(</big><em>polygon</em>, <em>tooldia</em>, <em>overlap=0.15</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.clear_polygon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates geometry inside a polygon for a tool to cover
+the whole area.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.convert_units">
+<tt class="descname">convert_units</tt><big>(</big><em>units</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.convert_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the units of the object to <tt class="docutils literal"><span class="pre">units</span></tt> by scaling all
+the geometry appropriately.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>units</strong> (<em>str</em>) &#8211; &#8220;IN&#8221; or &#8220;MM&#8221;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Scaling factor resulting from unit change.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.get_empty_area">
+<tt class="descname">get_empty_area</tt><big>(</big><em>boundary=None</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.get_empty_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the complement of self.solid_geometry within
+the given boundary polygon. If not specified, it defaults to
+the rectangular bounding box of self.solid_geometry.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.isolation_geometry">
+<tt class="descname">isolation_geometry</tt><big>(</big><em>offset</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.isolation_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates contours around geometry at a given
+offset distance.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales all of the object&#8217;s geometry by a given factor. Override
+this method.
+:param factor: Number by which to scale.
+:type factor: float
+:return: None
+:rtype: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.size">
+<tt class="descname">size</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns (width, height) of rectangular
+bounds of geometry.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.Gerber">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Gerber</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>ATTRIBUTES</strong></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">apertures</span></tt> (dict): The keys are names/identifiers of each aperture.
+The values are dictionaries key/value pairs which describe the aperture. The
+type key is always present and the rest depend on the key:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="76%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>type</td>
+<td>(str) &#8220;C&#8221;, &#8220;R&#8221;, or &#8220;O&#8221;</td>
+</tr>
+<tr class="row-odd"><td>others</td>
+<td>Depend on <tt class="docutils literal"><span class="pre">type</span></tt></td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">paths</span></tt> (list): A path is described by a line an aperture that follows that
+line. Each paths[i] is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>linestring</td>
+<td>(Shapely.LineString) The actual path.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt> (list): Flashes are single-point strokes of an aperture. Each
+is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>loc</td>
+<td>(list) [x (float), y (float)] coordinates.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">regions</span></tt> (list): Are surfaces defined by a polygon (Shapely.Polygon),
+which have an exterior and zero or more interiors. An aperture is also
+associated with a region. Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="82%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>polygon</td>
+<td>(Shapely.Polygon) The polygon defining the region.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt> (list): List of (Shapely) geometric object resulting
+from <tt class="docutils literal"><span class="pre">flashes</span></tt>. These are generated from <tt class="docutils literal"><span class="pre">flashes</span></tt> in <tt class="docutils literal"><span class="pre">do_flashes()</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt> (list): List of (Shapely) polygons resulting from
+<em>buffering</em> (or thickening) the <tt class="docutils literal"><span class="pre">paths</span></tt> with the aperture. These are
+generated from <tt class="docutils literal"><span class="pre">paths</span></tt> in <tt class="docutils literal"><span class="pre">buffer_paths()</span></tt>.</li>
+</ul>
+<dl class="method">
+<dt id="cirkuix.Gerber.aperture_parse">
+<tt class="descname">aperture_parse</tt><big>(</big><em>gline</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse gerber aperture definition into dictionary of apertures.
+The following kinds and their attributes are supported:</p>
+<ul class="simple">
+<li><em>Circular (C)</em>: size (float)</li>
+<li><em>Rectangle (R)</em>: width (float), height (float)</li>
+<li><em>Obround (O)</em>: width (float), height (float). NOTE: This can
+be parsed, but it is not supported further yet.</li>
+</ul>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.create_geometry">
+<tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.create_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Geometry from a Gerber file is made up entirely of polygons.
+Every stroke (linear or circular) has an aperture which gives
+it thickness. Additionally, aperture strokes have non-zero area,
+and regions naturally do as well.
+:rtype : None
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cirkuix.Gerber.digits">
+<tt class="descname">digits</tt><em class="property"> = None</em><a class="headerlink" href="#cirkuix.Gerber.digits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of integer digits in Gerber numbers. Used during parsing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.do_flashes">
+<tt class="descname">do_flashes</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.do_flashes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates geometry for Gerber flashes (aperture on a single point).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.fix_regions">
+<tt class="descname">fix_regions</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.fix_regions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overwrites the region polygons with fixed
+versions if found to be invalid (according to Shapely).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="cirkuix.Gerber.fraction">
+<tt class="descname">fraction</tt><em class="property"> = None</em><a class="headerlink" href="#cirkuix.Gerber.fraction" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of fraction digits in Gerber numbers. Used during parsing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.parse_file">
+<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls Gerber.parse_lines() with array of lines
+read from the given file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>glines</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main Gerber parser.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Gerber.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales the objects&#8217; geometry on the XY plane by a given factor.
+These are:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">apertures</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
+</ul>
+<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
+are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
+:param factor: Number by which to scale.
+:type factor: float
+:rtype : None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.Excellon">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Excellon</tt><a class="headerlink" href="#cirkuix.Excellon" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>ATTRIBUTES</em></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">tools</span></tt> (dict): The key is the tool name and the value is
+the size (diameter).</li>
+<li><tt class="docutils literal"><span class="pre">drills</span></tt> (list): Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="69%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>point</td>
+<td>(Shapely.Point) Where to drill</td>
+</tr>
+<tr class="row-odd"><td>tool</td>
+<td>(str) A key in <tt class="docutils literal"><span class="pre">tools</span></tt></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="cirkuix.Excellon.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#cirkuix.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main Excellon parser.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Excellon.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Excellon.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales geometry on the XY plane in the object by a given factor.
+Tool sizes, feedrates an Z-plane dimensions are untouched.
+:param factor: Number by which to scale the object.
+:type factor: float
+:return: None
+:rtype: NOne</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CNCjob">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CNCjob</tt><big>(</big><em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents work to be done by a CNC machine.</p>
+<p><em>ATTRIBUTES</em></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">gcode_parsed</span></tt> (list): Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="66%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>geom</td>
+<td>(Shapely.LineString) Tool path (XY plane)</td>
+</tr>
+<tr class="row-odd"><td>kind</td>
+<td>(string) &#8220;AB&#8221;, A is &#8220;T&#8221; (travel) or
+&#8220;C&#8221; (cut). B is &#8220;F&#8221; (fast) or &#8220;S&#8221; (slow).</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="cirkuix.CNCjob.gcode_parse">
+<tt class="descname">gcode_parse</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.gcode_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>G-Code parser (from self.gcode). Generates dictionary with
+single-segment LineString&#8217;s and &#8220;kind&#8221; indicating cut or travel,
+fast or feedrate speed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.generate_from_excellon">
+<tt class="descname">generate_from_excellon</tt><big>(</big><em>exobj</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_excellon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-code for drilling from Excellon object.
+self.gcode becomes a list, each element is a
+different job for each tool in the excellon code.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.generate_from_excellon_by_tool">
+<tt class="descname">generate_from_excellon_by_tool</tt><big>(</big><em>exobj</em>, <em>tools='all'</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_excellon_by_tool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates gcode for this object from an Excellon object
+for the specified tools.
+&#64;param exobj: Excellon object to process
+&#64;type exobj: Excellon
+&#64;param tools: Comma separated tool names
+&#64;type: tools: str
+&#64;return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.generate_from_geometry">
+<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-Code from a Geometry object.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.plot">
+<tt class="descname">plot</tt><big>(</big><em>tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a Matplotlib figure with a plot of the
+G-code job.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.plot2">
+<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the G-code job onto the given axes.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.polygon2gcode">
+<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates G-Code for the exterior and all interior paths
+of a polygon.
+&#64;param polygon: A Shapely.Polygon
+&#64;type polygon: Shapely.Polygon</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.pre_parse">
+<tt class="descname">pre_parse</tt><big>(</big><em>gtext</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.pre_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>gtext is a single string with g-code</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CNCjob.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales all the geometry on the XY plane in the object by the
+given factor. Tool sizes, feedrates, or Z-axis dimensions are
+not altered.
+:param factor: Number by which to scale the object.
+:type factor: float
+:return: None
+:rtype: None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CirkuixObj">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixObj</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base type of objects handled in Cirkuix. These become interactive
+in the GUI, can be plotted, and their options can be modified
+by the user in their respective forms.</p>
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.build_ui">
+<tt class="descname">build_ui</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.build_ui" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up the UI/form for this object.
+&#64;return: None
+&#64;rtype : None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>obj_dict</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.deserialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Re-builds an object from its serialized version.
+&#64;param obj_dict: Dictionary representing a CirkuixObj
+&#64;type obj_dict: dict
+&#64;return None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.plot">
+<tt class="descname">plot</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Extend this method! Sets up axes if needed and
+clears them. Descendants must do the actual plotting.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.read_form">
+<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.read_form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads form into self.options
+&#64;rtype : None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.serialize">
+<tt class="descname">serialize</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.serialize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a representation of the object as a dictionary so
+it can be later exported as JSON. Override this method.
+&#64;return: Dictionary representing the object
+&#64;rtype: dict</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.setup_axes">
+<tt class="descname">setup_axes</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.setup_axes" title="Permalink to this definition">¶</a></dt>
+<dd><p>1) Creates axes if they don&#8217;t exist. 2) Clears axes. 3) Attaches
+them to figure if not part of the figure. 4) Sets transparent
+background. 5) Sets 1:1 scale aspect ratio.
+&#64;param figure: A Matplotlib.Figure on which to add/configure axes.
+&#64;type figure: matplotlib.figure.Figure
+&#64;return: None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CirkuixGerber">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixGerber</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixGerber" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents Gerber code.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CirkuixExcellon">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixExcellon</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixExcellon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents Excellon code.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CirkuixCNCjob">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixCNCjob</tt><big>(</big><em>name</em>, <em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixCNCjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents G-Code.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="cirkuix.CirkuixGeometry">
+<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixGeometry</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixGeometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Geometric object not associated with a specific
+format.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="search.html"><em>Search Page</em></a></li>
+</ul>
+</div>
+
+
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Juan Pablo Caram.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>

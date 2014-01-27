@@ -1,11 +1,13 @@
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 from matplotlib.figure import Figure
+import re
 
 # See: http://toblerity.org/shapely/manual.html
 from shapely.geometry import Polygon, LineString, Point, LinearRing
 from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.geometry import box as shply_box
 from shapely.ops import cascaded_union
+import shapely.affinity as affinity
 
 # Used for solid polygons in Matplotlib
 from descartes.patch import PolygonPatch
@@ -74,16 +76,113 @@ class Geometry:
             else:
                 break
         return poly_cuts
+
+    def scale(self, factor):
+        """
+        Scales all of the object's geometry by a given factor. Override
+        this method.
+        :param factor: Number by which to scale.
+        :type factor: float
+        :return: None
+        :rtype: None
+        """
+        return
+
+    def convert_units(self, units):
+        """
+        Converts the units of the object to ``units`` by scaling all
+        the geometry appropriately.
+
+        :param units: "IN" or "MM"
+        :type units: str
+        :return: Scaling factor resulting from unit change.
+        :rtype: float
+        """
+
+        if units.upper() == self.units.upper():
+            return 1.0
+
+        if units.upper() == "MM":
+            factor = 25.4
+        elif units.upper() == "IN":
+            factor = 1/25.4
+        else:
+            print "Unsupported units:", units
+            return 1.0
+
+        self.units = units
+        self.scale(factor)
+        return factor
         
 
 class Gerber (Geometry):
+    """
+    **ATTRIBUTES**
+
+    * ``apertures`` (dict): The keys are names/identifiers of each aperture.
+      The values are dictionaries key/value pairs which describe the aperture. The
+      type key is always present and the rest depend on the key:
+
+    +-----------+-----------------------------------+
+    | Key       | Value                             |
+    +===========+===================================+
+    | type      | (str) "C", "R", or "O"            |
+    +-----------+-----------------------------------+
+    | others    | Depend on ``type``                |
+    +-----------+-----------------------------------+
+
+    * ``paths`` (list): A path is described by a line an aperture that follows that
+      line. Each paths[i] is a dictionary:
+
+    +------------+------------------------------------------------+
+    | Key        | Value                                          |
+    +============+================================================+
+    | linestring | (Shapely.LineString) The actual path.          |
+    +------------+------------------------------------------------+
+    | aperture   | (str) The key for an aperture in apertures.    |
+    +------------+------------------------------------------------+
+
+    * ``flashes`` (list): Flashes are single-point strokes of an aperture. Each
+      is a dictionary:
+
+    +------------+------------------------------------------------+
+    | Key        | Value                                          |
+    +============+================================================+
+    | loc        | (list) [x (float), y (float)] coordinates.     |
+    +------------+------------------------------------------------+
+    | aperture   | (str) The key for an aperture in apertures.    |
+    +------------+------------------------------------------------+
+
+    * ``regions`` (list): Are surfaces defined by a polygon (Shapely.Polygon),
+      which have an exterior and zero or more interiors. An aperture is also
+      associated with a region. Each is a dictionary:
+
+    +------------+-----------------------------------------------------+
+    | Key        | Value                                               |
+    +============+=====================================================+
+    | polygon    | (Shapely.Polygon) The polygon defining the region.  |
+    +------------+-----------------------------------------------------+
+    | aperture   | (str) The key for an aperture in apertures.         |
+    +------------+-----------------------------------------------------+
+
+    * ``flash_geometry`` (list): List of (Shapely) geometric object resulting
+      from ``flashes``. These are generated from ``flashes`` in ``do_flashes()``.
+
+    * ``buffered_paths`` (list): List of (Shapely) polygons resulting from
+      *buffering* (or thickening) the ``paths`` with the aperture. These are
+      generated from ``paths`` in ``buffer_paths()``.
+    """
+
     def __init__(self):
         # Initialize parent
         Geometry.__init__(self)        
         
         # Number format
         self.digits = 3
+        """Number of integer digits in Gerber numbers. Used during parsing."""
+
         self.fraction = 4
+        """Number of fraction digits in Gerber numbers. Used during parsing."""
         
         ## Gerber elements ##
         # Apertures {'id':{'type':chr, 
@@ -91,7 +190,7 @@ class Gerber (Geometry):
         #             ['height':float]}, ...}
         self.apertures = {}
         
-        # Paths [{'linestring':LineString, 'aperture':dict}]
+        # Paths [{'linestring':LineString, 'aperture':str}]
         self.paths = []
         
         # Buffered Paths [Polygon]
@@ -99,15 +198,61 @@ class Gerber (Geometry):
         # offsetting the aperture size/2
         self.buffered_paths = []
         
-        # Polygon regions [{'polygon':Polygon, 'aperture':dict}]
+        # Polygon regions [{'polygon':Polygon, 'aperture':str}]
         self.regions = []
         
-        # Flashes [{'loc':[float,float], 'aperture':dict}]
+        # Flashes [{'loc':[float,float], 'aperture':str}]
         self.flashes = []
         
         # Geometry from flashes
         self.flash_geometry = []
-        
+
+    def scale(self, factor):
+        """
+        Scales the objects' geometry on the XY plane by a given factor.
+        These are:
+
+        * ``apertures``
+        * ``paths``
+        * ``regions``
+        * ``flashes``
+
+        Then ``buffered_paths``, ``flash_geometry`` and ``solid_geometry``
+        are re-created with ``self.create_geometry()``.
+        :param factor: Number by which to scale.
+        :type factor: float
+        :rtype : None
+        """
+        # Apertures
+        print "Scaling apertures..."
+        for apid in self.apertures:
+            for param in self.apertures[apid]:
+                if param != "type":  # All others are dimensions.
+                    print "Tool:", apid, "Parameter:", param
+                    self.apertures[apid][param] *= factor
+
+        # Paths
+        print "Scaling paths..."
+        for path in self.paths:
+            path['linestring'] = affinity.scale(path['linestring'],
+                                                factor, factor, origin=(0, 0))
+
+        # Flashes
+        print "Scaling flashes..."
+        for fl in self.flashes:
+            # TODO: Shouldn't 'loc' be a numpy.array()?
+            fl['loc'][0] *= factor
+            fl['loc'][1] *= factor
+
+        # Regions
+        print "Scaling regions..."
+        for reg in self.regions:
+            reg['polygon'] = affinity.scale(reg['polygon'], factor, factor,
+                                            origin=(0, 0))
+
+        # Now buffered_paths, flash_geometry and solid_geometry
+        self.create_geometry()
+
     def fix_regions(self):
         """
         Overwrites the region polygons with fixed
@@ -125,8 +270,13 @@ class Gerber (Geometry):
     
     def aperture_parse(self, gline):
         """
-        Parse gerber aperture definition
-        into dictionary of apertures.
+        Parse gerber aperture definition into dictionary of apertures.
+        The following kinds and their attributes are supported:
+
+        * *Circular (C)*: size (float)
+        * *Rectangle (R)*: width (float), height (float)
+        * *Obround (O)*: width (float), height (float). NOTE: This can
+          be parsed, but it is not supported further yet.
         """
         indexstar = gline.find("*")
         indexc = gline.find("C,")
@@ -168,6 +318,10 @@ class Gerber (Geometry):
         """
         Main Gerber parser.
         """
+
+        # Mode (IN/MM)
+        mode_re = re.compile(r'^%MO(IN|MM)\*%$')
+
         path = []  # Coordinates of the current path
         last_path_aperture = None
         current_aperture = None
@@ -220,10 +374,17 @@ class Gerber (Geometry):
                 self.digits = int(gline[indexx + 1])
                 self.fraction = int(gline[indexx + 2])
                 continue
+
+            # Mode (IN/MM)
+            match = mode_re.search(gline)
+            if match:
+                self.units = match.group(1)
+                continue
+
             print "WARNING: Line ignored:", gline
         
         if len(path) > 1:
-            # EOF, create shapely LineString if something in path
+            # EOF, create shapely LineString if something still in path
             self.paths.append({"linestring": LineString(path),
                                "aperture": last_path_aperture})
     
@@ -250,11 +411,20 @@ class Gerber (Geometry):
                 self.flash_geometry.append(rectangle)
                 continue
             #TODO: Add support for type='O'
-            print "WARNING: Aperture type %s not implemented"%(aperture['type'])
+            print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
     def create_geometry(self):
-        if len(self.buffered_paths) == 0:
-            self.buffer_paths()
+        """
+        Geometry from a Gerber file is made up entirely of polygons.
+        Every stroke (linear or circular) has an aperture which gives
+        it thickness. Additionally, aperture strokes have non-zero area,
+        and regions naturally do as well.
+        :rtype : None
+        @return: None
+        """
+        # if len(self.buffered_paths) == 0:
+        #     self.buffer_paths()
+        self.buffer_paths()
         self.fix_regions()
         self.do_flashes()
         self.solid_geometry = cascaded_union(
@@ -264,12 +434,30 @@ class Gerber (Geometry):
 
 
 class Excellon(Geometry):
+    """
+    *ATTRIBUTES*
+
+    * ``tools`` (dict): The key is the tool name and the value is
+      the size (diameter).
+
+    * ``drills`` (list): Each is a dictionary:
+
+    ================  ====================================
+    Key               Value
+    ================  ====================================
+    point             (Shapely.Point) Where to drill
+    tool              (str) A key in ``tools``
+    ================  ====================================
+    """
     def __init__(self):
         Geometry.__init__(self)
         
         self.tools = {}
         
         self.drills = []
+
+        # Trailing "T" or leading "L"
+        self.zeros = ""
         
     def parse_file(self, filename):
         efile = open(filename, 'r')
@@ -281,6 +469,8 @@ class Excellon(Geometry):
         """
         Main Excellon parser.
         """
+        units_re = re.compile(r'^(INCH|METRIC)(?:,([TL])Z)?$')
+
         current_tool = ""
         
         for eline in elines:
@@ -291,10 +481,10 @@ class Excellon(Geometry):
             indexC = eline.find("C")
             indexF = eline.find("F")
             # Type 1
-            if indexT != -1 and indexC > indexT and indexF > indexF:
+            if indexT != -1 and indexC > indexT and indexF > indexC:
                 tool = eline[1:indexC]
                 spec = eline[indexC+1:indexF]
-                self.tools[tool] = spec
+                self.tools[tool] = float(spec)
                 continue
             # Type 2
             # TODO: Is this inches?
@@ -309,7 +499,7 @@ class Excellon(Geometry):
             if indexT != -1 and indexC > indexT:
                 tool = eline[1:indexC]
                 spec = eline[indexC+1:-1]
-                self.tools[tool] = spec
+                self.tools[tool] = float(spec)
                 continue
             
             ## Tool change
@@ -325,7 +515,13 @@ class Excellon(Geometry):
                 y = float(int(eline[indexy+1:-1])/10000.0)
                 self.drills.append({'point': Point((x, y)), 'tool': current_tool})
                 continue
-            
+
+            # Units and number format
+            match = units_re.match(eline)
+            if match:
+                self.zeros = match.group(2)  # "T" or "L"
+                self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+
             print "WARNING: Line ignored:", eline
         
     def create_geometry(self):
@@ -338,19 +534,49 @@ class Excellon(Geometry):
             self.solid_geometry.append(poly)
         self.solid_geometry = cascaded_union(self.solid_geometry)
 
-
-class CNCjob(Geometry):
-    def __init__(self, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+    def scale(self, factor):
+        """
+        Scales geometry on the XY plane in the object by a given factor.
+        Tool sizes, feedrates an Z-plane dimensions are untouched.
+        :param factor: Number by which to scale the object.
+        :type factor: float
+        :return: None
+        :rtype: NOne
         """
 
-            @param units:
-            @param kind:
-            @param z_move:
-            @param feedrate:
-            @param z_cut:
-            @param tooldia:
-            """
+        # Drills
+        for drill in self.drills:
+            drill.point = affinity.scale(drill.point, factor, factor, origin=(0, 0))
+
+    def convert_units(self, units):
+        factor = Geometry.convert_units(self, units)
+
+        # Tools
+        for tname in self.tools:
+            self.tools[tname] *= factor
+
+        return factor
+
+
+class CNCjob(Geometry):
+    """
+    Represents work to be done by a CNC machine.
+
+    *ATTRIBUTES*
+
+    * ``gcode_parsed`` (list): Each is a dictionary:
+
+    =====================  =========================================
+    Key                    Value
+    =====================  =========================================
+    geom                   (Shapely.LineString) Tool path (XY plane)
+    kind                   (string) "AB", A is "T" (travel) or
+                           "C" (cut). B is "F" (fast) or "S" (slow).
+    =====================  =========================================
+    """
+    def __init__(self, units="in", kind="generic", z_move=0.1,
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+
         Geometry.__init__(self)
         self.kind = kind
         self.units = units
@@ -358,17 +584,18 @@ class CNCjob(Geometry):
         self.z_move = z_move
         self.feedrate = feedrate
         self.tooldia = tooldia
-        self.unitcode = {"in": "G20", "mm": "G21"}
+        self.unitcode = {"IN": "G20", "MM": "G21"}
         self.pausecode = "G04 P1"
         self.feedminutecode = "G94"
         self.absolutecode = "G90"
         self.gcode = ""
         self.input_geometry_bounds = None
         self.gcode_parsed = None
+        self.steps_per_circ = 20  # Used when parsing G-code arcs
         
     def generate_from_excellon(self, exobj):
         """
-        Generates G-code for drilling from excellon text.
+        Generates G-code for drilling from Excellon object.
         self.gcode becomes a list, each element is a
         different job for each tool in the excellon code.
         """
@@ -387,7 +614,7 @@ class CNCjob(Geometry):
                 if drill['tool'] == tool:
                     points.append(drill['point'])
             
-            gcode = self.unitcode[self.units] + "\n"
+            gcode = self.unitcode[self.units.upper()] + "\n"
             gcode += self.absolutecode + "\n"
             gcode += self.feedminutecode + "\n"
             gcode += "F%.2f\n" % self.feedrate
@@ -435,7 +662,7 @@ class CNCjob(Geometry):
         down = "G01 Z%.4f\n" % self.z_cut
         up = "G01 Z%.4f\n" % self.z_move
 
-        gcode = self.unitcode[self.units] + "\n"
+        gcode = self.unitcode[self.units.upper()] + "\n"
         gcode += self.absolutecode + "\n"
         gcode += self.feedminutecode + "\n"
         gcode += "F%.2f\n" % self.feedrate
@@ -465,7 +692,7 @@ class CNCjob(Geometry):
         if not append:
             self.gcode = ""
 
-        self.gcode = self.unitcode[self.units] + "\n"
+        self.gcode = self.unitcode[self.units.upper()] + "\n"
         self.gcode += self.absolutecode + "\n"
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n" % self.feedrate
@@ -497,7 +724,63 @@ class CNCjob(Geometry):
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         self.gcode += "G00 X0Y0\n"
         self.gcode += "M05\n"  # Spindle stop
-    
+
+    def pre_parse(self, gtext):
+        """
+        gtext is a single string with g-code
+        """
+
+        # Units: G20-inches, G21-mm
+        units_re = re.compile(r'^G2([01])')
+
+        # TODO: This has to be re-done
+        gcmds = []
+        lines = gtext.split("\n")  # TODO: This is probably a lot of work!
+        for line in lines:
+            # Clean up
+            line = line.strip()
+
+            # Remove comments
+            # NOTE: Limited to 1 bracket pair
+            op = line.find("(")
+            cl = line.find(")")
+            if op > -1 and  cl > op:
+                #comment = line[op+1:cl]
+                line = line[:op] + line[(cl+1):]
+
+            # Units
+            match = units_re.match(line)
+            if match:
+                self.units = {'0': "IN", '1': "MM"}[match.group(1)]
+
+            # Parse GCode
+            # 0   4       12
+            # G01 X-0.007 Y-0.057
+            # --> codes_idx = [0, 4, 12]
+            codes = "NMGXYZIJFP"
+            codes_idx = []
+            i = 0
+            for ch in line:
+                if ch in codes:
+                    codes_idx.append(i)
+                i += 1
+            n_codes = len(codes_idx)
+            if n_codes == 0:
+                continue
+
+            # Separate codes in line
+            parts = []
+            for p in range(n_codes-1):
+                parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
+            parts.append(line[codes_idx[-1]:].strip())
+
+            # Separate codes from values
+            cmds = {}
+            for part in parts:
+                cmds[part[0]] = float(part[1:])
+            gcmds.append(cmds)
+        return gcmds
+
     def gcode_parse(self):
         """
         G-Code parser (from self.gcode). Generates dictionary with
@@ -505,14 +788,11 @@ class CNCjob(Geometry):
         fast or feedrate speed.
         """
 
-        # TODO: Make this a parameter
-        steps_per_circ = 20
-
         # Results go here
         geometry = []        
         
-        # TODO: ???? bring this into the class??
-        gobjs = gparse1b(self.gcode)
+        # TODO: Merge into single parser?
+        gobjs = self.pre_parse(self.gcode)
         
         # Last known instruction
         current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
@@ -549,7 +829,7 @@ class CNCjob(Geometry):
                     kind[1] = 'S'
                    
                 arcdir = [None, None, "cw", "ccw"]
-                if current['G'] in [0, 1]: # line
+                if current['G'] in [0, 1]:  # line
                     geometry.append({'geom': LineString([(current['X'], current['Y']),
                                                         (x, y)]), 'kind': kind})
                 if current['G'] in [2, 3]:  # arc
@@ -559,7 +839,7 @@ class CNCjob(Geometry):
                     stop = arctan2(-center[1]+y, -center[0]+x)
                     geometry.append({'geom': arc(center, radius, start, stop,
                                                  arcdir[current['G']],
-                                                 steps_per_circ),
+                                                 self.steps_per_circ),
                                      'kind': kind})
 
             # Update current instruction
@@ -676,51 +956,28 @@ class CNCjob(Geometry):
         gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
         gcode += "G00 Z%.4f\n" % self.z_move      # Stop cutting
 
+    def scale(self, factor):
+        """
+        Scales all the geometry on the XY plane in the object by the
+        given factor. Tool sizes, feedrates, or Z-axis dimensions are
+        not altered.
+        :param factor: Number by which to scale the object.
+        :type factor: float
+        :return: None
+        :rtype: None
+        """
+        for g in self.gcode_parsed:
+            g['geom'] = affinity.scale(g['geom'], factor, factor, origin=(0, 0))
 
-def gparse1b(gtext):
-    """
-    gtext is a single string with g-code
-    """
-    gcmds = []
-    lines = gtext.split("\n")  # TODO: This is probably a lot of work!
-    for line in lines:
-        line = line.strip()
-        
-        # Remove comments
-        # NOTE: Limited to 1 bracket pair
-        op = line.find("(")
-        cl = line.find(")")
-        if  op > -1 and  cl > op:
-            #comment = line[op+1:cl]
-            line = line[:op] + line[(cl+1):]
-        
-        # Parse GCode
-        # 0   4       12 
-        # G01 X-0.007 Y-0.057
-        # --> codes_idx = [0, 4, 12]
-        codes = "NMGXYZIJFP"
-        codes_idx = []
-        i = 0
-        for ch in line:
-            if ch in codes:
-                codes_idx.append(i)
-            i += 1
-        n_codes = len(codes_idx)
-        if n_codes == 0:
-            continue
-        
-        # Separate codes in line
-        parts = []
-        for p in range(n_codes-1):
-            parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
-        parts.append(line[codes_idx[-1]:].strip())
-        
-        # Separate codes from values
-        cmds = {}
-        for part in parts:
-            cmds[part[0]] = float(part[1:])
-        gcmds.append(cmds)
-    return gcmds
+    def convert_units(self, units):
+        factor = Geometry.convert_units(self, units)
+
+        self.z_move *= factor
+        self.z_cut *= factor
+        self.feedrate *= factor
+        self.tooldia *= factor
+
+        return factor
 
 
 def get_bounds(geometry_set):

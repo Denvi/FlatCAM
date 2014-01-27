@@ -54,13 +54,13 @@ class CirkuixObj:
             print "Clearing Axes"
             self.axes.cla()
 
-        self.axes.set_frame_on(False)
-        self.axes.set_xticks([])
-        self.axes.set_yticks([])
+        # Remove all decoration. The app's axes will have
+        # the ticks and grid.
+        self.axes.set_frame_on(False)  # No frame
+        self.axes.set_xticks([])  # No tick
+        self.axes.set_yticks([])  # No ticks
         self.axes.patch.set_visible(False)  # No background
         self.axes.set_aspect(1)
-
-        #return self.axes
 
     def set_options(self, options):
         for name in options:
@@ -183,7 +183,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
 
         self.kind = "gerber"
 
-        # The 'name' is already in self.options
+        # The 'name' is already in self.options from CirkuixObj
         self.options.update({
             "plot": True,
             "mergepolys": True,
@@ -198,7 +198,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "bboxrounded": False
         })
 
-        # The 'name' is already in self.form_kinds
+        # The 'name' is already in self.form_kinds from CirkuixObj
         self.form_kinds.update({
             "plot": "cb",
             "mergepolys": "cb",
@@ -216,20 +216,27 @@ class CirkuixGerber(CirkuixObj, Gerber):
         self.radios = {"gaps": {"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}}
         self.radios_inv = {"gaps": {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}}
 
+    def convert_units(self, units):
+        factor = Gerber.convert_units(self, units)
+
+        self.options['isotooldia'] *= factor
+        self.options['cutoutmargin'] *= factor
+        self.options['cutoutgapsize'] *= factor
+        self.options['noncoppermargin'] *= factor
+        self.options['bboxmargin'] *= factor
+
     def plot(self, figure):
         CirkuixObj.plot(self, figure)
 
         self.create_geometry()
 
-        geometry = None  # TODO: Test if needed
         if self.options["mergepolys"]:
             geometry = self.solid_geometry
         else:
             geometry = self.buffered_paths + \
-                        [poly['polygon'] for poly in self.regions] + \
-                        self.flash_geometry
+                       [poly['polygon'] for poly in self.regions] + \
+                       self.flash_geometry
 
-        linespec = None  # TODO: Test if needed
         if self.options["multicolored"]:
             linespec = '-'
         else:
@@ -241,6 +248,8 @@ class CirkuixGerber(CirkuixObj, Gerber):
             for ints in poly.interiors:
                 x, y = ints.coords.xy
                 self.axes.plot(x, y, linespec)
+
+        self.app.canvas.queue_draw()
 
     def serialize(self):
         return {
@@ -282,8 +291,16 @@ class CirkuixExcellon(CirkuixObj, Excellon):
 
         self.tool_cbs = {}
 
+    def convert_units(self, units):
+        factor = Excellon.convert_units(self, units)
+
+        self.options['drillz'] *= factor
+        self.options['travelz'] *= factor
+        self.options['feedrate'] *= factor
+
     def plot(self, figure):
-        self.setup_axes(figure)
+        CirkuixObj.plot(self, figure)
+        #self.setup_axes(figure)
         self.create_geometry()
 
         # Plot excellon
@@ -293,6 +310,9 @@ class CirkuixExcellon(CirkuixObj, Excellon):
             for ints in geo.interiors:
                 x, y = ints.coords.xy
                 self.axes.plot(x, y, 'g-')
+
+        self.app.on_zoom_fit(None)
+        self.app.canvas.queue_draw()
 
     def show_tool_chooser(self):
         win = Gtk.Window()
@@ -317,6 +337,10 @@ class CirkuixExcellon(CirkuixObj, Excellon):
 
         button.connect("activate", on_accept)
         button.connect("clicked", on_accept)
+
+    # def parse_lines(self, elines):
+    #     Excellon.parse_lines(self, elines)
+    #     self.options["units"] = self.units
 
 
 class CirkuixCNCjob(CirkuixObj, CNCjob):
@@ -346,9 +370,11 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
         })
 
     def plot(self, figure):
-        self.setup_axes(figure)
+        CirkuixObj.plot(self, figure)
+        #self.setup_axes(figure)
         self.plot2(self.axes, tooldia=self.options["tooldia"])
-        app.canvas.queue_draw()
+        self.app.on_zoom_fit(None)
+        self.app.canvas.queue_draw()
 
 
 class CirkuixGeometry(CirkuixObj, Geometry):
@@ -359,6 +385,7 @@ class CirkuixGeometry(CirkuixObj, Geometry):
 
     def __init__(self, name):
         CirkuixObj.__init__(self, name)
+        Geometry.__init__(self)
 
         self.kind = "geometry"
 
@@ -388,8 +415,32 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "paintmargin": "entry_eval"
         })
 
+    # def convert_units(self, units):
+    #     factor = Geometry.convert_units(self, units)
+
+    def scale(self, factor):
+        if type(self.solid_geometry) == list:
+            self.solid_geometry = [affinity.scale(g, factor, factor, origin=(0, 0))
+                                   for g in self.solid_geometry]
+        else:
+            self.solid_geometry = affinity.scale(self.solid_geometry, factor, factor,
+                                                 origin=(0, 0))
+
+    def convert_units(self, units):
+        factor = Geometry.convert_units(self, units)
+
+        self.options['cutz'] *= factor
+        self.options['travelz'] *= factor
+        self.options['feedrate'] *= factor
+        self.options['cnctooldia'] *= factor
+        self.options['painttooldia'] *= factor
+        self.options['paintmargin'] *= factor
+
+        return factor
+
     def plot(self, figure):
-        self.setup_axes(figure)
+        CirkuixObj.plot(self, figure)
+        #self.setup_axes(figure)
 
         try:
             _ = iter(self.solid_geometry)
@@ -421,6 +472,9 @@ class CirkuixGeometry(CirkuixObj, Geometry):
                 continue
 
             print "WARNING: Did not plot:", str(type(geo))
+
+        self.app.on_zoom_fit(None)
+        self.app.canvas.queue_draw()
 
 
 ########################################
@@ -499,7 +553,6 @@ class App:
         ########################################
         self.window.set_default_size(900, 600)
         self.window.show_all()
-        #Gtk.main()
         
     def setup_plot(self):
         """
@@ -722,18 +775,23 @@ class App:
         """
         Creates a new specalized CirkuixObj and attaches it to the application,
         this is, updates the GUI accordingly, any other records and plots it.
-        @param kind: Knd of object to create.
-        @param name: Name for the object.
-        @param initilize: Function to run after the
-            object has been created but before attacing it
-            to the application. Takes the new object and the
-            app as parameters.
-        @return: The object requested
-        @rtype : CirkuixObj extended
+
+        :param kind: The kind of object to create. One of 'gerber',
+         'excellon', 'cncjob' and 'geometry'.
+        :type kind: str
+        :param name: Name for the object.
+        :type name: str
+        :param initialize: Function to run after creation of the object
+         but before it is attached to the application. The function is
+         called with 2 parameters: the new object and the App instance.
+        :type initialize: function
+        :return: None
+        :rtype: None
         """
 
         # Check for existing name
         if name in self.stuff:
+            self.info("Rename " + name + " in project first.")
             return None
 
         # Create object
@@ -750,6 +808,11 @@ class App:
         # in a thread-safe way as is is likely that we
         # have been invoked in a separate thread.
         initialize(obj, self)
+
+        # Check units and convert if necessary
+        if self.options["units"].upper() != obj.units.upper():
+            GLib.idle_add(lambda: self.info("Converting units to " + self.options["units"] + "."))
+            obj.convert_units(self.options["units"])
 
         # Add to our records
         self.stuff[name] = obj
@@ -845,6 +908,13 @@ class App:
     ##         EVENT HANDLERS             ##
     ########################################
 
+    def on_scale_object(self, widget):
+        obj = self.get_current()
+        factor = self.get_eval("entry_eval_" + obj.kind + "_scalefactor")
+        obj.scale(factor)
+        obj.to_form()
+        self.on_update_plot(None)
+
     def on_canvas_configure(self, widget, event):
         print "on_canvas_configure()"
 
@@ -883,8 +953,11 @@ class App:
         #GLib.idle_add(lambda: self.set_progress_bar(0.5, "Plotting..."))
 
         def thread_func(app_obj):
+            assert isinstance(app_obj, App)
             #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
-            GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
+            #GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
+            app_obj.get_current().plot(app_obj.figure)
+            GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
 
         t = threading.Thread(target=thread_func, args=(self,))
