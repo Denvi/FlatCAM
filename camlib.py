@@ -8,10 +8,14 @@ from shapely.geometry import MultiPoint, MultiPolygon
 from shapely.geometry import box as shply_box
 from shapely.ops import cascaded_union
 import shapely.affinity as affinity
+from shapely.wkt import loads as sloads
+from shapely.wkt import dumps as sdumps
+from shapely.geometry.base import BaseGeometry
 
 # Used for solid polygons in Matplotlib
 from descartes.patch import PolygonPatch
 
+import simplejson as json
 
 class Geometry:
     def __init__(self):
@@ -20,6 +24,9 @@ class Geometry:
         
         # Final geometry: MultiPolygon
         self.solid_geometry = None
+
+        # Attributes to be included in serialization
+        self.ser_attrs = ['units', 'solid_geometry']
         
     def isolation_geometry(self, offset):
         """
@@ -113,7 +120,25 @@ class Geometry:
         self.units = units
         self.scale(factor)
         return factor
-        
+
+    def to_dict(self):
+        """
+        Returns a respresentation of the object as a dictionary.
+        ``self.solid_geometry`` has been converted using the ``to_dict``
+        function. Attributes to include are listed in
+        ``self.ser_attrs``.
+
+        :return: A dictionary-encoded copy of the object.
+        :rtype: dict
+        """
+        d = {}
+        for attr in self.ser_attrs:
+            d[attr] = getattr(self, attr)
+        return d
+
+    def from_dict(self, d):
+        return
+
 
 class Gerber (Geometry):
     """
@@ -206,6 +231,13 @@ class Gerber (Geometry):
         
         # Geometry from flashes
         self.flash_geometry = []
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from Geometry.
+        self.ser_attrs += ['digits', 'fraction', 'apertures', 'paths',
+                           'buffered_paths', 'regions', 'flashes',
+                           'flash_geometry']
 
     def scale(self, factor):
         """
@@ -458,6 +490,11 @@ class Excellon(Geometry):
 
         # Trailing "T" or leading "L"
         self.zeros = ""
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from Geometry.
+        self.ser_attrs += ['tools', 'drills', 'zeros']
         
     def parse_file(self, filename):
         efile = open(filename, 'r')
@@ -592,6 +629,13 @@ class CNCjob(Geometry):
         self.input_geometry_bounds = None
         self.gcode_parsed = None
         self.steps_per_circ = 20  # Used when parsing G-code arcs
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from Geometry.
+        self.ser_attrs += ['kind', 'z_cut', 'z_move', 'feedrate', 'tooldia',
+                           'gcode', 'input_geometry_bounds', 'gcode_parsed',
+                           'steps_per_circ']
         
     def generate_from_excellon(self, exobj):
         """
@@ -949,6 +993,7 @@ class CNCjob(Geometry):
         return gcode
 
     def point2gcode(self, point):
+        # TODO: This is not doing anything.
         gcode = ""
         t = "G0%d X%.4fY%.4f\n"
         path = list(point.coords)
@@ -1066,6 +1111,22 @@ def find_polygon(poly_set, point):
         if poly.contains(p):
             return poly
     return None
+
+def to_dict(geo):
+    output = ''
+    if isinstance(geo, BaseGeometry):
+        return {
+            "__class__": "Shply",
+            "__inst__": sdumps(geo)
+        }
+    return geo
+
+def dict2obj(d):
+    if '__class__' in d and '__inst__' in d:
+        # For now assume all classes are Shapely geometry.
+        return sloads(d['__inst__'])
+    else:
+        return d
 
 ############### cam.py ####################
 def coord(gstr, digits, fraction):

@@ -39,9 +39,11 @@ class CirkuixObj:
         1) Creates axes if they don't exist. 2) Clears axes. 3) Attaches
         them to figure if not part of the figure. 4) Sets transparent
         background. 5) Sets 1:1 scale aspect ratio.
-        @param figure: A Matplotlib.Figure on which to add/configure axes.
-        @type figure: matplotlib.figure.Figure
-        @return: None
+
+        :param figure: A Matplotlib.Figure on which to add/configure axes.
+        :type figure: matplotlib.figure.Figure
+        :return: None
+        :rtype: None
         """
         if self.axes is None:
             print "New axes"
@@ -63,19 +65,21 @@ class CirkuixObj:
         self.axes.patch.set_visible(False)  # No background
         self.axes.set_aspect(1)
 
-    def set_options(self, options):
-        for name in options:
-            self.options[name] = options[name]
-        return
-
     def to_form(self):
+        """
+        Copies options to the UI form.
+
+        :return: None
+        """
         for option in self.options:
             self.set_form_item(option)
 
     def read_form(self):
         """
-        Reads form into self.options
-        @rtype : None
+        Reads form into ``self.options``.
+
+        :return: None
+        :rtype : None
         """
         for option in self.options:
             self.read_form_item(option)
@@ -83,8 +87,9 @@ class CirkuixObj:
     def build_ui(self):
         """
         Sets up the UI/form for this object.
-        @return: None
-        @rtype : None
+
+        :return: None
+        :rtype : None
         """
 
         # Where the UI for this object is drawn
@@ -110,6 +115,13 @@ class CirkuixObj:
         sw.show()
 
     def set_form_item(self, option):
+        """
+        Copies the specified options to the UI form.
+
+        :param option: Name of the option (Key in ``self.options``).
+        :type option: str
+        :return: None
+        """
         fkind = self.form_kinds[option]
         fname = fkind + "_" + self.kind + "_" + option
 
@@ -217,6 +229,11 @@ class CirkuixGerber(CirkuixObj, Gerber):
         self.radios = {"gaps": {"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"}}
         self.radios_inv = {"gaps": {"tb": "rb_2tb", "lr": "rb_2lr", "4": "rb_4"}}
 
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from predecessors.
+        self.ser_attrs += ['options']
+
     def convert_units(self, units):
         factor = Gerber.convert_units(self, units)
 
@@ -290,7 +307,13 @@ class CirkuixExcellon(CirkuixObj, Excellon):
             "toolselection": "entry_text"
         })
 
+        # TODO: Document this.
         self.tool_cbs = {}
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from predecessors.
+        self.ser_attrs += ['options']
 
     def convert_units(self, units):
         factor = Excellon.convert_units(self, units)
@@ -339,10 +362,6 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         button.connect("activate", on_accept)
         button.connect("clicked", on_accept)
 
-        # def parse_lines(self, elines):
-        #     Excellon.parse_lines(self, elines)
-        #     self.options["units"] = self.units
-
 
 class CirkuixCNCjob(CirkuixObj, CNCjob):
     """
@@ -370,6 +389,11 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
             "multicolored": "cb",
             "tooldia": "entry_eval"
         })
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from predecessors.
+        self.ser_attrs += ['options']
 
     def plot(self, figure):
         CirkuixObj.plot(self, figure)
@@ -416,6 +440,11 @@ class CirkuixGeometry(CirkuixObj, Geometry):
             "paintoverlap": "entry_eval",
             "paintmargin": "entry_eval"
         })
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from predecessors.
+        self.ser_attrs += ['options']
 
     def scale(self, factor):
         if type(self.solid_geometry) == list:
@@ -510,7 +539,8 @@ class App:
         self.units_label = self.builder.get_object("label_units")
 
         # White (transparent) background on the "Options" tab.
-        self.builder.get_object("vp_options").override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+        self.builder.get_object("vp_options").override_background_color(Gtk.StateType.NORMAL,
+                                                                        Gdk.RGBA(1, 1, 1, 1))
 
         # Combo box to choose between project and application options.
         self.combo_options = self.builder.get_object("combo_options")
@@ -1100,9 +1130,51 @@ class App:
             return
         print "Unknown kind of form item:", fkind
 
+    def save_project(self, filename):
+        """
+        Saves the current project to the specified file.
+        :param filename: Name of the file in which to save.
+        :type filename: str
+        :return: None
+        """
+
+        d = {"objs": [self.stuff[o].to_dict() for o in self.stuff],
+             "options": self.options}
+
+        try:
+            f = open(filename, 'w')
+        except:
+            print "ERROR: Failed to open file for saving:", filename
+            return
+
+        try:
+            json.dump(d, f, default=to_dict)
+        except:
+            print "ERROR: File open but failed to write:", filename
+            f.close()
+            return
+
+        f.close()
+
+
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_file_saveproject(self, param):
+        return
+
+    def on_file_saveprojectas(self, param):
+        def on_success(app_obj, filename):
+            assert isinstance(app_obj, App)
+            app_obj.save_project(filename)
+            app_obj.info("Project saved to: " + filename)
+
+        self.file_chooser_save_action(on_success)
+        return
+
+    def on_file_saveprojectcopy(self, param):
+        return
+
     def on_options_app2project(self, param):
         """
         Callback for Options->Transfer Options->App=>Project. Copies options
