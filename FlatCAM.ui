@@ -2546,6 +2546,7 @@ to application defaults.</property>
                                             <property name="xalign">0</property>
                                             <property name="active">True</property>
                                             <property name="draw_indicator">True</property>
+                                            <signal name="toggled" handler="on_toggle_units" swapped="no"/>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>

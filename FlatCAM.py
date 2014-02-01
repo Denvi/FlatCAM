@@ -13,11 +13,11 @@ import sys
 
 
 ########################################
-##            CirkuixObj              ##
+##            FlatCAMObj              ##
 ########################################
-class CirkuixObj:
+class FlatCAMObj:
     """
-    Base type of objects handled in Cirkuix. These become interactive
+    Base type of objects handled in FlatCAM. These become interactive
     in the GUI, can be plotted, and their options can be modified
     by the user in their respective forms.
     """
@@ -178,25 +178,25 @@ class CirkuixObj:
     def deserialize(self, obj_dict):
         """
         Re-builds an object from its serialized version.
-        @param obj_dict: Dictionary representing a CirkuixObj
+        @param obj_dict: Dictionary representing a FlatCAMObj
         @type obj_dict: dict
         @return None
         """
         return
 
 
-class CirkuixGerber(CirkuixObj, Gerber):
+class FlatCAMGerber(FlatCAMObj, Gerber):
     """
     Represents Gerber code.
     """
 
     def __init__(self, name):
         Gerber.__init__(self)
-        CirkuixObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name)
 
         self.kind = "gerber"
 
-        # The 'name' is already in self.options from CirkuixObj
+        # The 'name' is already in self.options from FlatCAMObj
         self.options.update({
             "plot": True,
             "mergepolys": True,
@@ -211,7 +211,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
             "bboxrounded": False
         })
 
-        # The 'name' is already in self.form_kinds from CirkuixObj
+        # The 'name' is already in self.form_kinds from FlatCAMObj
         self.form_kinds.update({
             "plot": "cb",
             "mergepolys": "cb",
@@ -235,6 +235,15 @@ class CirkuixGerber(CirkuixObj, Gerber):
         self.ser_attrs += ['options', 'kind']
 
     def convert_units(self, units):
+        """
+        Converts the units of the object by scaling dimensions in all geometry
+        and options.
+
+        :param units: Units to which to convert the object: "IN" or "MM".
+        :type units: str
+        :return: None
+        :rtype: None
+        """
         factor = Gerber.convert_units(self, units)
 
         self.options['isotooldia'] *= factor
@@ -244,7 +253,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
         self.options['bboxmargin'] *= factor
 
     def plot(self, figure):
-        CirkuixObj.plot(self, figure)
+        FlatCAMObj.plot(self, figure)
 
         self.create_geometry()
 
@@ -276,14 +285,14 @@ class CirkuixGerber(CirkuixObj, Gerber):
         }
 
 
-class CirkuixExcellon(CirkuixObj, Excellon):
+class FlatCAMExcellon(FlatCAMObj, Excellon):
     """
     Represents Excellon code.
     """
 
     def __init__(self, name):
         Excellon.__init__(self)
-        CirkuixObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name)
 
         self.kind = "excellon"
 
@@ -323,7 +332,7 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         self.options['feedrate'] *= factor
 
     def plot(self, figure):
-        CirkuixObj.plot(self, figure)
+        FlatCAMObj.plot(self, figure)
         #self.setup_axes(figure)
         self.create_geometry()
 
@@ -344,7 +353,7 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         box.set_orientation(Gtk.Orientation(1))
         win.add(box)
         for tool in self.tools:
-            self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + self.tools[tool])
+            self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + str(self.tools[tool]))
             box.pack_start(self.tool_cbs[tool], False, False, 1)
         button = Gtk.Button(label="Accept")
         box.pack_start(button, False, False, 1)
@@ -363,7 +372,7 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         button.connect("clicked", on_accept)
 
 
-class CirkuixCNCjob(CirkuixObj, CNCjob):
+class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
     Represents G-Code.
     """
@@ -372,7 +381,7 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
                  feedrate=3.0, z_cut=-0.002, tooldia=0.0):
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
                         feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
-        CirkuixObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name)
 
         self.kind = "cncjob"
 
@@ -396,21 +405,25 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
         self.ser_attrs += ['options', 'kind']
 
     def plot(self, figure):
-        CirkuixObj.plot(self, figure)
+        FlatCAMObj.plot(self, figure)
         #self.setup_axes(figure)
         self.plot2(self.axes, tooldia=self.options["tooldia"])
         self.app.on_zoom_fit(None)
         self.app.canvas.queue_draw()
 
+    def convert_units(self, units):
+        factor = CNCjob.convert_units(self, units)
+        print "FlatCAMCNCjob.convert_units()"
+        self.options["tooldia"] *= factor
 
-class CirkuixGeometry(CirkuixObj, Geometry):
+class FlatCAMGeometry(FlatCAMObj, Geometry):
     """
     Geometric object not associated with a specific
     format.
     """
 
     def __init__(self, name):
-        CirkuixObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name)
         Geometry.__init__(self)
 
         self.kind = "geometry"
@@ -467,7 +480,7 @@ class CirkuixGeometry(CirkuixObj, Geometry):
         return factor
 
     def plot(self, figure):
-        CirkuixObj.plot(self, figure)
+        FlatCAMObj.plot(self, figure)
         #self.setup_axes(figure)
 
         try:
@@ -525,11 +538,11 @@ class App:
         GObject.threads_init()
 
         ## GUI ##
-        self.gladefile = "cirkuix.ui"
+        self.gladefile = "FlatCAM.ui"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(self.gladefile)
         self.window = self.builder.get_object("window1")
-        self.window.set_title("Cirkuix")
+        self.window.set_title("FlatCAM")
         self.position_label = self.builder.get_object("label3")
         self.grid = self.builder.get_object("grid1")
         self.notebook = self.builder.get_object("notebook1")
@@ -560,7 +573,7 @@ class App:
 
         #### DATA ####
         self.setup_obj_classes()
-        self.stuff = {}    # CirkuixObj's by name
+        self.stuff = {}    # FlatCAMObj's by name
         self.mouse = None  # Mouse coordinates over plot
 
         # What is selected by the user. It is
@@ -570,6 +583,8 @@ class App:
         # Used to inhibit the on_options_update callback when
         # the options are being changed by the program and not the user.
         self.options_update_ignore = False
+
+        self.toggle_units_ignore = False
 
         self.defaults = {
             "units": "in"
@@ -590,10 +605,10 @@ class App:
 
         # self.combos = []
 
-        # Options for each kind of CirkuixObj.
+        # Options for each kind of FlatCAMObj.
         # Example: 'gerber_plot': 'cb'. The widget name would be: 'cb_app_gerber_plot'
-        for CirkuixClass in [CirkuixExcellon, CirkuixGeometry, CirkuixGerber, CirkuixCNCjob]:
-            obj = CirkuixClass("no_name")
+        for FlatCAMClass in [FlatCAMExcellon, FlatCAMGeometry, FlatCAMGerber, FlatCAMCNCjob]:
+            obj = FlatCAMClass("no_name")
             for option in obj.form_kinds:
                 self.form_kinds[obj.kind + "_" + option] = obj.form_kinds[option]
                 # if obj.form_kinds[option] == "radio":
@@ -657,11 +672,11 @@ class App:
 
     def setup_obj_classes(self):
         """
-        Sets up application specifics on the CirkuixObj class.
+        Sets up application specifics on the FlatCAMObj class.
 
         :return: None
         """
-        CirkuixObj.app = self
+        FlatCAMObj.app = self
 
     def setup_project_list(self):
         """
@@ -873,7 +888,7 @@ class App:
 
     def new_object(self, kind, name, initialize):
         """
-        Creates a new specalized CirkuixObj and attaches it to the application,
+        Creates a new specalized FlatCAMObj and attaches it to the application,
         this is, updates the GUI accordingly, any other records and plots it.
 
         :param kind: The kind of object to create. One of 'gerber',
@@ -896,12 +911,13 @@ class App:
 
         # Create object
         classdict = {
-            "gerber": CirkuixGerber,
-            "excellon": CirkuixExcellon,
-            "cncjob": CirkuixCNCjob,
-            "geometry": CirkuixGeometry
+            "gerber": FlatCAMGerber,
+            "excellon": FlatCAMExcellon,
+            "cncjob": FlatCAMCNCjob,
+            "geometry": FlatCAMGeometry
         }
         obj = classdict[kind](name)
+        obj.units = self.options["units"]  # TODO: The constructor should look at defaults.
 
         # Initialize as per user request
         # User must take care to implement initialize
@@ -958,10 +974,10 @@ class App:
 
     def get_current(self):
         """
-        Returns the currently selected CirkuixObj in the application.
+        Returns the currently selected FlatCAMObj in the application.
 
-        :return: Currently selected CirkuixObj in the application.
-        :rtype: CirkuixObj or None
+        :return: Currently selected FlatCAMObj in the application.
+        :rtype: FlatCAMObj or None
         """
         try:
             return self.stuff[self.selected_item_name]
@@ -1095,6 +1111,7 @@ class App:
 
         # Set the on-change callback to do nothing while we do the changes.
         self.options_update_ignore = True
+        self.toggle_units_ignore = True
 
         combo_sel = self.combo_options.get_active()
         options_set = [self.options, self.defaults][combo_sel]
@@ -1102,6 +1119,7 @@ class App:
             self.set_form_item(option, options_set[option])
 
         self.options_update_ignore = False
+        self.toggle_units_ignore = False
 
     def set_form_item(self, name, value):
         """
@@ -1201,6 +1219,7 @@ class App:
         # Project options
         self.options.update(d['options'])
         self.project_filename = filename
+        self.units_label.set_text(self.options["units"])
 
         # Re create objects
         for obj in d['objs']:
@@ -1213,6 +1232,76 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_toggle_units(self, widget):
+        if self.toggle_units_ignore:
+            return
+
+        combo_sel = self.combo_options.get_active()
+        options_set = [self.options, self.defaults][combo_sel]
+
+        # Options to scale
+        dimensions = ['gerber_isotooldia', 'gerber_cutoutmargin', 'gerber_cutoutgapsize',
+                      'gerber_noncoppermargin', 'gerber_bboxmargin', 'excellon_drillz',
+                      'excellon_travelz', 'excellon_feedrate', 'cncjob_tooldia',
+                      'geometry_cutz', 'geometry_travelz', 'geometry_feedrate',
+                      'geometry_cnctooldia', 'geometry_painttooldia', 'geometry_paintoverlap',
+                      'geometry_paintmargin']
+
+        def scale_options(factor):
+            for dim in dimensions:
+                options_set[dim] *= factor
+
+        factor = 1/25.4
+        if self.builder.get_object('rb_mm').get_active():
+            factor = 25.4
+
+        # App units. Convert without warning.
+        if combo_sel == 1:
+            self.read_form()
+            scale_options(factor)
+            self.options2form()
+            return
+
+        label = Gtk.Label("Changing the units of the project causes all geometrical \n" + \
+                            "properties of all objects to be scaled accordingly. Continue?")
+        dialog = Gtk.Dialog("Changing Project Units", self.window, 0,
+                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        dialog.set_default_size(150, 100)
+        dialog.set_modal(True)
+        box = dialog.get_content_area()
+        box.set_border_width(10)
+        box.add(label)
+        dialog.show_all()
+        response = dialog.run()
+        dialog.destroy()
+
+        if response == Gtk.ResponseType.OK:
+            print "Converting units..."
+            print "Converting options..."
+            self.read_form()
+            scale_options(factor)
+            self.options2form()
+            for obj in self.stuff:
+                units = self.get_radio_value({"rb_mm": "MM", "rb_inch": "IN"})
+                print "Converting ", obj, " to ", units
+                self.stuff[obj].convert_units(units)
+            current = self.get_current()
+            if current is not None:
+                current.to_form()
+            self.plot_all()
+        else:
+            # Undo toggling
+            self.toggle_units_ignore = True
+            if self.builder.get_object('rb_mm').get_active():
+                self.builder.get_object('rb_inch').set_active(True)
+            else:
+                self.builder.get_object('rb_mm').set_active(True)
+            self.toggle_units_ignore = False
+
+        self.read_form()
+        self.units_label.set_text("[" + self.options["units"] + "]")
+
     def on_file_openproject(self, param):
         """
         Callback for menu item File->Open Project. Opens a file chooser and calls
@@ -1443,7 +1532,7 @@ class App:
         :return: None
         """
         obj = self.get_current()
-        assert isinstance(obj, CirkuixObj)
+        assert isinstance(obj, FlatCAMObj)
         factor = self.get_eval("entry_eval_" + obj.kind + "_scalefactor")
         obj.scale(factor)
         obj.to_form()
@@ -1480,7 +1569,7 @@ class App:
     def on_generate_gerber_bounding_box(self, widget):
         """
         Callback for request from the Gerber form to generate a bounding box for the
-        geometry in the object. Creates a CirkuixGeometry with the bounding box.
+        geometry in the object. Creates a FlatCAMGeometry with the bounding box.
 
         :param widget: Ignored.
         :return: None
@@ -1490,7 +1579,7 @@ class App:
         name = self.selected_item_name + "_bbox"
 
         def geo_init(geo_obj, app_obj):
-            assert isinstance(geo_obj, CirkuixGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry)
             bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["bboxmargin"])
             if not gerber.options["bboxrounded"]:
                 bounding_box = bounding_box.envelope
@@ -1535,14 +1624,14 @@ class App:
 
         job_name = self.selected_item_name + "_cnc"
         excellon = self.get_current()
-        assert isinstance(excellon, CirkuixExcellon)
+        assert isinstance(excellon, FlatCAMExcellon)
         excellon.read_form()
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
             excellon_ = self.get_current()
-            assert isinstance(excellon_, CirkuixExcellon)
-            assert isinstance(job_obj, CirkuixCNCjob)
+            assert isinstance(excellon_, FlatCAMExcellon)
+            assert isinstance(job_obj, FlatCAMCNCjob)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             job_obj.z_cut = excellon_.options["drillz"]
@@ -1581,7 +1670,7 @@ class App:
         :return: None
         """
         excellon = self.get_current()
-        assert isinstance(excellon, CirkuixExcellon)
+        assert isinstance(excellon, FlatCAMExcellon)
         excellon.show_tool_chooser()
 
     def on_entry_eval_activate(self, widget):
@@ -1595,7 +1684,7 @@ class App:
         """
         self.on_eval_update(widget)
         obj = self.get_current()
-        assert isinstance(obj, CirkuixObj)
+        assert isinstance(obj, FlatCAMObj)
         obj.read_form()
 
     def on_gerber_generate_noncopper(self, widget):
@@ -1610,9 +1699,9 @@ class App:
         name = self.selected_item_name + "_noncopper"
 
         def geo_init(geo_obj, app_obj):
-            assert isinstance(geo_obj, CirkuixGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry)
             gerber = app_obj.stuff[app_obj.selected_item_name]
-            assert isinstance(gerber, CirkuixGerber)
+            assert isinstance(gerber, FlatCAMGerber)
             gerber.read_form()
             bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["noncoppermargin"])
             non_copper = bounding_box.difference(gerber.solid_geometry)
@@ -1713,9 +1802,9 @@ class App:
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            assert isinstance(job_obj, CirkuixCNCjob)
+            assert isinstance(job_obj, FlatCAMCNCjob)
             geometry = app_obj.stuff[app_obj.selected_item_name]
-            assert isinstance(geometry, CirkuixGeometry)
+            assert isinstance(geometry, FlatCAMGeometry)
             geometry.read_form()
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
@@ -1752,7 +1841,7 @@ class App:
         Subscribes to the "Click on plot" event and continues
         after the click. Finds the polygon containing
         the clicked point and runs clear_poly() on it, resulting
-        in a new CirkuixGeometry object.
+        in a new FlatCAMGeometry object.
 
         :param widget: The  widget from which this was called.
         :return: None
@@ -1772,7 +1861,7 @@ class App:
 
             # Initializes the new geometry object
             def gen_paintarea(geo_obj, app_obj):
-                assert isinstance(geo_obj, CirkuixGeometry)
+                assert isinstance(geo_obj, FlatCAMGeometry)
                 assert isinstance(app_obj, App)
                 cp = clear_poly(poly.buffer(-geo.options["paintmargin"]), tooldia, overlap)
                 geo_obj.solid_geometry = cp
@@ -1800,7 +1889,7 @@ class App:
 
     def on_delete(self, widget):
         """
-        Delete the currently selected CirkuixObj.
+        Delete the currently selected FlatCAMObj.
 
         :param widget: The widget from which this was called.
         :return: None
@@ -1862,7 +1951,7 @@ class App:
     def on_tree_selection_changed(self, selection):
         """
         Callback for selection change in the project list. This changes
-        the currently selected CirkuixObj.
+        the currently selected FlatCAMObj.
 
         :param selection: Selection associated to the project tree or list
         :type selection: Gtk.TreeSelection
@@ -1991,7 +2080,7 @@ class App:
     def on_fileopengerber(self, param):
         """
         Callback for menu item File->Open Gerber. Defines a function that is then passed
-        to ``self.file_chooser_action()``. It requests the creation of a CirkuixGerber object
+        to ``self.file_chooser_action()``. It requests the creation of a FlatCAMGerber object
         and updates the progress bar throughout the process.
 
         :param param: Ignore
@@ -2021,7 +2110,7 @@ class App:
     def on_fileopenexcellon(self, param):
         """
         Callback for menu item File->Open Excellon. Defines a function that is then passed
-        to ``self.file_chooser_action()``. It requests the creation of a CirkuixExcellon object
+        to ``self.file_chooser_action()``. It requests the creation of a FlatCAMExcellon object
         and updates the progress bar throughout the process.
 
         :param param: Ignore
@@ -2051,7 +2140,7 @@ class App:
     def on_fileopengcode(self, param):
         """
         Callback for menu item File->Open G-Code. Defines a function that is then passed
-        to ``self.file_chooser_action()``. It requests the creation of a CirkuixCNCjob object
+        to ``self.file_chooser_action()``. It requests the creation of a FlatCAMCNCjob object
         and updates the progress bar throughout the process.
 
         :param param: Ignore
@@ -2113,8 +2202,9 @@ class App:
         by the Matplotlib backend and has been registered in ``self.__init__()``.
         For details, see: http://matplotlib.org/users/event_handling.html
 
-        :param event:
-        :return:
+        :param event: Contains information about the event, like which button
+            was clicked, the pixel coordinates and the axes coordinates.
+        :return: None
         """
         # For key presses
         self.canvas.grab_focus()

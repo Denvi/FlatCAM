@@ -45,6 +45,7 @@ class Geometry:
             return (0, 0, 0, 0)
             
         if type(self.solid_geometry) == list:
+            # TODO: This can be done faster. See comment from Shapely mailing lists.
             return cascaded_union(self.solid_geometry).bounds
         else:
             return self.solid_geometry.bounds
@@ -98,13 +99,15 @@ class Geometry:
     def convert_units(self, units):
         """
         Converts the units of the object to ``units`` by scaling all
-        the geometry appropriately.
+        the geometry appropriately. This call ``scale()``. Don't call
+        it again in descendents.
 
         :param units: "IN" or "MM"
         :type units: str
         :return: Scaling factor resulting from unit change.
         :rtype: float
         """
+        print "Geometry.convert_units()"
 
         if units.upper() == self.units.upper():
             return 1.0
@@ -578,6 +581,7 @@ class Excellon(Geometry):
         """
         Scales geometry on the XY plane in the object by a given factor.
         Tool sizes, feedrates an Z-plane dimensions are untouched.
+
         :param factor: Number by which to scale the object.
         :type factor: float
         :return: None
@@ -586,7 +590,7 @@ class Excellon(Geometry):
 
         # Drills
         for drill in self.drills:
-            drill.point = affinity.scale(drill.point, factor, factor, origin=(0, 0))
+            drill['point'] = affinity.scale(drill['point'], factor, factor, origin=(0, 0))
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -639,7 +643,18 @@ class CNCjob(Geometry):
         self.ser_attrs += ['kind', 'z_cut', 'z_move', 'feedrate', 'tooldia',
                            'gcode', 'input_geometry_bounds', 'gcode_parsed',
                            'steps_per_circ']
-        
+
+    def convert_units(self, units):
+        factor = Geometry.convert_units(self, units)
+        print "CNCjob.convert_units()"
+
+        self.z_cut *= factor
+        self.z_move *= factor
+        self.feedrate *= factor
+        self.tooldia *= factor
+
+        return factor
+
     def generate_from_excellon(self, exobj):
         """
         Generates G-code for drilling from Excellon object.
@@ -897,44 +912,44 @@ class CNCjob(Geometry):
         self.gcode_parsed = geometry
         return geometry
         
-    def plot(self, tooldia=None, dpi=75, margin=0.1,
-             color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-             alpha={"T": 0.3, "C": 1.0}):
-        """
-        Creates a Matplotlib figure with a plot of the
-        G-code job.
-        """
-        if tooldia is None:
-            tooldia = self.tooldia
-            
-        fig = Figure(dpi=dpi)
-        ax = fig.add_subplot(111)
-        ax.set_aspect(1)
-        xmin, ymin, xmax, ymax = self.input_geometry_bounds
-        ax.set_xlim(xmin-margin, xmax+margin)
-        ax.set_ylim(ymin-margin, ymax+margin)
-        
-        if tooldia == 0:
-            for geo in self.gcode_parsed:
-                linespec = '--'
-                linecolor = color[geo['kind'][0]][1]
-                if geo['kind'][0] == 'C':
-                    linespec = 'k-'
-                x, y = geo['geom'].coords.xy
-                ax.plot(x, y, linespec, color=linecolor)
-        else:
-            for geo in self.gcode_parsed:
-                poly = geo['geom'].buffer(tooldia/2.0)
-                patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
-                                     edgecolor=color[geo['kind'][0]][1],
-                                     alpha=alpha[geo['kind'][0]], zorder=2)
-                ax.add_patch(patch)
-        
-        return fig
+    # def plot(self, tooldia=None, dpi=75, margin=0.1,
+    #          color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
+    #          alpha={"T": 0.3, "C": 1.0}):
+    #     """
+    #     Creates a Matplotlib figure with a plot of the
+    #     G-code job.
+    #     """
+    #     if tooldia is None:
+    #         tooldia = self.tooldia
+    #
+    #     fig = Figure(dpi=dpi)
+    #     ax = fig.add_subplot(111)
+    #     ax.set_aspect(1)
+    #     xmin, ymin, xmax, ymax = self.input_geometry_bounds
+    #     ax.set_xlim(xmin-margin, xmax+margin)
+    #     ax.set_ylim(ymin-margin, ymax+margin)
+    #
+    #     if tooldia == 0:
+    #         for geo in self.gcode_parsed:
+    #             linespec = '--'
+    #             linecolor = color[geo['kind'][0]][1]
+    #             if geo['kind'][0] == 'C':
+    #                 linespec = 'k-'
+    #             x, y = geo['geom'].coords.xy
+    #             ax.plot(x, y, linespec, color=linecolor)
+    #     else:
+    #         for geo in self.gcode_parsed:
+    #             poly = geo['geom'].buffer(tooldia/2.0)
+    #             patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
+    #                                  edgecolor=color[geo['kind'][0]][1],
+    #                                  alpha=alpha[geo['kind'][0]], zorder=2)
+    #             ax.add_patch(patch)
+    #
+    #     return fig
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
              color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-             alpha={"T": 0.3, "C":1.0}):
+             alpha={"T": 0.3, "C": 1.0}):
         """
         Plots the G-code job onto the given axes.
         """
@@ -964,8 +979,9 @@ class CNCjob(Geometry):
         """
         Creates G-Code for the exterior and all interior paths
         of a polygon.
-        @param polygon: A Shapely.Polygon
-        @type polygon: Shapely.Polygon
+
+        :param polygon: A Shapely.Polygon
+        :type polygon: Shapely.Polygon
         """
         gcode = ""
         t = "G0%d X%.4fY%.4f\n"
@@ -1009,23 +1025,17 @@ class CNCjob(Geometry):
         Scales all the geometry on the XY plane in the object by the
         given factor. Tool sizes, feedrates, or Z-axis dimensions are
         not altered.
+
         :param factor: Number by which to scale the object.
         :type factor: float
         :return: None
         :rtype: None
         """
+
         for g in self.gcode_parsed:
             g['geom'] = affinity.scale(g['geom'], factor, factor, origin=(0, 0))
 
-    def convert_units(self, units):
-        factor = Geometry.convert_units(self, units)
-
-        self.z_move *= factor
-        self.z_cut *= factor
-        self.feedrate *= factor
-        self.tooldia *= factor
-
-        return factor
+        self.create_geometry()
 
 
 def get_bounds(geometry_set):
