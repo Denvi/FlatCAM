@@ -79,7 +79,7 @@ class CirkuixObj:
         Reads form into ``self.options``.
 
         :return: None
-        :rtype : None
+        :rtype: None
         """
         for option in self.options:
             self.read_form_item(option)
@@ -89,7 +89,7 @@ class CirkuixObj:
         Sets up the UI/form for this object.
 
         :return: None
-        :rtype : None
+        :rtype: None
         """
 
         # Where the UI for this object is drawn
@@ -232,7 +232,7 @@ class CirkuixGerber(CirkuixObj, Gerber):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
-        self.ser_attrs += ['options']
+        self.ser_attrs += ['options', 'kind']
 
     def convert_units(self, units):
         factor = Gerber.convert_units(self, units)
@@ -313,7 +313,7 @@ class CirkuixExcellon(CirkuixObj, Excellon):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
-        self.ser_attrs += ['options']
+        self.ser_attrs += ['options', 'kind']
 
     def convert_units(self, units):
         factor = Excellon.convert_units(self, units)
@@ -393,7 +393,7 @@ class CirkuixCNCjob(CirkuixObj, CNCjob):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
-        self.ser_attrs += ['options']
+        self.ser_attrs += ['options', 'kind']
 
     def plot(self, figure):
         CirkuixObj.plot(self, figure)
@@ -444,7 +444,7 @@ class CirkuixGeometry(CirkuixObj, Geometry):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
-        self.ser_attrs += ['options']
+        self.ser_attrs += ['options', 'kind']
 
     def scale(self, factor):
         if type(self.solid_geometry) == list:
@@ -515,10 +515,10 @@ class App:
 
     def __init__(self):
         """
-        Starts the application and the Gtk.main().
+        Starts the application.
 
-        @return: app
-        @rtype: App
+        :return: app
+        :rtype: App
         """
 
         # Needed to interact with the GUI from other threads.
@@ -555,10 +555,10 @@ class App:
         self.canvas = None
         self.setup_plot()
 
-        self.setup_project_list()
-        self.setup_component_editor()
+        self.setup_project_list()  # The "Project" tab
+        self.setup_component_editor()  # The "Selected" tab
 
-        ## DATA ##
+        #### DATA ####
         self.setup_obj_classes()
         self.stuff = {}    # CirkuixObj's by name
         self.mouse = None  # Mouse coordinates over plot
@@ -574,7 +574,10 @@ class App:
         self.defaults = {
             "units": "in"
         }  # Application defaults
+
+        ## Current Project ##
         self.options = {}  # Project options
+        self.project_filename = None
 
         self.form_kinds = {
             "units": "radio"
@@ -838,7 +841,14 @@ class App:
         """
 
         value = self.builder.get_object(widget_name).get_text()
-        return eval(value)
+        if value == "":
+            value = "None"
+        try:
+            evald = eval(value)
+            return evald
+        except:
+            self.info("Could not evaluate: " + value)
+            return None
 
     def set_list_selection(self, name):
         """
@@ -1077,9 +1087,10 @@ class App:
     def options2form(self):
         """
         Sets the 'Project Options' or 'Application Defaults' form with values from
-        ``self.options``or ``self.defaults``.
-        :return : None
-        :rtype : None
+        ``self.options`` or ``self.defaults``.
+
+        :return: None
+        :rtype: None
         """
 
         # Set the on-change callback to do nothing while we do the changes.
@@ -1133,10 +1144,17 @@ class App:
     def save_project(self, filename):
         """
         Saves the current project to the specified file.
+
         :param filename: Name of the file in which to save.
         :type filename: str
         :return: None
         """
+
+        # Captura the latest changes
+        try:
+            self.get_current().read_form()
+        except:
+            pass
 
         d = {"objs": [self.stuff[o].to_dict() for o in self.stuff],
              "options": self.options}
@@ -1156,24 +1174,106 @@ class App:
 
         f.close()
 
+    def open_project(self, filename):
+        """
+        Loads a project from the specified file.
+
+        :param filename:  Name of the file from which to load.
+        :type filename: str
+        :return: None
+        """
+
+        try:
+            f = open(filename, 'r')
+        except:
+            print "WARNING: Failed to open project file:", filename
+            return
+
+        try:
+            d = json.load(f, object_hook=dict2obj)
+        except:
+            print "WARNING: Failed to parse project file:", filename
+            f.close()
+
+        # Clear the current project
+        self.on_file_new(None)
+
+        # Project options
+        self.options.update(d['options'])
+        self.project_filename = filename
+
+        # Re create objects
+        for obj in d['objs']:
+            def obj_init(obj_inst, app_inst):
+                obj_inst.from_dict(obj)
+            self.new_object(obj['kind'], obj['options']['name'], obj_init)
+
+        self.info("Project loaded from: " + filename)
 
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_file_openproject(self, param):
+        """
+        Callback for menu item File->Open Project. Opens a file chooser and calls
+        ``self.open_project()`` after successful selection of a filename.
+
+        :param param: Ignored.
+        :return: None
+        """
+        def on_success(app_obj, filename):
+            app_obj.open_project(filename)
+
+        self.file_chooser_action(on_success)
+
     def on_file_saveproject(self, param):
-        return
+        """
+        Callback for menu item File->Save Project. Saves the project to
+        ``self.project_filename`` or calls ``self.on_file_saveprojectas()``
+        if set to None. The project is saved by calling ``self.save_project()``.
+
+        :param param: Ignored.
+        :return: None
+        """
+        if self.project_filename is None:
+            self.on_file_saveprojectas(None)
+        else:
+            self.save_project(self.project_filename)
+            self.info("Project saved to: " + self.project_filename)
 
     def on_file_saveprojectas(self, param):
+        """
+        Callback for menu item File->Save Project As... Opens a file
+        chooser and saves the project to the given file via
+        ``self.save_project()``.
+
+        :param param: Ignored.
+        :return: None
+        """
         def on_success(app_obj, filename):
             assert isinstance(app_obj, App)
             app_obj.save_project(filename)
+            self.project_filename = filename
             app_obj.info("Project saved to: " + filename)
 
         self.file_chooser_save_action(on_success)
-        return
 
     def on_file_saveprojectcopy(self, param):
-        return
+        """
+        Callback for menu item File->Save Project Copy... Opens a file
+        chooser and saves the project to the given file via
+        ``self.save_project``. It does not update ``self.project_filename`` so
+        subsequent save requests are done on the previous known filename.
+
+        :param param: Ignore.
+        :return: None
+        """
+        def on_success(app_obj, filename):
+            assert isinstance(app_obj, App)
+            app_obj.save_project(filename)
+            app_obj.info("Project copy saved to: " + filename)
+
+        self.file_chooser_save_action(on_success)
 
     def on_options_app2project(self, param):
         """
@@ -1274,7 +1374,7 @@ class App:
     def on_file_savedefaults(self, param):
         """
         Callback for menu item File->Save Defaults. Saves application default options
-        (``self.defaults``) to defaults.json.
+        ``self.defaults`` to defaults.json.
 
         :param param: Ignored.
         :return: None
@@ -1779,7 +1879,9 @@ class App:
 
             print "You selected", model[treeiter][0]
             self.selected_item_name = model[treeiter][0]
-            GLib.idle_add(lambda: self.get_current().build_ui())
+            obj_new = self.get_current()
+            if obj_new is not None:
+                GLib.idle_add(lambda: obj_new.build_ui())
         else:
             print "Nothing selected"
             self.selected_item_name = None
@@ -1807,7 +1909,11 @@ class App:
         #self.tree_select.unselect_all()
         self.build_list()
 
-        #print "File->New not implemented yet."
+        # Clear project filename
+        self.project_filename = None
+
+        # Re-fresh project options
+        self.on_options_app2project(None)
 
     def on_filequit(self, param):
         """

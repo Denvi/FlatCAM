@@ -518,15 +518,87 @@ startup state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_savedefaults">
-<tt class="descname">on_file_savedefaults</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_savedefaults" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback for menu item File-&gt;Save Defaults. Saves application default options
-(<tt class="docutils literal"><span class="pre">self.defaults</span></tt>) to defaults.json.</p>
+<dt id="cirkuix.App.on_file_openproject">
+<tt class="descname">on_file_openproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_openproject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Open Project. Opens a file chooser and calls
+<tt class="docutils literal"><span class="pre">self.open_project()</span></tt> after successful selection of a filename.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_file_savedefaults">
+<tt class="descname">on_file_savedefaults</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_savedefaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Defaults. Saves application default options
+<tt class="docutils literal"><span class="pre">self.defaults</span></tt> to defaults.json.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_file_saveproject">
+<tt class="descname">on_file_saveproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveproject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project. Saves the project to
+<tt class="docutils literal"><span class="pre">self.project_filename</span></tt> or calls <tt class="docutils literal"><span class="pre">self.on_file_saveprojectas()</span></tt>
+if set to None. The project is saved by calling <tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_file_saveprojectas">
+<tt class="descname">on_file_saveprojectas</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveprojectas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project As... Opens a file
+chooser and saves the project to the given file via
+<tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.on_file_saveprojectcopy">
+<tt class="descname">on_file_saveprojectcopy</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveprojectcopy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project Copy... Opens a file
+chooser and saves the project to the given file via
+<tt class="docutils literal"><span class="pre">self.save_project</span></tt>. It does not update <tt class="docutils literal"><span class="pre">self.project_filename</span></tt> so
+subsequent save requests are done on the previous known filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignore.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
@@ -1064,12 +1136,36 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
+<dt id="cirkuix.App.open_project">
+<tt class="descname">open_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.App.open_project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a project from the specified file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; Name of the file from which to load.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="cirkuix.App.options2form">
 <tt class="descname">options2form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.options2form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets the &#8216;Project Options&#8217; or &#8216;Application Defaults&#8217; form with values from
-<tt class="docutils literal"><span class="pre">self.options``or</span> <span class="pre">``self.defaults</span></tt>.
-:return : None
-:rtype : None</p>
+<tt class="docutils literal"><span class="pre">self.options</span></tt> or <tt class="docutils literal"><span class="pre">self.defaults</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1120,6 +1216,22 @@ saves it to the corresponding dictionary.</p>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.App.save_project">
+<tt class="descname">save_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.App.save_project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the current project to the specified file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; Name of the file in which to save.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
 </tbody>
 </table>
@@ -1313,6 +1425,13 @@ the geometry appropriately.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="cirkuix.Geometry.from_dict">
+<tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets object&#8217;s attributes from a dictionary.
+Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="cirkuix.Geometry.get_empty_area">
 <tt class="descname">get_empty_area</tt><big>(</big><em>boundary=None</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.get_empty_area" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the complement of self.solid_geometry within
@@ -1343,6 +1462,23 @@ this method.
 <tt class="descname">size</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns (width, height) of rectangular
 bounds of geometry.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.Geometry.to_dict">
+<tt class="descname">to_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a respresentation of the object as a dictionary.
+Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A dictionary-encoded copy of the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
@@ -1694,9 +1830,17 @@ by the user in their respective forms.</p>
 <dl class="method">
 <dt id="cirkuix.CirkuixObj.build_ui">
 <tt class="descname">build_ui</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.build_ui" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets up the UI/form for this object.
-&#64;return: None
-&#64;rtype : None</p>
+<dd><p>Sets up the UI/form for this object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1718,8 +1862,17 @@ clears them. Descendants must do the actual plotting.</p>
 <dl class="method">
 <dt id="cirkuix.CirkuixObj.read_form">
 <tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.read_form" title="Permalink to this definition">¶</a></dt>
-<dd><p>Reads form into self.options
-&#64;rtype : None</p>
+<dd><p>Reads form into <tt class="docutils literal"><span class="pre">self.options</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1732,14 +1885,53 @@ it can be later exported as JSON. Override this method.
 </dd></dl>
 
 <dl class="method">
+<dt id="cirkuix.CirkuixObj.set_form_item">
+<tt class="descname">set_form_item</tt><big>(</big><em>option</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.set_form_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copies the specified options to the UI form.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>option</strong> (<em>str</em>) &#8211; Name of the option (Key in <tt class="docutils literal"><span class="pre">self.options</span></tt>).</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="cirkuix.CirkuixObj.setup_axes">
 <tt class="descname">setup_axes</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.setup_axes" title="Permalink to this definition">¶</a></dt>
 <dd><p>1) Creates axes if they don&#8217;t exist. 2) Clears axes. 3) Attaches
 them to figure if not part of the figure. 4) Sets transparent
-background. 5) Sets 1:1 scale aspect ratio.
-&#64;param figure: A Matplotlib.Figure on which to add/configure axes.
-&#64;type figure: matplotlib.figure.Figure
-&#64;return: None</p>
+background. 5) Sets 1:1 scale aspect ratio.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>figure</strong> (<em>matplotlib.figure.Figure</em>) &#8211; A Matplotlib.Figure on which to add/configure axes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="cirkuix.CirkuixObj.to_form">
+<tt class="descname">to_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.to_form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Copies options to the UI form.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>

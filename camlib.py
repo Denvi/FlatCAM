@@ -124,9 +124,7 @@ class Geometry:
     def to_dict(self):
         """
         Returns a respresentation of the object as a dictionary.
-        ``self.solid_geometry`` has been converted using the ``to_dict``
-        function. Attributes to include are listed in
-        ``self.ser_attrs``.
+        Attributes to include are listed in ``self.ser_attrs``.
 
         :return: A dictionary-encoded copy of the object.
         :rtype: dict
@@ -137,7 +135,12 @@ class Geometry:
         return d
 
     def from_dict(self, d):
-        return
+        """
+        Sets object's attributes from a dictionary.
+        Attributes to include are listed in ``self.ser_attrs``.
+        """
+        for attr in self.ser_attrs:
+            setattr(self, attr, d[attr])
 
 
 class Gerber (Geometry):

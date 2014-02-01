@@ -41,6 +41,11 @@
     <property name="can_focus">False</property>
     <property name="stock">gtk-save-as</property>
   </object>
+  <object class="GtkImage" id="image9">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="stock">gtk-open</property>
+  </object>
   <object class="GtkOffscreenWindow" id="offscrwindow_cncjob">
     <property name="can_focus">False</property>
     <child>
@@ -2062,14 +2067,13 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkImageMenuItem" id="menuitem5">
-                        <property name="label" translatable="yes">Save defaults</property>
+                      <object class="GtkImageMenuItem" id="imagemenuitem11">
+                        <property name="label" translatable="yes">Open Project ...</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="tooltip_text" translatable="yes">Saves the application's default options to file.</property>
-                        <property name="image">image4</property>
+                        <property name="image">image9</property>
                         <property name="use_stock">False</property>
-                        <signal name="activate" handler="on_file_savedefaults" swapped="no"/>
+                        <signal name="activate" handler="on_file_openproject" swapped="no"/>
                       </object>
                     </child>
                     <child>
@@ -2106,6 +2110,23 @@
                         <property name="image">image8</property>
                         <property name="use_stock">False</property>
                         <signal name="activate" handler="on_file_saveprojectcopy" swapped="no"/>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="separatormenuitem4">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkImageMenuItem" id="menuitem5">
+                        <property name="label" translatable="yes">Save defaults</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="tooltip_text" translatable="yes">Saves the application's default options to file.</property>
+                        <property name="image">image4</property>
+                        <property name="use_stock">False</property>
+                        <signal name="activate" handler="on_file_savedefaults" swapped="no"/>
                       </object>
                     </child>
                     <child>
