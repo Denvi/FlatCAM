@@ -1,3 +1,9 @@
+############################################################
+# Author: Juan Pablo Caram                                 #
+# Date: 2/5/2014                                           #
+# caram.cl                                                 #
+############################################################
+
 import threading
 from gi.repository import Gtk, Gdk, GLib, GObject
 import simplejson as json
@@ -255,7 +261,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
     def plot(self, figure):
         FlatCAMObj.plot(self, figure)
 
-        self.create_geometry()
+        #self.create_geometry()
 
         if self.options["mergepolys"]:
             geometry = self.solid_geometry
@@ -334,7 +340,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
     def plot(self, figure):
         FlatCAMObj.plot(self, figure)
         #self.setup_axes(figure)
-        self.create_geometry()
+        #self.create_geometry()
 
         # Plot excellon
         for geo in self.solid_geometry:
@@ -572,6 +578,7 @@ class App:
         self.setup_component_editor()  # The "Selected" tab
 
         #### DATA ####
+        self.clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         self.setup_obj_classes()
         self.stuff = {}    # FlatCAMObj's by name
         self.mouse = None  # Mouse coordinates over plot
@@ -1229,10 +1236,196 @@ class App:
 
         self.info("Project loaded from: " + filename)
 
+    def populate_objects_combo(self, combo):
+        """
+        Populates a Gtk.Comboboxtext with the list of the object in the project.
+
+        :param combo: Name or instance of the comboboxtext.
+        :type combo: str or Gtk.ComboBoxText
+        :return: None
+        """
+        print "Populating combo!"
+        if type(combo) == str:
+            combo = self.builder.get_object(combo)
+
+        combo.remove_all()
+        for obj in self.stuff:
+            combo.append_text(obj)
+
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_create_mirror(self, widget):
+        """
+        Creates a mirror image of a Gerber object to be used as a bottom
+        copper layer.
+
+        :param widget: Ignored.
+        :return: None
+        """
+
+        # Layer to mirror
+        gerb_name = self.builder.get_object("comboboxtext_bottomlayer").get_active_text()
+        gerb = self.stuff[gerb_name]
+
+        # For now, lets limit to Gerbers.
+        assert isinstance(gerb, FlatCAMGerber)
+
+        # Mirror axis "X" or "Y
+        axis = self.get_radio_value({"rb_mirror_x": "X",
+                                     "rb_mirror_y": "Y"})
+        mode = self.get_radio_value({"rb_mirror_box": "box",
+                                     "rb_mirror_point": "point"})
+        if mode == "point":  # A single point defines the mirror axis
+            # TODO: Error handling
+            px, py = eval(self.point_entry.get_text())
+        else:  # The axis is the line dividing the box in the middle
+            name = self.box_combo.get_active_text()
+            bb_obj = self.stuff[name]
+            xmin, ymin, xmax, ymax = bb_obj.bounds()
+            px = 0.5*(xmin+xmax)
+            py = 0.5*(ymin+ymax)
+
+        # Do the mirroring
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+        mirrored = affinity.scale(gerb.solid_geometry, xscale, yscale, origin=(px, py))
+
+        def obj_init(obj_inst, app_inst):
+            obj_inst.solid_geometry = mirrored
+
+        self.new_object("gerber", gerb.options["name"] + "_mirror", obj_init)
+
+    def on_create_aligndrill(self, widget):
+        """
+        Creates alignment holes Excellon object. Creates mirror duplicates
+        of the specified holes around the specified axis.
+
+        :param widget: Ignored.
+        :return: None
+        """
+        # Mirror axis. Same as in on_create_mirror.
+        axis = self.get_radio_value({"rb_mirror_x": "X",
+                                     "rb_mirror_y": "Y"})
+        # TODO: Error handling
+        mode = self.get_radio_value({"rb_mirror_box": "box",
+                                     "rb_mirror_point": "point"})
+        if mode == "point":
+            px, py = eval(self.point_entry.get_text())
+        else:
+            name = self.box_combo.get_active_text()
+            bb_obj = self.stuff[name]
+            xmin, ymin, xmax, ymax = bb_obj.bounds()
+            px = 0.5*(xmin+xmax)
+            py = 0.5*(ymin+ymax)
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+        # Tools
+        tools = {"1": self.get_eval("entry_dblsided_alignholediam")}
+
+        # Parse hole list
+        # TODO: Better parsing
+        holes = self.builder.get_object("entry_dblsided_alignholes").get_text()
+        holes = eval("[" + holes + "]")
+        drills = []
+        for hole in holes:
+            point = Point(hole)
+            point_mirror = affinity.scale(point, xscale, yscale, origin=(px, py))
+            drills.append({"point": point, "tool": "1"})
+            drills.append({"point": point_mirror, "tool": "1"})
+
+        def obj_init(obj_inst, app_inst):
+            obj_inst.tools = tools
+            obj_inst.drills = drills
+            obj_inst.create_geometry()
+
+        self.new_object("excellon", "Alignment Drills", obj_init)
+
+
+    def on_toggle_pointbox(self, widget):
+        """
+        Callback for radio selection change between point and box in the
+        Double-sided PCB tool. Updates the UI accordingly.
+
+        :param widget: Ignored.
+        :return: None
+        """
+
+        # Where the entry or combo go
+        box = self.builder.get_object("box_pointbox")
+
+        # Clear contents
+        children = box.get_children()
+        for child in children:
+            box.remove(child)
+
+        choice = self.get_radio_value({"rb_mirror_point": "point",
+                                       "rb_mirror_box": "box"})
+
+        if choice == "point":
+            self.point_entry = Gtk.Entry()
+            self.builder.get_object("box_pointbox").pack_start(self.point_entry,
+                                                               False, False, 1)
+            self.point_entry.show()
+        else:
+            self.box_combo = Gtk.ComboBoxText()
+            self.builder.get_object("box_pointbox").pack_start(self.box_combo,
+                                                               False, False, 1)
+            self.populate_objects_combo(self.box_combo)
+            self.box_combo.show()
+
+
+    def on_tools_doublesided(self, param):
+        """
+        Callback for menu item Tools->Double Sided PCB Tool. Launches the
+        tool placing its UI in the "Tool" tab in the notebook.
+
+        :param param: Ignored.
+        :return: None
+        """
+
+        # Were are we drawing the UI
+        box_tool = self.builder.get_object("box_tool")
+
+        # Remove anything else in the box
+        box_children = box_tool.get_children()
+        for child in box_children:
+            box_tool.remove(child)
+
+        # Get the UI
+        osw = self.builder.get_object("offscreenwindow_dblsided")
+        sw = self.builder.get_object("sw_dblsided")
+        osw.remove(sw)
+        vp = self.builder.get_object("vp_dblsided")
+        vp.override_background_color(Gtk.StateType.NORMAL, Gdk.RGBA(1, 1, 1, 1))
+
+        # Put in the UI
+        box_tool.pack_start(sw, True, True, 0)
+
+        # INITIALIZATION
+        # Populate combo box
+        self.populate_objects_combo("comboboxtext_bottomlayer")
+
+        # Point entry
+        self.point_entry = Gtk.Entry()
+        box = self.builder.get_object("box_pointbox")
+        for child in box.get_children():
+            box.remove(child)
+        box.pack_start(self.point_entry, False, False, 1)
+
+        # Show the "Tool" tab
+        self.notebook.set_current_page(3)
+        sw.show_all()
+
     def on_toggle_units(self, widget):
+        """
+        Callback for the Units radio-button change in the Options tab.
+        Changes the application's default units or the current project's units.
+        If changing the project's units, the change propagates to all of
+        the objects in the project.
+
+        :param widget: Ignored.
+        :return: None
+        """
         if self.toggle_units_ignore:
             return
 
@@ -1574,6 +1767,7 @@ class App:
         :param widget: Ignored.
         :return: None
         """
+        # TODO: Use Gerber.get_bounding_box(...)
         gerber = self.get_current()
         gerber.read_form()
         name = self.selected_item_name + "_bbox"
@@ -2094,8 +2288,10 @@ class App:
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Gerber ..."))
 
             def obj_init(gerber_obj, app_obj):
+                assert isinstance(gerber_obj, FlatCAMGerber)
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
                 gerber_obj.parse_file(filename)
+                gerber_obj.create_geometry()
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
@@ -2126,6 +2322,7 @@ class App:
             def obj_init(excellon_obj, app_obj):
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
                 excellon_obj.parse_file(filename)
+                excellon_obj.create_geometry()
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
@@ -2202,6 +2399,10 @@ class App:
         by the Matplotlib backend and has been registered in ``self.__init__()``.
         For details, see: http://matplotlib.org/users/event_handling.html
 
+        Default actions are:
+
+        * Copy coordinates to clipboard. Ex.: (65.5473, -13.2679)
+
         :param event: Contains information about the event, like which button
             was clicked, the pixel coordinates and the axes coordinates.
         :return: None
@@ -2213,8 +2414,12 @@ class App:
             print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
                 event.button, event.x, event.y, event.xdata, event.ydata)
 
+            # TODO: This custom subscription mechanism is probably not necessary.
             for subscriber in self.plot_click_subscribers:
                 self.plot_click_subscribers[subscriber](event)
+
+            self.clipboard.set_text("(%.4f, %.4f)" % (event.xdata, event.ydata), -1)
+
         except Exception, e:
             print "Outside plot!"
 

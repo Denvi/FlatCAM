@@ -1,3 +1,9 @@
+############################################################
+# Author: Juan Pablo Caram                                 #
+# Date: 2/5/2014                                           #
+# caram.cl                                                 #
+############################################################
+
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 from matplotlib.figure import Figure
 import re
@@ -16,6 +22,7 @@ from shapely.geometry.base import BaseGeometry
 from descartes.patch import PolygonPatch
 
 import simplejson as json
+from matplotlib.pyplot import plot
 
 class Geometry:
     def __init__(self):
@@ -202,9 +209,19 @@ class Gerber (Geometry):
     * ``buffered_paths`` (list): List of (Shapely) polygons resulting from
       *buffering* (or thickening) the ``paths`` with the aperture. These are
       generated from ``paths`` in ``buffer_paths()``.
+
+    **USAGE**
+
+
     """
 
     def __init__(self):
+        """
+        The constructor takes no parameters. Use ``gerber.parse_files()``
+        or ``gerber.parse_lines()`` to populate the object from Gerber source.
+        :return: Gerber object
+        :rtype: Gerber
+        """
         # Initialize parent
         Geometry.__init__(self)        
         
@@ -457,8 +474,9 @@ class Gerber (Geometry):
         Every stroke (linear or circular) has an aperture which gives
         it thickness. Additionally, aperture strokes have non-zero area,
         and regions naturally do as well.
+
         :rtype : None
-        @return: None
+        :return: None
         """
         # if len(self.buffered_paths) == 0:
         #     self.buffer_paths()
@@ -469,6 +487,25 @@ class Gerber (Geometry):
                                 self.buffered_paths + 
                                 [poly['polygon'] for poly in self.regions] +
                                 self.flash_geometry)
+
+    def get_bounding_box(self, margin=0.0, rounded=False):
+        """
+        Creates and returns a rectangular polygon bounding at a distance of
+        margin from the object's ``solid_geometry``. If margin > 0, the polygon
+        can optionally have rounded corners of radius equal to margin.
+
+        :param margin: Distance to enlarge the rectangular bounding
+        box in both positive and negative, x and y axes.
+        :type margin: float
+        :param rounded: Wether or not to have rounded corners.
+        :type rounded: bool
+        :return: The bounding box.
+        :rtype: Shapely.Polygon
+        """
+        bbox = self.solid_geometry.envelope.buffer(margin)
+        if not rounded:
+            bbox = bbox.envelope
+        return bbox
 
 
 class Excellon(Geometry):
@@ -488,6 +525,11 @@ class Excellon(Geometry):
     ================  ====================================
     """
     def __init__(self):
+        """
+        The constructor takes no parameters.
+        :return: Excellon object.
+        :rtype: Excellon
+        """
         Geometry.__init__(self)
         
         self.tools = {}
@@ -1046,12 +1088,15 @@ def get_bounds(geometry_set):
 
     print "Getting bounds of:", str(geometry_set)
     for gs in geometry_set:
-        gxmin, gymin, gxmax, gymax = geometry_set[gs].bounds()
-        xmin = min([xmin, gxmin])
-        ymin = min([ymin, gymin])
-        xmax = max([xmax, gxmax])
-        ymax = max([ymax, gymax])
-            
+        try:
+            gxmin, gymin, gxmax, gymax = geometry_set[gs].bounds()
+            xmin = min([xmin, gxmin])
+            ymin = min([ymin, gymin])
+            xmax = max([xmax, gxmax])
+            ymax = max([ymax, gymax])
+        except:
+            print "DEV WARNING: Tried to get bounds of empty geometry."
+
     return [xmin, ymin, xmax, ymax]
 
 
@@ -1125,6 +1170,7 @@ def find_polygon(poly_set, point):
             return poly
     return None
 
+
 def to_dict(geo):
     output = ''
     if isinstance(geo, BaseGeometry):
@@ -1134,12 +1180,47 @@ def to_dict(geo):
         }
     return geo
 
+
 def dict2obj(d):
     if '__class__' in d and '__inst__' in d:
         # For now assume all classes are Shapely geometry.
         return sloads(d['__inst__'])
     else:
         return d
+
+
+def plotg(geo):
+    try:
+        _ = iter(geo)
+    except:
+        geo = [geo]
+
+    for g in geo:
+        if type(g) == Polygon:
+            x, y = g.exterior.coords.xy
+            plot(x, y)
+            for ints in g.interiors:
+                x, y = ints.coords.xy
+                plot(x, y)
+            continue
+
+        if type(g) == LineString or type(g) == LinearRing:
+            x, y = g.coords.xy
+            plot(x, y)
+            continue
+
+        if type(g) == Point:
+            x, y = g.coords.xy
+            plot(x, y, 'o')
+            continue
+
+        try:
+            _ = iter(g)
+            plotg(g)
+        except:
+            print "Cannot plot:", str(type(g))
+            continue
+
 
 ############### cam.py ####################
 def coord(gstr, digits, fraction):
