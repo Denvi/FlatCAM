@@ -5,7 +5,12 @@
 ############################################################
 
 import threading
-from gi.repository import Gtk, Gdk, GLib, GObject
+
+# TODO: Bundle together. This is just for debugging.
+from gi.repository import Gtk
+from gi.repository import Gdk
+from gi.repository import GLib
+from gi.repository import GObject
 import simplejson as json
 
 from matplotlib.figure import Figure
@@ -534,7 +539,7 @@ class App:
 
     def __init__(self):
         """
-        Starts the application.
+        Starts the application. Takes no parameters.
 
         :return: app
         :rtype: App
@@ -2291,6 +2296,7 @@ class App:
                 assert isinstance(gerber_obj, FlatCAMGerber)
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
                 gerber_obj.parse_file(filename)
+                GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
                 gerber_obj.create_geometry()
                 GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 

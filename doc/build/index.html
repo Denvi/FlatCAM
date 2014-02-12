@@ -120,13 +120,13 @@
 <ul class="simple">
 </ul>
 </div>
-<span class="target" id="module-cirkuix"></span><dl class="class">
-<dt id="cirkuix.App">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">App</tt><a class="headerlink" href="#cirkuix.App" title="Permalink to this definition">¶</a></dt>
+<span class="target" id="module-FlatCAM"></span><dl class="class">
+<dt id="FlatCAM.App">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">App</tt><a class="headerlink" href="#FlatCAM.App" title="Permalink to this definition">¶</a></dt>
 <dd><p>The main application class. The constructor starts the GUI.</p>
 <dl class="method">
-<dt id="cirkuix.App.adjust_axes">
-<tt class="descname">adjust_axes</tt><big>(</big><em>xmin</em>, <em>ymin</em>, <em>xmax</em>, <em>ymax</em><big>)</big><a class="headerlink" href="#cirkuix.App.adjust_axes" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.adjust_axes">
+<tt class="descname">adjust_axes</tt><big>(</big><em>xmin</em>, <em>ymin</em>, <em>xmax</em>, <em>ymax</em><big>)</big><a class="headerlink" href="#FlatCAM.App.adjust_axes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Adjusts axes of all plots while maintaining the use of the whole canvas
 and an aspect ratio to 1:1 between x and y axes. The parameters are an original
 request that will be modified to fit these restrictions.</p>
@@ -150,8 +150,8 @@ request that will be modified to fit these restrictions.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.build_list">
-<tt class="descname">build_list</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.build_list" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.build_list">
+<tt class="descname">build_list</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.build_list" title="Permalink to this definition">¶</a></dt>
 <dd><p>Clears and re-populates the list of objects in currently
 in the project.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -165,8 +165,8 @@ in the project.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.clear_plots">
-<tt class="descname">clear_plots</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.clear_plots" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.clear_plots">
+<tt class="descname">clear_plots</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.clear_plots" title="Permalink to this definition">¶</a></dt>
 <dd><p>Clears self.axes and self.figure.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -179,8 +179,8 @@ in the project.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.file_chooser_action">
-<tt class="descname">file_chooser_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#cirkuix.App.file_chooser_action" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.file_chooser_action">
+<tt class="descname">file_chooser_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#FlatCAM.App.file_chooser_action" title="Permalink to this definition">¶</a></dt>
 <dd><p>Opens the file chooser and runs on_success on a separate thread
 upon completion of valid file choice.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -199,8 +199,8 @@ appropriate precautions  when accessing shared resources.</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.file_chooser_save_action">
-<tt class="descname">file_chooser_save_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#cirkuix.App.file_chooser_save_action" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.file_chooser_save_action">
+<tt class="descname">file_chooser_save_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#FlatCAM.App.file_chooser_save_action" title="Permalink to this definition">¶</a></dt>
 <dd><p>Opens the file chooser and runs on_success upon completion of valid file choice.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -217,24 +217,24 @@ gets run immediately in the same thread.</td>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.get_current">
-<tt class="descname">get_current</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.get_current" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns the currently selected CirkuixObj in the application.</p>
+<dt id="FlatCAM.App.get_current">
+<tt class="descname">get_current</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.get_current" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the currently selected FlatCAMObj in the application.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Currently selected CirkuixObj in the application.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Currently selected FlatCAMObj in the application.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">CirkuixObj or None</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">FlatCAMObj or None</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.get_eval">
-<tt class="descname">get_eval</tt><big>(</big><em>widget_name</em><big>)</big><a class="headerlink" href="#cirkuix.App.get_eval" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.get_eval">
+<tt class="descname">get_eval</tt><big>(</big><em>widget_name</em><big>)</big><a class="headerlink" href="#FlatCAM.App.get_eval" title="Permalink to this definition">¶</a></dt>
 <dd><p>Runs eval() on the on the text entry of name &#8216;widget_name&#8217;
 and returns the results.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -250,8 +250,8 @@ and returns the results.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.get_radio_value">
-<tt class="descname">get_radio_value</tt><big>(</big><em>radio_set</em><big>)</big><a class="headerlink" href="#cirkuix.App.get_radio_value" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.get_radio_value">
+<tt class="descname">get_radio_value</tt><big>(</big><em>radio_set</em><big>)</big><a class="headerlink" href="#FlatCAM.App.get_radio_value" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the radio_set[key] of the radiobutton
 whose name is key is active.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -267,8 +267,8 @@ whose name is key is active.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.info">
-<tt class="descname">info</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#cirkuix.App.info" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.info">
+<tt class="descname">info</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#FlatCAM.App.info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Show text on the status bar.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -283,8 +283,8 @@ whose name is key is active.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.load_defaults">
-<tt class="descname">load_defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.load_defaults" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.load_defaults">
+<tt class="descname">load_defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.load_defaults" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loads the aplication&#8217;s default settings from defaults.json into
 <tt class="docutils literal"><span class="pre">self.defaults</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -298,9 +298,9 @@ whose name is key is active.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.new_object">
-<tt class="descname">new_object</tt><big>(</big><em>kind</em>, <em>name</em>, <em>initialize</em><big>)</big><a class="headerlink" href="#cirkuix.App.new_object" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a new specalized CirkuixObj and attaches it to the application,
+<dt id="FlatCAM.App.new_object">
+<tt class="descname">new_object</tt><big>(</big><em>kind</em>, <em>name</em>, <em>initialize</em><big>)</big><a class="headerlink" href="#FlatCAM.App.new_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a new specalized FlatCAMObj and attaches it to the application,
 this is, updates the GUI accordingly, any other records and plots it.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -327,8 +327,8 @@ called with 2 parameters: the new object and the App instance.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_activate_name">
-<tt class="descname">on_activate_name</tt><big>(</big><em>entry</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_activate_name" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_activate_name">
+<tt class="descname">on_activate_name</tt><big>(</big><em>entry</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_activate_name" title="Permalink to this definition">¶</a></dt>
 <dd><p>Hitting &#8216;Enter&#8217; after changing the name of an item
 updates the item dictionary and re-builds the item list.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -344,8 +344,8 @@ updates the item dictionary and re-builds the item list.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_canvas_configure">
-<tt class="descname">on_canvas_configure</tt><big>(</big><em>widget</em>, <em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_canvas_configure" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_canvas_configure">
+<tt class="descname">on_canvas_configure</tt><big>(</big><em>widget</em>, <em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_canvas_configure" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called whenever the canvas changes size. The axes are updated such
 as to use the whole canvas.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -366,8 +366,8 @@ as to use the whole canvas.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_clear_plots">
-<tt class="descname">on_clear_plots</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_clear_plots" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_clear_plots">
+<tt class="descname">on_clear_plots</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_clear_plots" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for toolbar button. Clears all plots.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -382,26 +382,31 @@ as to use the whole canvas.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_click_over_plot">
-<tt class="descname">on_click_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_click_over_plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_click_over_plot">
+<tt class="descname">on_click_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_click_over_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for the mouse click event over the plot. This event is generated
 by the Matplotlib backend and has been registered in <tt class="docutils literal"><span class="pre">self.__init__()</span></tt>.
 For details, see: <a class="reference external" href="http://matplotlib.org/users/event_handling.html">http://matplotlib.org/users/event_handling.html</a></p>
+<p>Default actions are:</p>
+<ul class="simple">
+<li>Copy coordinates to clipboard. Ex.: (65.5473, -13.2679)</li>
+</ul>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; </td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Contains information about the event, like which button
+was clicked, the pixel coordinates and the axes coordinates.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_closewindow">
-<tt class="descname">on_closewindow</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_closewindow" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_closewindow">
+<tt class="descname">on_closewindow</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_closewindow" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for closing the main window.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -416,8 +421,8 @@ For details, see: <a class="reference external" href="http://matplotlib.org/user
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_cncjob_exportgcode">
-<tt class="descname">on_cncjob_exportgcode</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_cncjob_exportgcode" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_cncjob_exportgcode">
+<tt class="descname">on_cncjob_exportgcode</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_cncjob_exportgcode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called from button on CNCjob form to save the G-Code from the object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -432,9 +437,43 @@ For details, see: <a class="reference external" href="http://matplotlib.org/user
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_delete">
-<tt class="descname">on_delete</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_delete" title="Permalink to this definition">¶</a></dt>
-<dd><p>Delete the currently selected CirkuixObj.</p>
+<dt id="FlatCAM.App.on_create_aligndrill">
+<tt class="descname">on_create_aligndrill</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_create_aligndrill" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates alignment holes Excellon object. Creates mirror duplicates
+of the specified holes around the specified axis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_create_mirror">
+<tt class="descname">on_create_mirror</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_create_mirror" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a mirror image of a Gerber object to be used as a bottom
+copper layer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_delete">
+<tt class="descname">on_delete</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the currently selected FlatCAMObj.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -448,8 +487,8 @@ For details, see: <a class="reference external" href="http://matplotlib.org/user
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_entry_eval_activate">
-<tt class="descname">on_entry_eval_activate</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_entry_eval_activate" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_entry_eval_activate">
+<tt class="descname">on_entry_eval_activate</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_entry_eval_activate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when an entry is activated (eg. by hitting enter) if
 set to do so. Its text is eval()&#8217;d and set to the returned value.
 The current object is updated.</p>
@@ -466,8 +505,8 @@ The current object is updated.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_eval_update">
-<tt class="descname">on_eval_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_eval_update" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_eval_update">
+<tt class="descname">on_eval_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_eval_update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Modifies the content of a Gtk.Entry by running
 eval() on its contents and puting it back as a
 string.</p>
@@ -484,8 +523,8 @@ string.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_excellon_tool_choose">
-<tt class="descname">on_excellon_tool_choose</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_excellon_tool_choose" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_excellon_tool_choose">
+<tt class="descname">on_excellon_tool_choose</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_excellon_tool_choose" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on Excellon form to open up a window for
 selecting tools.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -501,8 +540,8 @@ selecting tools.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_new">
-<tt class="descname">on_file_new</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_new" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_new">
+<tt class="descname">on_file_new</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_new" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;New. Returns the application to its
 startup state.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -518,8 +557,8 @@ startup state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_openproject">
-<tt class="descname">on_file_openproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_openproject" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_openproject">
+<tt class="descname">on_file_openproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_openproject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Open Project. Opens a file chooser and calls
 <tt class="docutils literal"><span class="pre">self.open_project()</span></tt> after successful selection of a filename.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -535,8 +574,8 @@ startup state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_savedefaults">
-<tt class="descname">on_file_savedefaults</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_savedefaults" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_savedefaults">
+<tt class="descname">on_file_savedefaults</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_savedefaults" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Save Defaults. Saves application default options
 <tt class="docutils literal"><span class="pre">self.defaults</span></tt> to defaults.json.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -552,8 +591,8 @@ startup state.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_saveproject">
-<tt class="descname">on_file_saveproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveproject" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_saveproject">
+<tt class="descname">on_file_saveproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveproject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Save Project. Saves the project to
 <tt class="docutils literal"><span class="pre">self.project_filename</span></tt> or calls <tt class="docutils literal"><span class="pre">self.on_file_saveprojectas()</span></tt>
 if set to None. The project is saved by calling <tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
@@ -570,8 +609,8 @@ if set to None. The project is saved by calling <tt class="docutils literal"><sp
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_saveprojectas">
-<tt class="descname">on_file_saveprojectas</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveprojectas" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_saveprojectas">
+<tt class="descname">on_file_saveprojectas</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveprojectas" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Save Project As... Opens a file
 chooser and saves the project to the given file via
 <tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
@@ -588,8 +627,8 @@ chooser and saves the project to the given file via
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_file_saveprojectcopy">
-<tt class="descname">on_file_saveprojectcopy</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_file_saveprojectcopy" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_file_saveprojectcopy">
+<tt class="descname">on_file_saveprojectcopy</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveprojectcopy" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Save Project Copy... Opens a file
 chooser and saves the project to the given file via
 <tt class="docutils literal"><span class="pre">self.save_project</span></tt>. It does not update <tt class="docutils literal"><span class="pre">self.project_filename</span></tt> so
@@ -607,10 +646,10 @@ subsequent save requests are done on the previous known filename.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_fileopenexcellon">
-<tt class="descname">on_fileopenexcellon</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_fileopenexcellon" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_fileopenexcellon">
+<tt class="descname">on_fileopenexcellon</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopenexcellon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Open Excellon. Defines a function that is then passed
-to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a CirkuixExcellon object
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMExcellon object
 and updates the progress bar throughout the process.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -625,10 +664,10 @@ and updates the progress bar throughout the process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_fileopengcode">
-<tt class="descname">on_fileopengcode</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_fileopengcode" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_fileopengcode">
+<tt class="descname">on_fileopengcode</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopengcode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Open G-Code. Defines a function that is then passed
-to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a CirkuixCNCjob object
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMCNCjob object
 and updates the progress bar throughout the process.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -643,10 +682,10 @@ and updates the progress bar throughout the process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_fileopengerber">
-<tt class="descname">on_fileopengerber</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_fileopengerber" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_fileopengerber">
+<tt class="descname">on_fileopengerber</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopengerber" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Open Gerber. Defines a function that is then passed
-to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a CirkuixGerber object
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMGerber object
 and updates the progress bar throughout the process.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -661,8 +700,8 @@ and updates the progress bar throughout the process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_filequit">
-<tt class="descname">on_filequit</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_filequit" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_filequit">
+<tt class="descname">on_filequit</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_filequit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for menu item File-&gt;Quit. Closes the application.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -677,8 +716,8 @@ and updates the progress bar throughout the process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_generate_cncjob">
-<tt class="descname">on_generate_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_cncjob" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_generate_cncjob">
+<tt class="descname">on_generate_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_cncjob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on geometry form to generate CNC job.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -693,8 +732,8 @@ and updates the progress bar throughout the process.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_generate_excellon_cncjob">
-<tt class="descname">on_generate_excellon_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_excellon_cncjob" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_generate_excellon_cncjob">
+<tt class="descname">on_generate_excellon_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_excellon_cncjob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button active/click on Excellon form to
 create a CNC Job for the Excellon file.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -710,10 +749,10 @@ create a CNC Job for the Excellon file.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_generate_gerber_bounding_box">
-<tt class="descname">on_generate_gerber_bounding_box</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_gerber_bounding_box" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_generate_gerber_bounding_box">
+<tt class="descname">on_generate_gerber_bounding_box</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_gerber_bounding_box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for request from the Gerber form to generate a bounding box for the
-geometry in the object. Creates a CirkuixGeometry with the bounding box.</p>
+geometry in the object. Creates a FlatCAMGeometry with the bounding box.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -727,8 +766,8 @@ geometry in the object. Creates a CirkuixGeometry with the bounding box.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_generate_isolation">
-<tt class="descname">on_generate_isolation</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_isolation" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_generate_isolation">
+<tt class="descname">on_generate_isolation</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_isolation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on Gerber form to create isolation routing geometry.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -743,13 +782,13 @@ geometry in the object. Creates a CirkuixGeometry with the bounding box.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_generate_paintarea">
-<tt class="descname">on_generate_paintarea</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_generate_paintarea" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_generate_paintarea">
+<tt class="descname">on_generate_paintarea</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_paintarea" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on geometry form.
 Subscribes to the &#8220;Click on plot&#8221; event and continues
 after the click. Finds the polygon containing
 the clicked point and runs clear_poly() on it, resulting
-in a new CirkuixGeometry object.</p>
+in a new FlatCAMGeometry object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -763,8 +802,8 @@ in a new CirkuixGeometry object.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_gerber_generate_cutout">
-<tt class="descname">on_gerber_generate_cutout</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_gerber_generate_cutout" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_gerber_generate_cutout">
+<tt class="descname">on_gerber_generate_cutout</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_gerber_generate_cutout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on Gerber form to create geometry with lines
 for cutting off the board.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -780,8 +819,8 @@ for cutting off the board.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_gerber_generate_noncopper">
-<tt class="descname">on_gerber_generate_noncopper</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_gerber_generate_noncopper" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_gerber_generate_noncopper">
+<tt class="descname">on_gerber_generate_noncopper</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_gerber_generate_noncopper" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on Gerber form to create a geometry object
 with polygons covering the area without copper or negative of the
 Gerber.</p>
@@ -798,8 +837,8 @@ Gerber.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_key_over_plot">
-<tt class="descname">on_key_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_key_over_plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_key_over_plot">
+<tt class="descname">on_key_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_key_over_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for the key pressed event when the canvas is focused. Keyboard
 shortcuts are handled here. So far, these are the shortcuts:</p>
 <table border="1" class="docutils">
@@ -837,8 +876,8 @@ shortcuts are handled here. So far, these are the shortcuts:</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_mouse_move_over_plot">
-<tt class="descname">on_mouse_move_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_mouse_move_over_plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_mouse_move_over_plot">
+<tt class="descname">on_mouse_move_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_mouse_move_over_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for the mouse motion event over the plot. This event is generated
 by the Matplotlib backend and has been registered in <tt class="docutils literal"><span class="pre">self.__init__()</span></tt>.
 For details, see: <a class="reference external" href="http://matplotlib.org/users/event_handling.html">http://matplotlib.org/users/event_handling.html</a></p>
@@ -855,8 +894,8 @@ For details, see: <a class="reference external" href="http://matplotlib.org/user
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_app2object">
-<tt class="descname">on_options_app2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_app2object" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_app2object">
+<tt class="descname">on_options_app2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_app2object" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;App=&gt;Object. Copies options
 from application defaults to the currently selected object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -872,8 +911,8 @@ from application defaults to the currently selected object.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_app2project">
-<tt class="descname">on_options_app2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_app2project" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_app2project">
+<tt class="descname">on_options_app2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_app2project" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;App=&gt;Project. Copies options
 from application defaults to project defaults.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -889,8 +928,8 @@ from application defaults to project defaults.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_combo_change">
-<tt class="descname">on_options_combo_change</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_combo_change" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_combo_change">
+<tt class="descname">on_options_combo_change</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_combo_change" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when the combo box to choose between application defaults and
 project option changes value. The corresponding variables are
 copied to the UI.</p>
@@ -907,8 +946,8 @@ copied to the UI.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_object2app">
-<tt class="descname">on_options_object2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_object2app" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_object2app">
+<tt class="descname">on_options_object2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_object2app" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;Object=&gt;App. Copies options
 from the currently selected object to application defaults.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -924,8 +963,8 @@ from the currently selected object to application defaults.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_object2project">
-<tt class="descname">on_options_object2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_object2project" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_object2project">
+<tt class="descname">on_options_object2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_object2project" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;Object=&gt;Project. Copies options
 from the currently selected object to project defaults.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -941,8 +980,8 @@ from the currently selected object to project defaults.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_project2app">
-<tt class="descname">on_options_project2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_project2app" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_project2app">
+<tt class="descname">on_options_project2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_project2app" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;Project=&gt;App. Copies options
 from project defaults to application defaults.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -958,8 +997,8 @@ from project defaults to application defaults.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_project2object">
-<tt class="descname">on_options_project2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_project2object" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_project2object">
+<tt class="descname">on_options_project2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_project2object" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for Options-&gt;Transfer Options-&gt;Project=&gt;Object. Copies options
 from project defaults to the currently selected object.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -975,8 +1014,8 @@ from project defaults to the currently selected object.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_options_update">
-<tt class="descname">on_options_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_options_update" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_options_update">
+<tt class="descname">on_options_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_update" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called whenever a value in the options/defaults form changes.
 All values are updated. Can be inhibited by setting <tt class="docutils literal"><span class="pre">self.options_update_ignore</span> <span class="pre">=</span> <span class="pre">True</span></tt>,
 which may be necessary when updating the UI from code and not by the user.</p>
@@ -993,8 +1032,8 @@ which may be necessary when updating the UI from code and not by the user.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_replot">
-<tt class="descname">on_replot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_replot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_replot">
+<tt class="descname">on_replot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_replot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for toolbar button. Re-plots all objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1009,8 +1048,8 @@ which may be necessary when updating the UI from code and not by the user.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_row_activated">
-<tt class="descname">on_row_activated</tt><big>(</big><em>widget</em>, <em>path</em>, <em>col</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_row_activated" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_row_activated">
+<tt class="descname">on_row_activated</tt><big>(</big><em>widget</em>, <em>path</em>, <em>col</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_row_activated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for selection activation (Enter or double-click) on the Project list.
 Switches the notebook page to the object properties form. Calls
 <tt class="docutils literal"><span class="pre">self.notebook.set_current_page(1)</span></tt>.</p>
@@ -1033,8 +1072,8 @@ Switches the notebook page to the object properties form. Calls
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_scale_object">
-<tt class="descname">on_scale_object</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_scale_object" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_scale_object">
+<tt class="descname">on_scale_object</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_scale_object" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for request to change an objects geometry scale. The object
 is re-scaled and replotted.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1050,10 +1089,63 @@ is re-scaled and replotted.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_tree_selection_changed">
-<tt class="descname">on_tree_selection_changed</tt><big>(</big><em>selection</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_tree_selection_changed" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_toggle_pointbox">
+<tt class="descname">on_toggle_pointbox</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toggle_pointbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for radio selection change between point and box in the
+Double-sided PCB tool. Updates the UI accordingly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_toggle_units">
+<tt class="descname">on_toggle_units</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toggle_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the Units radio-button change in the Options tab.
+Changes the application&#8217;s default units or the current project&#8217;s units.
+If changing the project&#8217;s units, the change propagates to all of
+the objects in the project.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_tools_doublesided">
+<tt class="descname">on_tools_doublesided</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_tools_doublesided" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item Tools-&gt;Double Sided PCB Tool. Launches the
+tool placing its UI in the &#8220;Tool&#8221; tab in the notebook.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_tree_selection_changed">
+<tt class="descname">on_tree_selection_changed</tt><big>(</big><em>selection</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_tree_selection_changed" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for selection change in the project list. This changes
-the currently selected CirkuixObj.</p>
+the currently selected FlatCAMObj.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1067,8 +1159,8 @@ the currently selected CirkuixObj.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_update_plot">
-<tt class="descname">on_update_plot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_update_plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_update_plot">
+<tt class="descname">on_update_plot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_update_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for button on form for all kinds of objects.
 Re-plots the current object only.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1084,8 +1176,8 @@ Re-plots the current object only.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_zoom_fit">
-<tt class="descname">on_zoom_fit</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_zoom_fit" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_zoom_fit">
+<tt class="descname">on_zoom_fit</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_fit" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for zoom-out request. This can be either from the corresponding
 toolbar button or the &#8216;1&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.adjust_axes()</span></tt>
 with axes limits from the geometry bounds of all objects.</p>
@@ -1102,8 +1194,8 @@ with axes limits from the geometry bounds of all objects.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_zoom_in">
-<tt class="descname">on_zoom_in</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_zoom_in" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_zoom_in">
+<tt class="descname">on_zoom_in</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_in" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for zoom-in request. This can be either from the corresponding
 toolbar button or the &#8216;3&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.zoom()</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1119,8 +1211,8 @@ toolbar button or the &#8216;3&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.on_zoom_out">
-<tt class="descname">on_zoom_out</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#cirkuix.App.on_zoom_out" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.on_zoom_out">
+<tt class="descname">on_zoom_out</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_out" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for zoom-out request. This can be either from the corresponding
 toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.zoom()</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1136,8 +1228,8 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.open_project">
-<tt class="descname">open_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.App.open_project" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.open_project">
+<tt class="descname">open_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.App.open_project" title="Permalink to this definition">¶</a></dt>
 <dd><p>Loads a project from the specified file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1152,8 +1244,8 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.options2form">
-<tt class="descname">options2form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.options2form" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.options2form">
+<tt class="descname">options2form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.options2form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets the &#8216;Project Options&#8217; or &#8216;Application Defaults&#8217; form with values from
 <tt class="docutils literal"><span class="pre">self.options</span></tt> or <tt class="docutils literal"><span class="pre">self.defaults</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1169,8 +1261,8 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.plot_all">
-<tt class="descname">plot_all</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.plot_all" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.plot_all">
+<tt class="descname">plot_all</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.plot_all" title="Permalink to this definition">¶</a></dt>
 <dd><p>Re-generates all plots from all objects.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1183,8 +1275,24 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.read_form">
-<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.read_form" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.populate_objects_combo">
+<tt class="descname">populate_objects_combo</tt><big>(</big><em>combo</em><big>)</big><a class="headerlink" href="#FlatCAM.App.populate_objects_combo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populates a Gtk.Comboboxtext with the list of the object in the project.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>combo</strong> (<em>str or Gtk.ComboBoxText</em>) &#8211; Name or instance of the comboboxtext.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.read_form">
+<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.read_form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reads the options form into self.defaults/self.options.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1199,8 +1307,8 @@ toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt 
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.read_form_item">
-<tt class="descname">read_form_item</tt><big>(</big><em>name</em>, <em>dest</em><big>)</big><a class="headerlink" href="#cirkuix.App.read_form_item" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.read_form_item">
+<tt class="descname">read_form_item</tt><big>(</big><em>name</em>, <em>dest</em><big>)</big><a class="headerlink" href="#FlatCAM.App.read_form_item" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reads the value of a form item in the defaults/options form and
 saves it to the corresponding dictionary.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1222,8 +1330,8 @@ saves it to the corresponding dictionary.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.save_project">
-<tt class="descname">save_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.App.save_project" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.save_project">
+<tt class="descname">save_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.App.save_project" title="Permalink to this definition">¶</a></dt>
 <dd><p>Saves the current project to the specified file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1238,8 +1346,8 @@ saves it to the corresponding dictionary.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.set_form_item">
-<tt class="descname">set_form_item</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="headerlink" href="#cirkuix.App.set_form_item" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.set_form_item">
+<tt class="descname">set_form_item</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_form_item" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets a form item &#8216;name&#8217; in the GUI with the given &#8216;value&#8217;. The syntax of
 form names in the GUI is &lt;kind&gt;_app_&lt;name&gt;, where kind is one of: rb (radio button),
 cb (check button), entry_eval or entry_text (entry), combo (combo box). name is
@@ -1262,8 +1370,8 @@ whatever name it&#8217;s been given. For self.defaults, name is a key in the dic
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.set_list_selection">
-<tt class="descname">set_list_selection</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.App.set_list_selection" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.set_list_selection">
+<tt class="descname">set_list_selection</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_list_selection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Marks a given object as selected in the list ob objects
 in the GUI. This selection will in turn trigger
 <tt class="docutils literal"><span class="pre">self.on_tree_selection_changed()</span></tt>.</p>
@@ -1280,8 +1388,8 @@ in the GUI. This selection will in turn trigger
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.set_progress_bar">
-<tt class="descname">set_progress_bar</tt><big>(</big><em>percentage</em>, <em>text=''</em><big>)</big><a class="headerlink" href="#cirkuix.App.set_progress_bar" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.set_progress_bar">
+<tt class="descname">set_progress_bar</tt><big>(</big><em>percentage</em>, <em>text=''</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_progress_bar" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets the application&#8217;s progress bar to a given fraction and text.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1301,8 +1409,8 @@ in the GUI. This selection will in turn trigger
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.setup_component_editor">
-<tt class="descname">setup_component_editor</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_component_editor" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.setup_component_editor">
+<tt class="descname">setup_component_editor</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_component_editor" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initial configuration of the component editor. Creates
 a page titled &#8220;Selection&#8221; on the notebook on the left
 side of the main window.</p>
@@ -1317,9 +1425,9 @@ side of the main window.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.setup_obj_classes">
-<tt class="descname">setup_obj_classes</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_obj_classes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets up application specifics on the CirkuixObj class.</p>
+<dt id="FlatCAM.App.setup_obj_classes">
+<tt class="descname">setup_obj_classes</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_obj_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up application specifics on the FlatCAMObj class.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1331,8 +1439,8 @@ side of the main window.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.setup_plot">
-<tt class="descname">setup_plot</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.setup_plot">
+<tt class="descname">setup_plot</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets up the main plotting area by creating a Matplotlib
 figure in self.canvas, adding axes and configuring them.
 These axes should not be ploted on and are just there to
@@ -1350,8 +1458,8 @@ display the axes ticks and grid.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.setup_project_list">
-<tt class="descname">setup_project_list</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.App.setup_project_list" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.setup_project_list">
+<tt class="descname">setup_project_list</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_project_list" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets up list or Tree where whatever has been loaded or created is
 displayed.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1365,8 +1473,8 @@ displayed.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.App.zoom">
-<tt class="descname">zoom</tt><big>(</big><em>factor</em>, <em>center=None</em><big>)</big><a class="headerlink" href="#cirkuix.App.zoom" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.App.zoom">
+<tt class="descname">zoom</tt><big>(</big><em>factor</em>, <em>center=None</em><big>)</big><a class="headerlink" href="#FlatCAM.App.zoom" title="Permalink to this definition">¶</a></dt>
 <dd><p>Zooms the plot by factor around a given
 center point. Takes care of re-drawing.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1389,27 +1497,28 @@ center point. Takes care of re-drawing.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.Geometry">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Geometry</tt><a class="headerlink" href="#cirkuix.Geometry" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">Geometry</tt><a class="headerlink" href="#FlatCAM.Geometry" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="method">
-<dt id="cirkuix.Geometry.bounds">
-<tt class="descname">bounds</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.bounds" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.bounds">
+<tt class="descname">bounds</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.bounds" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns coordinates of rectangular bounds
 of geometry: (xmin, ymin, xmax, ymax).</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.clear_polygon">
-<tt class="descname">clear_polygon</tt><big>(</big><em>polygon</em>, <em>tooldia</em>, <em>overlap=0.15</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.clear_polygon" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.clear_polygon">
+<tt class="descname">clear_polygon</tt><big>(</big><em>polygon</em>, <em>tooldia</em>, <em>overlap=0.15</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.clear_polygon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates geometry inside a polygon for a tool to cover
 the whole area.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.convert_units">
-<tt class="descname">convert_units</tt><big>(</big><em>units</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.convert_units" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.convert_units">
+<tt class="descname">convert_units</tt><big>(</big><em>units</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.convert_units" title="Permalink to this definition">¶</a></dt>
 <dd><p>Converts the units of the object to <tt class="docutils literal"><span class="pre">units</span></tt> by scaling all
-the geometry appropriately.</p>
+the geometry appropriately. This call <tt class="docutils literal"><span class="pre">scale()</span></tt>. Don&#8217;t call
+it again in descendents.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1425,30 +1534,30 @@ the geometry appropriately.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.from_dict">
-<tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.from_dict" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.from_dict">
+<tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.from_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets object&#8217;s attributes from a dictionary.
 Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.get_empty_area">
-<tt class="descname">get_empty_area</tt><big>(</big><em>boundary=None</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.get_empty_area" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.get_empty_area">
+<tt class="descname">get_empty_area</tt><big>(</big><em>boundary=None</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.get_empty_area" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the complement of self.solid_geometry within
 the given boundary polygon. If not specified, it defaults to
 the rectangular bounding box of self.solid_geometry.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.isolation_geometry">
-<tt class="descname">isolation_geometry</tt><big>(</big><em>offset</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.isolation_geometry" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.isolation_geometry">
+<tt class="descname">isolation_geometry</tt><big>(</big><em>offset</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.isolation_geometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates contours around geometry at a given
 offset distance.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.scale">
-<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Geometry.scale" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.scale" title="Permalink to this definition">¶</a></dt>
 <dd><p>Scales all of the object&#8217;s geometry by a given factor. Override
 this method.
 :param factor: Number by which to scale.
@@ -1458,15 +1567,15 @@ this method.
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.size">
-<tt class="descname">size</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.size" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.size">
+<tt class="descname">size</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.size" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns (width, height) of rectangular
 bounds of geometry.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Geometry.to_dict">
-<tt class="descname">to_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Geometry.to_dict" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Geometry.to_dict">
+<tt class="descname">to_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.to_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a respresentation of the object as a dictionary.
 Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -1484,8 +1593,8 @@ Attributes to include are listed in <tt class="docutils literal"><span class="pr
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.Gerber">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Gerber</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">Gerber</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber" title="Permalink to this definition">¶</a></dt>
 <dd><p><strong>ATTRIBUTES</strong></p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">apertures</span></tt> (dict): The keys are names/identifiers of each aperture.
@@ -1588,71 +1697,116 @@ from <tt class="docutils literal"><span class="pre">flashes</span></tt>. These a
 <em>buffering</em> (or thickening) the <tt class="docutils literal"><span class="pre">paths</span></tt> with the aperture. These are
 generated from <tt class="docutils literal"><span class="pre">paths</span></tt> in <tt class="docutils literal"><span class="pre">buffer_paths()</span></tt>.</li>
 </ul>
+<p><strong>USAGE</strong>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">g</span> <span class="o">=</span> <span class="n">Gerber</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">create_geometry</span><span class="p">()</span>
+<span class="n">do_something</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">solid_geometry</span><span class="p">)</span>
+</pre></div>
+</div>
 <dl class="method">
-<dt id="cirkuix.Gerber.aperture_parse">
-<tt class="descname">aperture_parse</tt><big>(</big><em>gline</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.aperture_parse">
+<tt class="descname">aperture_parse</tt><big>(</big><em>gline</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse gerber aperture definition into dictionary of apertures.
 The following kinds and their attributes are supported:</p>
 <ul class="simple">
 <li><em>Circular (C)</em>: size (float)</li>
 <li><em>Rectangle (R)</em>: width (float), height (float)</li>
-<li><em>Obround (O)</em>: width (float), height (float). NOTE: This can
-be parsed, but it is not supported further yet.</li>
+<li><em>Obround (O)</em>: width (float), height (float).</li>
 </ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gline</strong> (<em>str</em>) &#8211; Line of Gerber code known to have an aperture definition.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Identifier of the aperture.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.create_geometry">
-<tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.create_geometry" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.create_geometry">
+<tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.create_geometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Geometry from a Gerber file is made up entirely of polygons.
 Every stroke (linear or circular) has an aperture which gives
 it thickness. Additionally, aperture strokes have non-zero area,
-and regions naturally do as well.
-:rtype : None
-&#64;return: None</p>
+and regions naturally do as well.</p>
+<p>:rtype : None
+:return: None</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="cirkuix.Gerber.digits">
-<tt class="descname">digits</tt><em class="property"> = None</em><a class="headerlink" href="#cirkuix.Gerber.digits" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.digits">
+<tt class="descname">digits</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.digits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of integer digits in Gerber numbers. Used during parsing.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.do_flashes">
-<tt class="descname">do_flashes</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.do_flashes" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.do_flashes">
+<tt class="descname">do_flashes</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.do_flashes" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates geometry for Gerber flashes (aperture on a single point).</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.fix_regions">
-<tt class="descname">fix_regions</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.Gerber.fix_regions" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.fix_regions">
+<tt class="descname">fix_regions</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.fix_regions" title="Permalink to this definition">¶</a></dt>
 <dd><p>Overwrites the region polygons with fixed
 versions if found to be invalid (according to Shapely).</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="cirkuix.Gerber.fraction">
-<tt class="descname">fraction</tt><em class="property"> = None</em><a class="headerlink" href="#cirkuix.Gerber.fraction" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.fraction">
+<tt class="descname">fraction</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.fraction" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of fraction digits in Gerber numbers. Used during parsing.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.parse_file">
-<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.get_bounding_box">
+<tt class="descname">get_bounding_box</tt><big>(</big><em>margin=0.0</em>, <em>rounded=False</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.get_bounding_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns a rectangular polygon bounding at a distance of
+margin from the object&#8217;s <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>. If margin &gt; 0, the polygon
+can optionally have rounded corners of radius equal to margin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>margin</strong> (<em>float</em>) &#8211; Distance to enlarge the rectangular bounding
+box in both positive and negative, x and y axes.</li>
+<li><strong>rounded</strong> (<em>bool</em>) &#8211; Wether or not to have rounded corners.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The bounding box.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Shapely.Polygon</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.Gerber.parse_file">
+<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calls Gerber.parse_lines() with array of lines
 read from the given file.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.parse_lines">
-<tt class="descname">parse_lines</tt><big>(</big><em>glines</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>glines</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.parse_lines" title="Permalink to this definition">¶</a></dt>
 <dd><p>Main Gerber parser.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Gerber.scale">
-<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Gerber.scale" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.scale" title="Permalink to this definition">¶</a></dt>
 <dd><p>Scales the objects&#8217; geometry on the XY plane by a given factor.
 These are:</p>
 <ul class="simple">
@@ -1671,8 +1825,8 @@ are re-created with <tt class="docutils literal"><span class="pre">self.create_g
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.Excellon">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">Excellon</tt><a class="headerlink" href="#cirkuix.Excellon" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Excellon">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">Excellon</tt><a class="headerlink" href="#FlatCAM.Excellon" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>ATTRIBUTES</em></p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">tools</span></tt> (dict): The key is the tool name and the value is
@@ -1699,27 +1853,35 @@ the size (diameter).</li>
 </tbody>
 </table>
 <dl class="method">
-<dt id="cirkuix.Excellon.parse_lines">
-<tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#cirkuix.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Excellon.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
 <dd><p>Main Excellon parser.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.Excellon.scale">
-<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.Excellon.scale" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Excellon.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.scale" title="Permalink to this definition">¶</a></dt>
 <dd><p>Scales geometry on the XY plane in the object by a given factor.
-Tool sizes, feedrates an Z-plane dimensions are untouched.
-:param factor: Number by which to scale the object.
-:type factor: float
-:return: None
-:rtype: NOne</p>
+Tool sizes, feedrates an Z-plane dimensions are untouched.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">NOne</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CNCjob">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CNCjob</tt><big>(</big><em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">CNCjob</tt><big>(</big><em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents work to be done by a CNC machine.</p>
 <p><em>ATTRIBUTES</em></p>
 <ul class="simple">
@@ -1746,24 +1908,24 @@ Tool sizes, feedrates an Z-plane dimensions are untouched.
 </tbody>
 </table>
 <dl class="method">
-<dt id="cirkuix.CNCjob.gcode_parse">
-<tt class="descname">gcode_parse</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.gcode_parse" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.gcode_parse">
+<tt class="descname">gcode_parse</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.gcode_parse" title="Permalink to this definition">¶</a></dt>
 <dd><p>G-Code parser (from self.gcode). Generates dictionary with
 single-segment LineString&#8217;s and &#8220;kind&#8221; indicating cut or travel,
 fast or feedrate speed.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.generate_from_excellon">
-<tt class="descname">generate_from_excellon</tt><big>(</big><em>exobj</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_excellon" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.generate_from_excellon">
+<tt class="descname">generate_from_excellon</tt><big>(</big><em>exobj</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_excellon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates G-code for drilling from Excellon object.
 self.gcode becomes a list, each element is a
 different job for each tool in the excellon code.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.generate_from_excellon_by_tool">
-<tt class="descname">generate_from_excellon_by_tool</tt><big>(</big><em>exobj</em>, <em>tools='all'</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_excellon_by_tool" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.generate_from_excellon_by_tool">
+<tt class="descname">generate_from_excellon_by_tool</tt><big>(</big><em>exobj</em>, <em>tools='all'</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_excellon_by_tool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates gcode for this object from an Excellon object
 for the specified tools.
 &#64;param exobj: Excellon object to process
@@ -1774,62 +1936,69 @@ for the specified tools.
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.generate_from_geometry">
-<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.generate_from_geometry">
+<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generates G-Code from a Geometry object.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.plot">
-<tt class="descname">plot</tt><big>(</big><em>tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.plot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates a Matplotlib figure with a plot of the
-G-code job.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="cirkuix.CNCjob.plot2">
-<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.plot2">
+<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots the G-code job onto the given axes.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.polygon2gcode">
-<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.polygon2gcode">
+<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates G-Code for the exterior and all interior paths
-of a polygon.
-&#64;param polygon: A Shapely.Polygon
-&#64;type polygon: Shapely.Polygon</p>
+of a polygon.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>polygon</strong> (<em>Shapely.Polygon</em>) &#8211; A Shapely.Polygon</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.pre_parse">
-<tt class="descname">pre_parse</tt><big>(</big><em>gtext</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.pre_parse" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.pre_parse">
+<tt class="descname">pre_parse</tt><big>(</big><em>gtext</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.pre_parse" title="Permalink to this definition">¶</a></dt>
 <dd><p>gtext is a single string with g-code</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CNCjob.scale">
-<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#cirkuix.CNCjob.scale" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.CNCjob.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.scale" title="Permalink to this definition">¶</a></dt>
 <dd><p>Scales all the geometry on the XY plane in the object by the
 given factor. Tool sizes, feedrates, or Z-axis dimensions are
-not altered.
-:param factor: Number by which to scale the object.
-:type factor: float
-:return: None
-:rtype: None</p>
+not altered.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CirkuixObj">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixObj</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj" title="Permalink to this definition">¶</a></dt>
-<dd><p>Base type of objects handled in Cirkuix. These become interactive
+<dt id="FlatCAM.FlatCAMObj">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMObj</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base type of objects handled in FlatCAM. These become interactive
 in the GUI, can be plotted, and their options can be modified
 by the user in their respective forms.</p>
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.build_ui">
-<tt class="descname">build_ui</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.build_ui" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.build_ui">
+<tt class="descname">build_ui</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.build_ui" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets up the UI/form for this object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1844,24 +2013,24 @@ by the user in their respective forms.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.deserialize">
-<tt class="descname">deserialize</tt><big>(</big><em>obj_dict</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.deserialize" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.deserialize">
+<tt class="descname">deserialize</tt><big>(</big><em>obj_dict</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.deserialize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Re-builds an object from its serialized version.
-&#64;param obj_dict: Dictionary representing a CirkuixObj
+&#64;param obj_dict: Dictionary representing a FlatCAMObj
 &#64;type obj_dict: dict
 &#64;return None</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.plot">
-<tt class="descname">plot</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.plot" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.plot">
+<tt class="descname">plot</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Extend this method! Sets up axes if needed and
 clears them. Descendants must do the actual plotting.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.read_form">
-<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.read_form" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.read_form">
+<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.read_form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reads form into <tt class="docutils literal"><span class="pre">self.options</span></tt>.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1876,8 +2045,8 @@ clears them. Descendants must do the actual plotting.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.serialize">
-<tt class="descname">serialize</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.serialize" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.serialize">
+<tt class="descname">serialize</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.serialize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a representation of the object as a dictionary so
 it can be later exported as JSON. Override this method.
 &#64;return: Dictionary representing the object
@@ -1885,8 +2054,8 @@ it can be later exported as JSON. Override this method.
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.set_form_item">
-<tt class="descname">set_form_item</tt><big>(</big><em>option</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.set_form_item" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.set_form_item">
+<tt class="descname">set_form_item</tt><big>(</big><em>option</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.set_form_item" title="Permalink to this definition">¶</a></dt>
 <dd><p>Copies the specified options to the UI form.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1901,8 +2070,8 @@ it can be later exported as JSON. Override this method.
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.setup_axes">
-<tt class="descname">setup_axes</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.setup_axes" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.setup_axes">
+<tt class="descname">setup_axes</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.setup_axes" title="Permalink to this definition">¶</a></dt>
 <dd><p>1) Creates axes if they don&#8217;t exist. 2) Clears axes. 3) Attaches
 them to figure if not part of the figure. 4) Sets transparent
 background. 5) Sets 1:1 scale aspect ratio.</p>
@@ -1921,8 +2090,8 @@ background. 5) Sets 1:1 scale aspect ratio.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="cirkuix.CirkuixObj.to_form">
-<tt class="descname">to_form</tt><big>(</big><big>)</big><a class="headerlink" href="#cirkuix.CirkuixObj.to_form" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMObj.to_form">
+<tt class="descname">to_form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.to_form" title="Permalink to this definition">¶</a></dt>
 <dd><p>Copies options to the UI form.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -1937,26 +2106,45 @@ background. 5) Sets 1:1 scale aspect ratio.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CirkuixGerber">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixGerber</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixGerber" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMGerber">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMGerber</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGerber" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents Gerber code.</p>
+<dl class="method">
+<dt id="FlatCAM.FlatCAMGerber.convert_units">
+<tt class="descname">convert_units</tt><big>(</big><em>units</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGerber.convert_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the units of the object by scaling dimensions in all geometry
+and options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>units</strong> (<em>str</em>) &#8211; Units to which to convert the object: &#8220;IN&#8221; or &#8220;MM&#8221;.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CirkuixExcellon">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixExcellon</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixExcellon" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMExcellon">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMExcellon</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMExcellon" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents Excellon code.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CirkuixCNCjob">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixCNCjob</tt><big>(</big><em>name</em>, <em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixCNCjob" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMCNCjob">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMCNCjob</tt><big>(</big><em>name</em>, <em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMCNCjob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents G-Code.</p>
 </dd></dl>
 
 <dl class="class">
-<dt id="cirkuix.CirkuixGeometry">
-<em class="property">class </em><tt class="descclassname">cirkuix.</tt><tt class="descname">CirkuixGeometry</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#cirkuix.CirkuixGeometry" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.FlatCAMGeometry">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMGeometry</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGeometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Geometric object not associated with a specific
 format.</p>
 </dd></dl>

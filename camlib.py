@@ -22,7 +22,8 @@ from shapely.geometry.base import BaseGeometry
 from descartes.patch import PolygonPatch
 
 import simplejson as json
-from matplotlib.pyplot import plot
+# TODO: Commented for FlatCAM packaging with cx_freeze
+#from matplotlib.pyplot import plot
 
 class Geometry:
     def __init__(self):
@@ -210,7 +211,12 @@ class Gerber (Geometry):
       *buffering* (or thickening) the ``paths`` with the aperture. These are
       generated from ``paths`` in ``buffer_paths()``.
 
-    **USAGE**
+    **USAGE**::
+
+        g = Gerber()
+        g.parse_file(filename)
+        g.create_geometry()
+        do_something(s.solid_geometry)
 
 
     """
@@ -330,8 +336,12 @@ class Gerber (Geometry):
 
         * *Circular (C)*: size (float)
         * *Rectangle (R)*: width (float), height (float)
-        * *Obround (O)*: width (float), height (float). NOTE: This can
-          be parsed, but it is not supported further yet.
+        * *Obround (O)*: width (float), height (float).
+
+        :param gline: Line of Gerber code known to have an aperture definition.
+        :type gline: str
+        :return: Identifier of the aperture.
+        :rtype: str
         """
         indexstar = gline.find("*")
         indexc = gline.find("C,")
@@ -465,7 +475,23 @@ class Gerber (Geometry):
                 rectangle = shply_box(minx, miny, maxx, maxy)
                 self.flash_geometry.append(rectangle)
                 continue
-            #TODO: Add support for type='O'
+            if aperture['type'] == 'O':  # Obround
+                loc = flash['loc']
+                width = aperture['width']
+                height = aperture['height']
+                if width > height:
+                    p1 = Point(loc[0] + 0.5*(width-height), loc[1])
+                    p2 = Point(loc[0] - 0.5*(width-height), loc[1])
+                    c1 = p1.buffer(height*0.5)
+                    c2 = p2.buffer(height*0.5)
+                else:
+                    p1 = Point(loc[0], loc[1] + 0.5*(height-width))
+                    p2 = Point(loc[0], loc[1] - 0.5*(height-width))
+                    c1 = p1.buffer(width*0.5)
+                    c2 = p2.buffer(width*0.5)
+                obround = cascaded_union([c1, c2]).convex_hull
+                self.flash_geometry.append(obround)
+                continue
             print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
     def create_geometry(self):
@@ -480,9 +506,13 @@ class Gerber (Geometry):
         """
         # if len(self.buffered_paths) == 0:
         #     self.buffer_paths()
+        print "... buffer_paths()"
         self.buffer_paths()
+        print "... fix_regions()"
         self.fix_regions()
+        print "... do_flashes()"
         self.do_flashes()
+        print "... cascaded_union()"
         self.solid_geometry = cascaded_union(
                                 self.buffered_paths + 
                                 [poly['polygon'] for poly in self.regions] +
@@ -495,7 +525,7 @@ class Gerber (Geometry):
         can optionally have rounded corners of radius equal to margin.
 
         :param margin: Distance to enlarge the rectangular bounding
-        box in both positive and negative, x and y axes.
+         box in both positive and negative, x and y axes.
         :type margin: float
         :param rounded: Wether or not to have rounded corners.
         :type rounded: bool

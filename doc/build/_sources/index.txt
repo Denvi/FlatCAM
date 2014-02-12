@@ -13,7 +13,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: cirkuix
+.. automodule:: FlatCAM
 
 .. autoclass:: App
     :members:
@@ -30,19 +30,19 @@ Contents:
 .. autoclass:: CNCjob
     :members:
 
-.. autoclass:: CirkuixObj
+.. autoclass:: FlatCAMObj
     :members:
 
-.. autoclass:: CirkuixGerber
+.. autoclass:: FlatCAMGerber
     :members:
 
-.. autoclass:: CirkuixExcellon
+.. autoclass:: FlatCAMExcellon
     :members:
 
-.. autoclass:: CirkuixCNCjob
+.. autoclass:: FlatCAMCNCjob
     :members:
 
-.. autoclass:: CirkuixGeometry
+.. autoclass:: FlatCAMGeometry
     :members:
 
 
