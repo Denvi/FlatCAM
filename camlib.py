@@ -1,7 +1,9 @@
 ############################################################
-# Author: Juan Pablo Caram                                 #
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
 # Date: 2/5/2014                                           #
-# caram.cl                                                 #
+# MIT Licence                                              #
 ############################################################
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
@@ -24,6 +26,7 @@ from descartes.patch import PolygonPatch
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
 #from matplotlib.pyplot import plot
+
 
 class Geometry:
     def __init__(self):
@@ -232,10 +235,10 @@ class Gerber (Geometry):
         Geometry.__init__(self)        
         
         # Number format
-        self.digits = 3
+        self.int_digits = 3
         """Number of integer digits in Gerber numbers. Used during parsing."""
 
-        self.fraction = 4
+        self.frac_digits = 4
         """Number of fraction digits in Gerber numbers. Used during parsing."""
         
         ## Gerber elements ##
@@ -264,9 +267,71 @@ class Gerber (Geometry):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from Geometry.
-        self.ser_attrs += ['digits', 'fraction', 'apertures', 'paths',
+        self.ser_attrs += ['int_digits', 'frac_digits', 'apertures', 'paths',
                            'buffered_paths', 'regions', 'flashes',
                            'flash_geometry']
+
+        #### Parser patterns ####
+        # FS - Format Specification
+        # The format of X and Y must be the same!
+        # L-omit leading zeros, T-omit trailing zeros
+        # A-absolute notation, I-incremental notation
+        self.fmt_re = re.compile(r'%FS([LT])([AI])X(\d)(\d)Y\d\d\*%$')
+
+        # Mode (IN/MM)
+        self.mode_re = re.compile(r'^%MO(IN|MM)\*%$')
+
+        # Comment G04|G4
+        self.comm_re = re.compile(r'^G0?4(.*)$')
+
+        # AD - Aperture definition
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z0-9]*),(.*)\*%$')
+
+        # AM - Aperture Macro
+        # Beginning of macro (Ends with *%):
+        self.am_re = re.compile(r'^%AM([a-zA-Z0-9]*)\*')
+
+        # Tool change
+        # May begin with G54 but that is deprecated
+        self.tool_re = re.compile(r'^(?:G54)?D(\d\d+)\*$')
+
+        # G01 - Linear interpolation plus flashes
+        # Operation code (D0x) missing is deprecated... oh well I will support it.
+        self.lin_re = re.compile(r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0([123]))?\*$')
+
+        self.setlin_re = re.compile(r'^(?:G0?1)\*')
+
+        # G02/3 - Circular interpolation
+        # 2-clockwise, 3-counterclockwise
+        self.circ_re = re.compile(r'^(?:G0?([23]))?(?:X(-?\d+))?(?:Y(-?\d+))' +
+                                  '?(?:I(-?\d+))?(?:J(-?\d+))?D0([12])\*$')
+
+        # G01/2/3 Occurring without coordinates
+        self.interp_re = re.compile(r'^(?:G0?([123]))\*')
+
+        # Single D74 or multi D75 quadrant for circular interpolation
+        self.quad_re = re.compile(r'^G7([45])\*$')
+
+        # Region mode on
+        # In region mode, D01 starts a region
+        # and D02 ends it. A new region can be started again
+        # with D01. All contours must be closed before
+        # D02 or G37.
+        self.regionon_re = re.compile(r'^G36\*$')
+
+        # Region mode off
+        # Will end a region and come off region mode.
+        # All contours must be closed before D02 or G37.
+        self.regionoff_re = re.compile(r'^G37\*$')
+
+        # End of file
+        self.eof_re = re.compile(r'^M02\*')
+
+        # IP - Image polarity
+        self.pol_re = re.compile(r'^%IP(POS|NEG)\*%$')
+
+        # LP - Level polarity
+        self.lpol_re = re.compile(r'^%LP([DC])\*%$')
 
     def scale(self, factor):
         """
@@ -343,16 +408,20 @@ class Gerber (Geometry):
         :return: Identifier of the aperture.
         :rtype: str
         """
+
         indexstar = gline.find("*")
         indexc = gline.find("C,")
         if indexc != -1:  # Circle, example: %ADD11C,0.1*%
-            apid = gline[4:indexc]
+            # Found some Gerber with a leading zero in the aperture id and the
+            # referenced it without the zero, so this is a hack to handle that.
+            apid = str(int(gline[4:indexc]))
             self.apertures[apid] = {"type": "C",
                                     "size": float(gline[indexc+2:indexstar])}
             return apid
         indexr = gline.find("R,")
         if indexr != -1:  # Rectangle, example: %ADD15R,0.05X0.12*%
-            apid = gline[4:indexr]
+            # Hack explained above
+            apid = str(int(gline[4:indexr]))
             indexx = gline.find("X")
             self.apertures[apid] = {"type": "R",
                                     "width": float(gline[indexr+2:indexx]),
@@ -360,7 +429,8 @@ class Gerber (Geometry):
             return apid
         indexo = gline.find("O,")
         if indexo != -1:  # Obround
-            apid = gline[4:indexo]
+            # Hack explained above
+            apid = str(int(gline[4:indexo]))
             indexx = gline.find("X")
             self.apertures[apid] = {"type": "O",
                                     "width": float(gline[indexo+2:indexx]),
@@ -381,67 +451,148 @@ class Gerber (Geometry):
         
     def parse_lines(self, glines):
         """
-        Main Gerber parser.
+        Main Gerber parser. Reads Gerber and populates ``self.paths``, ``self.apertures``,
+        ``self.flashes``, ``self.regions`` and ``self.units``.
+
+        :param glines: Gerber code as list of strings, each
+        element being one line of the source file.
+        :type glines: list
+        :return: None
+        :rtype: None
         """
 
-        # Mode (IN/MM)
-        mode_re = re.compile(r'^%MO(IN|MM)\*%$')
-
         path = []  # Coordinates of the current path
+
         last_path_aperture = None
         current_aperture = None
-        
+
+        # 1,2 or 3 from "G01", "G02" or "G03"
+        current_interpolation_mode = None
+
+        # 1 or 2 from "D01" or "D02"
+        # Note this is to support deprecated Gerber not putting
+        # an operation code at the end of every coordinate line.
+        current_operation_code = None
+
+        # Current coordinates
+        current_x = None
+        current_y = None
+
         for gline in glines:
-            
-            if gline.find("D01*") != -1:  # pen down
-                path.append(coord(gline, self.digits, self.fraction))
-                last_path_aperture = current_aperture
+
+            # Linear interpolation plus flashes
+            match = self.lin_re.search(gline)
+            if match:
+                # Parse coordinates
+                if match.group(2) is not None:
+                    current_x = parse_gerber_number(match.group(2), self.frac_digits)
+                if match.group(3) is not None:
+                    current_y = parse_gerber_number(match.group(3), self.frac_digits)
+
+                # Parse operation code
+                if match.group(4) is not None:
+                    current_operation_code = match.group(4)
+
+                # Pen down: add segment
+                if current_operation_code == '1':
+                    path.append([current_x, current_y])
+                    last_path_aperture = current_aperture
+
+                # Pen up: finish path
+                elif current_operation_code == '2':
+                    if len(path) > 1:
+                        self.paths.append({"linestring": LineString(path),
+                                           "aperture": last_path_aperture})
+                    path = [[current_x, current_y]]
+
+                # Flash
+                elif current_operation_code == '3':
+                    self.flashes.append({"loc": [current_x, current_y],
+                                         "aperture": current_aperture})
+
                 continue
-        
-            if gline.find("D02*") != -1:  # pen up
-                if len(path) > 1:
-                    # Path completed, create shapely LineString
-                    self.paths.append({"linestring": LineString(path),
-                                       "aperture": last_path_aperture})
-                path = [coord(gline, self.digits, self.fraction)]
-                continue
-            
-            indexd3 = gline.find("D03*")
-            if indexd3 > 0:  # Flash
-                self.flashes.append({"loc": coord(gline, self.digits, self.fraction),
-                                     "aperture": current_aperture})
-                continue
-            if indexd3 == 0:  # Flash?
-                print "WARNING: Uninplemented flash style:", gline
-                continue
-            
-            if gline.find("G37*") != -1:  # end region
+
+            # if gline.find("D01*") != -1:  # pen down
+            #     path.append(parse_gerber_coords(gline, self.int_digits, self.frac_digits))
+            #     last_path_aperture = current_aperture
+            #     continue
+            #
+            # if gline.find("D02*") != -1:  # pen up
+            #     if len(path) > 1:
+            #         # Path completed, create shapely LineString
+            #         self.paths.append({"linestring": LineString(path),
+            #                            "aperture": last_path_aperture})
+            #     path = [parse_gerber_coords(gline, self.int_digits, self.frac_digits)]
+            #     continue
+            #
+            # indexd3 = gline.find("D03*")
+            # if indexd3 > 0:  # Flash
+            #     self.flashes.append({"loc": parse_gerber_coords(gline, self.int_digits, self.frac_digits),
+            #                          "aperture": current_aperture})
+            #     continue
+            # if indexd3 == 0:  # Flash?
+            #     print "WARNING: Uninplemented flash style:", gline
+            #     continue
+
+            # End region
+            if self.regionoff_re.search(gline):
                 # Only one path defines region?
                 self.regions.append({"polygon": Polygon(path),
                                      "aperture": last_path_aperture})
                 path = []
                 continue
+
+            # if gline.find("G37*") != -1:  # end region
+            #     # Only one path defines region?
+            #     self.regions.append({"polygon": Polygon(path),
+            #                          "aperture": last_path_aperture})
+            #     path = []
+            #     continue
             
             if gline.find("%ADD") != -1:  # aperture definition
                 self.aperture_parse(gline)  # adds element to apertures
                 continue
-            
-            indexstar = gline.find("*")
-            if gline.find("D") == 0:  # Aperture change
-                current_aperture = gline[1:indexstar]
-                continue
-            if gline.find("G54D") == 0:  # Aperture change (deprecated)
-                current_aperture = gline[4:indexstar]
-                continue
-            
-            if gline.find("%FS") != -1:  # Format statement
-                indexx = gline.find("X")
-                self.digits = int(gline[indexx + 1])
-                self.fraction = int(gline[indexx + 2])
+
+            # Interpolation mode change
+            # Can occur along with coordinates and operation code but
+            # sometimes by itself (handled here).
+            # Example: G01*
+            match = self.interp_re.search(gline)
+            if match:
+                current_interpolation_mode = int(match.group(1))
                 continue
 
+            # Tool/aperture change
+            # Example: D12*
+            match = self.tool_re.search(gline)
+            if match:
+                current_aperture = match.group(1)
+                continue
+
+            # indexstar = gline.find("*")
+            # if gline.find("D") == 0:  # Aperture change
+            #     current_aperture = gline[1:indexstar]
+            #     continue
+            # if gline.find("G54D") == 0:  # Aperture change (deprecated)
+            #     current_aperture = gline[4:indexstar]
+            #     continue
+
+            # Number format
+            # TODO: This is ignoring most of the format. Implement the rest.
+            match = self.fmt_re.search(gline)
+            if match:
+                self.int_digits = int(match.group(3))
+                self.frac_digits = int(match.group(4))
+                continue
+
+            # if gline.find("%FS") != -1:  # Format statement
+            #     indexx = gline.find("X")
+            #     self.int_digits = int(gline[indexx + 1])
+            #     self.frac_digits = int(gline[indexx + 2])
+            #     continue
+
             # Mode (IN/MM)
-            match = mode_re.search(gline)
+            match = self.mode_re.search(gline)
             if match:
                 self.units = match.group(1)
                 continue
@@ -452,7 +603,12 @@ class Gerber (Geometry):
             # EOF, create shapely LineString if something still in path
             self.paths.append({"linestring": LineString(path),
                                "aperture": last_path_aperture})
-    
+
+        # if len(path) > 1:
+        #     # EOF, create shapely LineString if something still in path
+        #     self.paths.append({"linestring": LineString(path),
+        #                        "aperture": current_aperture})
+
     def do_flashes(self):
         """
         Creates geometry for Gerber flashes (aperture on a single point).
@@ -1133,19 +1289,22 @@ def get_bounds(geometry_set):
 def arc(center, radius, start, stop, direction, steps_per_circ):
     """
     Creates a Shapely.LineString for the specified arc.
-    @param center: Coordinates of the center [x, y]
-    @type center: list
-    @param radius: Radius of the arc.
-    @type radius: float
-    @param start: Starting angle in radians
-    @type start: float
-    @param stop: End angle in radians
-    @type stop: float
-    @param direction: Orientation of the arc, "CW" or "CCW"
-    @type direction: string
-    @param steps_per_circ: Number of straight line segments to
+
+    :param center: Coordinates of the center [x, y]
+    :type center: list
+    :param radius: Radius of the arc.
+    :type radius: float
+    :param start: Starting angle in radians
+    :type start: float
+    :param stop: End angle in radians
+    :type stop: float
+    :param direction: Orientation of the arc, "CW" or "CCW"
+    :type direction: string
+    :param steps_per_circ: Number of straight line segments to
         represent a circle.
-    @type steps_per_circ: int
+    :type steps_per_circ: int
+    :return: The desired arc.
+    :rtype: Shapely.LineString
     """
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
@@ -1170,14 +1329,16 @@ def clear_poly(poly, tooldia, overlap=0.1):
     Creates a list of Shapely geometry objects covering the inside
     of a Shapely.Polygon. Use for removing all the copper in a region
     or bed flattening.
-    @param poly: Target polygon
-    @type poly: Shapely.Polygon
-    @param tooldia: Diameter of the tool
-    @type tooldia: float
-    @param overlap: Fraction of the tool diameter to overlap
+
+    :param poly: Target polygon
+    :type poly: Shapely.Polygon
+    :param tooldia: Diameter of the tool
+    :type tooldia: float
+    :param overlap: Fraction of the tool diameter to overlap
         in each pass.
-    @type overlap: float
-    @return list of Shapely.Polygon
+    :type overlap: float
+    :return: list of Shapely.Polygon
+    :rtype: list
     """
     poly_cuts = [poly.buffer(-tooldia/2.0)]
     while True:
@@ -1251,11 +1412,33 @@ def plotg(geo):
             print "Cannot plot:", str(type(g))
             continue
 
+def parse_gerber_number(strnumber, frac_digits):
+    """
+    Parse a single number of Gerber coordinates.
 
-############### cam.py ####################
-def coord(gstr, digits, fraction):
+    :param strnumber: String containing a number in decimal digits
+    from a coordinate data block, possibly with a leading sign.
+    :type strnumber: str
+    :param frac_digits: Number of digits used for the fractional
+    part of the number
+    :type frac_digits: int
+    :return: The number in floating point.
+    :rtype: float
+    """
+    return int(strnumber)*(10**(-frac_digits))
+
+def parse_gerber_coords(gstr, int_digits, frac_digits):
     """
     Parse Gerber coordinates
+
+    :param gstr: Line of G-Code containing coordinates.
+    :type gstr: str
+    :param int_digits: Number of digits in integer part of a number.
+    :type int_digits: int
+    :param frac_digits: Number of digits in frac_digits part of a number.
+    :type frac_digits: int
+    :return: [x, y] coordinates.
+    :rtype: list
     """
     global gerbx, gerby
     xindex = gstr.find("X")
@@ -1263,14 +1446,13 @@ def coord(gstr, digits, fraction):
     index = gstr.find("D")
     if xindex == -1:
         x = gerbx
-        y = int(gstr[(yindex+1):index])*(10**(-fraction))
+        y = int(gstr[(yindex+1):index])*(10**(-frac_digits))
     elif yindex == -1:
         y = gerby
-        x = int(gstr[(xindex+1):index])*(10**(-fraction))
+        x = int(gstr[(xindex+1):index])*(10**(-frac_digits))
     else:
-        x = int(gstr[(xindex+1):yindex])*(10**(-fraction))
-        y = int(gstr[(yindex+1):index])*(10**(-fraction))
+        x = int(gstr[(xindex+1):yindex])*(10**(-frac_digits))
+        y = int(gstr[(yindex+1):index])*(10**(-frac_digits))
     gerbx = x
     gerby = y
     return [x, y]
-################ end of cam.py #############

@@ -5,7 +5,7 @@
 
 
 
-Welcome to Cirkuix's documentation!
+Welcome to FlatCAM's documentation!
 ===================================
 
 Contents:

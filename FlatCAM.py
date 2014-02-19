@@ -1,7 +1,9 @@
 ############################################################
-# Author: Juan Pablo Caram                                 #
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
 # Date: 2/5/2014                                           #
-# caram.cl                                                 #
+# MIT Licence                                              #
 ############################################################
 
 import threading
@@ -553,7 +555,7 @@ class App:
         self.builder = Gtk.Builder()
         self.builder.add_from_file(self.gladefile)
         self.window = self.builder.get_object("window1")
-        self.window.set_title("FlatCAM")
+        self.window.set_title("FlatCAM - Alpha 1 UNSTABLE - Check for updates!")
         self.position_label = self.builder.get_object("label3")
         self.grid = self.builder.get_object("grid1")
         self.notebook = self.builder.get_object("notebook1")
@@ -969,9 +971,9 @@ class App:
 
     def set_progress_bar(self, percentage, text=""):
         """
-        Sets the application's progress bar to a given fraction and text.
+        Sets the application's progress bar to a given frac_digits and text.
 
-        :param percentage: The fraction (0.0-1.0) of the progress.
+        :param percentage: The frac_digits (0.0-1.0) of the progress.
         :type percentage: float
         :param text: Text to display on the progress bar.
         :type text: str
@@ -1260,6 +1262,18 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_about(self, widget):
+        """
+        Opens the 'About' dialog box.
+
+        :param widget: Ignored.
+        :return: None
+        """
+        about = self.builder.get_object("aboutdialog")
+        response = about.run()
+        about.destroy()
+
+
     def on_create_mirror(self, widget):
         """
         Creates a mirror image of a Gerber object to be used as a bottom
