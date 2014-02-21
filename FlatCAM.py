@@ -266,9 +266,16 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.options['bboxmargin'] *= factor
 
     def plot(self, figure):
+        """
+        Plots the object on to the specified figure.
+
+        :param figure: Matplotlib figure on which to plot.
+        """
+
         FlatCAMObj.plot(self, figure)
 
-        #self.create_geometry()
+        if not self.options["plot"]:
+            return
 
         if self.options["mergepolys"]:
             geometry = self.solid_geometry
@@ -282,12 +289,22 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         else:
             linespec = 'k-'
 
-        for poly in geometry:
-            x, y = poly.exterior.xy
-            self.axes.plot(x, y, linespec)
-            for ints in poly.interiors:
-                x, y = ints.coords.xy
+        if self.options["solid"]:
+            for poly in geometry:
+                # TODO: Too many things hardcoded.
+                patch = PolygonPatch(poly,
+                                     facecolor="#BBF268",
+                                     edgecolor="#006E20",
+                                     alpha=0.75,
+                                     zorder=2)
+                self.axes.add_patch(patch)
+        else:
+            for poly in geometry:
+                x, y = poly.exterior.xy
                 self.axes.plot(x, y, linespec)
+                for ints in poly.interiors:
+                    x, y = ints.coords.xy
+                    self.axes.plot(x, y, linespec)
 
         self.app.canvas.queue_draw()
 
@@ -346,8 +363,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
 
     def plot(self, figure):
         FlatCAMObj.plot(self, figure)
-        #self.setup_axes(figure)
-        #self.create_geometry()
+
+        if not self.options["plot"]:
+            return
 
         # Plot excellon
         for geo in self.solid_geometry:
@@ -400,15 +418,11 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.options.update({
             "plot": True,
-            "solid": False,
-            "multicolored": False,
             "tooldia": 0.4 / 25.4  # 0.4mm in inches
         })
 
         self.form_kinds.update({
             "plot": "cb",
-            "solid": "cb",
-            "multicolored": "cb",
             "tooldia": "entry_eval"
         })
 
@@ -418,8 +432,11 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.ser_attrs += ['options', 'kind']
 
     def plot(self, figure):
-        FlatCAMObj.plot(self, figure)
-        #self.setup_axes(figure)
+        FlatCAMObj.plot(self, figure)  # Only sets up axes
+
+        if not self.options["plot"]:
+            return
+
         self.plot2(self.axes, tooldia=self.options["tooldia"])
         self.app.on_zoom_fit(None)
         self.app.canvas.queue_draw()
@@ -494,7 +511,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
     def plot(self, figure):
         FlatCAMObj.plot(self, figure)
-        #self.setup_axes(figure)
+
+        if not self.options["plot"]:
+            return
 
         try:
             _ = iter(self.solid_geometry)
@@ -1262,6 +1281,11 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_cb_plot_toggled(self, widget):
+        self.get_current().read_form()
+        self.get_current().plot(self.figure)
+        self.on_zoom_fit(None)  # TODO: Does not update correctly otherwise.
+
     def on_about(self, widget):
         """
         Opens the 'About' dialog box.
@@ -1269,10 +1293,10 @@ class App:
         :param widget: Ignored.
         :return: None
         """
+
         about = self.builder.get_object("aboutdialog")
         response = about.run()
         about.destroy()
-
 
     def on_create_mirror(self, widget):
         """
@@ -1322,6 +1346,7 @@ class App:
         :param widget: Ignored.
         :return: None
         """
+
         # Mirror axis. Same as in on_create_mirror.
         axis = self.get_radio_value({"rb_mirror_x": "X",
                                      "rb_mirror_y": "Y"})
@@ -1445,6 +1470,7 @@ class App:
         :param widget: Ignored.
         :return: None
         """
+
         if self.toggle_units_ignore:
             return
 
@@ -1522,6 +1548,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         def on_success(app_obj, filename):
             app_obj.open_project(filename)
 
@@ -1536,6 +1563,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         if self.project_filename is None:
             self.on_file_saveprojectas(None)
         else:
@@ -1551,6 +1579,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         def on_success(app_obj, filename):
             assert isinstance(app_obj, App)
             app_obj.save_project(filename)
@@ -1569,6 +1598,7 @@ class App:
         :param param: Ignore.
         :return: None
         """
+
         def on_success(app_obj, filename):
             assert isinstance(app_obj, App)
             app_obj.save_project(filename)
@@ -2016,7 +2046,8 @@ class App:
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
             assert isinstance(job_obj, FlatCAMCNCjob)
-            geometry = app_obj.stuff[app_obj.selected_item_name]
+            #geometry = app_obj.stuff[app_obj.selected_item_name]
+            geometry = app_obj.get_current()
             assert isinstance(geometry, FlatCAMGeometry)
             geometry.read_form()
 
@@ -2027,13 +2058,15 @@ class App:
             job_obj.options["tooldia"] = geometry.options["cnctooldia"]
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
-            job_obj.generate_from_geometry(geometry)
+            # TODO: The tolerance should not be hard coded. Just for testing.
+            job_obj.generate_from_geometry(geometry, tolerance=0.001)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
 
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-            job_obj.create_geometry()
+            # TODO: job_obj.create_geometry creates stuff that is not used.
+            #GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
+            #job_obj.create_geometry()
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
 
@@ -2119,13 +2152,16 @@ class App:
         # Update UI
         self.build_list()  # Update the items list
 
-    def on_replot(self, widget):
+    def on_toolbar_replot(self, widget):
         """
         Callback for toolbar button. Re-plots all objects.
 
         :param widget: The widget from which this was called.
         :return: None
         """
+
+        self.get_current().read_form()
+
         self.plot_all()
 
     def on_clear_plots(self, widget):

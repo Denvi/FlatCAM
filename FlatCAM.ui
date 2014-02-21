@@ -567,6 +567,7 @@ THE SOFTWARE.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
+                    <signal name="toggled" handler="on_cb_plot_toggled" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -575,34 +576,10 @@ THE SOFTWARE.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="cb_cncjob_solid">
-                    <property name="label" translatable="yes">Solid</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="xalign">0</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">4</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="cb_cncjob_multicolored">
-                    <property name="label" translatable="yes">Multi-colored</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="xalign">0</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">5</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
                   <object class="GtkBox" id="box9">
@@ -874,6 +851,7 @@ THE SOFTWARE.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
+                    <signal name="toggled" handler="on_cb_plot_toggled" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1301,6 +1279,7 @@ THE SOFTWARE.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
+                    <signal name="toggled" handler="on_cb_plot_toggled" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -1836,6 +1815,7 @@ THE SOFTWARE.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
+                    <signal name="toggled" handler="on_cb_plot_toggled" swapped="no"/>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -2813,7 +2793,7 @@ to application defaults.</property>
                 <property name="label" translatable="yes">Re-plot</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-redo</property>
-                <signal name="clicked" handler="on_replot" swapped="no"/>
+                <signal name="clicked" handler="on_toolbar_replot" swapped="no"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -4078,36 +4058,10 @@ to application defaults.</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="cb_app_cncjob_solid">
-                                    <property name="label" translatable="yes">Solid</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
-                                    <property name="draw_indicator">True</property>
-                                    <signal name="toggled" handler="on_options_update" swapped="no"/>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">37</property>
-                                  </packing>
+                                  <placeholder/>
                                 </child>
                                 <child>
-                                  <object class="GtkCheckButton" id="cb_app_cncjob_multicolored">
-                                    <property name="label" translatable="yes">Multi-colored</property>
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">True</property>
-                                    <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
-                                    <property name="draw_indicator">True</property>
-                                    <signal name="toggled" handler="on_options_update" swapped="no"/>
-                                  </object>
-                                  <packing>
-                                    <property name="expand">False</property>
-                                    <property name="fill">True</property>
-                                    <property name="position">38</property>
-                                  </packing>
+                                  <placeholder/>
                                 </child>
                                 <child>
                                   <object class="GtkBox" id="box17">

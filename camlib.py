@@ -925,11 +925,13 @@ class CNCjob(Geometry):
         """
         Creates gcode for this object from an Excellon object
         for the specified tools.
-        @param exobj: Excellon object to process
-        @type exobj: Excellon
-        @param tools: Comma separated tool names
-        @type: tools: str
-        @return: None
+
+        :param exobj: Excellon object to process
+        :type exobj: Excellon
+        :param tools: Comma separated tool names
+        :type: tools: str
+        :return: None
+        :rtype: None
         """
         print "Creating CNC Job from Excellon..."
         if tools == "all":
@@ -970,9 +972,21 @@ class CNCjob(Geometry):
 
         self.gcode = gcode
 
-    def generate_from_geometry(self, geometry, append=True, tooldia=None):
+    def generate_from_geometry(self, geometry, append=True, tooldia=None, tolerance=0):
         """
-        Generates G-Code from a Geometry object.
+        Generates G-Code from a Geometry object. Stores in ``self.gcode``.
+
+        :param geometry: Geometry defining the toolpath
+        :type geometry: Geometry
+        :param append: Wether to append to self.gcode or re-write it.
+        :type append: bool
+        :param tooldia: If given, sets the tooldia property but does
+        not affect the process in any other way.
+        :type tooldia: bool
+        :param tolerance: All points in the simplified object will be within the
+        tolerance distance of the original geometry.
+        :return: None
+        :rtype: None
         """
         if tooldia is not None:
             self.tooldia = tooldia
@@ -993,11 +1007,11 @@ class CNCjob(Geometry):
         for geo in geometry.solid_geometry:
             
             if type(geo) == Polygon:
-                self.gcode += self.polygon2gcode(geo)
+                self.gcode += self.polygon2gcode(geo, tolerance=tolerance)
                 continue
             
             if type(geo) == LineString or type(geo) == LinearRing:
-                self.gcode += self.linear2gcode(geo)
+                self.gcode += self.linear2gcode(geo, tolerance=tolerance)
                 continue
             
             if type(geo) == Point:
@@ -1006,7 +1020,7 @@ class CNCjob(Geometry):
 
             if type(geo) == MultiPolygon:
                 for poly in geo:
-                    self.gcode += self.polygon2gcode(poly)
+                    self.gcode += self.polygon2gcode(poly, tolerance=tolerance)
                 continue
 
             print "WARNING: G-code generation not implemented for %s" % (str(type(geo)))
@@ -1017,7 +1031,10 @@ class CNCjob(Geometry):
 
     def pre_parse(self, gtext):
         """
-        gtext is a single string with g-code
+        Separates parts of the G-Code text into a list of dictionaries.
+        Used by ``self.gcode_parse()``.
+
+        :param gtext: A single string with g-code
         """
 
         # Units: G20-inches, G21-mm
@@ -1177,9 +1194,18 @@ class CNCjob(Geometry):
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
              color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-             alpha={"T": 0.3, "C": 1.0}):
+             alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.001):
         """
         Plots the G-code job onto the given axes.
+
+        :param axes: Matplotlib axes on which to plot.
+        :param tooldia: Tool diameter.
+        :param dpi: Not used!
+        :param margin: Not used!
+        :param color: Color specification.
+        :param alpha: Transparency specification.
+        :param tool_tolerance: Tolerance when drawing the toolshape.
+        :return: None
         """
         if tooldia is None:
             tooldia = self.tooldia
@@ -1194,32 +1220,44 @@ class CNCjob(Geometry):
                 axes.plot(x, y, linespec, color=linecolor)
         else:
             for geo in self.gcode_parsed:
-                poly = geo['geom'].buffer(tooldia/2.0)
+                poly = geo['geom'].buffer(tooldia/2.0).simplify(tool_tolerance)
                 patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
                                      edgecolor=color[geo['kind'][0]][1],
                                      alpha=alpha[geo['kind'][0]], zorder=2)
                 axes.add_patch(patch)
         
     def create_geometry(self):
+        # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-    def polygon2gcode(self, polygon):
+    def polygon2gcode(self, polygon, tolerance=0):
         """
         Creates G-Code for the exterior and all interior paths
         of a polygon.
 
         :param polygon: A Shapely.Polygon
         :type polygon: Shapely.Polygon
+        :param tolerance: All points in the simplified object will be within the
+        tolerance distance of the original geometry.
+        :type tolerance: float
+        :return: G-code to cut along polygon.
+        :rtype: str
         """
+
+        if tolerance > 0:
+            target_polygon = polygon.simplify(tolerance)
+        else:
+            target_polygon = polygon
+
         gcode = ""
         t = "G0%d X%.4fY%.4f\n"
-        path = list(polygon.exterior.coords)             # Polygon exterior
+        path = list(target_polygon.exterior.coords)             # Polygon exterior
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
         gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
         gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        for ints in polygon.interiors:               # Polygon interiors
+        for ints in target_polygon.interiors:               # Polygon interiors
             path = list(ints.coords)
             gcode += t % (0, path[0][0], path[0][1])  # Move to first point
             gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
@@ -1228,11 +1266,28 @@ class CNCjob(Geometry):
             gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         return gcode
 
-    def linear2gcode(self, linear):
+    def linear2gcode(self, linear, tolerance=0):
+        """
+        Generates G-code to cut along the linear feature.
+
+        :param linear: The path to cut along.
+        :type: Shapely.LinearRing or Shapely.Linear String
+        :param tolerance: All points in the simplified object will be within the
+        tolerance distance of the original geometry.
+        :type tolerance: float
+        :return: G-code to cut alon the linear feature.
+        :rtype: str
+        """
+
+        if tolerance > 0:
+            target_linear = linear.simplify(tolerance)
+        else:
+            target_linear = linear
+
         gcode = ""
         t = "G0%d X%.4fY%.4f\n"
-        path = list(linear.coords)
-        gcode += t%(0, path[0][0], path[0][1])  # Move to first point
+        path = list(target_linear.coords)
+        gcode += t % (0, path[0][0], path[0][1])  # Move to first point
         gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
