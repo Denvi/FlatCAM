@@ -490,12 +490,39 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.ser_attrs += ['options', 'kind']
 
     def scale(self, factor):
+        """
+        Scales all geometry by a given factor.
+
+        :param factor: Factor by which to scale the object's geometry/
+        :type factor: float
+        :return: None
+        :rtype: None
+        """
+
         if type(self.solid_geometry) == list:
             self.solid_geometry = [affinity.scale(g, factor, factor, origin=(0, 0))
                                    for g in self.solid_geometry]
         else:
             self.solid_geometry = affinity.scale(self.solid_geometry, factor, factor,
                                                  origin=(0, 0))
+
+    def offset(self, vect):
+        """
+        Offsets all geometry by a given vector/
+
+        :param vect: (x, y) vector by which to offset the object's geometry.
+        :type vect: tuple
+        :return: None
+        :rtype: None
+        """
+
+        dx, dy = vect
+
+        if type(self.solid_geometry) == list:
+            self.solid_geometry = [affinity.translate(g, xoff=dx, yoff=dy)
+                                   for g in self.solid_geometry]
+        else:
+            self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -1037,7 +1064,11 @@ class App:
         m_y = 25  # pixels
         width = xmax - xmin
         height = ymax - ymin
-        r = width / height
+        try:
+            r = width / height
+        except:
+            print "ERROR: Height is", height
+            return
         Fw, Fh = self.canvas.get_width_height()
         Fr = float(Fw) / Fh
         x_ratio = float(m_x) / Fw
@@ -1281,6 +1312,19 @@ class App:
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_offset_object(self, widget):
+        obj = self.get_current()
+        assert isinstance(obj, FlatCAMObj)
+        try:
+            vect = self.get_eval("entry_eval_" + obj.kind + "_offset")
+        except:
+            self.info("ERROR: Vector is not in (x, y) format.")
+        assert isinstance(obj, Geometry)
+        obj.offset(vect)
+        obj.plot(self.figure)
+        self.on_zoom_fit(None)
+        return
+
     def on_cb_plot_toggled(self, widget):
         self.get_current().read_form()
         self.get_current().plot(self.figure)
@@ -1943,7 +1987,8 @@ class App:
 
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
-            gerber = app_obj.stuff[app_obj.selected_item_name]
+            #gerber = app_obj.stuff[app_obj.selected_item_name]  # TODO: Remove.
+            gerber = app_obj.get_current()
             assert isinstance(gerber, FlatCAMGerber)
             gerber.read_form()
             bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["noncoppermargin"])
@@ -1967,7 +2012,8 @@ class App:
             # TODO: get from object
             margin = app_obj.get_eval("entry_eval_gerber_cutoutmargin")
             gap_size = app_obj.get_eval("entry_eval_gerber_cutoutgapsize")
-            gerber = app_obj.stuff[app_obj.selected_item_name]
+            #gerber = app_obj.stuff[app_obj.selected_item_name]
+            gerber = app_obj.get_current()
             minx, miny, maxx, maxy = gerber.bounds()
             minx -= margin
             maxx += margin
@@ -2059,7 +2105,7 @@ class App:
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
             # TODO: The tolerance should not be hard coded. Just for testing.
-            job_obj.generate_from_geometry(geometry, tolerance=0.001)
+            job_obj.generate_from_geometry(geometry, tolerance=0.0005)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
@@ -2129,7 +2175,7 @@ class App:
             f = open(filename, 'w')
             f.write(cncjob.gcode)
             f.close()
-            print "Saved to:", filename
+            self.info("Saved to: " + filename)
 
         self.file_chooser_save_action(on_success)
 

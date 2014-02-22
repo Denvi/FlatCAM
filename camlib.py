@@ -43,6 +43,11 @@ class Geometry:
         """
         Creates contours around geometry at a given
         offset distance.
+
+        :param offset: Offset distance.
+        :type offset: float
+        :return: The buffered geometry.
+        :rtype: Shapely.MultiPolygon or Shapely.Polygon
         """
         return self.solid_geometry.buffer(offset)
         
@@ -104,6 +109,16 @@ class Geometry:
         :type factor: float
         :return: None
         :rtype: None
+        """
+        return
+
+    def offset(self, vect):
+        """
+        Offset the geometry by the given vector. Override this method.
+
+        :param vect: (x, y) vector by which to offset the object.
+        :type vect: tuple
+        :return: None
         """
         return
 
@@ -379,16 +394,63 @@ class Gerber (Geometry):
         # Now buffered_paths, flash_geometry and solid_geometry
         self.create_geometry()
 
+    def offset(self, vect):
+        """
+        Offsets the objects' geometry on the XY plane by a given vector.
+        These are:
+
+        * ``paths``
+        * ``regions``
+        * ``flashes``
+
+        Then ``buffered_paths``, ``flash_geometry`` and ``solid_geometry``
+        are re-created with ``self.create_geometry()``.
+        :param vect: (x, y) offset vector.
+        :type vect: tuple
+        :return: None
+        """
+
+        dx, dy = vect
+
+        # Paths
+        print "Shifting paths..."
+        for path in self.paths:
+            path['linestring'] = affinity.translate(path['linestring'],
+                                                    xoff=dx, yoff=dy)
+
+        # Flashes
+        print "Shifting flashes..."
+        for fl in self.flashes:
+            # TODO: Shouldn't 'loc' be a numpy.array()?
+            fl['loc'][0] += dx
+            fl['loc'][1] += dy
+
+        # Regions
+        print "Shifting regions..."
+        for reg in self.regions:
+            reg['polygon'] = affinity.translate(reg['polygon'],
+                                                xoff=dx, yoff=dy)
+
+        # Now buffered_paths, flash_geometry and solid_geometry
+        self.create_geometry()
+
     def fix_regions(self):
         """
         Overwrites the region polygons with fixed
         versions if found to be invalid (according to Shapely).
         """
+
         for region in self.regions:
             if not region['polygon'].is_valid:
                 region['polygon'] = region['polygon'].buffer(0)
     
     def buffer_paths(self):
+        """
+        This is part of the parsing process. "Thickens" the paths
+        by their appertures. This will only work for circular appertures.
+        :return: None
+        """
+
         self.buffered_paths = []
         for path in self.paths:
             width = self.apertures[path["aperture"]]["size"]
@@ -613,6 +675,7 @@ class Gerber (Geometry):
         """
         Creates geometry for Gerber flashes (aperture on a single point).
         """
+
         self.flash_geometry = []
         for flash in self.flashes:
             aperture = self.apertures[flash['aperture']]
@@ -660,6 +723,7 @@ class Gerber (Geometry):
         :rtype : None
         :return: None
         """
+
         # if len(self.buffered_paths) == 0:
         #     self.buffer_paths()
         print "... buffer_paths()"
@@ -669,10 +733,9 @@ class Gerber (Geometry):
         print "... do_flashes()"
         self.do_flashes()
         print "... cascaded_union()"
-        self.solid_geometry = cascaded_union(
-                                self.buffered_paths + 
-                                [poly['polygon'] for poly in self.regions] +
-                                self.flash_geometry)
+        self.solid_geometry = cascaded_union(self.buffered_paths +
+                                             [poly['polygon'] for poly in self.regions] +
+                                             self.flash_geometry)
 
     def get_bounding_box(self, margin=0.0, rounded=False):
         """
@@ -688,6 +751,7 @@ class Gerber (Geometry):
         :return: The bounding box.
         :rtype: Shapely.Polygon
         """
+
         bbox = self.solid_geometry.envelope.buffer(margin)
         if not rounded:
             bbox = bbox.envelope
@@ -710,12 +774,14 @@ class Excellon(Geometry):
     tool              (str) A key in ``tools``
     ================  ====================================
     """
+
     def __init__(self):
         """
         The constructor takes no parameters.
         :return: Excellon object.
         :rtype: Excellon
         """
+
         Geometry.__init__(self)
         
         self.tools = {}
@@ -819,6 +885,25 @@ class Excellon(Geometry):
         # Drills
         for drill in self.drills:
             drill['point'] = affinity.scale(drill['point'], factor, factor, origin=(0, 0))
+
+        self.create_geometry()
+
+    def offset(self, vect):
+        """
+        Offsets geometry on the XY plane in the object by a given vector.
+
+        :param vect: (x, y) offset vector.
+        :type vect: tuple
+        :return: None
+        """
+
+        dx, dy = vect
+
+        # Drills
+        for drill in self.drills:
+            drill['point'] = affinity.translate(drill['point'], xoff=dx, yoff=dy)
+
+        self.create_geometry()
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -1095,6 +1180,8 @@ class CNCjob(Geometry):
         fast or feedrate speed.
         """
 
+        kind = ["C", "F"]  # T=travel, C=cut, F=fast, S=slow
+
         # Results go here
         geometry = []        
         
@@ -1103,22 +1190,31 @@ class CNCjob(Geometry):
         
         # Last known instruction
         current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
-        
+
+        # Current path: temporary storage until tool is
+        # lifted or lowered.
+        path = []
+
         # Process every instruction
         for gobj in gobjs:
+
+            # Changing height:
             if 'Z' in gobj:
                 if ('X' in gobj or 'Y' in gobj) and gobj['Z'] != current['Z']:
                     print "WARNING: Non-orthogonal motion: From", current
                     print "         To:", gobj
                 current['Z'] = gobj['Z']
-                
+                # Store the path into geometry and reset path
+                if len(path) > 1:
+                    geometry.append({"geom": LineString(path),
+                                     "kind": kind})
+                    path = [path[-1]]  # Start with the last point of last path.
+
+
             if 'G' in gobj:
                 current['G'] = int(gobj['G'])
                 
             if 'X' in gobj or 'Y' in gobj:
-                x = 0
-                y = 0
-                kind = ["C", "F"]  # T=travel, C=cut, F=fast, S=slow
                 
                 if 'X' in gobj:
                     x = gobj['X']
@@ -1129,7 +1225,9 @@ class CNCjob(Geometry):
                     y = gobj['Y']
                 else:
                     y = current['Y']
-                
+
+                kind = ["C", "F"]  # T=travel, C=cut, F=fast, S=slow
+
                 if current['Z'] > 0:
                     kind[0] = 'T'
                 if current['G'] > 0:
@@ -1137,23 +1235,26 @@ class CNCjob(Geometry):
                    
                 arcdir = [None, None, "cw", "ccw"]
                 if current['G'] in [0, 1]:  # line
-                    geometry.append({'geom': LineString([(current['X'], current['Y']),
-                                                        (x, y)]), 'kind': kind})
+                    path.append((x, y))
+                    # geometry.append({'geom': LineString([(current['X'], current['Y']),
+                    #                                     (x, y)]), 'kind': kind})
                 if current['G'] in [2, 3]:  # arc
                     center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
                     radius = sqrt(gobj['I']**2 + gobj['J']**2)
                     start = arctan2(-gobj['J'], -gobj['I'])
                     stop = arctan2(-center[1]+y, -center[0]+x)
-                    geometry.append({'geom': arc(center, radius, start, stop,
-                                                 arcdir[current['G']],
-                                                 self.steps_per_circ),
-                                     'kind': kind})
+                    path += arc(center, radius, start, stop,
+                                arcdir[current['G']],
+                                self.steps_per_circ)
+                    # geometry.append({'geom': arc(center, radius, start, stop,
+                    #                              arcdir[current['G']],
+                    #                              self.steps_per_circ),
+                    #                  'kind': kind})
 
             # Update current instruction
             for code in gobj:
                 current[code] = gobj[code]
-                
-        #self.G_geometry = geometry
+
         self.gcode_parsed = geometry
         return geometry
         
@@ -1194,7 +1295,7 @@ class CNCjob(Geometry):
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
              color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-             alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.001):
+             alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005):
         """
         Plots the G-code job onto the given axes.
 
@@ -1320,6 +1421,21 @@ class CNCjob(Geometry):
 
         self.create_geometry()
 
+    def offset(self, vect):
+        """
+        Offsets all the geometry on the XY plane in the object by the
+        given vector.
+
+        :param vect: (x, y) offset vector.
+        :type vect: tuple
+        :return: None
+        """
+        dx, dy = vect
+
+        for g in self.gcode_parsed:
+            g['geom'] = affinity.translate(g['geom'], xoff=dx, yoff=dy)
+
+        self.create_geometry()
 
 def get_bounds(geometry_set):
     xmin = Inf
@@ -1343,7 +1459,7 @@ def get_bounds(geometry_set):
 
 def arc(center, radius, start, stop, direction, steps_per_circ):
     """
-    Creates a Shapely.LineString for the specified arc.
+    Creates a list of point along the specified arc.
 
     :param center: Coordinates of the center [x, y]
     :type center: list
@@ -1358,9 +1474,11 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
     :param steps_per_circ: Number of straight line segments to
         represent a circle.
     :type steps_per_circ: int
-    :return: The desired arc.
-    :rtype: Shapely.LineString
+    :return: The desired arc, as list of tuples
+    :rtype: list
     """
+    # TODO: Resolution should be established by fraction of total length, not angle.
+
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
     if direction == "ccw" and stop <= start:
@@ -1375,8 +1493,8 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
     delta_angle = da_sign[direction]*angle*1.0/steps
     for i in range(steps+1):
         theta = start + delta_angle*i
-        points.append([center[0]+radius*cos(theta), center[1]+radius*sin(theta)])
-    return LineString(points)
+        points.append((center[0]+radius*cos(theta), center[1]+radius*sin(theta)))
+    return points
 
 
 def clear_poly(poly, tooldia, overlap=0.1):

@@ -1048,22 +1048,6 @@ which may be necessary when updating the UI from code and not by the user.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="FlatCAM.App.on_replot">
-<tt class="descname">on_replot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_replot" title="Permalink to this definition">¶</a></dt>
-<dd><p>Callback for toolbar button. Re-plots all objects.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="method">
 <dt id="FlatCAM.App.on_row_activated">
 <tt class="descname">on_row_activated</tt><big>(</big><em>widget</em>, <em>path</em>, <em>col</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_row_activated" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for selection activation (Enter or double-click) on the Project list.
@@ -1133,6 +1117,22 @@ the objects in the project.</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_toolbar_replot">
+<tt class="descname">on_toolbar_replot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toolbar_replot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for toolbar button. Re-plots all objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
@@ -1406,13 +1406,13 @@ in the GUI. This selection will in turn trigger
 <dl class="method">
 <dt id="FlatCAM.App.set_progress_bar">
 <tt class="descname">set_progress_bar</tt><big>(</big><em>percentage</em>, <em>text=''</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_progress_bar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the application&#8217;s progress bar to a given fraction and text.</p>
+<dd><p>Sets the application&#8217;s progress bar to a given frac_digits and text.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>percentage</strong> (<em>float</em>) &#8211; The fraction (0.0-1.0) of the progress.</li>
+<li><strong>percentage</strong> (<em>float</em>) &#8211; The frac_digits (0.0-1.0) of the progress.</li>
 <li><strong>text</strong> (<em>str</em>) &#8211; Text to display on the progress bar.</li>
 </ul>
 </td>
@@ -1569,6 +1569,34 @@ the rectangular bounding box of self.solid_geometry.</p>
 <tt class="descname">isolation_geometry</tt><big>(</big><em>offset</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.isolation_geometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates contours around geometry at a given
 offset distance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>offset</strong> (<em>float</em>) &#8211; Offset distance.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The buffered geometry.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Shapely.MultiPolygon or Shapely.Polygon</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.Geometry.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offset the geometry by the given vector. Override this method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) vector by which to offset the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1745,6 +1773,14 @@ The following kinds and their attributes are supported:</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="FlatCAM.Gerber.buffer_paths">
+<tt class="descname">buffer_paths</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.buffer_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is part of the parsing process. &#8220;Thickens&#8221; the paths
+by their appertures. This will only work for circular appertures.
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="FlatCAM.Gerber.create_geometry">
 <tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.create_geometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Geometry from a Gerber file is made up entirely of polygons.
@@ -1753,12 +1789,6 @@ it thickness. Additionally, aperture strokes have non-zero area,
 and regions naturally do as well.</p>
 <p>:rtype : None
 :return: None</p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="FlatCAM.Gerber.digits">
-<tt class="descname">digits</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.digits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of integer digits in Gerber numbers. Used during parsing.</p>
 </dd></dl>
 
 <dl class="method">
@@ -1775,8 +1805,8 @@ versions if found to be invalid (according to Shapely).</p>
 </dd></dl>
 
 <dl class="attribute">
-<dt id="FlatCAM.Gerber.fraction">
-<tt class="descname">fraction</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.fraction" title="Permalink to this definition">¶</a></dt>
+<dt id="FlatCAM.Gerber.frac_digits">
+<tt class="descname">frac_digits</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.frac_digits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Number of fraction digits in Gerber numbers. Used during parsing.</p>
 </dd></dl>
 
@@ -1807,6 +1837,29 @@ box in both positive and negative, x and y axes.</li>
 </table>
 </dd></dl>
 
+<dl class="attribute">
+<dt id="FlatCAM.Gerber.int_digits">
+<tt class="descname">int_digits</tt><em class="property"> = None</em><a class="headerlink" href="#FlatCAM.Gerber.int_digits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of integer digits in Gerber numbers. Used during parsing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.Gerber.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets the objects&#8217; geometry on the XY plane by a given vector.
+These are:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
+</ul>
+<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
+are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
+:param vect: (x, y) offset vector.
+:type vect: tuple
+:return: None</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="FlatCAM.Gerber.parse_file">
 <tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
@@ -1817,7 +1870,20 @@ read from the given file.</p>
 <dl class="method">
 <dt id="FlatCAM.Gerber.parse_lines">
 <tt class="descname">parse_lines</tt><big>(</big><em>glines</em><big>)</big><a class="headerlink" href="#FlatCAM.Gerber.parse_lines" title="Permalink to this definition">¶</a></dt>
-<dd><p>Main Gerber parser.</p>
+<dd><p>Main Gerber parser. Reads Gerber and populates <tt class="docutils literal"><span class="pre">self.paths</span></tt>, <tt class="docutils literal"><span class="pre">self.apertures</span></tt>,
+<tt class="docutils literal"><span class="pre">self.flashes</span></tt>, <tt class="docutils literal"><span class="pre">self.regions</span></tt> and <tt class="docutils literal"><span class="pre">self.units</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>glines</strong> &#8211; Gerber code as list of strings, each</td>
+</tr>
+</tbody>
+</table>
+<p>element being one line of the source file.
+:type glines: list
+:return: None
+:rtype: None</p>
 </dd></dl>
 
 <dl class="method">
@@ -1868,6 +1934,22 @@ the size (diameter).</li>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="FlatCAM.Excellon.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets geometry on the XY plane in the object by a given vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) offset vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="FlatCAM.Excellon.parse_lines">
 <tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
@@ -1943,45 +2025,142 @@ different job for each tool in the excellon code.</p>
 <dt id="FlatCAM.CNCjob.generate_from_excellon_by_tool">
 <tt class="descname">generate_from_excellon_by_tool</tt><big>(</big><em>exobj</em>, <em>tools='all'</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_excellon_by_tool" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates gcode for this object from an Excellon object
-for the specified tools.
-&#64;param exobj: Excellon object to process
-&#64;type exobj: Excellon
-&#64;param tools: Comma separated tool names
-&#64;type: tools: str
-&#64;return: None</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="FlatCAM.CNCjob.generate_from_geometry">
-<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generates G-Code from a Geometry object.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="FlatCAM.CNCjob.plot2">
-<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
-<dd><p>Plots the G-code job onto the given axes.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="FlatCAM.CNCjob.polygon2gcode">
-<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
-<dd><p>Creates G-Code for the exterior and all interior paths
-of a polygon.</p>
+for the specified tools.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>polygon</strong> (<em>Shapely.Polygon</em>) &#8211; A Shapely.Polygon</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>exobj</strong> (<em>Excellon</em>) &#8211; Excellon object to process</li>
+<li><strong>tools</strong> &#8211; Comma separated tool names</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">tools: str</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
 <dl class="method">
+<dt id="FlatCAM.CNCjob.generate_from_geometry">
+<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-Code from a Geometry object. Stores in <tt class="docutils literal"><span class="pre">self.gcode</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>geometry</strong> (<em>Geometry</em>) &#8211; Geometry defining the toolpath</li>
+<li><strong>append</strong> (<em>bool</em>) &#8211; Wether to append to self.gcode or re-write it.</li>
+<li><strong>tooldia</strong> &#8211; If given, sets the tooldia property but does</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>not affect the process in any other way.
+:type tooldia: bool
+:param tolerance: All points in the simplified object will be within the
+tolerance distance of the original geometry.
+:return: None
+:rtype: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.CNCjob.linear2gcode">
+<tt class="descname">linear2gcode</tt><big>(</big><em>linear</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.linear2gcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-code to cut along the linear feature.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>linear</strong> &#8211; The path to cut along.</li>
+<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first last">Shapely.LinearRing or Shapely.Linear String</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>tolerance distance of the original geometry.
+:type tolerance: float
+:return: G-code to cut alon the linear feature.
+:rtype: str</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.CNCjob.plot2">
+<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}, tool_tolerance=0.001</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the G-code job onto the given axes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>axes</strong> &#8211; Matplotlib axes on which to plot.</li>
+<li><strong>tooldia</strong> &#8211; Tool diameter.</li>
+<li><strong>dpi</strong> &#8211; Not used!</li>
+<li><strong>margin</strong> &#8211; Not used!</li>
+<li><strong>color</strong> &#8211; Color specification.</li>
+<li><strong>alpha</strong> &#8211; Transparency specification.</li>
+<li><strong>tool_tolerance</strong> &#8211; Tolerance when drawing the toolshape.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.CNCjob.polygon2gcode">
+<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates G-Code for the exterior and all interior paths
+of a polygon.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>polygon</strong> (<em>Shapely.Polygon</em>) &#8211; A Shapely.Polygon</li>
+<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>tolerance distance of the original geometry.
+:type tolerance: float
+:return: G-code to cut along polygon.
+:rtype: str</p>
+</dd></dl>
+
+<dl class="method">
 <dt id="FlatCAM.CNCjob.pre_parse">
 <tt class="descname">pre_parse</tt><big>(</big><em>gtext</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.pre_parse" title="Permalink to this definition">¶</a></dt>
-<dd><p>gtext is a single string with g-code</p>
+<dd><p>Separates parts of the G-Code text into a list of dictionaries.
+Used by <tt class="docutils literal"><span class="pre">self.gcode_parse()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gtext</strong> &#8211; A single string with g-code</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -2139,6 +2318,20 @@ and options.</p>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.FlatCAMGerber.plot">
+<tt class="descname">plot</tt><big>(</big><em>figure</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGerber.plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the object on to the specified figure.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>figure</strong> &#8211; Matplotlib figure on which to plot.</td>
 </tr>
 </tbody>
 </table>
