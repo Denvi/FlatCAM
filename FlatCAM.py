@@ -11,6 +11,7 @@ import threading
 # TODO: Bundle together. This is just for debugging.
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import GdkPixbuf
 from gi.repository import GLib
 from gi.repository import GObject
 import simplejson as json
@@ -23,6 +24,7 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 
 from camlib import *
 import sys
+import urllib
 
 
 ########################################
@@ -129,7 +131,7 @@ class FlatCAMObj:
 
     def set_form_item(self, option):
         """
-        Copies the specified options to the UI form.
+        Copies the specified option to the UI form.
 
         :param option: Name of the option (Key in ``self.options``).
         :type option: str
@@ -150,6 +152,13 @@ class FlatCAMObj:
         print "Unknown kind of form item:", fkind
 
     def read_form_item(self, option):
+        """
+        Reads the specified option from the UI form into ``self.options``.
+
+        :param option: Name of the option.
+        :type option: str
+        :return: None
+        """
         fkind = self.form_kinds[option]
         fname = fkind + "_" + self.kind + "_" + option
 
@@ -175,25 +184,23 @@ class FlatCAMObj:
         # Creates the axes if necessary and sets them up.
         self.setup_axes(figure)
 
-        # Clear axes.
-        # self.axes.cla()
-        # return
-
     def serialize(self):
         """
         Returns a representation of the object as a dictionary so
         it can be later exported as JSON. Override this method.
-        @return: Dictionary representing the object
-        @rtype: dict
+
+        :return: Dictionary representing the object
+        :rtype: dict
         """
         return
 
     def deserialize(self, obj_dict):
         """
         Re-builds an object from its serialized version.
-        @param obj_dict: Dictionary representing a FlatCAMObj
-        @type obj_dict: dict
-        @return None
+
+        :param obj_dict: Dictionary representing a FlatCAMObj
+        :type obj_dict: dict
+        :return None
         """
         return
 
@@ -257,6 +264,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         :return: None
         :rtype: None
         """
+
         factor = Gerber.convert_units(self, units)
 
         self.options['isotooldia'] *= factor
@@ -317,7 +325,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
 class FlatCAMExcellon(FlatCAMObj, Excellon):
     """
-    Represents Excellon code.
+    Represents Excellon/Drill code.
     """
 
     def __init__(self, name):
@@ -367,7 +375,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         if not self.options["plot"]:
             return
 
-        # Plot excellon
+        try:
+            _ = iter(self.solid_geometry)
+        except TypeError:
+            self.solid_geometry = [self.solid_geometry]
+
+        # Plot excellon (All polygons?)
         for geo in self.solid_geometry:
             x, y = geo.exterior.coords.xy
             self.axes.plot(x, y, 'r-')
@@ -445,6 +458,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         factor = CNCjob.convert_units(self, units)
         print "FlatCAMCNCjob.convert_units()"
         self.options["tooldia"] *= factor
+
 
 class FlatCAMGeometry(FlatCAMObj, Geometry):
     """
@@ -596,12 +610,11 @@ class App:
         # Needed to interact with the GUI from other threads.
         GObject.threads_init()
 
-        ## GUI ##
+        #### GUI ####
         self.gladefile = "FlatCAM.ui"
         self.builder = Gtk.Builder()
         self.builder.add_from_file(self.gladefile)
         self.window = self.builder.get_object("window1")
-        self.window.set_title("FlatCAM - Alpha 1 UNSTABLE - Check for updates!")
         self.position_label = self.builder.get_object("label3")
         self.grid = self.builder.get_object("grid1")
         self.notebook = self.builder.get_object("notebook1")
@@ -613,22 +626,23 @@ class App:
         # White (transparent) background on the "Options" tab.
         self.builder.get_object("vp_options").override_background_color(Gtk.StateType.NORMAL,
                                                                         Gdk.RGBA(1, 1, 1, 1))
-
         # Combo box to choose between project and application options.
         self.combo_options = self.builder.get_object("combo_options")
         self.combo_options.set_active(1)
 
-        ## Event handling ##
+        self.setup_project_list()  # The "Project" tab
+        self.setup_component_editor()  # The "Selected" tab
+
+        #### Event handling ####
         self.builder.connect_signals(self)
 
-        ## Make plot area ##
+        #### Make plot area ####
         self.figure = None
         self.axes = None
         self.canvas = None
         self.setup_plot()
 
-        self.setup_project_list()  # The "Project" tab
-        self.setup_component_editor()  # The "Selected" tab
+        self.setup_tooltips()
 
         #### DATA ####
         self.clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
@@ -663,8 +677,6 @@ class App:
         self.radios_inv = {"units": {"IN": "rb_inch", "MM": "rb_mm"},
                            "gerber_gaps": {"tb": "rb_app_2tb", "lr": "rb_app_2lr", "4": "rb_app_4"}}
 
-        # self.combos = []
-
         # Options for each kind of FlatCAMObj.
         # Example: 'gerber_plot': 'cb'. The widget name would be: 'cb_app_gerber_plot'
         for FlatCAMClass in [FlatCAMExcellon, FlatCAMGeometry, FlatCAMGerber, FlatCAMCNCjob]:
@@ -677,22 +689,34 @@ class App:
 
         self.plot_click_subscribers = {}
 
-        # Initialization
+        #### Initialization ####
         self.load_defaults()
         self.options.update(self.defaults)  # Copy app defaults to project options
         self.options2form()  # Populate the app defaults form
         self.units_label.set_text("[" + self.options["units"] + "]")
 
-        # For debugging only
+        #### Check for updates ####
+        self.version = 1
+        t1 = threading.Thread(target=self.versionCheck)
+        t1.daemon = True
+        t1.start()
+
+        #### For debugging only ###
         def someThreadFunc(self):
             print "Hello World!"
 
         t = threading.Thread(target=someThreadFunc, args=(self,))
+        t.daemon = True
         t.start()
 
         ########################################
         ##              START                 ##
         ########################################
+        self.icon256 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon256.png')
+        self.icon48 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon48.png')
+        self.icon16 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon16.png')
+        Gtk.Window.set_default_icon_list([self.icon16, self.icon48, self.icon256])
+        self.window.set_title("FlatCAM - Alpha 2 UNSTABLE - Check for updates!")
         self.window.set_default_size(900, 600)
         self.window.show_all()
 
@@ -1308,6 +1332,67 @@ class App:
         combo.remove_all()
         for obj in self.stuff:
             combo.append_text(obj)
+
+    def versionCheck(self):
+        """
+        Checks for the latest version of the program. Alerts the
+        user if theirs is outdated. This method is meant to be run
+        in a saeparate thread.
+
+        :return: None
+        """
+
+        try:
+            f = urllib.urlopen("http://caram.cl/flatcam/VERSION")  # TODO: Hardcoded.
+        except:
+            GLib.idle_add(lambda: self.info("ERROR trying to check for latest version."))
+            return
+
+        try:
+            data = json.load(f)
+        except:
+            GLib.idle_add(lambda: self.info("ERROR trying to check for latest version."))
+            f.close()
+            return
+
+        f.close()
+
+        if self.version >= data["version"]:
+            GLib.idle_add(lambda: self.info("FlatCAM is up to date!"))
+            return
+
+        label = Gtk.Label("There is a newer version of FlatCAM\n" +
+                          "available for download:\n\n" +
+                          data["name"] + "\n\n" + data["message"])
+        dialog = Gtk.Dialog("Newer Version Available", self.window, 0,
+                            (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                             Gtk.STOCK_OK, Gtk.ResponseType.OK))
+        dialog.set_default_size(150, 100)
+        dialog.set_modal(True)
+        box = dialog.get_content_area()
+        box.set_border_width(10)
+        box.add(label)
+
+        def do_dialog():
+            dialog.show_all()
+            response = dialog.run()
+            dialog.destroy()
+
+        GLib.idle_add(lambda: do_dialog())
+
+        return
+
+    def setup_tooltips(self):
+        tooltips = {
+            "cb_gerber_plot": "Plot this object on the main window.",
+            "cb_gerber_mergepolys": "Show overlapping polygons as single.",
+            "cb_gerber_solid": "Paint inside polygons.",
+            "cb_gerber_multicolored": "Draw polygons with different polygons.",
+            "button1": ""
+        }
+
+        for widget in tooltips:
+            self.builder.get_object(widget).set_tooltip_markup(tooltips[widget])
 
     ########################################
     ##         EVENT HANDLERS             ##

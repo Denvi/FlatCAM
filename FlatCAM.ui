@@ -3045,7 +3045,8 @@ to application defaults.</property>
               <object class="GtkToolButton" id="zoomfit_toolbutton">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="tooltip_text" translatable="yes">Zoom Fit</property>
+                <property name="tooltip_markup" translatable="yes">Zoom Fit.
+(Click on plot and hit &lt;b&gt;1&lt;/b&gt;)</property>
                 <property name="label" translatable="yes">Fit</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-zoom-100</property>
@@ -3060,7 +3061,9 @@ to application defaults.</property>
               <object class="GtkToolButton" id="zoomin_toolbutton">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="tooltip_text" translatable="yes">Zoom+</property>
+                <property name="tooltip_markup" translatable="yes">Zoom in.
+(Click on plot and hit &lt;b&gt;3&lt;/b&gt;
+to zoom around a point)</property>
                 <property name="label" translatable="yes">Zoom+</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-zoom-in</property>
@@ -3075,7 +3078,9 @@ to application defaults.</property>
               <object class="GtkToolButton" id="zoomout_toolbutton">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="tooltip_text" translatable="yes">Zoom-</property>
+                <property name="tooltip_markup" translatable="yes">Zoom Out.
+(Click on plot and hit &lt;b&gt;2&lt;/b&gt;
+to zoom around a point)</property>
                 <property name="label" translatable="yes">Zoom-</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-zoom-out</property>
@@ -3090,6 +3095,7 @@ to application defaults.</property>
               <object class="GtkToolButton" id="Clear">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="tooltip_markup" translatable="yes">Clear Plot</property>
                 <property name="label" translatable="yes">Clear Plots</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-stop</property>
@@ -3104,6 +3110,7 @@ to application defaults.</property>
               <object class="GtkToolButton" id="toolbutton1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="tooltip_markup" translatable="yes">Re-plot all</property>
                 <property name="label" translatable="yes">Re-plot</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-redo</property>
@@ -3118,6 +3125,8 @@ to application defaults.</property>
               <object class="GtkToolButton" id="toolbutton2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="tooltip_markup" translatable="yes">Delete selected
+object.</property>
                 <property name="label" translatable="yes">Delete Object</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-delete</property>
@@ -3165,6 +3174,7 @@ to application defaults.</property>
                   <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">Objects in the project.</property>
                     <property name="label" translatable="yes">Project</property>
                   </object>
                   <packing>
@@ -3190,6 +3200,8 @@ to application defaults.</property>
                   <object class="GtkLabel" id="label2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">Options and action
+for the current object.</property>
                     <property name="label" translatable="yes">Selected</property>
                   </object>
                   <packing>
@@ -3229,6 +3241,15 @@ to application defaults.</property>
                                   <object class="GtkComboBoxText" id="combo_options">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="tooltip_markup" translatable="yes">Application defaults get transfered
+to every new project. Project options
+get inherited by new project objects.
+
+&lt;b&gt;Save&lt;/b&gt; application defaults
+by choosing &lt;i&gt;File + Save defaults&lt;/i&gt;.
+
+Project obtions are saved with the
+project.</property>
                                     <property name="margin_left">10</property>
                                     <property name="margin_right">10</property>
                                     <property name="margin_top">5</property>
@@ -4444,6 +4465,8 @@ to application defaults.</property>
                   <object class="GtkLabel" id="label5">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">Project and application
+defaults.</property>
                     <property name="label" translatable="yes">Options</property>
                   </object>
                   <packing>
@@ -4468,6 +4491,7 @@ to application defaults.</property>
                   <object class="GtkLabel" id="label88">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">Active tool</property>
                     <property name="label" translatable="yes">Tool</property>
                   </object>
                   <packing>

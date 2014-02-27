@@ -348,6 +348,9 @@ class Gerber (Geometry):
         # LP - Level polarity
         self.lpol_re = re.compile(r'^%LP([DC])\*%$')
 
+        # TODO: This is bad.
+        self.steps_per_circ = 40
+
     def scale(self, factor):
         """
         Scales the objects' geometry on the XY plane by a given factor.
@@ -453,8 +456,12 @@ class Gerber (Geometry):
 
         self.buffered_paths = []
         for path in self.paths:
-            width = self.apertures[path["aperture"]]["size"]
-            self.buffered_paths.append(path["linestring"].buffer(width/2))
+            try:
+                width = self.apertures[path["aperture"]]["size"]
+                self.buffered_paths.append(path["linestring"].buffer(width/2))
+            except KeyError:
+                print "ERROR: Failed to buffer path: ", path
+                print "Apertures: ", self.apertures
     
     def aperture_parse(self, gline):
         """
@@ -523,7 +530,7 @@ class Gerber (Geometry):
         :rtype: None
         """
 
-        path = []  # Coordinates of the current path
+        path = []  # Coordinates of the current path, each is [x, y]
 
         last_path_aperture = None
         current_aperture = None
@@ -540,11 +547,25 @@ class Gerber (Geometry):
         current_x = None
         current_y = None
 
-        for gline in glines:
+        # How to interprest circular interpolation: SINGLE or MULTI
+        quadrant_mode = None
 
-            # Linear interpolation plus flashes
+        line_num = 0
+        for gline in glines:
+            line_num += 1
+
+            ## G01 - Linear interpolation plus flashes
+            # Operation code (D0x) missing is deprecated... oh well I will support it.
             match = self.lin_re.search(gline)
             if match:
+                # Dxx alone? Will ignore for now.
+                if match.group(1) is None and match.group(2) is None and match.group(3) is None:
+                    try:
+                        current_operation_code = int(match.group(4))
+                    except:
+                        pass  # A line with just * will match too.
+                    continue
+
                 # Parse coordinates
                 if match.group(2) is not None:
                     current_x = parse_gerber_number(match.group(2), self.frac_digits)
@@ -553,69 +574,141 @@ class Gerber (Geometry):
 
                 # Parse operation code
                 if match.group(4) is not None:
-                    current_operation_code = match.group(4)
+                    current_operation_code = int(match.group(4))
 
                 # Pen down: add segment
-                if current_operation_code == '1':
+                if current_operation_code == 1:
                     path.append([current_x, current_y])
                     last_path_aperture = current_aperture
 
                 # Pen up: finish path
-                elif current_operation_code == '2':
+                elif current_operation_code == 2:
                     if len(path) > 1:
+                        if last_path_aperture is None:
+                            print "Warning: No aperture defined for curent path. (%d)" % line_num
                         self.paths.append({"linestring": LineString(path),
                                            "aperture": last_path_aperture})
-                    path = [[current_x, current_y]]
+                    path = [[current_x, current_y]]  # Start new path
 
                 # Flash
-                elif current_operation_code == '3':
+                elif current_operation_code == 3:
                     self.flashes.append({"loc": [current_x, current_y],
                                          "aperture": current_aperture})
 
                 continue
 
-            # if gline.find("D01*") != -1:  # pen down
-            #     path.append(parse_gerber_coords(gline, self.int_digits, self.frac_digits))
-            #     last_path_aperture = current_aperture
-            #     continue
-            #
-            # if gline.find("D02*") != -1:  # pen up
-            #     if len(path) > 1:
-            #         # Path completed, create shapely LineString
-            #         self.paths.append({"linestring": LineString(path),
-            #                            "aperture": last_path_aperture})
-            #     path = [parse_gerber_coords(gline, self.int_digits, self.frac_digits)]
-            #     continue
-            #
-            # indexd3 = gline.find("D03*")
-            # if indexd3 > 0:  # Flash
-            #     self.flashes.append({"loc": parse_gerber_coords(gline, self.int_digits, self.frac_digits),
-            #                          "aperture": current_aperture})
-            #     continue
-            # if indexd3 == 0:  # Flash?
-            #     print "WARNING: Uninplemented flash style:", gline
-            #     continue
+            ## G02/3 - Circular interpolation
+            # 2-clockwise, 3-counterclockwise
+            match = self.circ_re.search(gline)
+            if match:
 
-            # End region
-            if self.regionoff_re.search(gline):
-                # Only one path defines region?
-                self.regions.append({"polygon": Polygon(path),
-                                     "aperture": last_path_aperture})
-                path = []
+                mode, x, y, i, j, d = match.groups()
+                try:
+                    x = parse_gerber_number(x, self.frac_digits)
+                except:
+                    x = current_x
+                try:
+                    y = parse_gerber_number(y, self.frac_digits)
+                except:
+                    y = current_y
+                try:
+                    i = parse_gerber_number(i, self.frac_digits)
+                except:
+                    i = 0
+                try:
+                    j = parse_gerber_number(j, self.frac_digits)
+                except:
+                    j = 0
+
+                if quadrant_mode is None:
+                    print "ERROR: Found arc without preceding quadrant specification G74 or G75. (%d)" % line_num
+                    print gline
+                    continue
+
+                if mode is None and current_interpolation_mode not in [2, 3]:
+                    print "ERROR: Found arc without circular interpolation mode defined. (%d)" % line_num
+                    print gline
+                    continue
+                elif mode is not None:
+                    current_interpolation_mode = int(mode)
+
+                # Set operation code if provided
+                if d is not None:
+                    current_operation_code = int(d)
+
+                # Nothing created! Pen Up.
+                if current_operation_code == 2:
+                    print "Warning: Arc with D2. (%d)" % line_num
+                    if len(path) > 1:
+                        if last_path_aperture is None:
+                            print "Warning: No aperture defined for curent path. (%d)" % line_num
+                        self.paths.append({"linestring": LineString(path),
+                                           "aperture": last_path_aperture})
+                    current_x = x
+                    current_y = y
+                    path = [[current_x, current_y]]  # Start new path
+                    continue
+
+                # Flash should not happen here
+                if current_operation_code == 3:
+                    print "ERROR: Trying to flash within arc. (%d)" % line_num
+                    continue
+
+                if quadrant_mode == 'MULTI':
+                    center = [i + current_x, j + current_y]
+                    radius = sqrt(i**2 + j**2)
+                    start = arctan2(-j, -i)
+                    stop = arctan2(-center[1] + y, -center[0] + x)
+                    arcdir = [None, None, "cw", "ccw"]
+                    this_arc = arc(center, radius, start, stop,
+                                   arcdir[current_interpolation_mode],
+                                   self.steps_per_circ)
+
+                    # Last point in path is current point
+                    current_x = this_arc[-1][0]
+                    current_y = this_arc[-1][1]
+
+                    # Append
+                    path += this_arc
+
+                    last_path_aperture = current_aperture
+
+                    continue
+
+                if quadrant_mode == 'SINGLE':
+                    print "Warning: Single quadrant arc are not implemented yet. (%d)" % line_num
+
+            ## G74/75* - Single or multiple quadrant arcs
+            match = self.quad_re.search(gline)
+            if match:
+                if match.group(1) == '4':
+                    quadrant_mode = 'SINGLE'
+                else:
+                    quadrant_mode = 'MULTI'
                 continue
 
-            # if gline.find("G37*") != -1:  # end region
-            #     # Only one path defines region?
-            #     self.regions.append({"polygon": Polygon(path),
-            #                          "aperture": last_path_aperture})
-            #     path = []
-            #     continue
+            ## G37* - End region
+            if self.regionoff_re.search(gline):
+                # Only one path defines region?
+                if len(path) < 3:
+                    print "ERROR: Path contains less than 3 points:"
+                    print path
+                    print "Line (%d): " % line_num, gline
+                    path = []
+                    continue
+
+                # For regions we may ignore an aperture that is None
+                self.regions.append({"polygon": Polygon(path),
+                                     "aperture": last_path_aperture})
+                #path = []
+                path = [[current_x, current_y]]  # Start new path
+                continue
             
             if gline.find("%ADD") != -1:  # aperture definition
                 self.aperture_parse(gline)  # adds element to apertures
                 continue
 
-            # Interpolation mode change
+            ## G01/2/3* - Interpolation mode change
             # Can occur along with coordinates and operation code but
             # sometimes by itself (handled here).
             # Example: G01*
@@ -624,22 +717,15 @@ class Gerber (Geometry):
                 current_interpolation_mode = int(match.group(1))
                 continue
 
-            # Tool/aperture change
+            ## Tool/aperture change
             # Example: D12*
             match = self.tool_re.search(gline)
             if match:
                 current_aperture = match.group(1)
                 continue
 
-            # indexstar = gline.find("*")
-            # if gline.find("D") == 0:  # Aperture change
-            #     current_aperture = gline[1:indexstar]
-            #     continue
-            # if gline.find("G54D") == 0:  # Aperture change (deprecated)
-            #     current_aperture = gline[4:indexstar]
-            #     continue
-
-            # Number format
+            ## Number format
+            # Example: %FSLAX24Y24*%
             # TODO: This is ignoring most of the format. Implement the rest.
             match = self.fmt_re.search(gline)
             if match:
@@ -647,29 +733,19 @@ class Gerber (Geometry):
                 self.frac_digits = int(match.group(4))
                 continue
 
-            # if gline.find("%FS") != -1:  # Format statement
-            #     indexx = gline.find("X")
-            #     self.int_digits = int(gline[indexx + 1])
-            #     self.frac_digits = int(gline[indexx + 2])
-            #     continue
-
-            # Mode (IN/MM)
+            ## Mode (IN/MM)
+            # Example: %MOIN*%
             match = self.mode_re.search(gline)
             if match:
                 self.units = match.group(1)
                 continue
 
-            print "WARNING: Line ignored:", gline
+            print "WARNING: Line ignored (%d):" % line_num, gline
         
         if len(path) > 1:
             # EOF, create shapely LineString if something still in path
             self.paths.append({"linestring": LineString(path),
                                "aperture": last_path_aperture})
-
-        # if len(path) > 1:
-        #     # EOF, create shapely LineString if something still in path
-        #     self.paths.append({"linestring": LineString(path),
-        #                        "aperture": current_aperture})
 
     def do_flashes(self):
         """
@@ -778,6 +854,7 @@ class Excellon(Geometry):
     def __init__(self):
         """
         The constructor takes no parameters.
+
         :return: Excellon object.
         :rtype: Excellon
         """
@@ -795,8 +872,74 @@ class Excellon(Geometry):
         # Always append to it because it carries contents
         # from Geometry.
         self.ser_attrs += ['tools', 'drills', 'zeros']
+
+        #### Patterns ####
+        # Regex basics:
+        # ^ - beginning
+        # $ - end
+        # *: 0 or more, +: 1 or more, ?: 0 or 1
+
+        # M48 - Beggining of Part Program Header
+        self.hbegin_re = re.compile(r'^M48$')
+
+        # M95 or % - End of Part Program Header
+        # NOTE: % has different meaning in the body
+        self.hend_re = re.compile(r'^(?:M95|%)$')
+
+        # FMAT Excellon format
+        self.fmat_re = re.compile(r'^FMAT,([12])$')
+
+        # Number format and units
+        # INCH uses 6 digits
+        # METRIC uses 5/6
+        self.units_re = re.compile(r'^(INCH|METRIC)(?:,([TL])Z)?$')
+
+        # Tool definition/parameters (?= is look-ahead
+        # NOTE: This might be an overkill!
+        self.toolset_re = re.compile(r'^T(0?\d|\d\d)(?=.*C(\d*\.?\d*))?' +
+                                     r'(?=.*F(\d*\.?\d*))?(?=.*S(\d*\.?\d*))?' +
+                                     r'(?=.*B(\d*\.?\d*))?(?=.*H(\d*\.?\d*))?' +
+                                     r'(?=.*Z(-?\d*\.?\d*))?[CFSBHT]')
+
+        # Tool select
+        # Can have additional data after tool number but
+        # is ignored if present in the header.
+        # Warning: This will match toolset_re too.
+        self.toolsel_re = re.compile(r'^T((?:\d\d)|(?:\d))')
+
+        # Comment
+        self.comm_re = re.compile(r'^;(.*)$')
+
+        # Absolute/Incremental G90/G91
+        self.absinc_re = re.compile(r'^G9([01])$')
+
+        # Modes of operation
+        # 1-linear, 2-circCW, 3-cirCCW, 4-vardwell, 5-Drill
+        self.modes_re = re.compile(r'^G0([012345])')
+
+        # Measuring mode
+        # 1-metric, 2-inch
+        self.meas_re = re.compile(r'^M7([12])$')
+
+        # Coordinates
+        self.xcoord_re = re.compile(r'^X(\d*\.?\d*)(?:Y\d*\.?\d*)?$')
+        self.ycoord_re = re.compile(r'^(?:X\d*\.?\d*)?Y(\d*\.?\d*)$')
+
+        # R - Repeat hole (# times, X offset, Y offset)
+        self.rep_re = re.compile(r'^R(\d+)(?=.*[XY])+(?:X(\d*\.?\d*))?(?:Y(\d*\.?\d*))?$')
+
+        # Various stop/pause commands
+        self.stop_re = re.compile(r'^((G04)|(M09)|(M06)|(M00)|(M30))')
         
     def parse_file(self, filename):
+        """
+        Reads the specified file as array of lines as
+        passes it to ``parse_lines()``.
+
+        :param filename: The file to be read and parsed.
+        :type filename: str
+        :return: None
+        """
         efile = open(filename, 'r')
         estr = efile.readlines()
         efile.close()
@@ -805,71 +948,79 @@ class Excellon(Geometry):
     def parse_lines(self, elines):
         """
         Main Excellon parser.
+
+        :param elines: List of strings, each being a line of Excellon code.
+        :type elines: list
+        :return: None
         """
-        units_re = re.compile(r'^(INCH|METRIC)(?:,([TL])Z)?$')
 
         current_tool = ""
-        
+        in_header = False
+
         for eline in elines:
-            
-            ## Tool definitions ##
-            # TODO: Verify all this
-            indexT = eline.find("T")
-            indexC = eline.find("C")
-            indexF = eline.find("F")
-            # Type 1
-            if indexT != -1 and indexC > indexT and indexF > indexC:
-                tool = eline[1:indexC]
-                spec = eline[indexC+1:indexF]
-                self.tools[tool] = float(spec)
-                continue
-            # Type 2
-            # TODO: Is this inches?
-            #indexsp = eline.find(" ")
-            #indexin = eline.find("in")
-            #if indexT != -1 and indexsp > indexT and indexin > indexsp:
-            #    tool = eline[1:indexsp]
-            #    spec = eline[indexsp+1:indexin]
-            #    self.tools[tool] = spec
-            #    continue
-            # Type 3
-            if indexT != -1 and indexC > indexT:
-                tool = eline[1:indexC]
-                spec = eline[indexC+1:-1]
-                self.tools[tool] = float(spec)
-                continue
-            
-            ## Tool change
-            if indexT == 0:
-                current_tool = eline[1:-1]
-                continue
-            
-            ## Drill
-            indexx = eline.find("X")
-            indexy = eline.find("Y")
-            if indexx != -1 and indexy != -1:
-                x = float(int(eline[indexx+1:indexy])/10000.0)
-                y = float(int(eline[indexy+1:-1])/10000.0)
-                self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+
+            ## Header Begin/End ##
+            if self.hbegin_re.search(eline):
+                in_header = True
                 continue
 
-            # Units and number format
-            match = units_re.match(eline)
-            if match:
-                self.zeros = match.group(2)  # "T" or "L"
-                self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+            if self.hend_re.search(eline):
+                in_header = False
+                continue
+
+            #### Body ####
+            if not in_header:
+
+                ## Tool change ##
+                match = self.toolsel_re.search(eline)
+                if match:
+                    current_tool = str(int(match.group(1)))
+                    continue
+
+                ## Drill ##
+                indexx = eline.find("X")
+                indexy = eline.find("Y")
+                if indexx != -1 and indexy != -1:
+                    x = float(int(eline[indexx+1:indexy])/10000.0)
+                    y = float(int(eline[indexy+1:-1])/10000.0)
+                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                    continue
+
+            #### Header ####
+            if in_header:
+
+                ## Tool definitions ##
+                match = self.toolset_re.search(eline)
+                if match:
+                    name = str(int(match.group(1)))
+                    spec = {
+                        "C": float(match.group(2)),
+                        # "F": float(match.group(3)),
+                        # "S": float(match.group(4)),
+                        # "B": float(match.group(5)),
+                        # "H": float(match.group(6)),
+                        # "Z": float(match.group(7))
+                    }
+                    self.tools[name] = spec
+                    continue
+
+                ## Units and number format ##
+                match = self.units_re.match(eline)
+                if match:
+                    self.zeros = match.group(2)  # "T" or "L"
+                    self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+                    continue
 
             print "WARNING: Line ignored:", eline
         
     def create_geometry(self):
         self.solid_geometry = []
-        sizes = {}
-        for tool in self.tools:
-            sizes[tool] = float(self.tools[tool])
+
         for drill in self.drills:
-            poly = Point(drill['point']).buffer(sizes[drill['tool']]/2.0)
+            poly = Point(drill['point']).buffer(self.tools[drill['tool']]["C"]/2.0)
             self.solid_geometry.append(poly)
-        self.solid_geometry = cascaded_union(self.solid_geometry)
+
+        #self.solid_geometry = cascaded_union(self.solid_geometry)
 
     def scale(self, factor):
         """
@@ -910,7 +1061,9 @@ class Excellon(Geometry):
 
         # Tools
         for tname in self.tools:
-            self.tools[tname] *= factor
+            self.tools[tname]["C"] *= factor
+
+        self.create_geometry()
 
         return factor
 
@@ -1236,8 +1389,7 @@ class CNCjob(Geometry):
                 arcdir = [None, None, "cw", "ccw"]
                 if current['G'] in [0, 1]:  # line
                     path.append((x, y))
-                    # geometry.append({'geom': LineString([(current['X'], current['Y']),
-                    #                                     (x, y)]), 'kind': kind})
+
                 if current['G'] in [2, 3]:  # arc
                     center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
                     radius = sqrt(gobj['I']**2 + gobj['J']**2)
@@ -1246,10 +1398,6 @@ class CNCjob(Geometry):
                     path += arc(center, radius, start, stop,
                                 arcdir[current['G']],
                                 self.steps_per_circ)
-                    # geometry.append({'geom': arc(center, radius, start, stop,
-                    #                              arcdir[current['G']],
-                    #                              self.steps_per_circ),
-                    #                  'kind': kind})
 
             # Update current instruction
             for code in gobj:
