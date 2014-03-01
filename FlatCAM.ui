@@ -2122,6 +2122,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label13">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Isolation Routing:&lt;/b&gt; Cutting copper
+around traces for electrical isolation.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2146,6 +2148,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label14">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Tool paths for isolation routing are drawn
+at 1/2 of the tool diameter away from
+polygons defined in Gerber.</property>
                         <property name="xalign">1</property>
                         <property name="xpad">3</property>
                         <property name="label" translatable="yes">Tool diam:</property>
@@ -2188,6 +2193,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Creates a geometry object with tool
+paths for isolation routing.</property>
                     <signal name="activate" handler="on_generate_isolation" swapped="no"/>
                     <signal name="clicked" handler="on_generate_isolation" swapped="no"/>
                   </object>
@@ -2201,6 +2208,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Board cutout:&lt;/b&gt; Cut around
+the edge of the board.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2224,6 +2233,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label27">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Distance away from the rectangular edge
+enclosing the board to generate the
+cutting tool path.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Margin: </property>
                       </object>
@@ -2270,6 +2282,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label28">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Length of the gaps along the toolpath.
+These gaps are needed to hold the
+board in place until the job is complete.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Gap size: </property>
                       </object>
@@ -2304,6 +2319,8 @@ THE SOFTWARE.</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_markup" translatable="yes">Gaps are placed on the top and
+bottom edges of the board cutout.</property>
                             <property name="margin_right">8</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
@@ -2321,6 +2338,8 @@ THE SOFTWARE.</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_markup" translatable="yes">Gaps are placed on the left and right
+edges of the board cutout.</property>
                             <property name="margin_right">8</property>
                             <property name="xalign">0</property>
                             <property name="active">True</property>
@@ -2338,6 +2357,8 @@ THE SOFTWARE.</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
+                            <property name="tooltip_markup" translatable="yes">Gaps are placed on the four edges
+of the board cutout.</property>
                             <property name="xalign">0</property>
                             <property name="draw_indicator">True</property>
                             <property name="group">rb_2lr</property>
@@ -2369,6 +2390,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Generates the Geometry object with
+toolpaths for board cutout.</property>
                     <signal name="activate" handler="on_gerber_generate_cutout" swapped="no"/>
                     <signal name="clicked" handler="on_gerber_generate_cutout" swapped="no"/>
                   </object>
@@ -2382,6 +2405,12 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label30">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Non-copper regions&lt;/b&gt;: Use to create
+geometry with polygons covering areas
+without copper on the board.
+
+This can be used, for example, to clear all
+copper from certain regions.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2407,6 +2436,12 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label31">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Defines how far from the rectangular box
+enclosing the contents of the board the
+edge of the board is.
+
+Copper-free areas will be located within
+this boundary.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Boundary margin: </property>
                       </object>
@@ -2444,6 +2479,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Creates a Geometry Object covering
+areas without copper.</property>
                     <signal name="activate" handler="on_gerber_generate_noncopper" swapped="no"/>
                     <signal name="clicked" handler="on_gerber_generate_noncopper" swapped="no"/>
                   </object>
@@ -2457,6 +2494,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label41">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Bounding Box:&lt;/b&gt; A simple rectangular
+boundary around the PCB contents.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2482,6 +2521,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label42">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Distance from the rectangular box enclosing
+the PCB contents at which to draw the
+bounding box.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Boundary margin: </property>
                       </object>
@@ -2519,6 +2561,9 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_markup" translatable="yes">Whether to draw rounded corners on the bounding 
+box. The radius is the Boundary margin.
+</property>
                     <property name="xalign">0</property>
                     <property name="draw_indicator">True</property>
                   </object>
@@ -2534,6 +2579,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Generates a Geometry object
+with the bounding box.</property>
                     <signal name="activate" handler="on_generate_gerber_bounding_box" swapped="no"/>
                     <signal name="clicked" handler="on_generate_gerber_bounding_box" swapped="no"/>
                   </object>
@@ -2547,6 +2594,9 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label51">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Scale:&lt;/b&gt; Resizes the geometry
+of the object. All sizes and coordinates
+are multiplied by the given factor.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2572,6 +2622,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label52">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Factor by which to multiply all
+geometrical dimensions.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Factor:</property>
                       </object>
@@ -2608,6 +2660,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Scales the geometry
+of this object.</property>
                     <signal name="activate" handler="on_scale_object" swapped="no"/>
                     <signal name="clicked" handler="on_scale_object" swapped="no"/>
                   </object>
@@ -2621,6 +2675,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label97">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Offset:&lt;/b&gt; Shift the geometry of
+this object by the specified (x, y) vector.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -2646,6 +2702,10 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label98">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Vector by which to offset the geometry.
+Format is &lt;b&gt;(x, y)&lt;/b&gt;, where &lt;b&gt;x&lt;/b&gt; and &lt;b&gt;y&lt;/b&gt; are
+decimal numbers representing the
+distance in the corresponding axis.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Offset Vector: </property>
                       </object>
@@ -2682,6 +2742,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Offset the geometry of
+this object.</property>
                     <signal name="activate" handler="on_offset_object" swapped="no"/>
                     <signal name="clicked" handler="on_offset_object" swapped="no"/>
                   </object>
@@ -3472,6 +3534,9 @@ project.</property>
                                       <object class="GtkLabel" id="label58">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="tooltip_markup" translatable="yes">Tool paths for isolation routing are drawn
+at 1/2 of the tool diameter away from
+polygons defined in Gerber.</property>
                                         <property name="xalign">1</property>
                                         <property name="xpad">3</property>
                                         <property name="label" translatable="yes">Tool diam:</property>

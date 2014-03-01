@@ -25,6 +25,7 @@ from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCan
 from camlib import *
 import sys
 import urllib
+import copy
 
 
 ########################################
@@ -1007,18 +1008,24 @@ class App:
         # User must take care to implement initialize
         # in a thread-safe way as is is likely that we
         # have been invoked in a separate thread.
-        initialize(obj, self)
-
-        # Check units and convert if necessary
-        if self.options["units"].upper() != obj.units.upper():
-            GLib.idle_add(lambda: self.info("Converting units to " + self.options["units"] + "."))
-            obj.convert_units(self.options["units"])
+        #initialize(obj, self)
 
         # Set default options from self.options
         for option in self.options:
             if option.find(kind + "_") == 0:
                 oname = option[len(kind)+1:]
                 obj.options[oname] = self.options[option]
+
+        # Initialize as per user request
+        # User must take care to implement initialize
+        # in a thread-safe way as is is likely that we
+        # have been invoked in a separate thread.
+        initialize(obj, self)
+
+        # Check units and convert if necessary
+        if self.options["units"].upper() != obj.units.upper():
+            GLib.idle_add(lambda: self.info("Converting units to " + self.options["units"] + "."))
+            obj.convert_units(self.options["units"])
 
         # Add to our records
         self.stuff[name] = obj
@@ -1047,14 +1054,11 @@ class App:
         :type percentage: float
         :param text: Text to display on the progress bar.
         :type text: str
-        :return:
+        :return: None
         """
         self.progress_bar.set_text(text)
         self.progress_bar.set_fraction(percentage)
         return False
-
-    def save_project(self):
-        return
 
     def get_current(self):
         """
@@ -1063,6 +1067,11 @@ class App:
         :return: Currently selected FlatCAMObj in the application.
         :rtype: FlatCAMObj or None
         """
+
+        # TODO: Could possibly read the form into the object here.
+        # But there are some cases when the form for the object
+        # is not up yet. See on_tree_selection_changed.
+
         try:
             return self.stuff[self.selected_item_name]
         except:
@@ -1256,7 +1265,7 @@ class App:
         :return: None
         """
 
-        # Captura the latest changes
+        # Capture the latest changes
         try:
             self.get_current().read_form()
         except:
@@ -1300,6 +1309,7 @@ class App:
         except:
             print "WARNING: Failed to parse project file:", filename
             f.close()
+            return
 
         # Clear the current project
         self.on_file_new(None)
@@ -1387,8 +1397,7 @@ class App:
             "cb_gerber_plot": "Plot this object on the main window.",
             "cb_gerber_mergepolys": "Show overlapping polygons as single.",
             "cb_gerber_solid": "Paint inside polygons.",
-            "cb_gerber_multicolored": "Draw polygons with different polygons.",
-            "button1": ""
+            "cb_gerber_multicolored": "Draw polygons with different polygons."
         }
 
         for widget in tooltips:
@@ -1398,19 +1407,36 @@ class App:
     ##         EVENT HANDLERS             ##
     ########################################
     def on_offset_object(self, widget):
+        """
+        Offsets the object's geometry by the vector specified
+        in the form. Re-plots.
+
+        :param widget: Ignored
+        :return: None
+        """
+
         obj = self.get_current()
+        obj.read_form()
         assert isinstance(obj, FlatCAMObj)
         try:
             vect = self.get_eval("entry_eval_" + obj.kind + "_offset")
         except:
             self.info("ERROR: Vector is not in (x, y) format.")
+            return
         assert isinstance(obj, Geometry)
         obj.offset(vect)
         obj.plot(self.figure)
-        self.on_zoom_fit(None)
+        self.on_zoom_fit(None)  # TODO: Change this. Just done to aline all axes.
         return
 
     def on_cb_plot_toggled(self, widget):
+        """
+        Callback for toggling the "Plot" checkbox. Re-plots.
+
+        :param widget: Ignored.
+        :return: None
+        """
+
         self.get_current().read_form()
         self.get_current().plot(self.figure)
         self.on_zoom_fit(None)  # TODO: Does not update correctly otherwise.
@@ -1512,7 +1538,6 @@ class App:
             obj_inst.create_geometry()
 
         self.new_object("excellon", "Alignment Drills", obj_init)
-
 
     def on_toggle_pointbox(self, widget):
         """
@@ -1618,6 +1643,7 @@ class App:
             for dim in dimensions:
                 options_set[dim] *= factor
 
+        # The scaling factor depending on choice of units.
         factor = 1/25.4
         if self.builder.get_object('rb_mm').get_active():
             factor = 25.4
@@ -1629,6 +1655,7 @@ class App:
             self.options2form()
             return
 
+        # Changing project units. Warn user.
         label = Gtk.Label("Changing the units of the project causes all geometrical \n" + \
                             "properties of all objects to be scaled accordingly. Continue?")
         dialog = Gtk.Dialog("Changing Project Units", self.window, 0,
@@ -1644,14 +1671,14 @@ class App:
         dialog.destroy()
 
         if response == Gtk.ResponseType.OK:
-            print "Converting units..."
-            print "Converting options..."
+            #print "Converting units..."
+            #print "Converting options..."
             self.read_form()
             scale_options(factor)
             self.options2form()
             for obj in self.stuff:
                 units = self.get_radio_value({"rb_mm": "MM", "rb_inch": "IN"})
-                print "Converting ", obj, " to ", units
+                #print "Converting ", obj, " to ", units
                 self.stuff[obj].convert_units(units)
             current = self.get_current()
             if current is not None:
@@ -1667,6 +1694,7 @@ class App:
             self.toggle_units_ignore = False
 
         self.read_form()
+        self.info("Converted units to %s" % self.options["units"])
         self.units_label.set_text("[" + self.options["units"] + "]")
 
     def on_file_openproject(self, param):
@@ -1743,6 +1771,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         self.options.update(self.defaults)
         self.options2form()  # Update UI
 
@@ -1754,6 +1783,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         self.defaults.update(self.options)
         self.options2form()  # Update UI
 
@@ -1765,9 +1795,10 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         obj = self.get_current()
         if obj is None:
-            print "WARNING: No object selected."
+            self.info("WARNING: No object selected.")
             return
         for option in self.options:
             if option.find(obj.kind + "_") == 0:
@@ -1783,9 +1814,10 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         obj = self.get_current()
         if obj is None:
-            print "WARNING: No object selected."
+            self.info("WARNING: No object selected.")
             return
         obj.read_form()
         for option in obj.options:
@@ -1804,7 +1836,7 @@ class App:
         """
         obj = self.get_current()
         if obj is None:
-            print "WARNING: No object selected."
+            self.info("WARNING: No object selected.")
             return
         obj.read_form()
         for option in obj.options:
@@ -1821,9 +1853,10 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         obj = self.get_current()
         if obj is None:
-            print "WARNING: No object selected."
+            self.info("WARNING: No object selected.")
             return
         for option in self.defaults:
             if option.find(obj.kind + "_") == 0:
@@ -1839,6 +1872,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
+
         try:
             f = open("defaults.json")
             options = f.read()
@@ -1877,8 +1911,9 @@ class App:
         :param widget: The widget from which this was called. Ignore.
         :return: None
         """
-        combo_sel = self.combo_options.get_active()
-        print "Options --> ", combo_sel
+
+        #combo_sel = self.combo_options.get_active()
+        #print "Options --> ", combo_sel
         self.options2form()
 
     def on_options_update(self, widget):
@@ -1890,6 +1925,7 @@ class App:
         :param widget: The widget from which this was called. Ignore.
         :return: None
         """
+
         if self.options_update_ignore:
             return
         self.read_form()
@@ -1902,8 +1938,8 @@ class App:
         :param widget: Ignored.
         :return: None
         """
+
         obj = self.get_current()
-        assert isinstance(obj, FlatCAMObj)
         factor = self.get_eval("entry_eval_" + obj.kind + "_scalefactor")
         obj.scale(factor)
         obj.to_form()
@@ -1918,7 +1954,6 @@ class App:
         :param event: Ignored.
         :return: None
         """
-        print "on_canvas_configure()"
 
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
@@ -1941,6 +1976,7 @@ class App:
         """
         Callback for request from the Gerber form to generate a bounding box for the
         geometry in the object. Creates a FlatCAMGeometry with the bounding box.
+        The box can have rounded corners if specified in the form.
 
         :param widget: Ignored.
         :return: None
@@ -1948,12 +1984,13 @@ class App:
         # TODO: Use Gerber.get_bounding_box(...)
         gerber = self.get_current()
         gerber.read_form()
-        name = self.selected_item_name + "_bbox"
+        name = gerber.options["name"] + "_bbox"
 
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
+            # Bounding box with rounded corners
             bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["bboxmargin"])
-            if not gerber.options["bboxrounded"]:
+            if not gerber.options["bboxrounded"]:  # Remove rounded corners
                 bounding_box = bounding_box.envelope
             geo_obj.solid_geometry = bounding_box
 
@@ -1967,19 +2004,19 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        print "Re-plotting"
 
-        self.get_current().read_form()
+        obj = self.get_current()
+        obj.read_form()
+
         self.set_progress_bar(0.5, "Plotting...")
-        #GLib.idle_add(lambda: self.set_progress_bar(0.5, "Plotting..."))
 
         def thread_func(app_obj):
             assert isinstance(app_obj, App)
             #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
             #GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
-            app_obj.get_current().plot(app_obj.figure)
+            obj.plot(app_obj.figure)
             GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
-            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
         t = threading.Thread(target=thread_func, args=(self,))
         t.daemon = True
@@ -1990,29 +2027,28 @@ class App:
         Callback for button active/click on Excellon form to
         create a CNC Job for the Excellon file.
 
-        :param widget: The widget from which this was called.
+        :param widget: Ignored
         :return: None
         """
 
-        job_name = self.selected_item_name + "_cnc"
         excellon = self.get_current()
-        assert isinstance(excellon, FlatCAMExcellon)
         excellon.read_form()
+        job_name = excellon.options["name"] + "_cnc"
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            excellon_ = self.get_current()
-            assert isinstance(excellon_, FlatCAMExcellon)
+            # excellon_ = self.get_current()
+            # assert isinstance(excellon_, FlatCAMExcellon)
             assert isinstance(job_obj, FlatCAMCNCjob)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-            job_obj.z_cut = excellon_.options["drillz"]
-            job_obj.z_move = excellon_.options["travelz"]
-            job_obj.feedrate = excellon_.options["feedrate"]
+            job_obj.z_cut = excellon.options["drillz"]
+            job_obj.z_move = excellon.options["travelz"]
+            job_obj.feedrate = excellon.options["feedrate"]
             # There could be more than one drill size...
             # job_obj.tooldia =   # TODO: duplicate variable!
             # job_obj.options["tooldia"] =
-            job_obj.generate_from_excellon_by_tool(excellon_, excellon_.options["toolselection"])
+            job_obj.generate_from_excellon_by_tool(excellon, excellon.options["toolselection"])
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
@@ -2068,16 +2104,15 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        name = self.selected_item_name + "_noncopper"
+
+        gerb = self.get_current()
+        gerb.read_form()
+        name = gerb.options["name"] + "_noncopper"
 
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
-            #gerber = app_obj.stuff[app_obj.selected_item_name]  # TODO: Remove.
-            gerber = app_obj.get_current()
-            assert isinstance(gerber, FlatCAMGerber)
-            gerber.read_form()
-            bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["noncoppermargin"])
-            non_copper = bounding_box.difference(gerber.solid_geometry)
+            bounding_box = gerb.solid_geometry.envelope.buffer(gerb.options["noncoppermargin"])
+            non_copper = bounding_box.difference(gerb.solid_geometry)
             geo_obj.solid_geometry = non_copper
 
         # TODO: Check for None
@@ -2091,15 +2126,15 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        name = self.selected_item_name + "_cutout"
+
+        gerb = self.get_current()
+        gerb.read_form()
+        name = gerb.options["name"] + "_cutout"
 
         def geo_init(geo_obj, app_obj):
-            # TODO: get from object
-            margin = app_obj.get_eval("entry_eval_gerber_cutoutmargin")
-            gap_size = app_obj.get_eval("entry_eval_gerber_cutoutgapsize")
-            #gerber = app_obj.stuff[app_obj.selected_item_name]
-            gerber = app_obj.get_current()
-            minx, miny, maxx, maxy = gerber.bounds()
+            margin = gerb.options["cutoutmargin"]
+            gap_size = gerb.options["cutoutgapsize"]
+            minx, miny, maxx, maxy = gerb.bounds()
             minx -= margin
             maxx += margin
             miny -= margin
@@ -2152,14 +2187,17 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        print "Generating Isolation Geometry:"
-        iso_name = self.selected_item_name + "_iso"
+
+        gerb = self.get_current()
+        gerb.read_form()
+        iso_name = gerb.options["name"] + "_iso"
 
         def iso_init(geo_obj, app_obj):
-            # TODO: Object must be updated on form change and the options
-            # TODO: read from the object.
-            tooldia = app_obj.get_eval("entry_eval_gerber_isotooldia")
-            geo_obj.solid_geometry = self.get_current().isolation_geometry(tooldia / 2.0)
+            # Propagate options
+            geo_obj.options["cnctooldia"] = gerb.options["isotooldia"]
+
+            geo_obj.solid_geometry = gerb.isolation_geometry(gerb.options["isotooldia"] / 2.0)
+            app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
         # TODO: Do something if this is None. Offer changing name?
         self.new_object("geometry", iso_name, iso_init)
@@ -2171,26 +2209,26 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        print "Generating CNC job"
-        job_name = self.selected_item_name + "_cnc"
+
+        source_geo = self.get_current()
+        source_geo.read_form()
+        job_name = source_geo.options["name"] + "_cnc"
 
         # Object initialization function for app.new_object()
+        # RUNNING ON SEPARATE THREAD!
         def job_init(job_obj, app_obj):
             assert isinstance(job_obj, FlatCAMCNCjob)
-            #geometry = app_obj.stuff[app_obj.selected_item_name]
-            geometry = app_obj.get_current()
-            assert isinstance(geometry, FlatCAMGeometry)
-            geometry.read_form()
+            # Propagate options
+            job_obj.options["tooldia"] = source_geo.options["cnctooldia"]
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-            job_obj.z_cut = geometry.options["cutz"]
-            job_obj.z_move = geometry.options["travelz"]
-            job_obj.feedrate = geometry.options["feedrate"]
-            job_obj.options["tooldia"] = geometry.options["cnctooldia"]
+            job_obj.z_cut = source_geo.options["cutz"]
+            job_obj.z_move = source_geo.options["travelz"]
+            job_obj.feedrate = source_geo.options["feedrate"]
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
             # TODO: The tolerance should not be hard coded. Just for testing.
-            job_obj.generate_from_geometry(geometry, tolerance=0.0005)
+            job_obj.generate_from_geometry(source_geo, tolerance=0.0005)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
@@ -2204,6 +2242,7 @@ class App:
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
+            GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
             GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
@@ -2223,9 +2262,11 @@ class App:
         :param widget: The  widget from which this was called.
         :return: None
         """
+
         self.info("Click inside the desired polygon.")
         geo = self.get_current()
         geo.read_form()
+        assert isinstance(geo, FlatCAMGeometry)
         tooldia = geo.options["painttooldia"]
         overlap = geo.options["paintoverlap"]
 
@@ -2255,12 +2296,12 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        def on_success(self, filename):
-            cncjob = self.get_current()
+        def on_success(app_obj, filename):
+            cncjob = app_obj.get_current()
             f = open(filename, 'w')
             f.write(cncjob.gcode)
             f.close()
-            self.info("Saved to: " + filename)
+            app_obj.info("Saved to: " + filename)
 
         self.file_chooser_save_action(on_success)
 
@@ -2271,7 +2312,9 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        print "on_delete():", self.selected_item_name
+
+        # Keep this for later
+        name = copy.copy(self.selected_item_name)
 
         # Remove plot
         self.figure.delaxes(self.get_current().axes)
@@ -2282,6 +2325,8 @@ class App:
 
         # Update UI
         self.build_list()  # Update the items list
+
+        self.info("Object deleted: %s" % name)
 
     def on_toolbar_replot(self, widget):
         """
@@ -2320,6 +2365,7 @@ class App:
         self.stuff[new_name] = self.stuff.pop(self.selected_item_name)  # Update dictionary
         self.stuff[new_name].options["name"] = new_name  # update object
         self.info('Name change: ' + self.selected_item_name + " to " + new_name)
+
         self.selected_item_name = new_name  # Update selection name
 
         self.build_list()  # Update the items list
@@ -2337,7 +2383,7 @@ class App:
         :type selection: Gtk.TreeSelection
         :return: None
         """
-        print "on_tree_selection_change(): ",
+        print "DEBUG: on_tree_selection_change(): ",
         model, treeiter = selection.get_selected()
 
         if treeiter is not None:
@@ -2346,13 +2392,13 @@ class App:
             if obj is not None:
                 obj.read_form()
 
-            print "You selected", model[treeiter][0]
+            print "DEBUG: You selected", model[treeiter][0]
             self.selected_item_name = model[treeiter][0]
             obj_new = self.get_current()
             if obj_new is not None:
                 GLib.idle_add(lambda: obj_new.build_ui())
         else:
-            print "Nothing selected"
+            print "DEBUG: Nothing selected"
             self.selected_item_name = None
             self.setup_component_editor()
 
@@ -2391,7 +2437,7 @@ class App:
         :param param: Whatever is passed by the event. Ignore.
         :return: None
         """
-        print "quit from menu"
+
         self.window.destroy()
         Gtk.main_quit()
 
@@ -2402,7 +2448,7 @@ class App:
         :param param: Whatever is passed by the event. Ignore.
         :return: None
         """
-        print "quit from X"
+
         self.window.destroy()
         Gtk.main_quit()
 
@@ -2431,7 +2477,7 @@ class App:
             t.start()
             #on_success(self, filename)
         elif response == Gtk.ResponseType.CANCEL:
-            print("Cancel clicked")
+            self.info("Open cancelled.")  # print("Cancel clicked")
             dialog.destroy()
 
     def file_chooser_save_action(self, on_success):
@@ -2454,7 +2500,7 @@ class App:
             dialog.destroy()
             on_success(self, filename)
         elif response == Gtk.ResponseType.CANCEL:
-            print("Cancel clicked")
+            self.info("Save cancelled.")  # print("Cancel clicked")
             dialog.destroy()
 
     def on_fileopengerber(self, param):
@@ -2536,9 +2582,13 @@ class App:
         def on_success(app_obj, filename):
             assert isinstance(app_obj, App)
 
-            def obj_init(job_obj, app_obj):
-                assert isinstance(app_obj, App)
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening G-Code ..."))
+            def obj_init(job_obj, app_obj_):
+                """
+
+                :type app_obj_: App
+                """
+                assert isinstance(app_obj_, App)
+                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
 
                 f = open(filename)
                 gcode = f.read()
@@ -2546,13 +2596,13 @@ class App:
 
                 job_obj.gcode = gcode
 
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
                 job_obj.gcode_parse()
 
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating geometry ..."))
+                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
                 job_obj.create_geometry()
 
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
 
             name = filename.split('/')[-1].split('\\')[-1]
             app_obj.new_object("cncjob", name, obj_init)
@@ -2572,6 +2622,7 @@ class App:
         :param event: Contains information about the event.
         :return: None
         """
+
         try:  # May fail in case mouse not within axes
             self.position_label.set_label("X: %.4f   Y: %.4f" % (
                 event.xdata, event.ydata))
@@ -2594,6 +2645,7 @@ class App:
             was clicked, the pixel coordinates and the axes coordinates.
         :return: None
         """
+
         # For key presses
         self.canvas.grab_focus()
 
@@ -2676,7 +2728,7 @@ class App:
         :param event: Ignored.
         :return: None
         """
-        print 'you pressed', event.key, event.xdata, event.ydata
+        #print 'you pressed', event.key, event.xdata, event.ydata
 
         if event.key == '1':  # 1
             self.on_zoom_fit(None)

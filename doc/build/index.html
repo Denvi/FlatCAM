@@ -382,6 +382,22 @@ as to use the whole canvas.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="FlatCAM.App.on_cb_plot_toggled">
+<tt class="descname">on_cb_plot_toggled</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_cb_plot_toggled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for toggling the &#8220;Plot&#8221; checkbox. Re-plots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="FlatCAM.App.on_clear_plots">
 <tt class="descname">on_clear_plots</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_clear_plots" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for toolbar button. Clears all plots.</p>
@@ -756,7 +772,7 @@ create a CNC Job for the Excellon file.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
@@ -768,7 +784,8 @@ create a CNC Job for the Excellon file.</p>
 <dt id="FlatCAM.App.on_generate_gerber_bounding_box">
 <tt class="descname">on_generate_gerber_bounding_box</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_gerber_bounding_box" title="Permalink to this definition">¶</a></dt>
 <dd><p>Callback for request from the Gerber form to generate a bounding box for the
-geometry in the object. Creates a FlatCAMGeometry with the bounding box.</p>
+geometry in the object. Creates a FlatCAMGeometry with the bounding box.
+The box can have rounded corners if specified in the form.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -902,6 +919,23 @@ For details, see: <a class="reference external" href="http://matplotlib.org/user
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Contains information about the event.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_offset_object">
+<tt class="descname">on_offset_object</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_offset_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets the object&#8217;s geometry by the vector specified
+in the form. Re-plots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored</td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
@@ -1417,7 +1451,7 @@ in the GUI. This selection will in turn trigger
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"></p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
 </td>
 </tr>
 </tbody>
@@ -1478,6 +1512,22 @@ display the axes ticks and grid.</p>
 <tt class="descname">setup_project_list</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_project_list" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets up list or Tree where whatever has been loaded or created is
 displayed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.versionCheck">
+<tt class="descname">versionCheck</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.versionCheck" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks for the latest version of the program. Alerts the
+user if theirs is outdated. This method is meant to be run
+in a saeparate thread.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -1553,7 +1603,21 @@ it again in descendents.</p>
 <dt id="FlatCAM.Geometry.from_dict">
 <tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#FlatCAM.Geometry.from_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Sets object&#8217;s attributes from a dictionary.
-Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
+Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.
+This method will look only for only and all the
+attributes in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>. They must all
+be present. Use only for deserializing saved
+objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> (<em>dict</em>) &#8211; Dictionary of attributes to set in the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -1876,14 +1940,15 @@ read from the given file.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>glines</strong> &#8211; Gerber code as list of strings, each</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>glines</strong> (<em>list</em>) &#8211; Gerber code as list of strings, each element being
+one line of the source file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
 </tr>
 </tbody>
 </table>
-<p>element being one line of the source file.
-:type glines: list
-:return: None
-:rtype: None</p>
 </dd></dl>
 
 <dl class="method">
@@ -1951,9 +2016,36 @@ the size (diameter).</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="FlatCAM.Excellon.parse_file">
+<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the specified file as array of lines as
+passes it to <tt class="docutils literal"><span class="pre">parse_lines()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; The file to be read and parsed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="FlatCAM.Excellon.parse_lines">
 <tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#FlatCAM.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
 <dd><p>Main Excellon parser.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>elines</strong> (<em>list</em>) &#8211; List of strings, each being a line of Excellon code.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -2057,21 +2149,24 @@ for the specified tools.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>geometry</strong> (<em>Geometry</em>) &#8211; Geometry defining the toolpath</li>
 <li><strong>append</strong> (<em>bool</em>) &#8211; Wether to append to self.gcode or re-write it.</li>
-<li><strong>tooldia</strong> &#8211; If given, sets the tooldia property but does</li>
+<li><strong>tooldia</strong> (<em>bool</em>) &#8211; If given, sets the tooldia property but does
+not affect the process in any other way.</li>
+<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
 </ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>not affect the process in any other way.
-:type tooldia: bool
-:param tolerance: All points in the simplified object will be within the
-tolerance distance of the original geometry.
-:return: None
-:rtype: None</p>
 </dd></dl>
 
 <dl class="method">
@@ -2084,24 +2179,44 @@ tolerance distance of the original geometry.
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>linear</strong> &#8211; The path to cut along.</li>
-<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the</li>
+<li><strong>tolerance</strong> (<em>float</em>) &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first last">Shapely.LinearRing or Shapely.Linear String</p>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">Shapely.LinearRing or Shapely.Linear String</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">G-code to cut alon the linear feature.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>tolerance distance of the original geometry.
-:type tolerance: float
-:return: G-code to cut alon the linear feature.
-:rtype: str</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.CNCjob.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets all the geometry on the XY plane in the object by the
+given vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) offset vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="FlatCAM.CNCjob.plot2">
-<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}, tool_tolerance=0.001</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}, tool_tolerance=0.0005</em><big>)</big><a class="headerlink" href="#FlatCAM.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
 <dd><p>Plots the G-code job onto the given axes.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -2134,18 +2249,21 @@ of a polygon.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>polygon</strong> (<em>Shapely.Polygon</em>) &#8211; A Shapely.Polygon</li>
-<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the</li>
+<li><strong>tolerance</strong> (<em>float</em>) &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
 </ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">G-code to cut along polygon.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
 </td>
 </tr>
 </tbody>
 </table>
-<p>tolerance distance of the original geometry.
-:type tolerance: float
-:return: G-code to cut along polygon.
-:rtype: str</p>
 </dd></dl>
 
 <dl class="method">
@@ -2210,10 +2328,16 @@ by the user in their respective forms.</p>
 <dl class="method">
 <dt id="FlatCAM.FlatCAMObj.deserialize">
 <tt class="descname">deserialize</tt><big>(</big><em>obj_dict</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.deserialize" title="Permalink to this definition">¶</a></dt>
-<dd><p>Re-builds an object from its serialized version.
-&#64;param obj_dict: Dictionary representing a FlatCAMObj
-&#64;type obj_dict: dict
-&#64;return None</p>
+<dd><p>Re-builds an object from its serialized version.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>obj_dict</strong> (<em>dict</em>) &#8211; Dictionary representing a FlatCAMObj</td>
+</tr>
+</tbody>
+</table>
+<p>:return None</p>
 </dd></dl>
 
 <dl class="method">
@@ -2240,18 +2364,42 @@ clears them. Descendants must do the actual plotting.</p>
 </dd></dl>
 
 <dl class="method">
+<dt id="FlatCAM.FlatCAMObj.read_form_item">
+<tt class="descname">read_form_item</tt><big>(</big><em>option</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.read_form_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the specified option from the UI form into <tt class="docutils literal"><span class="pre">self.options</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>option</strong> (<em>str</em>) &#8211; Name of the option.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="FlatCAM.FlatCAMObj.serialize">
 <tt class="descname">serialize</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.serialize" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a representation of the object as a dictionary so
-it can be later exported as JSON. Override this method.
-&#64;return: Dictionary representing the object
-&#64;rtype: dict</p>
+it can be later exported as JSON. Override this method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary representing the object</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
 <dt id="FlatCAM.FlatCAMObj.set_form_item">
 <tt class="descname">set_form_item</tt><big>(</big><em>option</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMObj.set_form_item" title="Permalink to this definition">¶</a></dt>
-<dd><p>Copies the specified options to the UI form.</p>
+<dd><p>Copies the specified option to the UI form.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -2342,7 +2490,7 @@ and options.</p>
 <dl class="class">
 <dt id="FlatCAM.FlatCAMExcellon">
 <em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMExcellon</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMExcellon" title="Permalink to this definition">¶</a></dt>
-<dd><p>Represents Excellon code.</p>
+<dd><p>Represents Excellon/Drill code.</p>
 </dd></dl>
 
 <dl class="class">
@@ -2356,6 +2504,42 @@ and options.</p>
 <em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">FlatCAMGeometry</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGeometry" title="Permalink to this definition">¶</a></dt>
 <dd><p>Geometric object not associated with a specific
 format.</p>
+<dl class="method">
+<dt id="FlatCAM.FlatCAMGeometry.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGeometry.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets all geometry by a given vector/</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) vector by which to offset the object&#8217;s geometry.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.FlatCAMGeometry.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#FlatCAM.FlatCAMGeometry.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales all geometry by a given factor.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Factor by which to scale the object&#8217;s geometry/</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>

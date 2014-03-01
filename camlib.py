@@ -167,6 +167,14 @@ class Geometry:
         """
         Sets object's attributes from a dictionary.
         Attributes to include are listed in ``self.ser_attrs``.
+        This method will look only for only and all the
+        attributes in ``self.ser_attrs``. They must all
+        be present. Use only for deserializing saved
+        objects.
+
+        :param d: Dictionary of attributes to set in the object.
+        :type d: dict
+        :return: None
         """
         for attr in self.ser_attrs:
             setattr(self, attr, d[attr])
@@ -523,8 +531,8 @@ class Gerber (Geometry):
         Main Gerber parser. Reads Gerber and populates ``self.paths``, ``self.apertures``,
         ``self.flashes``, ``self.regions`` and ``self.units``.
 
-        :param glines: Gerber code as list of strings, each
-        element being one line of the source file.
+        :param glines: Gerber code as list of strings, each element being
+            one line of the source file.
         :type glines: list
         :return: None
         :rtype: None
@@ -1219,10 +1227,10 @@ class CNCjob(Geometry):
         :param append: Wether to append to self.gcode or re-write it.
         :type append: bool
         :param tooldia: If given, sets the tooldia property but does
-        not affect the process in any other way.
+            not affect the process in any other way.
         :type tooldia: bool
         :param tolerance: All points in the simplified object will be within the
-        tolerance distance of the original geometry.
+            tolerance distance of the original geometry.
         :return: None
         :rtype: None
         """
@@ -1487,7 +1495,7 @@ class CNCjob(Geometry):
         :param polygon: A Shapely.Polygon
         :type polygon: Shapely.Polygon
         :param tolerance: All points in the simplified object will be within the
-        tolerance distance of the original geometry.
+            tolerance distance of the original geometry.
         :type tolerance: float
         :return: G-code to cut along polygon.
         :rtype: str
@@ -1522,7 +1530,7 @@ class CNCjob(Geometry):
         :param linear: The path to cut along.
         :type: Shapely.LinearRing or Shapely.Linear String
         :param tolerance: All points in the simplified object will be within the
-        tolerance distance of the original geometry.
+            tolerance distance of the original geometry.
         :type tolerance: float
         :return: G-code to cut alon the linear feature.
         :rtype: str
