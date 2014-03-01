@@ -1451,7 +1451,8 @@ class App:
 
         about = self.builder.get_object("aboutdialog")
         response = about.run()
-        about.destroy()
+        #about.destroy()
+        about.hide()
 
     def on_create_mirror(self, widget):
         """
