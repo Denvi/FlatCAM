@@ -376,7 +376,7 @@ class Gerber (Geometry):
         :rtype : None
         """
         # Apertures
-        print "Scaling apertures..."
+        #print "Scaling apertures..."
         for apid in self.apertures:
             for param in self.apertures[apid]:
                 if param != "type":  # All others are dimensions.
@@ -384,20 +384,20 @@ class Gerber (Geometry):
                     self.apertures[apid][param] *= factor
 
         # Paths
-        print "Scaling paths..."
+        #print "Scaling paths..."
         for path in self.paths:
             path['linestring'] = affinity.scale(path['linestring'],
                                                 factor, factor, origin=(0, 0))
 
         # Flashes
-        print "Scaling flashes..."
+        #print "Scaling flashes..."
         for fl in self.flashes:
             # TODO: Shouldn't 'loc' be a numpy.array()?
             fl['loc'][0] *= factor
             fl['loc'][1] *= factor
 
         # Regions
-        print "Scaling regions..."
+        #print "Scaling regions..."
         for reg in self.regions:
             reg['polygon'] = affinity.scale(reg['polygon'], factor, factor,
                                             origin=(0, 0))
@@ -424,20 +424,20 @@ class Gerber (Geometry):
         dx, dy = vect
 
         # Paths
-        print "Shifting paths..."
+        #print "Shifting paths..."
         for path in self.paths:
             path['linestring'] = affinity.translate(path['linestring'],
                                                     xoff=dx, yoff=dy)
 
         # Flashes
-        print "Shifting flashes..."
+        #print "Shifting flashes..."
         for fl in self.flashes:
             # TODO: Shouldn't 'loc' be a numpy.array()?
             fl['loc'][0] += dx
             fl['loc'][1] += dy
 
         # Regions
-        print "Shifting regions..."
+        #print "Shifting regions..."
         for reg in self.regions:
             reg['polygon'] = affinity.translate(reg['polygon'],
                                                 xoff=dx, yoff=dy)
@@ -808,15 +808,12 @@ class Gerber (Geometry):
         :return: None
         """
 
-        # if len(self.buffered_paths) == 0:
-        #     self.buffer_paths()
-        print "... buffer_paths()"
         self.buffer_paths()
-        print "... fix_regions()"
+
         self.fix_regions()
-        print "... do_flashes()"
+
         self.do_flashes()
-        print "... cascaded_union()"
+
         self.solid_geometry = cascaded_union(self.buffered_paths +
                                              [poly['polygon'] for poly in self.regions] +
                                              self.flash_geometry)
@@ -930,8 +927,10 @@ class Excellon(Geometry):
         self.meas_re = re.compile(r'^M7([12])$')
 
         # Coordinates
-        self.xcoord_re = re.compile(r'^X(\d*\.?\d*)(?:Y\d*\.?\d*)?$')
-        self.ycoord_re = re.compile(r'^(?:X\d*\.?\d*)?Y(\d*\.?\d*)$')
+        #self.xcoord_re = re.compile(r'^X(\d*\.?\d*)(?:Y\d*\.?\d*)?$')
+        #self.ycoord_re = re.compile(r'^(?:X\d*\.?\d*)?Y(\d*\.?\d*)$')
+        self.coordsperiod_re = re.compile(r'(?=.*X(\d*\.\d*))?(?=.*Y(\d*\.\d*))?[XY]')
+        self.coordsnoperiod_re = re.compile(r'(?!.*\.)(?=.*X(\d*))?(?=.*Y(\d*))?[XY]')
 
         # R - Repeat hole (# times, X offset, Y offset)
         self.rep_re = re.compile(r'^R(\d+)(?=.*[XY])+(?:X(\d*\.?\d*))?(?:Y(\d*\.?\d*))?$')
@@ -962,10 +961,15 @@ class Excellon(Geometry):
         :return: None
         """
 
+        # State variables
         current_tool = ""
         in_header = False
+        current_x = None
+        current_y = None
 
+        i = 0  # Line number
         for eline in elines:
+            i += 1
 
             ## Header Begin/End ##
             if self.hbegin_re.search(eline):
@@ -985,12 +989,46 @@ class Excellon(Geometry):
                     current_tool = str(int(match.group(1)))
                     continue
 
-                ## Drill ##
-                indexx = eline.find("X")
-                indexy = eline.find("Y")
-                if indexx != -1 and indexy != -1:
-                    x = float(int(eline[indexx+1:indexy])/10000.0)
-                    y = float(int(eline[indexy+1:-1])/10000.0)
+                ## Coordinates without period ##
+                match = self.coordsnoperiod_re.search(eline)
+                if match:
+                    try:
+                        x = float(match.group(1))/10000
+                        current_x = x
+                    except TypeError:
+                        x = current_x
+
+                    try:
+                        y = float(match.group(2))/10000
+                        current_y = y
+                    except TypeError:
+                        y = current_y
+
+                    if x is None or y is None:
+                        print "ERROR: Missing coordinates"
+                        continue
+
+                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                    continue
+
+                ## Coordinates with period ##
+                match = self.coordsperiod_re.search(eline)
+                if match:
+                    try:
+                        x = float(match.group(1))
+                        current_x = x
+                    except TypeError:
+                        x = current_x
+
+                    try:
+                        y = float(match.group(2))
+                    except TypeError:
+                        y = current_y
+
+                    if x is None or y is None:
+                        print "ERROR: Missing coordinates"
+                        continue
+
                     self.drills.append({'point': Point((x, y)), 'tool': current_tool})
                     continue
 

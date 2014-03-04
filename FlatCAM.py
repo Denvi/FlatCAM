@@ -19,8 +19,7 @@ import simplejson as json
 from matplotlib.figure import Figure
 from numpy import arange, sin, pi
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
-#from matplotlib.backends.backend_gtk3cairo import FigureCanvasGTK3Cairo as FigureCanvas
-#from matplotlib.backends.backend_cairo import FigureCanvasCairo as FigureCanvas
+from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 
 from camlib import *
 import sys
@@ -552,11 +551,23 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         return factor
 
     def plot(self, figure):
+        """
+        Plots the object onto the give figure. Updates the canvas
+        when done.
+
+        :param figure: Matplotlib figure on which to plot.
+        :type figure: Matplotlib.Figure
+        :return: None
+        """
+        # Sets up and clears self.axes.
+        # Attaches axes to the figure... Maybe we want to do that
+        # when plotting is complete?
         FlatCAMObj.plot(self, figure)
 
         if not self.options["plot"]:
             return
 
+        # Make sure solid_geometry is iterable.
         try:
             _ = iter(self.solid_geometry)
         except TypeError:
@@ -611,6 +622,8 @@ class App:
         # Needed to interact with the GUI from other threads.
         GObject.threads_init()
 
+        # GLib.log_set_handler()
+
         #### GUI ####
         self.gladefile = "FlatCAM.ui"
         self.builder = Gtk.Builder()
@@ -633,6 +646,8 @@ class App:
 
         self.setup_project_list()  # The "Project" tab
         self.setup_component_editor()  # The "Selected" tab
+
+        self.setup_toolbar()
 
         #### Event handling ####
         self.builder.connect_signals(self)
@@ -688,7 +703,14 @@ class App:
                 #     self.radios.update({obj.kind + "_" + option: obj.radios[option]})
                 #     self.radios_inv.update({obj.kind + "_" + option: obj.radios_inv[option]})
 
+        ## Event subscriptions ##
         self.plot_click_subscribers = {}
+        self.plot_mousemove_subscribers = {}
+
+        ## Tools ##
+        self.measure = Measurement(self.axes, self.plot_click_subscribers,
+                                   self.plot_mousemove_subscribers,
+                                   lambda: self.canvas.queue_draw())
 
         #### Initialization ####
         self.load_defaults()
@@ -697,13 +719,13 @@ class App:
         self.units_label.set_text("[" + self.options["units"] + "]")
 
         #### Check for updates ####
-        self.version = 1
+        self.version = 2
         t1 = threading.Thread(target=self.versionCheck)
         t1.daemon = True
         t1.start()
 
         #### For debugging only ###
-        def someThreadFunc(self):
+        def someThreadFunc(app_obj):
             print "Hello World!"
 
         t = threading.Thread(target=someThreadFunc, args=(self,))
@@ -717,9 +739,54 @@ class App:
         self.icon48 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon48.png')
         self.icon16 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon16.png')
         Gtk.Window.set_default_icon_list([self.icon16, self.icon48, self.icon256])
-        self.window.set_title("FlatCAM - Alpha 2 UNSTABLE - Check for updates!")
+        self.window.set_title("FlatCAM - Alpha 3 UNSTABLE - Check for updates!")
         self.window.set_default_size(900, 600)
         self.window.show_all()
+
+    def setup_toolbar(self):
+        toolbar = self.builder.get_object("toolbar_main")
+
+        # Zoom fit
+        zf_ico = Gtk.Image.new_from_file('share/zoom_fit32.png')
+        zoom_fit = Gtk.ToolButton.new(zf_ico, "")
+        zoom_fit.connect("clicked", self.on_zoom_fit)
+        zoom_fit.set_tooltip_markup("Zoom Fit.\n(Click on plot and hit <b>1</b>)")
+        toolbar.insert(zoom_fit, -1)
+
+        # Zoom out
+        zo_ico = Gtk.Image.new_from_file('share/zoom_out32.png')
+        zoom_out = Gtk.ToolButton.new(zo_ico, "")
+        zoom_out.connect("clicked", self.on_zoom_out)
+        zoom_out.set_tooltip_markup("Zoom Out.\n(Click on plot and hit <b>2</b>)")
+        toolbar.insert(zoom_out, -1)
+
+        # Zoom in
+        zi_ico = Gtk.Image.new_from_file('share/zoom_in32.png')
+        zoom_in = Gtk.ToolButton.new(zi_ico, "")
+        zoom_in.connect("clicked", self.on_zoom_in)
+        zoom_in.set_tooltip_markup("Zoom In.\n(Click on plot and hit <b>3</b>)")
+        toolbar.insert(zoom_in, -1)
+
+        # Clear plot
+        cp_ico = Gtk.Image.new_from_file('share/clear_plot32.png')
+        clear_plot = Gtk.ToolButton.new(cp_ico, "")
+        clear_plot.connect("clicked", self.on_clear_plots)
+        clear_plot.set_tooltip_markup("Clear Plot")
+        toolbar.insert(clear_plot, -1)
+
+        # Replot
+        rp_ico = Gtk.Image.new_from_file('share/replot32.png')
+        replot = Gtk.ToolButton.new(rp_ico, "")
+        replot.connect("clicked", self.on_toolbar_replot)
+        replot.set_tooltip_markup("Re-plot all")
+        toolbar.insert(replot, -1)
+
+        # Delete item
+        del_ico = Gtk.Image.new_from_file('share/delete32.png')
+        delete = Gtk.ToolButton.new(del_ico, "")
+        delete.connect("clicked", self.on_delete)
+        delete.set_tooltip_markup("Delete selected\nobject.")
+        toolbar.insert(delete, -1)
 
     def setup_plot(self):
         """
@@ -1402,6 +1469,9 @@ class App:
 
         for widget in tooltips:
             self.builder.get_object(widget).set_tooltip_markup(tooltips[widget])
+
+    def do_nothing(self, param):
+        return
 
     ########################################
     ##         EVENT HANDLERS             ##
@@ -2284,6 +2354,7 @@ class App:
                 assert isinstance(app_obj, App)
                 cp = clear_poly(poly.buffer(-geo.options["paintmargin"]), tooldia, overlap)
                 geo_obj.solid_geometry = cp
+                geo_obj.options["cnctooldia"] = tooldia
 
             name = self.selected_item_name + "_paint"
             self.new_object("geometry", name, gen_paintarea)
@@ -2628,6 +2699,10 @@ class App:
             self.position_label.set_label("X: %.4f   Y: %.4f" % (
                 event.xdata, event.ydata))
             self.mouse = [event.xdata, event.ydata]
+
+            for subscriber in self.plot_mousemove_subscribers:
+                self.plot_mousemove_subscribers[subscriber](event)
+
         except:
             self.position_label.set_label("")
             self.mouse = None
@@ -2743,6 +2818,240 @@ class App:
             self.zoom(1.5, self.mouse)
             return
 
+        if event.key == 'm':
+            if self.measure.toggle_active():
+                self.info("Measuring tool ON")
+            else:
+                self.info("Measuring tool OFF")
+            return
+
+
+class Measurement:
+    def __init__(self, axes, click_subscibers, move_subscribers, update=None):
+        self.update = update
+        self.axes = axes
+        self.click_subscribers = click_subscibers
+        self.move_subscribers = move_subscribers
+        self.point1 = None
+        self.point2 = None
+        self.active = False
+        self.at = None  # AnchoredText object on plot
+
+    def toggle_active(self):
+        if self.active:
+            self.active = False
+            self.move_subscribers.pop("meas")
+            self.click_subscribers.pop("meas")
+            self.at.remove()
+            if self.update is not None:
+                self.update()
+            return False
+        else:
+            self.active = True
+            self.click_subscribers["meas"] = self.on_click
+            self.move_subscribers["meas"] = self.on_move
+            return True
+
+    def on_move(self, event):
+        try:
+            self.at.remove()
+        except:
+            pass
+        if self.point1 is None:
+            self.at = AnchoredText("Click on a reference point...")
+        else:
+            dx = event.xdata - self.point1[0]
+            dy = event.ydata - self.point1[1]
+            d = sqrt(dx**2 + dy**2)
+            self.at = AnchoredText("D = %.4f\nD(x) = %.4f\nD(y) = %.4f" % (d, dx, dy),
+                                   loc=2, prop={'size': 14}, frameon=False)
+        self.axes.add_artist(self.at)
+        if self.update is not None:
+            self.update()
+
+    def on_click(self, event):
+            if self.point1 is None:
+                self.point1 = (event.xdata, event.ydata)
+                return
+            else:
+                self.point2 = copy.copy(self.point1)
+                self.point1 = (event.xdata, event.ydata)
+
+
+class PlotCanvas:
+    """
+    Class handling the plotting area in the application.
+    """
+
+    def __init__(self, container):
+        # Options
+        self.x_margin = 15  # pixels
+        self.y_margin = 25  # Pixels
+
+        # Parent container
+        self.container = container
+
+        # Plots go onto a single matplotlib.figure
+        self.figure = Figure(dpi=50)  # TODO: dpi needed?
+        self.figure.patch.set_visible(False)
+
+        # These axes show the ticks and grid. No plotting done here.
+        # New axes must have a label, otherwise mpl returns an existing one.
+        self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
+        self.axes.set_aspect(1)
+        self.axes.grid(True)
+
+        # The canvas is the top level container (Gtk.DrawingArea)
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.set_hexpand(1)
+        self.canvas.set_vexpand(1)
+        self.canvas.set_can_focus(True)  # For key press
+
+        # Attach to parent
+        self.container.attach(self.canvas, 0, 0, 600, 400)
+
+    def mpl_connect(self, event_name, callback):
+        """
+        Attach an event handler to the canvas through the Matplotlib interface.
+
+        :param event_name: Name of the event
+        :type event_name: str
+        :param callback: Function to call
+        :type callback: func
+        :return: Nothing
+        """
+        self.canvas.mpl_connect(event_name, callback)
+
+    def connect(self, event_name, callback):
+        """
+        Attach an event handler to the canvas through the native GTK interface.
+
+        :param event_name: Name of the event
+        :type event_name: str
+        :param callback: Function to call
+        :type callback: function
+        :return: Nothing
+        """
+        self.canvas.connect(event_name, callback)
+
+    def clear(self):
+        """
+        Clears axes and figure.
+
+        :return: None
+        """
+
+        # Clear
+        self.axes.cla()
+        self.figure.clf()
+
+        # Re-build
+        self.figure.add_axes(self.axes)
+        self.axes.set_aspect(1)
+        self.axes.grid(True)
+
+        # Re-draw
+        self.canvas.queue_draw()
+
+    def adjust_axes(self, xmin, ymin, xmax, ymax):
+        """
+        Adjusts axes of all plots while maintaining the use of the whole canvas
+        and an aspect ratio to 1:1 between x and y axes. The parameters are an original
+        request that will be modified to fit these restrictions.
+
+        :param xmin: Requested minimum value for the X axis.
+        :type xmin: float
+        :param ymin: Requested minimum value for the Y axis.
+        :type ymin: float
+        :param xmax: Requested maximum value for the X axis.
+        :type xmax: float
+        :param ymax: Requested maximum value for the Y axis.
+        :type ymax: float
+        :return: None
+        """
+
+        width = xmax - xmin
+        height = ymax - ymin
+        try:
+            r = width / height
+        except:
+            print "ERROR: Height is", height
+            return
+        canvas_w, canvas_h = self.canvas.get_width_height()
+        canvas_r = float(canvas_w) / canvas_h
+        x_ratio = float(self.x_margin) / canvas_w
+        y_ratio = float(self.y_margin) / canvas_h
+
+        if r > canvas_r:
+            ycenter = (ymin + ymax) / 2.0
+            newheight = height * r / canvas_r
+            ymin = ycenter - newheight / 2.0
+            ymax = ycenter + newheight / 2.0
+        else:
+            xcenter = (xmax + ymin) / 2.0
+            newwidth = width * canvas_r / r
+            xmin = xcenter - newwidth / 2.0
+            xmax = xcenter + newwidth / 2.0
+
+        # Adjust axes
+        for ax in self.figure.get_axes():
+            ax.set_xlim((xmin, xmax))
+            ax.set_ylim((ymin, ymax))
+            ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
+
+        # Re-draw
+        self.canvas.queue_draw()
+
+    def auto_adjust_axes(self):
+        """
+        Calls ``adjust_axes()`` using the extents of the base axes.
+
+        :return: None
+        """
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        self.adjust_axes(xmin, ymin, xmax, ymax)
+
+    def zoom(self, factor, center=None):
+        """
+        Zooms the plot by factor around a given
+        center point. Takes care of re-drawing.
+
+        :param factor: Number by which to scale the plot.
+        :type factor: float
+        :param center: Coordinates [x, y] of the point around which to scale the plot.
+        :type center: list
+        :return: None
+        """
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax - xmin
+        height = ymax - ymin
+
+        if center is None:
+            center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
+
+        # For keeping the point at the pointer location
+        relx = (xmax - center[0]) / width
+        rely = (ymax - center[1]) / height
+
+        new_width = width / factor
+        new_height = height / factor
+
+        xmin = center[0] - new_width * (1 - relx)
+        xmax = center[0] + new_width * relx
+        ymin = center[1] - new_height * (1 - rely)
+        ymax = center[1] + new_height * rely
+
+        # Adjust axes
+        for ax in self.figure.get_axes():
+            ax.set_xlim((xmin, xmax))
+            ax.set_ylim((ymin, ymax))
+
+        # Re-draw
+        self.canvas.queue_draw()
 
 app = App()
 Gtk.main()
