@@ -762,11 +762,18 @@ class Gerber (Geometry):
 
         self.flash_geometry = []
         for flash in self.flashes:
-            aperture = self.apertures[flash['aperture']]
+
+            try:
+                aperture = self.apertures[flash['aperture']]
+            except KeyError:
+                print "ERROR: Trying to flash with unknown aperture: ", flash['aperture']
+                continue
+
             if aperture['type'] == 'C':  # Circles
                 circle = Point(flash['loc']).buffer(aperture['size']/2)
                 self.flash_geometry.append(circle)
                 continue
+
             if aperture['type'] == 'R':  # Rectangles
                 loc = flash['loc']
                 width = aperture['width']
@@ -778,6 +785,7 @@ class Gerber (Geometry):
                 rectangle = shply_box(minx, miny, maxx, maxy)
                 self.flash_geometry.append(rectangle)
                 continue
+
             if aperture['type'] == 'O':  # Obround
                 loc = flash['loc']
                 width = aperture['width']
@@ -795,6 +803,7 @@ class Gerber (Geometry):
                 obround = cascaded_union([c1, c2]).convex_hull
                 self.flash_geometry.append(obround)
                 continue
+
             print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
     def create_geometry(self):
@@ -1022,6 +1031,7 @@ class Excellon(Geometry):
 
                     try:
                         y = float(match.group(2))
+                        current_y = y
                     except TypeError:
                         y = current_y
 
@@ -1637,7 +1647,7 @@ def get_bounds(geometry_set):
     xmax = -Inf
     ymax = -Inf
 
-    print "Getting bounds of:", str(geometry_set)
+    #print "Getting bounds of:", str(geometry_set)
     for gs in geometry_set:
         try:
             gxmin, gymin, gxmax, gymax = geometry_set[gs].bounds()

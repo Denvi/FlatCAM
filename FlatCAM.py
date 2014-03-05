@@ -176,13 +176,24 @@ class FlatCAMObj:
             return
         print "Unknown kind of form item:", fkind
 
-    def plot(self, figure):
-        """
-        Extend this method! Sets up axes if needed and
-        clears them. Descendants must do the actual plotting.
-        """
-        # Creates the axes if necessary and sets them up.
-        self.setup_axes(figure)
+    # def plot(self, figure):
+    #     """
+    #     Extend this method! Sets up axes if needed and
+    #     clears them. Descendants must do the actual plotting.
+    #     """
+    #     # Creates the axes if necessary and sets them up.
+    #     self.setup_axes(figure)
+
+    def plot(self):
+        if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
+            self.axes = self.app.plotcanvas.new_axes(self.options['name'])
+
+        if not self.options["plot"]:
+            self.axes.cla()
+            self.app.plotcanvas.auto_adjust_axes()
+            return False
+
+        return True
 
     def serialize(self):
         """
@@ -273,16 +284,11 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.options['noncoppermargin'] *= factor
         self.options['bboxmargin'] *= factor
 
-    def plot(self, figure):
-        """
-        Plots the object on to the specified figure.
+    def plot(self):
 
-        :param figure: Matplotlib figure on which to plot.
-        """
-
-        FlatCAMObj.plot(self, figure)
-
-        if not self.options["plot"]:
+        # Does all the required setup and returns False
+        # if the 'ptint' option is set to False.
+        if not FlatCAMObj.plot(self):
             return
 
         if self.options["mergepolys"]:
@@ -314,7 +320,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, linespec)
 
-        self.app.canvas.queue_draw()
+        self.app.plotcanvas.auto_adjust_axes()
 
     def serialize(self):
         return {
@@ -369,10 +375,11 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.options['travelz'] *= factor
         self.options['feedrate'] *= factor
 
-    def plot(self, figure):
-        FlatCAMObj.plot(self, figure)
+    def plot(self):
 
-        if not self.options["plot"]:
+        # Does all the required setup and returns False
+        # if the 'ptint' option is set to False.
+        if not FlatCAMObj.plot(self):
             return
 
         try:
@@ -388,8 +395,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 x, y = ints.coords.xy
                 self.axes.plot(x, y, 'g-')
 
-        self.app.on_zoom_fit(None)
-        self.app.canvas.queue_draw()
+        self.app.plotcanvas.auto_adjust_axes()
 
     def show_tool_chooser(self):
         win = Gtk.Window()
@@ -444,15 +450,15 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-    def plot(self, figure):
-        FlatCAMObj.plot(self, figure)  # Only sets up axes
+    def plot(self):
 
-        if not self.options["plot"]:
+        # Does all the required setup and returns False
+        # if the 'ptint' option is set to False.
+        if not FlatCAMObj.plot(self):
             return
 
         self.plot2(self.axes, tooldia=self.options["tooldia"])
-        self.app.on_zoom_fit(None)
-        self.app.canvas.queue_draw()
+        self.app.plotcanvas.auto_adjust_axes()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -550,21 +556,17 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         return factor
 
-    def plot(self, figure):
+    def plot(self):
         """
-        Plots the object onto the give figure. Updates the canvas
-        when done.
+        Plots the object into its axes. If None, of if the axes
+        are not part of the app's figure, it fetches new ones.
 
-        :param figure: Matplotlib figure on which to plot.
-        :type figure: Matplotlib.Figure
         :return: None
         """
-        # Sets up and clears self.axes.
-        # Attaches axes to the figure... Maybe we want to do that
-        # when plotting is complete?
-        FlatCAMObj.plot(self, figure)
 
-        if not self.options["plot"]:
+        # Does all the required setup and returns False
+        # if the 'ptint' option is set to False.
+        if not FlatCAMObj.plot(self):
             return
 
         # Make sure solid_geometry is iterable.
@@ -599,8 +601,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             print "WARNING: Did not plot:", str(type(geo))
 
-        self.app.on_zoom_fit(None)
-        self.app.canvas.queue_draw()
+        self.app.plotcanvas.auto_adjust_axes()
 
 
 ########################################
@@ -653,10 +654,18 @@ class App:
         self.builder.connect_signals(self)
 
         #### Make plot area ####
-        self.figure = None
-        self.axes = None
-        self.canvas = None
-        self.setup_plot()
+        # self.figure = None
+        # self.axes = None
+        # self.canvas = None
+        # self.setup_plot()
+        self.plotcanvas = PlotCanvas(self.grid)
+        self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
+        self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
+        self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+
+        self.axes = self.plotcanvas.axes  # TODO: Just for testing
+        self.figure = self.plotcanvas.figure  # TODO: Just for testing
+        self.canvas = self.plotcanvas.canvas  # TODO: Just for testing
 
         self.setup_tooltips()
 
@@ -788,40 +797,6 @@ class App:
         delete.set_tooltip_markup("Delete selected\nobject.")
         toolbar.insert(delete, -1)
 
-    def setup_plot(self):
-        """
-        Sets up the main plotting area by creating a Matplotlib
-        figure in self.canvas, adding axes and configuring them.
-        These axes should not be ploted on and are just there to
-        display the axes ticks and grid.
-
-        :return: None
-        :rtype: None
-        """
-
-        self.figure = Figure(dpi=50)
-        self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
-        self.axes.set_aspect(1)
-        #t = arange(0.0,5.0,0.01)
-        #s = sin(2*pi*t)
-        #self.axes.plot(t,s)
-        self.axes.grid(True)
-        self.figure.patch.set_visible(False)
-
-        self.canvas = FigureCanvas(self.figure)  # a Gtk.DrawingArea
-        self.canvas.set_hexpand(1)
-        self.canvas.set_vexpand(1)
-
-        # Events
-        self.canvas.mpl_connect('button_press_event', self.on_click_over_plot)
-        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
-        self.canvas.set_can_focus(True)  # For key press
-        self.canvas.mpl_connect('key_press_event', self.on_key_over_plot)
-        #self.canvas.mpl_connect('scroll_event', self.on_scroll_over_plot)
-        self.canvas.connect("configure-event", self.on_canvas_configure)
-
-        self.grid.attach(self.canvas, 0, 0, 600, 400)
-
     def setup_obj_classes(self):
         """
         Sets up application specifics on the FlatCAMObj class.
@@ -883,44 +858,44 @@ class App:
         """
         self.info_label.set_text(text)
 
-    def zoom(self, factor, center=None):
-        """
-        Zooms the plot by factor around a given
-        center point. Takes care of re-drawing.
-
-        :param factor: Number by which to scale the plot.
-        :type factor: float
-        :param center: Coordinates [x, y] of the point around which to scale the plot.
-        :type center: list
-        :return: None
-        """
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        width = xmax - xmin
-        height = ymax - ymin
-
-        if center is None:
-            center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
-
-        # For keeping the point at the pointer location
-        relx = (xmax - center[0]) / width
-        rely = (ymax - center[1]) / height
-
-        new_width = width / factor
-        new_height = height / factor
-
-        xmin = center[0] - new_width * (1 - relx)
-        xmax = center[0] + new_width * relx
-        ymin = center[1] - new_height * (1 - rely)
-        ymax = center[1] + new_height * rely
-
-        for name in self.stuff:
-            self.stuff[name].axes.set_xlim((xmin, xmax))
-            self.stuff[name].axes.set_ylim((ymin, ymax))
-        self.axes.set_xlim((xmin, xmax))
-        self.axes.set_ylim((ymin, ymax))
-
-        self.canvas.queue_draw()
+    # def zoom(self, factor, center=None):
+    #     """
+    #     Zooms the plot by factor around a given
+    #     center point. Takes care of re-drawing.
+    #
+    #     :param factor: Number by which to scale the plot.
+    #     :type factor: float
+    #     :param center: Coordinates [x, y] of the point around which to scale the plot.
+    #     :type center: list
+    #     :return: None
+    #     """
+    #     xmin, xmax = self.axes.get_xlim()
+    #     ymin, ymax = self.axes.get_ylim()
+    #     width = xmax - xmin
+    #     height = ymax - ymin
+    #
+    #     if center is None:
+    #         center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
+    #
+    #     # For keeping the point at the pointer location
+    #     relx = (xmax - center[0]) / width
+    #     rely = (ymax - center[1]) / height
+    #
+    #     new_width = width / factor
+    #     new_height = height / factor
+    #
+    #     xmin = center[0] - new_width * (1 - relx)
+    #     xmax = center[0] + new_width * relx
+    #     ymin = center[1] - new_height * (1 - rely)
+    #     ymax = center[1] + new_height * rely
+    #
+    #     for name in self.stuff:
+    #         self.stuff[name].axes.set_xlim((xmin, xmax))
+    #         self.stuff[name].axes.set_ylim((ymin, ymax))
+    #     self.axes.set_xlim((xmin, xmax))
+    #     self.axes.set_ylim((ymin, ymax))
+    #
+    #     self.canvas.queue_draw()
 
     def build_list(self):
         """
@@ -958,7 +933,7 @@ class App:
 
         :return: None
         """
-        self.clear_plots()
+        self.plotcanvas.clear()
         self.set_progress_bar(0.1, "Re-plotting...")
 
         def thread_func(app_obj):
@@ -969,33 +944,17 @@ class App:
                 GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 return
             for i in self.stuff:
-                self.stuff[i].plot(self.figure)
+                self.stuff[i].plot()
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
+            app_obj.plotcanvas.auto_adjust_axes()
             self.on_zoom_fit(None)
-            self.axes.grid(True)
-            self.canvas.queue_draw()
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
 
         t = threading.Thread(target=thread_func, args=(self,))
         t.daemon = True
         t.start()
-
-    def clear_plots(self):
-        """
-        Clears self.axes and self.figure.
-
-        :return: None
-        """
-
-        # TODO: Create a setup_axes method that gets called here and in setup_plot?
-        self.axes.cla()
-        self.figure.clf()
-        self.figure.add_axes(self.axes)
-        self.axes.set_aspect(1)
-        self.axes.grid(True)
-        self.canvas.queue_draw()
 
     def get_eval(self, widget_name):
         """
@@ -1107,8 +1066,7 @@ class App:
 
         # Plot
         # TODO: (Thread-safe?)
-        obj.plot(self.figure)
-        obj.axes.set_alpha(0.0)
+        obj.plot()
         self.on_zoom_fit(None)
 
         return obj
@@ -1144,60 +1102,60 @@ class App:
         except:
             return None
 
-    def adjust_axes(self, xmin, ymin, xmax, ymax):
-        """
-        Adjusts axes of all plots while maintaining the use of the whole canvas
-        and an aspect ratio to 1:1 between x and y axes. The parameters are an original
-        request that will be modified to fit these restrictions.
-
-        :param xmin: Requested minimum value for the X axis.
-        :type xmin: float
-        :param ymin: Requested minimum value for the Y axis.
-        :type ymin: float
-        :param xmax: Requested maximum value for the X axis.
-        :type xmax: float
-        :param ymax: Requested maximum value for the Y axis.
-        :type ymax: float
-        :return: None
-        """
-        m_x = 15  # pixels
-        m_y = 25  # pixels
-        width = xmax - xmin
-        height = ymax - ymin
-        try:
-            r = width / height
-        except:
-            print "ERROR: Height is", height
-            return
-        Fw, Fh = self.canvas.get_width_height()
-        Fr = float(Fw) / Fh
-        x_ratio = float(m_x) / Fw
-        y_ratio = float(m_y) / Fh
-
-        if r > Fr:
-            ycenter = (ymin + ymax) / 2.0
-            newheight = height * r / Fr
-            ymin = ycenter - newheight / 2.0
-            ymax = ycenter + newheight / 2.0
-        else:
-            xcenter = (xmax + ymin) / 2.0
-            newwidth = width * Fr / r
-            xmin = xcenter - newwidth / 2.0
-            xmax = xcenter + newwidth / 2.0
-
-        for name in self.stuff:
-            if self.stuff[name].axes is None:
-                continue
-            self.stuff[name].axes.set_xlim((xmin, xmax))
-            self.stuff[name].axes.set_ylim((ymin, ymax))
-            self.stuff[name].axes.set_position([x_ratio, y_ratio,
-                                                1 - 2 * x_ratio, 1 - 2 * y_ratio])
-        self.axes.set_xlim((xmin, xmax))
-        self.axes.set_ylim((ymin, ymax))
-        self.axes.set_position([x_ratio, y_ratio,
-                                1 - 2 * x_ratio, 1 - 2 * y_ratio])
-
-        self.canvas.queue_draw()
+    # def adjust_axes(self, xmin, ymin, xmax, ymax):
+    #     """
+    #     Adjusts axes of all plots while maintaining the use of the whole canvas
+    #     and an aspect ratio to 1:1 between x and y axes. The parameters are an original
+    #     request that will be modified to fit these restrictions.
+    #
+    #     :param xmin: Requested minimum value for the X axis.
+    #     :type xmin: float
+    #     :param ymin: Requested minimum value for the Y axis.
+    #     :type ymin: float
+    #     :param xmax: Requested maximum value for the X axis.
+    #     :type xmax: float
+    #     :param ymax: Requested maximum value for the Y axis.
+    #     :type ymax: float
+    #     :return: None
+    #     """
+    #     m_x = 15  # pixels
+    #     m_y = 25  # pixels
+    #     width = xmax - xmin
+    #     height = ymax - ymin
+    #     try:
+    #         r = width / height
+    #     except:
+    #         print "ERROR: Height is", height
+    #         return
+    #     Fw, Fh = self.canvas.get_width_height()
+    #     Fr = float(Fw) / Fh
+    #     x_ratio = float(m_x) / Fw
+    #     y_ratio = float(m_y) / Fh
+    #
+    #     if r > Fr:
+    #         ycenter = (ymin + ymax) / 2.0
+    #         newheight = height * r / Fr
+    #         ymin = ycenter - newheight / 2.0
+    #         ymax = ycenter + newheight / 2.0
+    #     else:
+    #         xcenter = (xmax + ymin) / 2.0
+    #         newwidth = width * Fr / r
+    #         xmin = xcenter - newwidth / 2.0
+    #         xmax = xcenter + newwidth / 2.0
+    #
+    #     for name in self.stuff:
+    #         if self.stuff[name].axes is None:
+    #             continue
+    #         self.stuff[name].axes.set_xlim((xmin, xmax))
+    #         self.stuff[name].axes.set_ylim((ymin, ymax))
+    #         self.stuff[name].axes.set_position([x_ratio, y_ratio,
+    #                                             1 - 2 * x_ratio, 1 - 2 * y_ratio])
+    #     self.axes.set_xlim((xmin, xmax))
+    #     self.axes.set_ylim((ymin, ymax))
+    #     self.axes.set_position([x_ratio, y_ratio,
+    #                             1 - 2 * x_ratio, 1 - 2 * y_ratio])
+    #
+    #     self.canvas.queue_draw()
 
     def load_defaults(self):
         """
@@ -1495,8 +1453,7 @@ class App:
             return
         assert isinstance(obj, Geometry)
         obj.offset(vect)
-        obj.plot(self.figure)
-        self.on_zoom_fit(None)  # TODO: Change this. Just done to aline all axes.
+        obj.plot()
         return
 
     def on_cb_plot_toggled(self, widget):
@@ -1508,8 +1465,7 @@ class App:
         """
 
         self.get_current().read_form()
-        self.get_current().plot(self.figure)
-        self.on_zoom_fit(None)  # TODO: Does not update correctly otherwise.
+        self.get_current().plot()
 
     def on_about(self, widget):
         """
@@ -2026,9 +1982,10 @@ class App:
         :return: None
         """
 
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        self.adjust_axes(xmin, ymin, xmax, ymax)
+        # xmin, xmax = self.axes.get_xlim()
+        # ymin, ymax = self.axes.get_ylim()
+        # self.adjust_axes(xmin, ymin, xmax, ymax)
+        self.plotcanvas.auto_adjust_axes()
 
     def on_row_activated(self, widget, path, col):
         """
@@ -2085,7 +2042,7 @@ class App:
             assert isinstance(app_obj, App)
             #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
             #GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
-            obj.plot(app_obj.figure)
+            obj.plot()
             GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
@@ -2389,8 +2346,8 @@ class App:
         name = copy.copy(self.selected_item_name)
 
         # Remove plot
-        self.figure.delaxes(self.get_current().axes)
-        self.canvas.queue_draw()
+        self.plotcanvas.figure.delaxes(self.get_current().axes)
+        self.plotcanvas.auto_adjust_axes()
 
         # Remove from dictionary
         self.stuff.pop(self.selected_item_name)
@@ -2419,7 +2376,7 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        self.clear_plots()
+        self.plotcanvas.clear()
 
     def on_activate_name(self, entry):
         """
@@ -2484,7 +2441,7 @@ class App:
         """
         # Remove everythong from memory
         # Clear plot
-        self.clear_plots()
+        self.plotcanvas.clear()
 
         # Clear object editor
         #self.setup_component_editor()
@@ -2746,7 +2703,7 @@ class App:
         :param event: Ignored.
         :return: None
         """
-        self.zoom(1.5)
+        self.plotcanvas.zoom(1.5)
         return
 
     def on_zoom_out(self, event):
@@ -2757,7 +2714,7 @@ class App:
         :param event: Ignored.
         :return: None
         """
-        self.zoom(1 / 1.5)
+        self.plotcanvas.zoom(1 / 1.5)
 
     def on_zoom_fit(self, event):
         """
@@ -2775,18 +2732,7 @@ class App:
         xmax += 0.05 * width
         ymin -= 0.05 * height
         ymax += 0.05 * height
-        self.adjust_axes(xmin, ymin, xmax, ymax)
-
-    # def on_scroll_over_plot(self, event):
-    #     print "Scroll"
-    #     center = [event.xdata, event.ydata]
-    #     if sign(event.step):
-    #         self.zoom(1.5, center=center)
-    #     else:
-    #         self.zoom(1/1.5, center=center)
-    #
-    # def on_window_scroll(self, event):
-    #     print "Scroll"
+        self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
     def on_key_over_plot(self, event):
         """
@@ -2811,11 +2757,11 @@ class App:
             return
 
         if event.key == '2':  # 2
-            self.zoom(1 / 1.5, self.mouse)
+            self.plotcanvas.zoom(1 / 1.5, self.mouse)
             return
 
         if event.key == '3':  # 3
-            self.zoom(1.5, self.mouse)
+            self.plotcanvas.zoom(1.5, self.mouse)
             return
 
         if event.key == 'm':
@@ -2884,6 +2830,14 @@ class PlotCanvas:
     """
 
     def __init__(self, container):
+        """
+        The constructor configures the Matplotlib figure that
+        will contain all plots, creates the base axes and connects
+        events to the plotting area.
+
+        :param container: The parent container in which to draw plots.
+        :rtype: PlotCanvas
+        """
         # Options
         self.x_margin = 15  # pixels
         self.y_margin = 25  # Pixels
@@ -2909,6 +2863,14 @@ class PlotCanvas:
 
         # Attach to parent
         self.container.attach(self.canvas, 0, 0, 600, 400)
+
+        # Events
+        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
+        self.canvas.connect('configure-event', self.auto_adjust_axes)
+        self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
+        self.canvas.connect("scroll-event", self.on_scroll)
+
+        self.mouse = [0,0]
 
     def mpl_connect(self, event_name, callback):
         """
@@ -2955,7 +2917,7 @@ class PlotCanvas:
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
-        Adjusts axes of all plots while maintaining the use of the whole canvas
+        Adjusts all axes while maintaining the use of the whole canvas
         and an aspect ratio to 1:1 between x and y axes. The parameters are an original
         request that will be modified to fit these restrictions.
 
@@ -2995,6 +2957,12 @@ class PlotCanvas:
 
         # Adjust axes
         for ax in self.figure.get_axes():
+            if ax._label != 'base':
+                ax.set_frame_on(False)  # No frame
+                ax.set_xticks([])  # No tick
+                ax.set_yticks([])  # No ticks
+                ax.patch.set_visible(False)  # No background
+                ax.set_aspect(1)
             ax.set_xlim((xmin, xmax))
             ax.set_ylim((ymin, ymax))
             ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
@@ -3002,10 +2970,11 @@ class PlotCanvas:
         # Re-draw
         self.canvas.queue_draw()
 
-    def auto_adjust_axes(self):
+    def auto_adjust_axes(self, *args):
         """
         Calls ``adjust_axes()`` using the extents of the base axes.
 
+        :rtype : None
         :return: None
         """
 
@@ -3052,6 +3021,55 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.queue_draw()
+
+    def new_axes(self, name):
+        """
+        Creates and returns an Axes object attached to this object's Figure.
+
+        :param name: Unique label for the axes.
+        :return: Axes attached to the figure.
+        :rtype: Axes
+        """
+
+        return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
+
+    # def plot_axes(self, axes):
+    #
+    #     if axes not in self.figure.axes:
+    #         self.figure.add_axes(axes)
+    #
+    #     # Basic configuration
+    #     axes.set_frame_on(False)  # No frame
+    #     axes.set_xticks([])  # No tick
+    #     axes.set_yticks([])  # No ticks
+    #     axes.patch.set_visible(False)  # No background
+    #     axes.set_aspect(1)
+    #
+    #     # Adjust limits
+    #     self.auto_adjust_axes()
+
+    def on_scroll(self, canvas, event):
+        """
+        Scroll event handler.
+
+        :param canvas: The widget generating the event. Ignored.
+        :param event: Event object containing the event information.
+        :return: None
+        """
+        z, direction = event.get_scroll_direction()
+        if direction is Gdk.ScrollDirection.UP:
+            self.zoom(1.5, self.mouse)
+        else:
+            self.zoom(1/1.5, self.mouse)
+
+    def on_mouse_move(self, event):
+        """
+        Mouse movement event hadler.
+
+        :param event: Contains information about the event.
+        :return: None
+        """
+        self.mouse = [event.xdata, event.ydata]
 
 app = App()
 Gtk.main()

@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>This is the main file for camlib &mdash; Cirkuix 0.5 documentation</title>
+  <title>Camlib &mdash; Cirkuix 0.5 documentation</title>
   
 
   
@@ -52,7 +52,9 @@
   
 
   
-    <link rel="top" title="Cirkuix 0.5 documentation" href="index.html"/> 
+    <link rel="top" title="Cirkuix 0.5 documentation" href="index.html"/>
+        <link rel="next" title="FlatCAM Objects" href="flatcamobj.html"/>
+        <link rel="prev" title="Welcome to FlatCAM’s documentation!" href="index.html"/> 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
 
@@ -78,11 +80,12 @@
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
         
-            <!-- Local TOC -->
-            <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">This is the main file for camlib</a></li>
+            <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Camlib</a></li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamobj.html">FlatCAM Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">FlatCAM Application</a></li>
 </ul>
-</div>
+
         
       </div>
       &nbsp;
@@ -104,7 +107,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>This is the main file for camlib</li>
+    <li>Camlib</li>
       <li class="wy-breadcrumbs-aside">
         
           <a href="_sources/camlib.txt" rel="nofollow"> View page source</a>
@@ -115,14 +118,763 @@
 </div>
           <div role="main">
             
-  <div class="section" id="this-is-the-main-file-for-camlib">
-<h1>This is the main file for camlib<a class="headerlink" href="#this-is-the-main-file-for-camlib" title="Permalink to this headline">¶</a></h1>
-<p>Some text.</p>
+  <div class="section" id="module-camlib">
+<span id="camlib"></span><h1>Camlib<a class="headerlink" href="#module-camlib" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="camlib.Geometry">
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Geometry</tt><a class="headerlink" href="#camlib.Geometry" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="camlib.Geometry.bounds">
+<tt class="descname">bounds</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Geometry.bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns coordinates of rectangular bounds
+of geometry: (xmin, ymin, xmax, ymax).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.clear_polygon">
+<tt class="descname">clear_polygon</tt><big>(</big><em>polygon</em>, <em>tooldia</em>, <em>overlap=0.15</em><big>)</big><a class="headerlink" href="#camlib.Geometry.clear_polygon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates geometry inside a polygon for a tool to cover
+the whole area.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.convert_units">
+<tt class="descname">convert_units</tt><big>(</big><em>units</em><big>)</big><a class="headerlink" href="#camlib.Geometry.convert_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Converts the units of the object to <tt class="docutils literal"><span class="pre">units</span></tt> by scaling all
+the geometry appropriately. This call <tt class="docutils literal"><span class="pre">scale()</span></tt>. Don&#8217;t call
+it again in descendents.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>units</strong> (<em>str</em>) &#8211; &#8220;IN&#8221; or &#8220;MM&#8221;</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Scaling factor resulting from unit change.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">float</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.from_dict">
+<tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#camlib.Geometry.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets object&#8217;s attributes from a dictionary.
+Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.
+This method will look only for only and all the
+attributes in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>. They must all
+be present. Use only for deserializing saved
+objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> (<em>dict</em>) &#8211; Dictionary of attributes to set in the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.get_empty_area">
+<tt class="descname">get_empty_area</tt><big>(</big><em>boundary=None</em><big>)</big><a class="headerlink" href="#camlib.Geometry.get_empty_area" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the complement of self.solid_geometry within
+the given boundary polygon. If not specified, it defaults to
+the rectangular bounding box of self.solid_geometry.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.isolation_geometry">
+<tt class="descname">isolation_geometry</tt><big>(</big><em>offset</em><big>)</big><a class="headerlink" href="#camlib.Geometry.isolation_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates contours around geometry at a given
+offset distance.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>offset</strong> (<em>float</em>) &#8211; Offset distance.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The buffered geometry.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Shapely.MultiPolygon or Shapely.Polygon</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.Geometry.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offset the geometry by the given vector. Override this method.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) vector by which to offset the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#camlib.Geometry.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales all of the object&#8217;s geometry by a given factor. Override
+this method.
+:param factor: Number by which to scale.
+:type factor: float
+:return: None
+:rtype: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.size">
+<tt class="descname">size</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Geometry.size" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns (width, height) of rectangular
+bounds of geometry.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Geometry.to_dict">
+<tt class="descname">to_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Geometry.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a respresentation of the object as a dictionary.
+Attributes to include are listed in <tt class="docutils literal"><span class="pre">self.ser_attrs</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">A dictionary-encoded copy of the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="camlib.Gerber">
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Gerber</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#camlib.Gerber" title="Permalink to this definition">¶</a></dt>
+<dd><p><strong>ATTRIBUTES</strong></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">apertures</span></tt> (dict): The keys are names/identifiers of each aperture.
+The values are dictionaries key/value pairs which describe the aperture. The
+type key is always present and the rest depend on the key:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="76%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>type</td>
+<td>(str) &#8220;C&#8221;, &#8220;R&#8221;, or &#8220;O&#8221;</td>
+</tr>
+<tr class="row-odd"><td>others</td>
+<td>Depend on <tt class="docutils literal"><span class="pre">type</span></tt></td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">paths</span></tt> (list): A path is described by a line an aperture that follows that
+line. Each paths[i] is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>linestring</td>
+<td>(Shapely.LineString) The actual path.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt> (list): Flashes are single-point strokes of an aperture. Each
+is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="80%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>loc</td>
+<td>(list) [x (float), y (float)] coordinates.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">regions</span></tt> (list): Are surfaces defined by a polygon (Shapely.Polygon),
+which have an exterior and zero or more interiors. An aperture is also
+associated with a region. Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="82%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>polygon</td>
+<td>(Shapely.Polygon) The polygon defining the region.</td>
+</tr>
+<tr class="row-odd"><td>aperture</td>
+<td>(str) The key for an aperture in apertures.</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt> (list): List of (Shapely) geometric object resulting
+from <tt class="docutils literal"><span class="pre">flashes</span></tt>. These are generated from <tt class="docutils literal"><span class="pre">flashes</span></tt> in <tt class="docutils literal"><span class="pre">do_flashes()</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt> (list): List of (Shapely) polygons resulting from
+<em>buffering</em> (or thickening) the <tt class="docutils literal"><span class="pre">paths</span></tt> with the aperture. These are
+generated from <tt class="docutils literal"><span class="pre">paths</span></tt> in <tt class="docutils literal"><span class="pre">buffer_paths()</span></tt>.</li>
+</ul>
+<p><strong>USAGE</strong>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">g</span> <span class="o">=</span> <span class="n">Gerber</span><span class="p">()</span>
+<span class="n">g</span><span class="o">.</span><span class="n">parse_file</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">create_geometry</span><span class="p">()</span>
+<span class="n">do_something</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">solid_geometry</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="camlib.Gerber.aperture_parse">
+<tt class="descname">aperture_parse</tt><big>(</big><em>gline</em><big>)</big><a class="headerlink" href="#camlib.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse gerber aperture definition into dictionary of apertures.
+The following kinds and their attributes are supported:</p>
+<ul class="simple">
+<li><em>Circular (C)</em>: size (float)</li>
+<li><em>Rectangle (R)</em>: width (float), height (float)</li>
+<li><em>Obround (O)</em>: width (float), height (float).</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gline</strong> (<em>str</em>) &#8211; Line of Gerber code known to have an aperture definition.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Identifier of the aperture.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.buffer_paths">
+<tt class="descname">buffer_paths</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.buffer_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is part of the parsing process. &#8220;Thickens&#8221; the paths
+by their appertures. This will only work for circular appertures.
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.create_geometry">
+<tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.create_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Geometry from a Gerber file is made up entirely of polygons.
+Every stroke (linear or circular) has an aperture which gives
+it thickness. Additionally, aperture strokes have non-zero area,
+and regions naturally do as well.</p>
+<p>:rtype : None
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.do_flashes">
+<tt class="descname">do_flashes</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.do_flashes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates geometry for Gerber flashes (aperture on a single point).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.fix_regions">
+<tt class="descname">fix_regions</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.fix_regions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Overwrites the region polygons with fixed
+versions if found to be invalid (according to Shapely).</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="camlib.Gerber.frac_digits">
+<tt class="descname">frac_digits</tt><em class="property"> = None</em><a class="headerlink" href="#camlib.Gerber.frac_digits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of fraction digits in Gerber numbers. Used during parsing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.get_bounding_box">
+<tt class="descname">get_bounding_box</tt><big>(</big><em>margin=0.0</em>, <em>rounded=False</em><big>)</big><a class="headerlink" href="#camlib.Gerber.get_bounding_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns a rectangular polygon bounding at a distance of
+margin from the object&#8217;s <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>. If margin &gt; 0, the polygon
+can optionally have rounded corners of radius equal to margin.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>margin</strong> (<em>float</em>) &#8211; Distance to enlarge the rectangular bounding
+box in both positive and negative, x and y axes.</li>
+<li><strong>rounded</strong> (<em>bool</em>) &#8211; Wether or not to have rounded corners.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">The bounding box.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Shapely.Polygon</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="camlib.Gerber.int_digits">
+<tt class="descname">int_digits</tt><em class="property"> = None</em><a class="headerlink" href="#camlib.Gerber.int_digits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of integer digits in Gerber numbers. Used during parsing.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.Gerber.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets the objects&#8217; geometry on the XY plane by a given vector.
+These are:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
+</ul>
+<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
+are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
+:param vect: (x, y) offset vector.
+:type vect: tuple
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.parse_file">
+<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#camlib.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls Gerber.parse_lines() with array of lines
+read from the given file.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>glines</em><big>)</big><a class="headerlink" href="#camlib.Gerber.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main Gerber parser. Reads Gerber and populates <tt class="docutils literal"><span class="pre">self.paths</span></tt>, <tt class="docutils literal"><span class="pre">self.apertures</span></tt>,
+<tt class="docutils literal"><span class="pre">self.flashes</span></tt>, <tt class="docutils literal"><span class="pre">self.regions</span></tt> and <tt class="docutils literal"><span class="pre">self.units</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>glines</strong> (<em>list</em>) &#8211; Gerber code as list of strings, each element being
+one line of the source file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Gerber.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#camlib.Gerber.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales the objects&#8217; geometry on the XY plane by a given factor.
+These are:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">apertures</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
+</ul>
+<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
+are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
+:param factor: Number by which to scale.
+:type factor: float
+:rtype : None</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="camlib.Excellon">
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Excellon</tt><a class="headerlink" href="#camlib.Excellon" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>ATTRIBUTES</em></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">tools</span></tt> (dict): The key is the tool name and the value is
+the size (diameter).</li>
+<li><tt class="docutils literal"><span class="pre">drills</span></tt> (list): Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="69%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>point</td>
+<td>(Shapely.Point) Where to drill</td>
+</tr>
+<tr class="row-odd"><td>tool</td>
+<td>(str) A key in <tt class="docutils literal"><span class="pre">tools</span></tt></td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="camlib.Excellon.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.Excellon.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets geometry on the XY plane in the object by a given vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) offset vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Excellon.parse_file">
+<tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#camlib.Excellon.parse_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the specified file as array of lines as
+passes it to <tt class="docutils literal"><span class="pre">parse_lines()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; The file to be read and parsed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Excellon.parse_lines">
+<tt class="descname">parse_lines</tt><big>(</big><em>elines</em><big>)</big><a class="headerlink" href="#camlib.Excellon.parse_lines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main Excellon parser.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>elines</strong> (<em>list</em>) &#8211; List of strings, each being a line of Excellon code.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Excellon.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#camlib.Excellon.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales geometry on the XY plane in the object by a given factor.
+Tool sizes, feedrates an Z-plane dimensions are untouched.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">NOne</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="camlib.CNCjob">
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">CNCjob</tt><big>(</big><em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#camlib.CNCjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Represents work to be done by a CNC machine.</p>
+<p><em>ATTRIBUTES</em></p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">gcode_parsed</span></tt> (list): Each is a dictionary:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="34%" />
+<col width="66%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>geom</td>
+<td>(Shapely.LineString) Tool path (XY plane)</td>
+</tr>
+<tr class="row-odd"><td>kind</td>
+<td>(string) &#8220;AB&#8221;, A is &#8220;T&#8221; (travel) or
+&#8220;C&#8221; (cut). B is &#8220;F&#8221; (fast) or &#8220;S&#8221; (slow).</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="camlib.CNCjob.gcode_parse">
+<tt class="descname">gcode_parse</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.CNCjob.gcode_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>G-Code parser (from self.gcode). Generates dictionary with
+single-segment LineString&#8217;s and &#8220;kind&#8221; indicating cut or travel,
+fast or feedrate speed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.generate_from_excellon">
+<tt class="descname">generate_from_excellon</tt><big>(</big><em>exobj</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.generate_from_excellon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-code for drilling from Excellon object.
+self.gcode becomes a list, each element is a
+different job for each tool in the excellon code.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.generate_from_excellon_by_tool">
+<tt class="descname">generate_from_excellon_by_tool</tt><big>(</big><em>exobj</em>, <em>tools='all'</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.generate_from_excellon_by_tool" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates gcode for this object from an Excellon object
+for the specified tools.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>exobj</strong> (<em>Excellon</em>) &#8211; Excellon object to process</li>
+<li><strong>tools</strong> &#8211; Comma separated tool names</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">tools: str</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.generate_from_geometry">
+<tt class="descname">generate_from_geometry</tt><big>(</big><em>geometry</em>, <em>append=True</em>, <em>tooldia=None</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.generate_from_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-Code from a Geometry object. Stores in <tt class="docutils literal"><span class="pre">self.gcode</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>geometry</strong> (<em>Geometry</em>) &#8211; Geometry defining the toolpath</li>
+<li><strong>append</strong> (<em>bool</em>) &#8211; Wether to append to self.gcode or re-write it.</li>
+<li><strong>tooldia</strong> (<em>bool</em>) &#8211; If given, sets the tooldia property but does
+not affect the process in any other way.</li>
+<li><strong>tolerance</strong> &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.linear2gcode">
+<tt class="descname">linear2gcode</tt><big>(</big><em>linear</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.linear2gcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates G-code to cut along the linear feature.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>linear</strong> &#8211; The path to cut along.</li>
+<li><strong>tolerance</strong> (<em>float</em>) &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Type:</th><td class="field-body"><p class="first">Shapely.LinearRing or Shapely.Linear String</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">G-code to cut alon the linear feature.</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.offset">
+<tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets all the geometry on the XY plane in the object by the
+given vector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) offset vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.plot2">
+<tt class="descname">plot2</tt><big>(</big><em>axes, tooldia=None, dpi=75, margin=0.1, color={'C': ['#5E6CFF', '#4650BD'], 'T': ['#F0E24D', '#B5AB3A']}, alpha={'C': 1.0, 'T': 0.3}, tool_tolerance=0.0005</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.plot2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the G-code job onto the given axes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>axes</strong> &#8211; Matplotlib axes on which to plot.</li>
+<li><strong>tooldia</strong> &#8211; Tool diameter.</li>
+<li><strong>dpi</strong> &#8211; Not used!</li>
+<li><strong>margin</strong> &#8211; Not used!</li>
+<li><strong>color</strong> &#8211; Color specification.</li>
+<li><strong>alpha</strong> &#8211; Transparency specification.</li>
+<li><strong>tool_tolerance</strong> &#8211; Tolerance when drawing the toolshape.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.polygon2gcode">
+<tt class="descname">polygon2gcode</tt><big>(</big><em>polygon</em>, <em>tolerance=0</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.polygon2gcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates G-Code for the exterior and all interior paths
+of a polygon.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>polygon</strong> (<em>Shapely.Polygon</em>) &#8211; A Shapely.Polygon</li>
+<li><strong>tolerance</strong> (<em>float</em>) &#8211; All points in the simplified object will be within the
+tolerance distance of the original geometry.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">G-code to cut along polygon.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.pre_parse">
+<tt class="descname">pre_parse</tt><big>(</big><em>gtext</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.pre_parse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Separates parts of the G-Code text into a list of dictionaries.
+Used by <tt class="docutils literal"><span class="pre">self.gcode_parse()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gtext</strong> &#8211; A single string with g-code</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.CNCjob.scale">
+<tt class="descname">scale</tt><big>(</big><em>factor</em><big>)</big><a class="headerlink" href="#camlib.CNCjob.scale" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scales all the geometry on the XY plane in the object by the
+given factor. Tool sizes, feedrates, or Z-axis dimensions are
+not altered.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
 </div>
 
 
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="flatcamobj.html" class="btn btn-neutral float-right" title="FlatCAM Objects"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral" title="Welcome to FlatCAM’s documentation!"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>

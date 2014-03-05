@@ -13,37 +13,10 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-.. automodule:: FlatCAM
+   camlib
+   flatcamobj
+   app
 
-.. autoclass:: App
-    :members:
-
-.. autoclass:: Geometry
-    :members:
-
-.. autoclass:: Gerber(Geometry)
-    :members:
-
-.. autoclass:: Excellon
-    :members:
-
-.. autoclass:: CNCjob
-    :members:
-
-.. autoclass:: FlatCAMObj
-    :members:
-
-.. autoclass:: FlatCAMGerber
-    :members:
-
-.. autoclass:: FlatCAMExcellon
-    :members:
-
-.. autoclass:: FlatCAMCNCjob
-    :members:
-
-.. autoclass:: FlatCAMGeometry
-    :members:
 
 
 Indices and tables
