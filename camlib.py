@@ -379,7 +379,7 @@ class Gerber (Geometry):
         #print "Scaling apertures..."
         for apid in self.apertures:
             for param in self.apertures[apid]:
-                if param != "type":  # All others are dimensions.
+                if param != "type" and param != "nVertices":  # All others are dimensions.
                     print "Tool:", apid, "Parameter:", param
                     self.apertures[apid][param] *= factor
 
@@ -513,6 +513,16 @@ class Gerber (Geometry):
                                     "width": float(gline[indexo+2:indexx]),
                                     "height": float(gline[indexx+1:indexstar])}
             return apid
+        indexp = gline.find("P,")
+        if (indexp != -1):
+            # Hack explained above
+            apid = str(int(gline[4:indexp]))
+            indexx = gline.find("X")
+            self.apertures[apid] = {"type": "P",
+                                    "diam": float(gline[indexp+2:indexx]),
+                                    "nVertices": int(gline[indexx+1:indexstar])}
+            return apid
+
         print "WARNING: Aperture not implemented:", gline
         return None
         
@@ -803,6 +813,20 @@ class Gerber (Geometry):
                 obround = cascaded_union([c1, c2]).convex_hull
                 self.flash_geometry.append(obround)
                 continue
+            if aperture['type'] == 'P': #Regular polygon
+                loc = flash['loc']
+                diam = aperture['diam']
+                nVertices = aperture['nVertices']
+                points = []
+                for i in range(0,nVertices):
+                    x = loc[0] + diam * (cos(2 * pi * i / nVertices))
+                    y = loc[1] + diam * (sin(2 * pi * i / nVertices))
+                    points.append((x,y))
+                ply = Polygon(points)
+                self.flash_geometry.append(ply)
+                continue
+
+
 
             print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
