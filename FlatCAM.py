@@ -233,7 +233,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "mergepolys": True,
             "multicolored": False,
             "solid": False,
-            "isotooldia": 0.4 / 25.4,
+            "isotooldia": 0.016,
+            "isopasses": 1,
+            "isooverlap": 0.15,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
             "gaps": "tb",
@@ -249,6 +251,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "multicolored": "cb",
             "solid": "cb",
             "isotooldia": "entry_eval",
+            "isopasses": "entry_eval",
+            "isooverlap": "entry_eval",
             "cutoutmargin": "entry_eval",
             "cutoutgapsize": "entry_eval",
             "gaps": "radio",
@@ -663,9 +667,9 @@ class App:
         self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
 
-        self.axes = self.plotcanvas.axes  # TODO: Just for testing
-        self.figure = self.plotcanvas.figure  # TODO: Just for testing
-        self.canvas = self.plotcanvas.canvas  # TODO: Just for testing
+        # self.axes = self.plotcanvas.axes  # TODO: Just for testing
+        # self.figure = self.plotcanvas.figure  # TODO: Just for testing
+        # self.canvas = self.plotcanvas.canvas  # TODO: Just for testing
 
         self.setup_tooltips()
 
@@ -717,9 +721,9 @@ class App:
         self.plot_mousemove_subscribers = {}
 
         ## Tools ##
-        self.measure = Measurement(self.axes, self.plot_click_subscribers,
-                                   self.plot_mousemove_subscribers,
-                                   lambda: self.canvas.queue_draw())
+        # self.measure = Measurement(self.axes, self.plot_click_subscribers,
+        #                            self.plot_mousemove_subscribers,
+        #                            lambda: self.canvas.queue_draw())
 
         #### Initialization ####
         self.load_defaults()
@@ -1900,6 +1904,7 @@ class App:
         :return: None
         """
 
+        # Read options from file
         try:
             f = open("defaults.json")
             options = f.read()
@@ -1916,9 +1921,11 @@ class App:
             self.info("ERROR: Failed to parse defaults file.")
             return
 
+        # Update options
         assert isinstance(defaults, dict)
         defaults.update(self.defaults)
 
+        # Save update options
         try:
             f = open("defaults.json", "w")
             json.dump(defaults, f)
@@ -2218,17 +2225,25 @@ class App:
 
         gerb = self.get_current()
         gerb.read_form()
-        iso_name = gerb.options["name"] + "_iso"
+        dia = gerb.options["isotooldia"]
+        passes = int(gerb.options["isopasses"])
+        overlap = gerb.options["isooverlap"] * dia
 
-        def iso_init(geo_obj, app_obj):
-            # Propagate options
-            geo_obj.options["cnctooldia"] = gerb.options["isotooldia"]
+        for i in range(passes):
 
-            geo_obj.solid_geometry = gerb.isolation_geometry(gerb.options["isotooldia"] / 2.0)
-            app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
+            offset = (2*i + 1)/2.0 * dia - i*overlap
+            iso_name = gerb.options["name"] + "_iso%d" % (i+1)
 
-        # TODO: Do something if this is None. Offer changing name?
-        self.new_object("geometry", iso_name, iso_init)
+            # TODO: This is ugly. Create way to pass data into init function.
+            def iso_init(geo_obj, app_obj):
+                # Propagate options
+                geo_obj.options["cnctooldia"] = gerb.options["isotooldia"]
+
+                geo_obj.solid_geometry = gerb.isolation_geometry(offset)
+                app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
+
+            # TODO: Do something if this is None. Offer changing name?
+            self.new_object("geometry", iso_name, iso_init)
 
     def on_generate_cncjob(self, widget):
         """
@@ -2680,7 +2695,7 @@ class App:
         """
 
         # For key presses
-        self.canvas.grab_focus()
+        self.plotcanvas.canvas.grab_focus()
 
         try:
             print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
