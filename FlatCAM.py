@@ -641,6 +641,7 @@ class App:
         self.progress_bar = self.builder.get_object("progressbar")
         self.progress_bar.set_show_text(True)
         self.units_label = self.builder.get_object("label_units")
+        self.toolbar = self.builder.get_object("toolbar_main")
 
         # White (transparent) background on the "Options" tab.
         self.builder.get_object("vp_options").override_background_color(Gtk.StateType.NORMAL,
@@ -658,18 +659,10 @@ class App:
         self.builder.connect_signals(self)
 
         #### Make plot area ####
-        # self.figure = None
-        # self.axes = None
-        # self.canvas = None
-        # self.setup_plot()
         self.plotcanvas = PlotCanvas(self.grid)
         self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
         self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
-
-        # self.axes = self.plotcanvas.axes  # TODO: Just for testing
-        # self.figure = self.plotcanvas.figure  # TODO: Just for testing
-        # self.canvas = self.plotcanvas.canvas  # TODO: Just for testing
 
         self.setup_tooltips()
 
@@ -721,9 +714,17 @@ class App:
         self.plot_mousemove_subscribers = {}
 
         ## Tools ##
-        # self.measure = Measurement(self.axes, self.plot_click_subscribers,
-        #                            self.plot_mousemove_subscribers,
-        #                            lambda: self.canvas.queue_draw())
+        self.measure = Measurement(self.builder.get_object("box39"), self.plotcanvas.axes,
+                                   self.plot_click_subscribers, self.plot_mousemove_subscribers)
+        # Toolbar icon
+        # TODO: Where should I put this? Tool should have a method to add to toolbar?
+        meas_ico = Gtk.Image.new_from_file('share/measure32.png')
+        measure = Gtk.ToolButton.new(meas_ico, "")
+        measure.connect("clicked", self.measure.toggle_active)
+        measure.set_tooltip_markup("<b>Measure Tool:</b> Enable/disable tool.\n" +
+                                   "Click on point to set reference.\n" +
+                                   "(Click on plot and hit <b>m</b>)")
+        self.toolbar.insert(measure, -1)
 
         #### Initialization ####
         self.load_defaults()
@@ -757,49 +758,48 @@ class App:
         self.window.show_all()
 
     def setup_toolbar(self):
-        toolbar = self.builder.get_object("toolbar_main")
 
         # Zoom fit
         zf_ico = Gtk.Image.new_from_file('share/zoom_fit32.png')
         zoom_fit = Gtk.ToolButton.new(zf_ico, "")
         zoom_fit.connect("clicked", self.on_zoom_fit)
         zoom_fit.set_tooltip_markup("Zoom Fit.\n(Click on plot and hit <b>1</b>)")
-        toolbar.insert(zoom_fit, -1)
+        self.toolbar.insert(zoom_fit, -1)
 
         # Zoom out
         zo_ico = Gtk.Image.new_from_file('share/zoom_out32.png')
         zoom_out = Gtk.ToolButton.new(zo_ico, "")
         zoom_out.connect("clicked", self.on_zoom_out)
         zoom_out.set_tooltip_markup("Zoom Out.\n(Click on plot and hit <b>2</b>)")
-        toolbar.insert(zoom_out, -1)
+        self.toolbar.insert(zoom_out, -1)
 
         # Zoom in
         zi_ico = Gtk.Image.new_from_file('share/zoom_in32.png')
         zoom_in = Gtk.ToolButton.new(zi_ico, "")
         zoom_in.connect("clicked", self.on_zoom_in)
         zoom_in.set_tooltip_markup("Zoom In.\n(Click on plot and hit <b>3</b>)")
-        toolbar.insert(zoom_in, -1)
+        self.toolbar.insert(zoom_in, -1)
 
         # Clear plot
         cp_ico = Gtk.Image.new_from_file('share/clear_plot32.png')
         clear_plot = Gtk.ToolButton.new(cp_ico, "")
         clear_plot.connect("clicked", self.on_clear_plots)
         clear_plot.set_tooltip_markup("Clear Plot")
-        toolbar.insert(clear_plot, -1)
+        self.toolbar.insert(clear_plot, -1)
 
         # Replot
         rp_ico = Gtk.Image.new_from_file('share/replot32.png')
         replot = Gtk.ToolButton.new(rp_ico, "")
         replot.connect("clicked", self.on_toolbar_replot)
         replot.set_tooltip_markup("Re-plot all")
-        toolbar.insert(replot, -1)
+        self.toolbar.insert(replot, -1)
 
         # Delete item
         del_ico = Gtk.Image.new_from_file('share/delete32.png')
         delete = Gtk.ToolButton.new(del_ico, "")
         delete.connect("clicked", self.on_delete)
         delete.set_tooltip_markup("Delete selected\nobject.")
-        toolbar.insert(delete, -1)
+        self.toolbar.insert(delete, -1)
 
     def setup_obj_classes(self):
         """
@@ -824,7 +824,7 @@ class App:
         self.tree_select = self.tree.get_selection()
         self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
         renderer = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn("Title", renderer, text=0)
+        column = Gtk.TreeViewColumn("Objects", renderer, text=0)
         self.tree.append_column(column)
         self.builder.get_object("box_project").pack_start(self.tree, False, False, 1)
 
@@ -861,45 +861,6 @@ class App:
         :return: None
         """
         self.info_label.set_text(text)
-
-    # def zoom(self, factor, center=None):
-    #     """
-    #     Zooms the plot by factor around a given
-    #     center point. Takes care of re-drawing.
-    #
-    #     :param factor: Number by which to scale the plot.
-    #     :type factor: float
-    #     :param center: Coordinates [x, y] of the point around which to scale the plot.
-    #     :type center: list
-    #     :return: None
-    #     """
-    #     xmin, xmax = self.axes.get_xlim()
-    #     ymin, ymax = self.axes.get_ylim()
-    #     width = xmax - xmin
-    #     height = ymax - ymin
-    #
-    #     if center is None:
-    #         center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
-    #
-    #     # For keeping the point at the pointer location
-    #     relx = (xmax - center[0]) / width
-    #     rely = (ymax - center[1]) / height
-    #
-    #     new_width = width / factor
-    #     new_height = height / factor
-    #
-    #     xmin = center[0] - new_width * (1 - relx)
-    #     xmax = center[0] + new_width * relx
-    #     ymin = center[1] - new_height * (1 - rely)
-    #     ymax = center[1] + new_height * rely
-    #
-    #     for name in self.stuff:
-    #         self.stuff[name].axes.set_xlim((xmin, xmax))
-    #         self.stuff[name].axes.set_ylim((ymin, ymax))
-    #     self.axes.set_xlim((xmin, xmax))
-    #     self.axes.set_ylim((ymin, ymax))
-    #
-    #     self.canvas.queue_draw()
 
     def build_list(self):
         """
@@ -998,7 +959,7 @@ class App:
         self.tree_select.select_iter(iter)
 
         # Need to return False such that GLib.idle_add
-        # or .timeout_add do not repear.
+        # or .timeout_add do not repeat.
         return False
 
     def new_object(self, kind, name, initialize):
@@ -1105,61 +1066,6 @@ class App:
             return self.stuff[self.selected_item_name]
         except:
             return None
-
-    # def adjust_axes(self, xmin, ymin, xmax, ymax):
-    #     """
-    #     Adjusts axes of all plots while maintaining the use of the whole canvas
-    #     and an aspect ratio to 1:1 between x and y axes. The parameters are an original
-    #     request that will be modified to fit these restrictions.
-    #
-    #     :param xmin: Requested minimum value for the X axis.
-    #     :type xmin: float
-    #     :param ymin: Requested minimum value for the Y axis.
-    #     :type ymin: float
-    #     :param xmax: Requested maximum value for the X axis.
-    #     :type xmax: float
-    #     :param ymax: Requested maximum value for the Y axis.
-    #     :type ymax: float
-    #     :return: None
-    #     """
-    #     m_x = 15  # pixels
-    #     m_y = 25  # pixels
-    #     width = xmax - xmin
-    #     height = ymax - ymin
-    #     try:
-    #         r = width / height
-    #     except:
-    #         print "ERROR: Height is", height
-    #         return
-    #     Fw, Fh = self.canvas.get_width_height()
-    #     Fr = float(Fw) / Fh
-    #     x_ratio = float(m_x) / Fw
-    #     y_ratio = float(m_y) / Fh
-    #
-    #     if r > Fr:
-    #         ycenter = (ymin + ymax) / 2.0
-    #         newheight = height * r / Fr
-    #         ymin = ycenter - newheight / 2.0
-    #         ymax = ycenter + newheight / 2.0
-    #     else:
-    #         xcenter = (xmax + ymin) / 2.0
-    #         newwidth = width * Fr / r
-    #         xmin = xcenter - newwidth / 2.0
-    #         xmax = xcenter + newwidth / 2.0
-    #
-    #     for name in self.stuff:
-    #         if self.stuff[name].axes is None:
-    #             continue
-    #         self.stuff[name].axes.set_xlim((xmin, xmax))
-    #         self.stuff[name].axes.set_ylim((ymin, ymax))
-    #         self.stuff[name].axes.set_position([x_ratio, y_ratio,
-    #                                             1 - 2 * x_ratio, 1 - 2 * y_ratio])
-    #     self.axes.set_xlim((xmin, xmax))
-    #     self.axes.set_ylim((ymin, ymax))
-    #     self.axes.set_position([x_ratio, y_ratio,
-    #                             1 - 2 * x_ratio, 1 - 2 * y_ratio])
-    #
-    #     self.canvas.queue_draw()
 
     def load_defaults(self):
         """
@@ -1372,7 +1278,7 @@ class App:
         for obj in self.stuff:
             combo.append_text(obj)
 
-    def versionCheck(self):
+    def versionCheck(self, *args):
         """
         Checks for the latest version of the program. Alerts the
         user if theirs is outdated. This method is meant to be run
@@ -1989,9 +1895,6 @@ class App:
         :return: None
         """
 
-        # xmin, xmax = self.axes.get_xlim()
-        # ymin, ymax = self.axes.get_ylim()
-        # self.adjust_axes(xmin, ymin, xmax, ymax)
         self.plotcanvas.auto_adjust_axes()
 
     def on_row_activated(self, widget, path, col):
@@ -2788,45 +2691,69 @@ class App:
 
 
 class Measurement:
-    def __init__(self, axes, click_subscibers, move_subscribers, update=None):
+    def __init__(self, container, axes, click_subscibers, move_subscribers, update=None):
         self.update = update
+        self.container = container
+        self.frame = None
+        self.label = None
         self.axes = axes
         self.click_subscribers = click_subscibers
         self.move_subscribers = move_subscribers
         self.point1 = None
         self.point2 = None
         self.active = False
-        self.at = None  # AnchoredText object on plot
+        # self.at = None  # AnchoredText object on plot
 
-    def toggle_active(self):
-        if self.active:
+    def toggle_active(self, *args):
+        if self.active:  # Deactivate
             self.active = False
             self.move_subscribers.pop("meas")
             self.click_subscribers.pop("meas")
-            self.at.remove()
+            # self.at.remove()
+            self.container.remove(self.frame)
             if self.update is not None:
                 self.update()
             return False
-        else:
+        else:  # Activate
+            print "DEBUG: Activating Measurement Tool..."
             self.active = True
             self.click_subscribers["meas"] = self.on_click
             self.move_subscribers["meas"] = self.on_move
+            self.frame = Gtk.Frame()
+            self.frame.set_margin_right(5)
+            self.frame.set_margin_top(3)
+            align = Gtk.Alignment()
+            align.set(0, 0.5, 0, 0)
+            align.set_padding(4, 4, 4, 4)
+            self.label = Gtk.Label()
+            self.label.set_label("Measuring tool...")
+            align.add(self.label)
+            self.frame.add(align)
+            self.frame.set_size_request(200, 30)
+            self.frame.set_hexpand(True)
+            self.container.pack_end(self.frame, False, True, 1)
+            self.frame.show_all()
+            align.show_all()
+            self.label.show_all()
+            self.container.queue_draw()
             return True
 
     def on_move(self, event):
-        try:
-            self.at.remove()
-        except:
-            pass
+        # try:
+        #     self.at.remove()
+        # except:
+        #     pass
         if self.point1 is None:
-            self.at = AnchoredText("Click on a reference point...")
+            # self.at = AnchoredText("Click on a reference point...")
+            self.label.set_label("Click on a reference point...")
         else:
             dx = event.xdata - self.point1[0]
             dy = event.ydata - self.point1[1]
             d = sqrt(dx**2 + dy**2)
-            self.at = AnchoredText("D = %.4f\nD(x) = %.4f\nD(y) = %.4f" % (d, dx, dy),
-                                   loc=2, prop={'size': 14}, frameon=False)
-        self.axes.add_artist(self.at)
+            # self.at = AnchoredText("D = %.4f\nD(x) = %.4f\nD(y) = %.4f" % (d, dx, dy),
+            #                        loc=2, prop={'size': 14}, frameon=False)
+            self.label.set_label("D = %.4f  D(x) = %.4f  D(y) = %.4f" % (d, dx, dy))
+        # self.axes.add_artist(self.at)
         if self.update is not None:
             self.update()
 
@@ -2837,6 +2764,7 @@ class Measurement:
             else:
                 self.point2 = copy.copy(self.point1)
                 self.point1 = (event.xdata, event.ydata)
+            self.on_move(event)
 
 
 class PlotCanvas:
@@ -2877,7 +2805,7 @@ class PlotCanvas:
         self.canvas.set_can_focus(True)  # For key press
 
         # Attach to parent
-        self.container.attach(self.canvas, 0, 0, 600, 400)
+        self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
 
         # Events
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
