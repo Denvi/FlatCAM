@@ -375,11 +375,14 @@ class Gerber (Geometry):
         :type factor: float
         :rtype : None
         """
+
         # Apertures
         #print "Scaling apertures..."
+        #List of the non-dimension aperture parameters
+        nonDimensions = ["type", "nVertices", "rotation"]
         for apid in self.apertures:
             for param in self.apertures[apid]:
-                if param != "type" and param != "nVertices":  # All others are dimensions.
+                if param not in nonDimensions:  # All others are dimensions.
                     print "Tool:", apid, "Parameter:", param
                     self.apertures[apid][param] *= factor
 
@@ -471,7 +474,7 @@ class Gerber (Geometry):
                 print "ERROR: Failed to buffer path: ", path
                 print "Apertures: ", self.apertures
     
-    def aperture_parse(self, gline):
+    def aperture_parse(self, apertureId, apertureType, apParameters):
         """
         Parse gerber aperture definition into dictionary of apertures.
         The following kinds and their attributes are supported:
@@ -479,51 +482,49 @@ class Gerber (Geometry):
         * *Circular (C)*: size (float)
         * *Rectangle (R)*: width (float), height (float)
         * *Obround (O)*: width (float), height (float).
+        * *Polygon (P)*: diameter(float), vertices(int), [rotation(float)]
 
-        :param gline: Line of Gerber code known to have an aperture definition.
-        :type gline: str
+        :param apertureId: Id of the aperture being defined.
+        :param apertureType: Type of the aperture.
+        :param apParameters: Parameters of the aperture.
+        :type apertureId: str
+        :type apertureType: str
+        :type apParameters: str
         :return: Identifier of the aperture.
         :rtype: str
         """
 
-        indexstar = gline.find("*")
-        indexc = gline.find("C,")
-        if indexc != -1:  # Circle, example: %ADD11C,0.1*%
-            # Found some Gerber with a leading zero in the aperture id and the
-            # referenced it without the zero, so this is a hack to handle that.
-            apid = str(int(gline[4:indexc]))
+        # Found some Gerber with a leading zero in the aperture id and the
+        # referenced it without the zero, so this is a hack to handle that.
+        apid = str(int(apertureId))
+        paramList = apParameters.split('X')
+
+        if apertureType == "C" :  # Circle, example: %ADD11C,0.1*%
             self.apertures[apid] = {"type": "C",
-                                    "size": float(gline[indexc+2:indexstar])}
+                                    "size": float(paramList[0])}
             return apid
-        indexr = gline.find("R,")
-        if indexr != -1:  # Rectangle, example: %ADD15R,0.05X0.12*%
-            # Hack explained above
-            apid = str(int(gline[4:indexr]))
-            indexx = gline.find("X")
+        
+        if apertureType == "R" :  # Rectangle, example: %ADD15R,0.05X0.12*%
             self.apertures[apid] = {"type": "R",
-                                    "width": float(gline[indexr+2:indexx]),
-                                    "height": float(gline[indexx+1:indexstar])}
-            return apid
-        indexo = gline.find("O,")
-        if indexo != -1:  # Obround
-            # Hack explained above
-            apid = str(int(gline[4:indexo]))
-            indexx = gline.find("X")
-            self.apertures[apid] = {"type": "O",
-                                    "width": float(gline[indexo+2:indexx]),
-                                    "height": float(gline[indexx+1:indexstar])}
-            return apid
-        indexp = gline.find("P,")
-        if (indexp != -1):
-            # Hack explained above
-            apid = str(int(gline[4:indexp]))
-            indexx = gline.find("X")
-            self.apertures[apid] = {"type": "P",
-                                    "diam": float(gline[indexp+2:indexx]),
-                                    "nVertices": int(gline[indexx+1:indexstar])}
+                                    "width": float(paramList[0]),
+                                    "height": float(paramList[1])}
             return apid
 
-        print "WARNING: Aperture not implemented:", gline
+        if apertureType == "O" :  # Obround
+            self.apertures[apid] = {"type": "O",
+                                    "width": float(paramList[0]),
+                                    "height": float(paramList[1])}
+            return apid
+        
+        if apertureType == "P" :
+            self.apertures[apid] = {"type": "P",
+                                    "diam": float(paramList[0]),
+                                    "nVertices": int(paramList[1])}
+            if len(paramList) >= 3 :
+                self.apertures[apid]["rotation"] = float(paramList[2])
+            return apid
+
+        print "WARNING: Aperture not implemented:", apertureType
         return None
         
     def parse_file(self, filename):
@@ -722,9 +723,12 @@ class Gerber (Geometry):
                 path = [[current_x, current_y]]  # Start new path
                 continue
             
-            if gline.find("%ADD") != -1:  # aperture definition
-                self.aperture_parse(gline)  # adds element to apertures
+            #Parse an aperture.
+            match = self.ad_re.search(gline)
+            if match:
+                self.aperture_parse(match.group(1),match.group(2),match.group(3))
                 continue
+
 
             ## G01/2/3* - Interpolation mode change
             # Can occur along with coordinates and operation code but
@@ -813,6 +817,7 @@ class Gerber (Geometry):
                 obround = cascaded_union([c1, c2]).convex_hull
                 self.flash_geometry.append(obround)
                 continue
+
             if aperture['type'] == 'P': #Regular polygon
                 loc = flash['loc']
                 diam = aperture['diam']
@@ -823,6 +828,8 @@ class Gerber (Geometry):
                     y = loc[1] + diam * (sin(2 * pi * i / nVertices))
                     points.append((x,y))
                 ply = Polygon(points)
+                if 'rotation' in aperture:
+                    ply = affinity.rotate(ply, aperture['rotation'])
                 self.flash_geometry.append(ply)
                 continue
 
