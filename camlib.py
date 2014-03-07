@@ -375,11 +375,14 @@ class Gerber (Geometry):
         :type factor: float
         :rtype : None
         """
+
         # Apertures
         #print "Scaling apertures..."
+        #List of the non-dimension aperture parameters
+        nonDimensions = ["type", "nVertices", "rotation"]
         for apid in self.apertures:
             for param in self.apertures[apid]:
-                if param != "type" and param != "nVertices":  # All others are dimensions.
+                if param not in nonDimensions:  # All others are dimensions.
                     print "Tool:", apid, "Parameter:", param
                     self.apertures[apid][param] *= factor
 
@@ -484,7 +487,9 @@ class Gerber (Geometry):
         :param apertureId: Id of the aperture being defined.
         :param apertureType: Type of the aperture.
         :param apParameters: Parameters of the aperture.
-        :type gline: str
+        :type apertureId: str
+        :type apertureType: str
+        :type apParameters: str
         :return: Identifier of the aperture.
         :rtype: str
         """
@@ -519,7 +524,7 @@ class Gerber (Geometry):
                 self.apertures[apid]["rotation"] = float(paramList[2])
             return apid
 
-        print "WARNING: Aperture not implemented:", apertureId
+        print "WARNING: Aperture not implemented:", apertureType
         return None
         
     def parse_file(self, filename):
