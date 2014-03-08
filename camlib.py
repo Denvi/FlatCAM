@@ -818,22 +818,20 @@ class Gerber (Geometry):
                 self.flash_geometry.append(obround)
                 continue
 
-            if aperture['type'] == 'P': #Regular polygon
+            if aperture['type'] == 'P':  # Regular polygon
                 loc = flash['loc']
                 diam = aperture['diam']
                 nVertices = aperture['nVertices']
                 points = []
-                for i in range(0,nVertices):
+                for i in range(0, nVertices):
                     x = loc[0] + diam * (cos(2 * pi * i / nVertices))
                     y = loc[1] + diam * (sin(2 * pi * i / nVertices))
-                    points.append((x,y))
+                    points.append((x, y))
                 ply = Polygon(points)
                 if 'rotation' in aperture:
                     ply = affinity.rotate(ply, aperture['rotation'])
                 self.flash_geometry.append(ply)
                 continue
-
-
 
             print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
@@ -1433,12 +1431,12 @@ class CNCjob(Geometry):
 
         # Current path: temporary storage until tool is
         # lifted or lowered.
-        path = []
+        path = [(0, 0)]
 
         # Process every instruction
         for gobj in gobjs:
 
-            # Changing height:
+            ## Changing height
             if 'Z' in gobj:
                 if ('X' in gobj or 'Y' in gobj) and gobj['Z'] != current['Z']:
                     print "WARNING: Non-orthogonal motion: From", current
@@ -1489,6 +1487,13 @@ class CNCjob(Geometry):
             # Update current instruction
             for code in gobj:
                 current[code] = gobj[code]
+
+        # There might not be a change in height at the
+        # end, therefore, see here too if there is
+        # a final path.
+        if len(path) > 1:
+            geometry.append({"geom": LineString(path),
+                             "kind": kind})
 
         self.gcode_parsed = geometry
         return geometry

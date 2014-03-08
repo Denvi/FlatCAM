@@ -25,6 +25,7 @@ from camlib import *
 import sys
 import urllib
 import copy
+import random
 
 
 ########################################
@@ -980,10 +981,17 @@ class App:
         :rtype: None
         """
 
-        # Check for existing name
+        ### Check for existing name
         if name in self.stuff:
-            self.info("Rename " + name + " in project first.")
-            return None
+            ## Create a new name
+            # Ends with number?
+            match = re.search(r'(.*[^\d])?(\d+)$', name)
+            if match:  # Yes: Increment the number!
+                base = match.group(1) or ''
+                num = int(match.group(2))
+                name = base + str(num + 1)
+            else:  # No: add a number!
+                name += "_1"
 
         # Create object
         classdict = {
@@ -2690,26 +2698,76 @@ class App:
             return
 
 
+class BaseDraw:
+    def __init__(self, plotcanvas, name=None):
+        """
+
+        :param plotcanvas: The PlotCanvas where the drawing tool will operate.
+        :type plotcanvas: PlotCanvas
+        """
+
+        self.plotcanvas = plotcanvas
+
+        # Must have unique axes
+        charset = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890"
+        self.name = name or [random.choice(charset) for i in range(20)]
+        self.axes = self.plotcanvas.new_axes(self.name)
+
+
+class DrawingObject(BaseDraw):
+    def __init__(self, plotcanvas, name=None):
+        """
+        Possible objects are:
+
+        * Point
+        * Line
+        * Rectangle
+        * Circle
+        * Polygon
+        """
+
+        BaseDraw.__init__(self, plotcanvas)
+        self.properties = {}
+
+    def plot(self):
+        return
+
+    def update_plot(self):
+        self.axes.cla()
+        self.plot()
+        self.plotcanvas.auto_adjust_axes()
+
+
+class DrawingPoint(DrawingObject):
+    def __init__(self, plotcanvas, name=None, coord=None):
+        DrawingObject.__init__(self, plotcanvas)
+
+        self.properties.update({
+            "coordinate": coord
+        })
+
+    def plot(self):
+        x, y = self.properties["coordinate"]
+        self.axes.plot(x, y, 'o')
+
+
 class Measurement:
     def __init__(self, container, axes, click_subscibers, move_subscribers, update=None):
         self.update = update
         self.container = container
         self.frame = None
         self.label = None
-        self.axes = axes
         self.click_subscribers = click_subscibers
         self.move_subscribers = move_subscribers
         self.point1 = None
         self.point2 = None
         self.active = False
-        # self.at = None  # AnchoredText object on plot
 
     def toggle_active(self, *args):
         if self.active:  # Deactivate
             self.active = False
             self.move_subscribers.pop("meas")
             self.click_subscribers.pop("meas")
-            # self.at.remove()
             self.container.remove(self.frame)
             if self.update is not None:
                 self.update()
@@ -2726,34 +2784,24 @@ class Measurement:
             align.set(0, 0.5, 0, 0)
             align.set_padding(4, 4, 4, 4)
             self.label = Gtk.Label()
-            self.label.set_label("Measuring tool...")
-            align.add(self.label)
+            self.label.set_label("Click on a reference point...")
+            abox = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 10)
+            abox.pack_start(Gtk.Image.new_from_file('share/measure16.png'), False, False, 0)
+            abox.pack_start(self.label, False, False, 0)
+            align.add(abox)
             self.frame.add(align)
-            self.frame.set_size_request(200, 30)
-            self.frame.set_hexpand(True)
             self.container.pack_end(self.frame, False, True, 1)
             self.frame.show_all()
-            align.show_all()
-            self.label.show_all()
-            self.container.queue_draw()
             return True
 
     def on_move(self, event):
-        # try:
-        #     self.at.remove()
-        # except:
-        #     pass
         if self.point1 is None:
-            # self.at = AnchoredText("Click on a reference point...")
             self.label.set_label("Click on a reference point...")
         else:
             dx = event.xdata - self.point1[0]
             dy = event.ydata - self.point1[1]
             d = sqrt(dx**2 + dy**2)
-            # self.at = AnchoredText("D = %.4f\nD(x) = %.4f\nD(y) = %.4f" % (d, dx, dy),
-            #                        loc=2, prop={'size': 14}, frameon=False)
             self.label.set_label("D = %.4f  D(x) = %.4f  D(y) = %.4f" % (d, dx, dy))
-        # self.axes.add_artist(self.at)
         if self.update is not None:
             self.update()
 
