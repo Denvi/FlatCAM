@@ -61,6 +61,7 @@ class FlatCAMObj:
         :return: None
         :rtype: None
         """
+
         if self.axes is None:
             print "New axes"
             self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
@@ -177,15 +178,17 @@ class FlatCAMObj:
             return
         print "Unknown kind of form item:", fkind
 
-    # def plot(self, figure):
-    #     """
-    #     Extend this method! Sets up axes if needed and
-    #     clears them. Descendants must do the actual plotting.
-    #     """
-    #     # Creates the axes if necessary and sets them up.
-    #     self.setup_axes(figure)
-
     def plot(self):
+        """
+        Plot this object (Extend this method to implement the actual plotting).
+        Axes get created, appended to canvas and cleared before plotting.
+        Call this in descendants before doing the plotting.
+
+        :return: Whether to continue plotting or not depending on the "plot" option.
+        :rtype: bool
+        """
+
+        # Axes must exist and be attached to canvas.
         if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
             self.axes = self.app.plotcanvas.new_axes(self.options['name'])
 
@@ -194,6 +197,9 @@ class FlatCAMObj:
             self.app.plotcanvas.auto_adjust_axes()
             return False
 
+        # Clear axes or we will plot on top of them.
+        self.axes.cla()
+        # GLib.idle_add(self.axes.cla)
         return True
 
     def serialize(self):
@@ -237,10 +243,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
+            "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
             "gaps": "tb",
             "noncoppermargin": 0.0,
+            "noncopperrounded": False,
             "bboxmargin": 0.0,
             "bboxrounded": False
         })
@@ -254,10 +262,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": "entry_eval",
             "isopasses": "entry_eval",
             "isooverlap": "entry_eval",
+            "cutouttooldia": "entry_eval",
             "cutoutmargin": "entry_eval",
             "cutoutgapsize": "entry_eval",
             "gaps": "radio",
             "noncoppermargin": "entry_eval",
+            "noncopperrounded": "cb",
             "bboxmargin": "entry_eval",
             "bboxrounded": "cb"
         })
@@ -325,7 +335,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, linespec)
 
-        self.app.plotcanvas.auto_adjust_axes()
+        # self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def serialize(self):
         return {
@@ -348,7 +359,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.options.update({
             "plot": True,
             "solid": False,
-            "multicolored": False,
             "drillz": -0.1,
             "travelz": 0.1,
             "feedrate": 5.0,
@@ -358,7 +368,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.form_kinds.update({
             "plot": "cb",
             "solid": "cb",
-            "multicolored": "cb",
             "drillz": "entry_eval",
             "travelz": "entry_eval",
             "feedrate": "entry_eval",
@@ -393,12 +402,21 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             self.solid_geometry = [self.solid_geometry]
 
         # Plot excellon (All polygons?)
-        for geo in self.solid_geometry:
-            x, y = geo.exterior.coords.xy
-            self.axes.plot(x, y, 'r-')
-            for ints in geo.interiors:
-                x, y = ints.coords.xy
-                self.axes.plot(x, y, 'g-')
+        if self.options["solid"]:
+            for geo in self.solid_geometry:
+                patch = PolygonPatch(geo,
+                                     facecolor="#C40000",
+                                     edgecolor="#750000",
+                                     alpha=0.75,
+                                     zorder=3)
+                self.axes.add_patch(patch)
+        else:
+            for geo in self.solid_geometry:
+                x, y = geo.exterior.coords.xy
+                self.axes.plot(x, y, 'r-')
+                for ints in geo.interiors:
+                    x, y = ints.coords.xy
+                    self.axes.plot(x, y, 'g-')
 
         self.app.plotcanvas.auto_adjust_axes()
 
@@ -914,8 +932,10 @@ class App:
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
-            app_obj.plotcanvas.auto_adjust_axes()
-            self.on_zoom_fit(None)
+            #app_obj.plotcanvas.auto_adjust_axes()
+            #self.on_zoom_fit(None)
+            GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
+            GLib.idle_add(lambda: self.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
 
         t = threading.Thread(target=thread_func, args=(self,))
@@ -1340,7 +1360,7 @@ class App:
             "cb_gerber_plot": "Plot this object on the main window.",
             "cb_gerber_mergepolys": "Show overlapping polygons as single.",
             "cb_gerber_solid": "Paint inside polygons.",
-            "cb_gerber_multicolored": "Draw polygons with different polygons."
+            "cb_gerber_multicolored": "Draw polygons with different colors."
         }
 
         for widget in tooltips:
@@ -1961,7 +1981,7 @@ class App:
             #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
             #GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
             obj.plot()
-            GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
+            #GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
         t = threading.Thread(target=thread_func, args=(self,))
@@ -2058,6 +2078,8 @@ class App:
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
             bounding_box = gerb.solid_geometry.envelope.buffer(gerb.options["noncoppermargin"])
+            if not gerb.options["noncopperrounded"]:
+                bounding_box = bounding_box.envelope
             non_copper = bounding_box.difference(gerb.solid_geometry)
             geo_obj.solid_geometry = non_copper
 
@@ -2078,8 +2100,8 @@ class App:
         name = gerb.options["name"] + "_cutout"
 
         def geo_init(geo_obj, app_obj):
-            margin = gerb.options["cutoutmargin"]
-            gap_size = gerb.options["cutoutgapsize"]
+            margin = gerb.options["cutoutmargin"] + gerb.options["cutouttooldia"]/2
+            gap_size = gerb.options["cutoutgapsize"] + gerb.options["cutouttooldia"]
             minx, miny, maxx, maxy = gerb.bounds()
             minx -= margin
             maxx += margin
@@ -2990,7 +3012,7 @@ class PlotCanvas:
         width = xmax - xmin
         height = ymax - ymin
 
-        if center is None:
+        if center is None or center == [None, None]:
             center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
 
         # For keeping the point at the pointer location

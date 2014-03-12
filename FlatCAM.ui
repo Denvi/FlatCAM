@@ -112,366 +112,6 @@ THE SOFTWARE.</property>
     <property name="can_focus">False</property>
     <property name="stock">gtk-open</property>
   </object>
-  <object class="GtkOffscreenWindow" id="offscreenwindow_dblsided">
-    <property name="can_focus">False</property>
-    <child>
-      <object class="GtkScrolledWindow" id="sw_dblsided">
-        <property name="visible">True</property>
-        <property name="can_focus">True</property>
-        <property name="hscrollbar_policy">never</property>
-        <property name="shadow_type">in</property>
-        <child>
-          <object class="GtkViewport" id="vp_dblsided">
-            <property name="visible">True</property>
-            <property name="can_focus">False</property>
-            <child>
-              <object class="GtkBox" id="box_dblsided">
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="margin_left">5</property>
-                <property name="margin_right">5</property>
-                <property name="margin_top">5</property>
-                <property name="margin_bottom">5</property>
-                <property name="orientation">vertical</property>
-                <child>
-                  <object class="GtkLabel" id="label53">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="margin_bottom">6</property>
-                    <property name="ypad">3</property>
-                    <property name="label" translatable="yes">Double-Sided PCB Tool</property>
-                    <attributes>
-                      <attribute name="weight" value="semibold"/>
-                    </attributes>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkGrid" id="grid7">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="row_spacing">3</property>
-                    <property name="column_spacing">3</property>
-                    <child>
-                      <object class="GtkLabel" id="label84">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Bottom Layer:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">0</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkComboBoxText" id="comboboxtext_bottomlayer">
-                        <property name="width_request">200</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="halign">start</property>
-                        <property name="entry_text_column">0</property>
-                        <property name="id_column">1</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">0</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label85">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Mirror Axis:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">1</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="box24">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="spacing">10</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rb_mirror_x">
-                            <property name="label" translatable="yes">X</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
-                            <property name="active">True</property>
-                            <property name="draw_indicator">True</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rb_mirror_y">
-                            <property name="label" translatable="yes">Y</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
-                            <property name="draw_indicator">True</property>
-                            <property name="group">rb_mirror_x</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">1</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label86">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Axis location:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">2</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="box25">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="spacing">10</property>
-                        <child>
-                          <object class="GtkRadioButton" id="rb_mirror_point">
-                            <property name="label" translatable="yes">Point</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
-                            <property name="active">True</property>
-                            <property name="draw_indicator">True</property>
-                            <signal name="toggled" handler="on_toggle_pointbox" swapped="no"/>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">0</property>
-                          </packing>
-                        </child>
-                        <child>
-                          <object class="GtkRadioButton" id="rb_mirror_box">
-                            <property name="label" translatable="yes">Box</property>
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
-                            <property name="draw_indicator">True</property>
-                            <property name="group">rb_mirror_point</property>
-                          </object>
-                          <packing>
-                            <property name="expand">False</property>
-                            <property name="fill">True</property>
-                            <property name="position">1</property>
-                          </packing>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">2</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label87">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Point/Box:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">3</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkBox" id="box_pointbox">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="orientation">vertical</property>
-                        <child>
-                          <placeholder/>
-                        </child>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">3</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label89">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Algnmt holes:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">4</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkEntry" id="entry_dblsided_alignholes">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="invisible_char">●</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">4</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkLabel" id="label90">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="xalign">1</property>
-                        <property name="xpad">3</property>
-                        <property name="label" translatable="yes">Drill diam.:</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">0</property>
-                        <property name="top_attach">5</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkEntry" id="entry_dblsided_alignholediam">
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="invisible_char">●</property>
-                        <property name="invisible_char_set">True</property>
-                      </object>
-                      <packing>
-                        <property name="left_attach">1</property>
-                        <property name="top_attach">5</property>
-                        <property name="width">1</property>
-                        <property name="height">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkBox" id="box27">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="halign">end</property>
-                    <property name="margin_top">6</property>
-                    <property name="margin_bottom">3</property>
-                    <child>
-                      <object class="GtkButton" id="button19">
-                        <property name="label" translatable="yes">Create Alignment Drill</property>
-                        <property name="width_request">120</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="halign">end</property>
-                        <signal name="activate" handler="on_create_aligndrill" swapped="no"/>
-                        <signal name="clicked" handler="on_create_aligndrill" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="padding">4</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkButton" id="button18">
-                        <property name="label" translatable="yes">Create Mirror</property>
-                        <property name="width_request">120</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">True</property>
-                        <property name="halign">end</property>
-                        <signal name="activate" handler="on_create_mirror" swapped="no"/>
-                        <signal name="clicked" handler="on_create_mirror" swapped="no"/>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">False</property>
-                        <property name="padding">4</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">2</property>
-                  </packing>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-                <child>
-                  <placeholder/>
-                </child>
-              </object>
-            </child>
-          </object>
-        </child>
-      </object>
-    </child>
-  </object>
   <object class="GtkOffscreenWindow" id="offscrwindow_cncjob">
     <property name="can_focus">False</property>
     <child>
@@ -540,6 +180,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label18">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The Object's name. Only gets changed
+after hitting Enter in the text box.</property>
                         <property name="xpad">3</property>
                         <property name="label" translatable="yes">Name: </property>
                       </object>
@@ -593,6 +235,7 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_markup" translatable="yes">Plot this object in the main window.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
@@ -621,6 +264,7 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label22">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Tool diameter used for plotting.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Tool diam:</property>
                       </object>
@@ -670,6 +314,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label26">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Export G-Code:&lt;/b&gt; Save a 
+G-Code file for this CNC job.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -690,6 +336,7 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Save a G-Code file for this CNC job.</property>
                     <signal name="activate" handler="on_cncjob_exportgcode" swapped="no"/>
                     <signal name="clicked" handler="on_cncjob_exportgcode" swapped="no"/>
                   </object>
@@ -703,6 +350,9 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label45">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Scale:&lt;/b&gt; Resizes the geometry
+of the object. All sizes and coordinates
+are multiplied by the given factor.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -728,6 +378,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label46">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Factor by which to multiply all
+geometrical dimensions.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Factor:</property>
                       </object>
@@ -764,6 +416,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Scales the geometry
+of this object.</property>
                     <signal name="activate" handler="on_scale_object" swapped="no"/>
                     <signal name="clicked" handler="on_scale_object" swapped="no"/>
                   </object>
@@ -777,6 +431,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label93">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Offset:&lt;/b&gt; Shift the geometry of
+this object by the specified (x, y) vector.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -802,6 +458,10 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label94">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Vector by which to offset the geometry.
+Format is &lt;b&gt;(x, y)&lt;/b&gt;, where &lt;b&gt;x&lt;/b&gt; and &lt;b&gt;y&lt;/b&gt; are
+decimal numbers representing the
+distance in the corresponding axis.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Offset Vector: </property>
                       </object>
@@ -838,6 +498,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Offset the geometry of
+this object.</property>
                     <signal name="activate" handler="on_offset_object" swapped="no"/>
                     <signal name="clicked" handler="on_offset_object" swapped="no"/>
                   </object>
@@ -1010,19 +672,7 @@ THE SOFTWARE.</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkCheckButton" id="cb_excellon_multicolored">
-                    <property name="label" translatable="yes">Multi-colored</property>
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">False</property>
-                    <property name="xalign">0</property>
-                    <property name="draw_indicator">True</property>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">5</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
                   <object class="GtkButton" id="button12">
@@ -1458,6 +1108,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label16">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The Object's name. Only gets changed
+after hitting Enter in the text box.</property>
                         <property name="xpad">3</property>
                         <property name="label" translatable="yes">Name: </property>
                       </object>
@@ -1511,6 +1163,7 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_markup" translatable="yes">Plot this object on the main window.</property>
                     <property name="xalign">0</property>
                     <property name="active">True</property>
                     <property name="draw_indicator">True</property>
@@ -1528,6 +1181,7 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_markup" translatable="yes">Show overlapping polygons as single.</property>
                     <property name="xalign">0</property>
                     <property name="draw_indicator">True</property>
                   </object>
@@ -1543,6 +1197,7 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
+                    <property name="tooltip_markup" translatable="yes">Draw polygons with different colors.</property>
                     <property name="xalign">0</property>
                     <property name="draw_indicator">True</property>
                   </object>
@@ -1571,6 +1226,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label21">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Create CNC Job:&lt;/b&gt; CNC Jobs from Geometry
+Objects are cutting toolpaths along object contours.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -1640,6 +1297,10 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label23">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The contours are cut at the given Z-axis
+position. Typically, the surface of the
+workpiece is at z=0.0, and &lt;b&gt;Cut Z&lt;/b&gt;
+is specified as a negative number.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Cut Z:</property>
                       </object>
@@ -1654,6 +1315,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label24">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">This specifies the Z-axis position of the 
+tool for  XY-plane motions when not
+cutting.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Travel Z:</property>
                       </object>
@@ -1668,6 +1332,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label25">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The feed rate is the speed in &lt;b&gt;units/minute&lt;/b&gt;
+when cutting. When not cutting, movement is
+done at maximum speed.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Feed rate:</property>
                       </object>
@@ -1682,6 +1349,9 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label34">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The tool diameter specified here is for
+visual purposes only and does not affect
+the resulting job.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Tool diam:</property>
                       </object>
@@ -1720,6 +1390,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Creates the CNC Job oobject from this
+Geometry object with the specified options.</property>
                     <signal name="activate" handler="on_generate_cncjob" swapped="no"/>
                     <signal name="clicked" handler="on_generate_cncjob" swapped="no"/>
                   </object>
@@ -1733,6 +1405,10 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label6">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Paint Area:&lt;/b&gt; Creates contour
+inside a polygon for a tool to cover
+its entire surface. Use for clearing
+large copper areas.</property>
                     <property name="margin_top">5</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -1757,6 +1433,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label32">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Tool diameter for painting
+inside a polygon.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Tool diam:</property>
                       </object>
@@ -1786,6 +1464,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label33">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">How much (fraction of tool diameter)
+to overlap each toolpath.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Overlap:</property>
                       </object>
@@ -1815,6 +1495,10 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label35">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Margin from the edge of the polygon.
+Use this to stay away from edges
+cut or to be cut with a finer, more
+accurate tool.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Margin:</property>
                       </object>
@@ -1853,6 +1537,12 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Creates a Geometry Object with toolpaths
+to cover the inside of a polygon.
+
+&lt;b&gt;Note:&lt;/b&gt; After clicking generate
+you have to click inside the desired
+polygon.</property>
                     <signal name="activate" handler="on_generate_paintarea" swapped="no"/>
                     <signal name="clicked" handler="on_generate_paintarea" swapped="no"/>
                   </object>
@@ -1866,6 +1556,9 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label49">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Scale:&lt;/b&gt; Resizes the geometry
+of the object. All sizes and coordinates
+are multiplied by the given factor.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -1891,6 +1584,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label50">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Factor by which to multiply all
+geometrical dimensions.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Factor:</property>
                       </object>
@@ -1927,6 +1622,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Scales the geometry
+of this object.</property>
                     <signal name="activate" handler="on_scale_object" swapped="no"/>
                     <signal name="clicked" handler="on_scale_object" swapped="no"/>
                   </object>
@@ -1940,6 +1637,8 @@ THE SOFTWARE.</property>
                   <object class="GtkLabel" id="label95">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="tooltip_markup" translatable="yes">&lt;b&gt;Offset:&lt;/b&gt; Shift the geometry of
+this object by the specified (x, y) vector.</property>
                     <property name="margin_top">3</property>
                     <property name="xalign">0</property>
                     <property name="ypad">3</property>
@@ -1965,6 +1664,10 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label96">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">Vector by which to offset the geometry.
+Format is &lt;b&gt;(x, y)&lt;/b&gt;, where &lt;b&gt;x&lt;/b&gt; and &lt;b&gt;y&lt;/b&gt; are
+decimal numbers representing the
+distance in the corresponding axis.</property>
                         <property name="xalign">1</property>
                         <property name="label" translatable="yes">Offset Vector: </property>
                       </object>
@@ -2001,6 +1704,8 @@ THE SOFTWARE.</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="tooltip_markup" translatable="yes">Offset the geometry of
+this object.</property>
                     <signal name="activate" handler="on_offset_object" swapped="no"/>
                     <signal name="clicked" handler="on_offset_object" swapped="no"/>
                   </object>
@@ -2091,6 +1796,8 @@ THE SOFTWARE.</property>
                       <object class="GtkLabel" id="label8">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="tooltip_markup" translatable="yes">The Object's name. Only gets changed
+after hitting Enter in the text box.</property>
                         <property name="xpad">3</property>
                         <property name="label" translatable="yes">Name: </property>
                       </object>
@@ -2412,7 +2119,7 @@ cutting tool path.</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
-                        <property name="top_attach">0</property>
+                        <property name="top_attach">1</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2428,7 +2135,7 @@ cutting tool path.</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="top_attach">0</property>
+                        <property name="top_attach">1</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2444,7 +2151,7 @@ cutting tool path.</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="top_attach">1</property>
+                        <property name="top_attach">2</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2461,7 +2168,7 @@ board in place until the job is complete.</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
-                        <property name="top_attach">1</property>
+                        <property name="top_attach">2</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2475,7 +2182,7 @@ board in place until the job is complete.</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
-                        <property name="top_attach">2</property>
+                        <property name="top_attach">3</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2543,7 +2250,39 @@ of the board cutout.</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="top_attach">2</property>
+                        <property name="top_attach">3</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label103">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="has_tooltip">True</property>
+                        <property name="tooltip_markup" translatable="yes">Tool diameter to be used to cut out
+the baord.</property>
+                        <property name="xalign">1</property>
+                        <property name="label" translatable="yes">Tool diam.: </property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">0</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry_eval_gerber_cutouttooldia">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                        <property name="width_chars">12</property>
+                        <property name="invisible_char_set">True</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">0</property>
                         <property name="width">1</property>
                         <property name="height">1</property>
                       </packing>
@@ -2645,6 +2384,28 @@ this boundary.</property>
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkCheckButton" id="cb_gerber_noncopperrounded">
+                    <property name="label" translatable="yes">Rounded corners</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="receives_default">False</property>
+                    <property name="has_tooltip">True</property>
+                    <property name="tooltip_markup" translatable="yes">Whether to draw rounded corners on the bounding 
+box. The radius is the Boundary margin.
+</property>
+                    <property name="tooltip_text" translatable="yes">Whether to draw rounded corners on the bounding 
+box. The radius is the Boundary margin.
+</property>
+                    <property name="xalign">0</property>
+                    <property name="draw_indicator">True</property>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">16</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkButton" id="button5">
                     <property name="label" translatable="yes">Generate Geometry</property>
                     <property name="visible">True</property>
@@ -2658,7 +2419,7 @@ areas without copper.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">16</property>
+                    <property name="position">17</property>
                   </packing>
                 </child>
                 <child>
@@ -2678,7 +2439,7 @@ boundary around the PCB contents.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">17</property>
+                    <property name="position">18</property>
                   </packing>
                 </child>
                 <child>
@@ -2723,7 +2484,7 @@ bounding box.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">18</property>
+                    <property name="position">19</property>
                   </packing>
                 </child>
                 <child>
@@ -2741,7 +2502,7 @@ box. The radius is the Boundary margin.
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">19</property>
+                    <property name="position">20</property>
                   </packing>
                 </child>
                 <child>
@@ -2758,7 +2519,7 @@ with the bounding box.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">20</property>
+                    <property name="position">21</property>
                   </packing>
                 </child>
                 <child>
@@ -2779,7 +2540,7 @@ are multiplied by the given factor.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">21</property>
+                    <property name="position">22</property>
                   </packing>
                 </child>
                 <child>
@@ -2822,7 +2583,7 @@ geometrical dimensions.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">22</property>
+                    <property name="position">23</property>
                   </packing>
                 </child>
                 <child>
@@ -2839,7 +2600,7 @@ of this object.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">23</property>
+                    <property name="position">24</property>
                   </packing>
                 </child>
                 <child>
@@ -2859,7 +2620,7 @@ this object by the specified (x, y) vector.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">24</property>
+                    <property name="position">25</property>
                   </packing>
                 </child>
                 <child>
@@ -2904,7 +2665,7 @@ distance in the corresponding axis.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">25</property>
+                    <property name="position">26</property>
                   </packing>
                 </child>
                 <child>
@@ -2921,7 +2682,364 @@ this object.</property>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">26</property>
+                    <property name="position">27</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+  <object class="GtkOffscreenWindow" id="offscreenwindow_dblsided">
+    <property name="can_focus">False</property>
+    <child>
+      <object class="GtkScrolledWindow" id="sw_dblsided">
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="hscrollbar_policy">never</property>
+        <property name="shadow_type">in</property>
+        <child>
+          <object class="GtkViewport" id="vp_dblsided">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkBox" id="box_dblsided">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="margin_left">5</property>
+                <property name="margin_right">5</property>
+                <property name="margin_top">5</property>
+                <property name="margin_bottom">5</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkLabel" id="label53">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="margin_bottom">6</property>
+                    <property name="ypad">3</property>
+                    <property name="label" translatable="yes">Double-Sided PCB Tool</property>
+                    <attributes>
+                      <attribute name="weight" value="semibold"/>
+                    </attributes>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkGrid" id="grid7">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="row_spacing">3</property>
+                    <property name="column_spacing">3</property>
+                    <child>
+                      <object class="GtkLabel" id="label84">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Bottom Layer:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">0</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkComboBoxText" id="comboboxtext_bottomlayer">
+                        <property name="width_request">200</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">start</property>
+                        <property name="entry_text_column">0</property>
+                        <property name="id_column">1</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">0</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label85">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Mirror Axis:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">1</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="box24">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="spacing">10</property>
+                        <child>
+                          <object class="GtkRadioButton" id="rb_mirror_x">
+                            <property name="label" translatable="yes">X</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="xalign">0</property>
+                            <property name="active">True</property>
+                            <property name="draw_indicator">True</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkRadioButton" id="rb_mirror_y">
+                            <property name="label" translatable="yes">Y</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="xalign">0</property>
+                            <property name="draw_indicator">True</property>
+                            <property name="group">rb_mirror_x</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">1</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label86">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Axis location:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">2</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="box25">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="spacing">10</property>
+                        <child>
+                          <object class="GtkRadioButton" id="rb_mirror_point">
+                            <property name="label" translatable="yes">Point</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="xalign">0</property>
+                            <property name="active">True</property>
+                            <property name="draw_indicator">True</property>
+                            <signal name="toggled" handler="on_toggle_pointbox" swapped="no"/>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkRadioButton" id="rb_mirror_box">
+                            <property name="label" translatable="yes">Box</property>
+                            <property name="visible">True</property>
+                            <property name="can_focus">True</property>
+                            <property name="receives_default">False</property>
+                            <property name="xalign">0</property>
+                            <property name="draw_indicator">True</property>
+                            <property name="group">rb_mirror_point</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">2</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label87">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Point/Box:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">3</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox" id="box_pointbox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="orientation">vertical</property>
+                        <child>
+                          <placeholder/>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">3</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label89">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Algnmt holes:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">4</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry_dblsided_alignholes">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">4</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="label90">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="xalign">1</property>
+                        <property name="xpad">3</property>
+                        <property name="label" translatable="yes">Drill diam.:</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">5</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkEntry" id="entry_dblsided_alignholediam">
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="invisible_char">●</property>
+                        <property name="invisible_char_set">True</property>
+                      </object>
+                      <packing>
+                        <property name="left_attach">1</property>
+                        <property name="top_attach">5</property>
+                        <property name="width">1</property>
+                        <property name="height">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox" id="box27">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="halign">end</property>
+                    <property name="margin_top">6</property>
+                    <property name="margin_bottom">3</property>
+                    <child>
+                      <object class="GtkButton" id="button19">
+                        <property name="label" translatable="yes">Create Alignment Drill</property>
+                        <property name="width_request">120</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="halign">end</property>
+                        <signal name="activate" handler="on_create_aligndrill" swapped="no"/>
+                        <signal name="clicked" handler="on_create_aligndrill" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">4</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="button18">
+                        <property name="label" translatable="yes">Create Mirror</property>
+                        <property name="width_request">120</property>
+                        <property name="visible">True</property>
+                        <property name="can_focus">True</property>
+                        <property name="receives_default">True</property>
+                        <property name="halign">end</property>
+                        <signal name="activate" handler="on_create_mirror" swapped="no"/>
+                        <signal name="clicked" handler="on_create_mirror" swapped="no"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">False</property>
+                        <property name="padding">4</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">2</property>
                   </packing>
                 </child>
                 <child>
@@ -3807,7 +3925,7 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">0</property>
-                                                    <property name="top_attach">0</property>
+                                                    <property name="top_attach">1</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -3823,7 +3941,7 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="top_attach">0</property>
+                                                    <property name="top_attach">1</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -3839,7 +3957,7 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="top_attach">1</property>
+                                                    <property name="top_attach">2</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -3853,7 +3971,7 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">0</property>
-                                                    <property name="top_attach">1</property>
+                                                    <property name="top_attach">2</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -3867,7 +3985,7 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">0</property>
-                                                    <property name="top_attach">2</property>
+                                                    <property name="top_attach">3</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -3931,7 +4049,36 @@ to overlap each pass.</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="top_attach">2</property>
+                                                    <property name="top_attach">3</property>
+                                                    <property name="width">1</property>
+                                                    <property name="height">1</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkLabel" id="label104">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">False</property>
+                                                    <property name="xalign">1</property>
+                                                    <property name="label" translatable="yes">Tool diam.: </property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">0</property>
+                                                    <property name="top_attach">0</property>
+                                                    <property name="width">1</property>
+                                                    <property name="height">1</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <object class="GtkEntry" id="entry_eval_app_gerber_cutouttooldia">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">●</property>
+                                                    <property name="width_chars">12</property>
+                                                    <property name="invisible_char_set">True</property>
+                                                  </object>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="top_attach">0</property>
                                                     <property name="width">1</property>
                                                     <property name="height">1</property>
                                                   </packing>
@@ -4004,6 +4151,21 @@ to overlap each pass.</property>
                                               </packing>
                                             </child>
                                             <child>
+                                              <object class="GtkCheckButton" id="cb_app_gerber_noncopperrounded">
+                                                <property name="label" translatable="yes">Rounded corners</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="receives_default">False</property>
+                                                <property name="xalign">0</property>
+                                                <property name="draw_indicator">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">11</property>
+                                              </packing>
+                                            </child>
+                                            <child>
                                               <object class="GtkLabel" id="label65">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
@@ -4018,7 +4180,7 @@ to overlap each pass.</property>
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">True</property>
-                                                <property name="position">11</property>
+                                                <property name="position">12</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -4060,7 +4222,7 @@ to overlap each pass.</property>
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">True</property>
-                                                <property name="position">12</property>
+                                                <property name="position">13</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -4076,11 +4238,8 @@ to overlap each pass.</property>
                                               <packing>
                                                 <property name="expand">False</property>
                                                 <property name="fill">True</property>
-                                                <property name="position">13</property>
+                                                <property name="position">14</property>
                                               </packing>
-                                            </child>
-                                            <child>
-                                              <placeholder/>
                                             </child>
                                             <child>
                                               <placeholder/>
@@ -4184,20 +4343,7 @@ to overlap each pass.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkCheckButton" id="cb_app_excellon_multicolored">
-                                                <property name="label" translatable="yes">Multi-colored</property>
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">True</property>
-                                                <property name="receives_default">False</property>
-                                                <property name="xalign">0</property>
-                                                <property name="draw_indicator">True</property>
-                                                <signal name="toggled" handler="on_options_update" swapped="no"/>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">False</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">3</property>
-                                              </packing>
+                                              <placeholder/>
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="label69">

@@ -180,6 +180,336 @@ class Geometry:
             setattr(self, attr, d[attr])
 
 
+class ApertureMacro:
+
+    ## Regular expressions
+    am1_re = re.compile(r'^%AM([^\*]+)\*(.+)?(%)?$')
+    am2_re = re.compile(r'(.*)%$')
+    amcomm_re = re.compile(r'^0(.*)')
+    amprim_re = re.compile(r'^[1-9].*')
+    amvar_re = re.compile(r'^\$([0-9a-zA-z]+)=(.*)')
+
+    def __init__(self, name=None):
+        self.name = name
+        self.raw = ""
+        self.primitives = []
+        self.locvars = {}
+        self.geometry = None
+
+    def parse_content(self):
+        """
+        Creates numerical lists for all primitives in the aperture
+        macro (in ``self.raw``) by replacing all variables by their
+        values iteratively and evaluating expressions. Results
+        are stored in ``self.primitives``.
+
+        :return: None
+        """
+        # Cleanup
+        self.raw = self.raw.replace('\n', '').replace('\r', '').strip(" *")
+        self.primitives = []
+
+        # Separate parts
+        parts = self.raw.split('*')
+
+        #### Every part in the macro ####
+        for part in parts:
+            ### Comments. Ignored.
+            match = ApertureMacro.amcomm_re.search(part)
+            if match:
+                continue
+
+            ### Variables
+            # These are variables defined locally inside the macro. They can be
+            # numerical constant or defind in terms of previously define
+            # variables, which can be defined locally or in an aperture
+            # definition. All replacements ocurr here.
+            match = ApertureMacro.amvar_re.search(part)
+            if match:
+                var = match.group(1)
+                val = match.group(2)
+
+                # Replace variables in value
+                for v in self.locvars:
+                    val = re.sub(r'\$'+str(v)+r'(?![0-9a-zA-Z])', str(self.locvars[v]), val)
+
+                # Make all others 0
+                val = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", val)
+
+                # Change x with *
+                val = re.sub(r'x', "\*", val)
+
+                # Eval() and store.
+                self.locvars[var] = eval(val)
+                continue
+
+            ### Primitives
+            # Each is an array. The first identifies the primitive, while the
+            # rest depend on the primitive. All are strings representing a
+            # number and may contain variable definition. The values of these
+            # variables are defined in an aperture definition.
+            match = ApertureMacro.amprim_re.search(part)
+            if match:
+                ## Replace all variables
+                for v in self.locvars:
+                    part = re.sub(r'\$'+str(v)+r'(?![0-9a-zA-Z])', str(self.locvars[v]), part)
+
+                # Make all others 0
+                part = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", part)
+
+                # Change x with *
+                part = re.sub(r'x', "\*", part)
+
+                ## Store
+                elements = part.split(",")
+                self.primitives.append([eval(x) for x in elements])
+                continue
+
+            print "WARNING: Unknown syntax of aperture macro part:", part
+
+    def append(self, data):
+        """
+        Appends a string to the raw macro.
+
+        :param data: Part of the macro.
+        :type data: str
+        :return: None
+        """
+        self.raw += data
+
+    @staticmethod
+    def default2zero(n, mods):
+        """
+        Pads the ``mods`` list with zeros resulting in an
+        list of length n.
+
+        :param n: Length of the resulting list.
+        :type n: int
+        :param mods: List to be padded.
+        :type mods: list
+        :return: Zero-padded list.
+        :rtype: list
+        """
+        x = [0.0]*n
+        na = len(mods)
+        x[0:na] = mods
+        return x
+
+    @staticmethod
+    def make_circle(mods):
+        """
+
+        :param mods: (Exposure 0/1, Diameter >=0, X-coord, Y-coord)
+        :return:
+        """
+
+        pol, dia, x, y = ApertureMacro.default2zero(4, mods)
+
+        return {"pol": int(pol), "geometry": Point(x, y).buffer(dia/2)}
+
+    @staticmethod
+    def make_vectorline(mods):
+        """
+
+        :param mods: (Exposure 0/1, Line width >= 0, X-start, Y-start, X-end, Y-end,
+            rotation angle around origin in degrees)
+        :return:
+        """
+        pol, width, xs, ys, xe, ye, angle = ApertureMacro.default2zero(7, mods)
+
+        line = LineString([(xs, ys), (xe, ye)])
+        box = line.buffer(width/2, cap_style=2)
+        box_rotated = affinity.rotate(box, angle, origin=(0, 0))
+
+        return {"pol": int(pol), "geometry": box_rotated}
+
+    @staticmethod
+    def make_centerline(mods):
+        """
+
+        :param mods: (Exposure 0/1, width >=0, height >=0, x-center, y-center,
+            rotation angle around origin in degrees)
+        :return:
+        """
+
+        pol, width, height, x, y, angle = ApertureMacro.default2zero(6, mods)
+
+        box = shply_box(x-width/2, y-height/2, x+width/2, y+height/2)
+        box_rotated = affinity.rotate(box, angle, origin=(0, 0))
+
+        return {"pol": int(pol), "geometry": box_rotated}
+
+    @staticmethod
+    def make_lowerleftline(mods):
+        """
+
+        :param mods: (exposure 0/1, width >=0, height >=0, x-lowerleft, y-lowerleft,
+            rotation angle around origin in degrees)
+        :return:
+        """
+
+        pol, width, height, x, y, angle = ApertureMacro.default2zero(6, mods)
+
+        box = shply_box(x, y, x+width, y+height)
+        box_rotated = affinity.rotate(box, angle, origin=(0, 0))
+
+        return {"pol": int(pol), "geometry": box_rotated}
+
+    @staticmethod
+    def make_outline(mods):
+        """
+
+        :param mods:
+        :return:
+        """
+
+        pol = mods[0]
+        n = mods[1]
+        points = [(0, 0)]*(n+1)
+
+        for i in range(n+1):
+            points[i] = mods[2*i + 2:2*i + 4]
+
+        angle = mods[2*n + 4]
+
+        poly = Polygon(points)
+        poly_rotated = affinity.rotate(poly, angle, origin=(0, 0))
+
+        return {"pol": int(pol), "geometry": poly_rotated}
+
+    @staticmethod
+    def make_polygon(mods):
+        """
+        Note: Specs indicate that rotation is only allowed if the center
+        (x, y) == (0, 0). I will tolerate breaking this rule.
+
+        :param mods: (exposure 0/1, n_verts 3<=n<=12, x-center, y-center,
+            diameter of circumscribed circle >=0, rotation angle around origin)
+        :return:
+        """
+
+        pol, nverts, x, y, dia, angle = ApertureMacro.default2zero(6, mods)
+        points = [(0, 0)]*nverts
+
+        for i in nverts:
+            points[i] = (x + 0.5 * dia * cos(2*pi * i/nverts),
+                         y + 0.5 * dia * sin(2*pi * i/nverts))
+
+        poly = Polygon(points)
+        poly_rotated = affinity.rotate(poly, angle, origin=(0, 0))
+
+        return {"pol": int(pol), "geometry": poly_rotated}
+
+    @staticmethod
+    def make_moire(mods):
+        """
+        Note: Specs indicate that rotation is only allowed if the center
+        (x, y) == (0, 0). I will tolerate breaking this rule.
+
+        :param mods: (x-center, y-center, outer_dia_outer_ring, ring thickness,
+            gap, max_rings, crosshair_thickness, crosshair_len, rotation
+            angle around origin in degrees)
+        :return:
+        """
+
+        x, y, dia, thickness, gap, nrings, cross_th, cross_len, angle = ApertureMacro.default2zero(9, mods)
+
+        r = dia/2 - thickness/2
+        result = Point((x, y)).buffer(r).exterior.buffer(thickness/2.0)
+        ring = Point((x, y)).buffer(r).exterior.buffer(thickness/2.0)  # Need a copy!
+
+        i = 1  # Number of rings created so far
+
+        ## If the ring does not have an interior it means that it is
+        ## a disk. Then stop.
+        while len(ring.interiors) > 0 and i < nrings:
+            r -= thickness + gap
+            if r <= 0:
+                break
+            ring = Point((x, y)).buffer(r).exterior.buffer(thickness/2.0)
+            result = cascaded_union([result, ring])
+            i += 1
+
+        ## Crosshair
+        hor = LineString([(x - cross_len, y), (x + cross_len, y)]).buffer(cross_th/2.0, cap_style=2)
+        ver = LineString([(x, y-cross_len), (x, y + cross_len)]).buffer(cross_th/2.0, cap_style=2)
+        result = cascaded_union([result, hor, ver])
+
+        return {"pol": 1, "geometry": result}
+
+    @staticmethod
+    def make_thermal(mods):
+        """
+        Note: Specs indicate that rotation is only allowed if the center
+        (x, y) == (0, 0). I will tolerate breaking this rule.
+
+        :param mods: [x-center, y-center, diameter-outside, diameter-inside,
+            gap-thickness, rotation angle around origin]
+        :return:
+        """
+
+        x, y, dout, din, t, angle = ApertureMacro.default2zero(6, mods)
+
+        ring = Point((x, y)).buffer(dout/2.0).difference(Point((x, y)).buffer(din/2.0))
+        hline = LineString([(x - dout/2.0, y), (x + dout/2.0, y)]).buffer(t/2.0, cap_style=3)
+        vline = LineString([(x, y - dout/2.0), (x, y + dout/2.0)]).buffer(t/2.0, cap_style=3)
+        thermal = ring.difference(hline.union(vline))
+
+        return {"pol": 1, "geometry": thermal}
+
+    def make_geometry(self, modifiers):
+        """
+        Runs the macro for the given modifiers and generates
+        the corresponding geometry.
+
+        :param modifiers: Modifiers (parameters) for this macro
+        :type modifiers: list
+        """
+
+        ## Primitive makers
+        makers = {
+            "1": ApertureMacro.make_circle,
+            "2": ApertureMacro.make_vectorline,
+            "20": ApertureMacro.make_vectorline,
+            "21": ApertureMacro.make_centerline,
+            "22": ApertureMacro.make_lowerleftline,
+            "4": ApertureMacro.make_outline,
+            "5": ApertureMacro.make_polygon,
+            "6": ApertureMacro.make_moire,
+            "7": ApertureMacro.make_thermal
+        }
+
+        ## Store modifiers as local variables
+        modifiers = modifiers or []
+        modifiers = [float(m) for m in modifiers]
+        self.locvars = {}
+        for i in range(1, len(modifiers)+1):
+            self.locvars[str(i)] = modifiers[i]
+
+        ## Parse
+        self.primitives = []  # Cleanup
+        self.geometry = None
+        self.parse_content()
+
+        ## Make the geometry
+        for primitive in self.primitives:
+            # Make the primitive
+            prim_geo = makers[str(int(primitive[0]))](primitive[1:])
+
+            # Add it (according to polarity)
+            if self.geometry is None and prim_geo['pol'] == 1:
+                self.geometry = prim_geo['geometry']
+                continue
+            if prim_geo['pol'] == 1:
+                self.geometry = self.geometry.union(prim_geo['geometry'])
+                continue
+            if prim_geo['pol'] == 0:
+                self.geometry = self.geometry.difference(prim_geo['geometry'])
+                continue
+
+        return self.geometry
+
+
 class Gerber (Geometry):
     """
     **ATTRIBUTES**
@@ -191,7 +521,7 @@ class Gerber (Geometry):
     +-----------+-----------------------------------+
     | Key       | Value                             |
     +===========+===================================+
-    | type      | (str) "C", "R", or "O"            |
+    | type      | (str) "C", "R", "O", "P", or "AP" |
     +-----------+-----------------------------------+
     | others    | Depend on ``type``                |
     +-----------+-----------------------------------+
@@ -251,9 +581,11 @@ class Gerber (Geometry):
         """
         The constructor takes no parameters. Use ``gerber.parse_files()``
         or ``gerber.parse_lines()`` to populate the object from Gerber source.
+
         :return: Gerber object
         :rtype: Gerber
         """
+
         # Initialize parent
         Geometry.__init__(self)        
         
@@ -287,6 +619,10 @@ class Gerber (Geometry):
         # Geometry from flashes
         self.flash_geometry = []
 
+        # Aperture Macros
+        # TODO: Make sure these can be serialized
+        self.aperture_macros = {}
+
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from Geometry.
@@ -308,7 +644,7 @@ class Gerber (Geometry):
         self.comm_re = re.compile(r'^G0?4(.*)$')
 
         # AD - Aperture definition
-        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z0-9]*),(.*)\*%$')
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z0-9]*)(?:,(.*))?\*%$')
 
         # AM - Aperture Macro
         # Beginning of macro (Ends with *%):
@@ -356,6 +692,16 @@ class Gerber (Geometry):
         # LP - Level polarity
         self.lpol_re = re.compile(r'^%LP([DC])\*%$')
 
+        # Units (OBSOLETE)
+        self.units_re = re.compile(r'^G7([01])\*$')
+
+        # Absolute/Relative G90/1 (OBSOLETE)
+        self.absrel_re = re.compile(r'^G9([01])\*$')
+
+        # Aperture macros
+        self.am1_re = re.compile(r'^%AM([^\*]+)\*(.+)?(%)?$')
+        self.am2_re = re.compile(r'(.*)%$')
+
         # TODO: This is bad.
         self.steps_per_circ = 40
 
@@ -376,9 +722,8 @@ class Gerber (Geometry):
         :rtype : None
         """
 
-        # Apertures
-        #print "Scaling apertures..."
-        #List of the non-dimension aperture parameters
+        ## Apertures
+        # List of the non-dimension aperture parameters
         nonDimensions = ["type", "nVertices", "rotation"]
         for apid in self.apertures:
             for param in self.apertures[apid]:
@@ -386,21 +731,18 @@ class Gerber (Geometry):
                     print "Tool:", apid, "Parameter:", param
                     self.apertures[apid][param] *= factor
 
-        # Paths
-        #print "Scaling paths..."
+        ## Paths
         for path in self.paths:
             path['linestring'] = affinity.scale(path['linestring'],
                                                 factor, factor, origin=(0, 0))
 
-        # Flashes
-        #print "Scaling flashes..."
+        ## Flashes
         for fl in self.flashes:
             # TODO: Shouldn't 'loc' be a numpy.array()?
             fl['loc'][0] *= factor
             fl['loc'][1] *= factor
 
-        # Regions
-        #print "Scaling regions..."
+        ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.scale(reg['polygon'], factor, factor,
                                             origin=(0, 0))
@@ -419,6 +761,7 @@ class Gerber (Geometry):
 
         Then ``buffered_paths``, ``flash_geometry`` and ``solid_geometry``
         are re-created with ``self.create_geometry()``.
+
         :param vect: (x, y) offset vector.
         :type vect: tuple
         :return: None
@@ -426,21 +769,18 @@ class Gerber (Geometry):
 
         dx, dy = vect
 
-        # Paths
-        #print "Shifting paths..."
+        ## Paths
         for path in self.paths:
             path['linestring'] = affinity.translate(path['linestring'],
                                                     xoff=dx, yoff=dy)
 
-        # Flashes
-        #print "Shifting flashes..."
+        ## Flashes
         for fl in self.flashes:
             # TODO: Shouldn't 'loc' be a numpy.array()?
             fl['loc'][0] += dx
             fl['loc'][1] += dy
 
-        # Regions
-        #print "Shifting regions..."
+        ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.translate(reg['polygon'],
                                                 xoff=dx, yoff=dy)
@@ -452,6 +792,8 @@ class Gerber (Geometry):
         """
         Overwrites the region polygons with fixed
         versions if found to be invalid (according to Shapely).
+
+        :return: None
         """
 
         for region in self.regions:
@@ -462,6 +804,7 @@ class Gerber (Geometry):
         """
         This is part of the parsing process. "Thickens" the paths
         by their appertures. This will only work for circular appertures.
+
         :return: None
         """
 
@@ -483,6 +826,7 @@ class Gerber (Geometry):
         * *Rectangle (R)*: width (float), height (float)
         * *Obround (O)*: width (float), height (float).
         * *Polygon (P)*: diameter(float), vertices(int), [rotation(float)]
+        * *Aperture Macro (AM)*: macro (ApertureMacro), modifiers (list)
 
         :param apertureId: Id of the aperture being defined.
         :param apertureType: Type of the aperture.
@@ -497,31 +841,41 @@ class Gerber (Geometry):
         # Found some Gerber with a leading zero in the aperture id and the
         # referenced it without the zero, so this is a hack to handle that.
         apid = str(int(apertureId))
-        paramList = apParameters.split('X')
 
-        if apertureType == "C" :  # Circle, example: %ADD11C,0.1*%
+        try:  # Could be empty for aperture macros
+            paramList = apParameters.split('X')
+        except:
+            paramList = None
+
+        if apertureType == "C":  # Circle, example: %ADD11C,0.1*%
             self.apertures[apid] = {"type": "C",
                                     "size": float(paramList[0])}
             return apid
         
-        if apertureType == "R" :  # Rectangle, example: %ADD15R,0.05X0.12*%
+        if apertureType == "R":  # Rectangle, example: %ADD15R,0.05X0.12*%
             self.apertures[apid] = {"type": "R",
                                     "width": float(paramList[0]),
                                     "height": float(paramList[1])}
             return apid
 
-        if apertureType == "O" :  # Obround
+        if apertureType == "O":  # Obround
             self.apertures[apid] = {"type": "O",
                                     "width": float(paramList[0]),
                                     "height": float(paramList[1])}
             return apid
         
-        if apertureType == "P" :
+        if apertureType == "P":  # Polygon (regular)
             self.apertures[apid] = {"type": "P",
                                     "diam": float(paramList[0]),
                                     "nVertices": int(paramList[1])}
-            if len(paramList) >= 3 :
+            if len(paramList) >= 3:
                 self.apertures[apid]["rotation"] = float(paramList[2])
+            return apid
+
+        if apertureType in self.aperture_macros:
+            self.apertures[apid] = {"type": "AM",
+                                    "macro": self.aperture_macros[apertureType],
+                                    "modifiers": paramList}
             return apid
 
         print "WARNING: Aperture not implemented:", apertureType
@@ -531,6 +885,10 @@ class Gerber (Geometry):
         """
         Calls Gerber.parse_lines() with array of lines
         read from the given file.
+
+        :param filename: Gerber file to parse.
+        :type filename: str
+        :return: None
         """
         gfile = open(filename, 'r')
         gstr = gfile.readlines()
@@ -566,24 +924,60 @@ class Gerber (Geometry):
         current_x = None
         current_y = None
 
-        # How to interprest circular interpolation: SINGLE or MULTI
+        # Absolute or Relative/Incremental coordinates
+        absolute = True
+
+        # How to interpret circular interpolation: SINGLE or MULTI
         quadrant_mode = None
 
+        # Indicates we are parsing an aperture macro
+        current_macro = None
+
+        #### Parsing starts here ####
         line_num = 0
         for gline in glines:
             line_num += 1
 
-            ## G01 - Linear interpolation plus flashes
+            ### Aperture Macros
+            # Having this at the beggining will slow things down
+            # but macros can have complicated statements than could
+            # be caught by other ptterns.
+            if current_macro is None:  # No macro started yet
+                match = self.am1_re.search(gline)
+                # Start macro if match, else not an AM, carry on.
+                if match:
+                    current_macro = match.group(1)
+                    self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
+                    if match.group(2):  # Append
+                        self.aperture_macros[current_macro].append(match.group(2))
+                    if match.group(3):  # Finish macro
+                        #self.aperture_macros[current_macro].parse_content()
+                        current_macro = None
+                    continue
+            else:  # Continue macro
+                match = self.am2_re.search(gline)
+                if match:  # Finish macro
+                    self.aperture_macros[current_macro].append(match.group(1))
+                    #self.aperture_macros[current_macro].parse_content()
+                    current_macro = None
+                else:  # Append
+                    self.aperture_macros[current_macro].append(gline)
+                continue
+
+            ### G01 - Linear interpolation plus flashes
             # Operation code (D0x) missing is deprecated... oh well I will support it.
+            # REGEX: r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0([123]))?\*$'
             match = self.lin_re.search(gline)
             if match:
-                # Dxx alone? Will ignore for now.
-                if match.group(1) is None and match.group(2) is None and match.group(3) is None:
-                    try:
-                        current_operation_code = int(match.group(4))
-                    except:
-                        pass  # A line with just * will match too.
-                    continue
+                # Dxx alone?
+                # if match.group(1) is None and match.group(2) is None and match.group(3) is None:
+                #     try:
+                #         current_operation_code = int(match.group(4))
+                #     except:
+                #         pass  # A line with just * will match too.
+                #     continue
+                # NOTE: Letting it continue allows it to react to the
+                #       operation code.
 
                 # Parse coordinates
                 if match.group(2) is not None:
@@ -616,7 +1010,7 @@ class Gerber (Geometry):
 
                 continue
 
-            ## G02/3 - Circular interpolation
+            ### G02/3 - Circular interpolation
             # 2-clockwise, 3-counterclockwise
             match = self.circ_re.search(gline)
             if match:
@@ -697,7 +1091,7 @@ class Gerber (Geometry):
                 if quadrant_mode == 'SINGLE':
                     print "Warning: Single quadrant arc are not implemented yet. (%d)" % line_num
 
-            ## G74/75* - Single or multiple quadrant arcs
+            ### G74/75* - Single or multiple quadrant arcs
             match = self.quad_re.search(gline)
             if match:
                 if match.group(1) == '4':
@@ -706,7 +1100,7 @@ class Gerber (Geometry):
                     quadrant_mode = 'MULTI'
                 continue
 
-            ## G37* - End region
+            ### G37* - End region
             if self.regionoff_re.search(gline):
                 # Only one path defines region?
                 if len(path) < 3:
@@ -723,14 +1117,13 @@ class Gerber (Geometry):
                 path = [[current_x, current_y]]  # Start new path
                 continue
             
-            #Parse an aperture.
+            ### Aperture definitions %ADD...
             match = self.ad_re.search(gline)
             if match:
-                self.aperture_parse(match.group(1),match.group(2),match.group(3))
+                self.aperture_parse(match.group(1), match.group(2), match.group(3))
                 continue
 
-
-            ## G01/2/3* - Interpolation mode change
+            ### G01/2/3* - Interpolation mode change
             # Can occur along with coordinates and operation code but
             # sometimes by itself (handled here).
             # Example: G01*
@@ -739,29 +1132,54 @@ class Gerber (Geometry):
                 current_interpolation_mode = int(match.group(1))
                 continue
 
-            ## Tool/aperture change
+            ### Tool/aperture change
             # Example: D12*
             match = self.tool_re.search(gline)
             if match:
                 current_aperture = match.group(1)
                 continue
 
-            ## Number format
+            ### Number format
             # Example: %FSLAX24Y24*%
             # TODO: This is ignoring most of the format. Implement the rest.
             match = self.fmt_re.search(gline)
             if match:
+                absolute = {'A': True, 'I': False}
                 self.int_digits = int(match.group(3))
                 self.frac_digits = int(match.group(4))
                 continue
 
-            ## Mode (IN/MM)
+            ### Mode (IN/MM)
             # Example: %MOIN*%
             match = self.mode_re.search(gline)
             if match:
                 self.units = match.group(1)
                 continue
 
+            ### Units (G70/1) OBSOLETE
+            match = self.units_re.search(gline)
+            if match:
+                self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+                continue
+
+            ### Absolute/relative coordinates G90/1 OBSOLETE
+            match = self.absrel_re.search(gline)
+            if match:
+                absolute = {'0': True, '1': False}[match.group(1)]
+                continue
+
+            #### Ignored lines
+            ## Comments
+            match = self.comm_re.search(gline)
+            if match:
+                continue
+
+            ## EOF
+            match = self.eof_re.search(gline)
+            if match:
+                continue
+
+            ### Line did not match any pattern. Warn user.
             print "WARNING: Line ignored (%d):" % line_num, gline
         
         if len(path) > 1:
@@ -821,16 +1239,23 @@ class Gerber (Geometry):
             if aperture['type'] == 'P':  # Regular polygon
                 loc = flash['loc']
                 diam = aperture['diam']
-                nVertices = aperture['nVertices']
+                n_vertices = aperture['nVertices']
                 points = []
-                for i in range(0, nVertices):
-                    x = loc[0] + diam * (cos(2 * pi * i / nVertices))
-                    y = loc[1] + diam * (sin(2 * pi * i / nVertices))
+                for i in range(0, n_vertices):
+                    x = loc[0] + diam * (cos(2 * pi * i / n_vertices))
+                    y = loc[1] + diam * (sin(2 * pi * i / n_vertices))
                     points.append((x, y))
                 ply = Polygon(points)
                 if 'rotation' in aperture:
                     ply = affinity.rotate(ply, aperture['rotation'])
                 self.flash_geometry.append(ply)
+                continue
+
+            if aperture['type'] == 'AM':  # Aperture Macro
+                loc = flash['loc']
+                flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
+                flash_geo_final = affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
+                self.flash_geometry.append(flash_geo_final)
                 continue
 
             print "WARNING: Aperture type %s not implemented" % (aperture['type'])
@@ -1261,7 +1686,7 @@ class CNCjob(Geometry):
             tools = [tool for tool in exobj.tools]
         else:
             tools = [x.strip() for x in tools.split(",")]
-            tools = filter(lambda y: y in exobj.tools, tools)
+            tools = filter(lambda i: i in exobj.tools, tools)
         print "Tools are:", tools
 
         points = []
@@ -1374,7 +1799,8 @@ class CNCjob(Geometry):
             # NOTE: Limited to 1 bracket pair
             op = line.find("(")
             cl = line.find(")")
-            if op > -1 and  cl > op:
+            #if op > -1 and  cl > op:
+            if cl > op > -1:
                 #comment = line[op+1:cl]
                 line = line[:op] + line[(cl+1):]
 
@@ -1447,7 +1873,6 @@ class CNCjob(Geometry):
                     geometry.append({"geom": LineString(path),
                                      "kind": kind})
                     path = [path[-1]]  # Start with the last point of last path.
-
 
             if 'G' in gobj:
                 current['G'] = int(gobj['G'])
@@ -1677,6 +2102,7 @@ class CNCjob(Geometry):
 
         self.create_geometry()
 
+
 def get_bounds(geometry_set):
     xmin = Inf
     ymin = Inf
@@ -1776,7 +2202,14 @@ def find_polygon(poly_set, point):
 
 
 def to_dict(geo):
-    output = ''
+    """
+    Makes a Shapely geometry object into serializeable form.
+
+    :param geo: Shapely geometry.
+    :type geo: BaseGeometry
+    :return: Dictionary with serializable form if ``geo`` was
+        BaseGeometry, otherwise returns ``geo``.
+    """
     if isinstance(geo, BaseGeometry):
         return {
             "__class__": "Shply",
@@ -1839,6 +2272,7 @@ def parse_gerber_number(strnumber, frac_digits):
     :rtype: float
     """
     return int(strnumber)*(10**(-frac_digits))
+
 
 def parse_gerber_coords(gstr, int_digits, frac_digits):
     """
