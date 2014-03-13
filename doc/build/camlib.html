@@ -81,11 +81,29 @@
         
         
             <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">Camlib</a></li>
-<li class="toctree-l1"><a class="reference internal" href="flatcamobj.html">FlatCAM Objects</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Camlib</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#gerber">Gerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#aperturemacro">ApertureMacro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#excellon">Excellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cncjob">CNCJob</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamobj.html">FlatCAM Objects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamobj">FlatCAMObj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgerber">FlatCAMGerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamexcellon">FlatCAMExcellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamcncjob">FlatCAMCNCjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgeometry">FlatCAMGeometry</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="app.html">FlatCAM Application</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="app.html#options">Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="app.html#module-FlatCAM">API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#app">App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#plotcanvas">PlotCanvas</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="devman.html">FlatCAM Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#options">Options</a></li>
 </ul>
 </li>
 </ul>
@@ -124,6 +142,8 @@
             
   <div class="section" id="module-camlib">
 <span id="camlib"></span><h1>Camlib<a class="headerlink" href="#module-camlib" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="geometry">
+<h2>Geometry<a class="headerlink" href="#geometry" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="camlib.Geometry">
 <em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Geometry</tt><a class="headerlink" href="#camlib.Geometry" title="Permalink to this definition">¶</a></dt>
@@ -262,6 +282,9 @@ Attributes to include are listed in <tt class="docutils literal"><span class="pr
 
 </dd></dl>
 
+</div>
+<div class="section" id="gerber">
+<h2>Gerber<a class="headerlink" href="#gerber" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="camlib.Gerber">
 <em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Gerber</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#camlib.Gerber" title="Permalink to this definition">¶</a></dt>
@@ -283,7 +306,7 @@ type key is always present and the rest depend on the key:</li>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>type</td>
-<td>(str) &#8220;C&#8221;, &#8220;R&#8221;, or &#8220;O&#8221;</td>
+<td>(str) &#8220;C&#8221;, &#8220;R&#8221;, &#8220;O&#8221;, &#8220;P&#8221;, or &#8220;AP&#8221;</td>
 </tr>
 <tr class="row-odd"><td>others</td>
 <td>Depend on <tt class="docutils literal"><span class="pre">type</span></tt></td>
@@ -329,7 +352,7 @@ is a dictionary:</li>
 </thead>
 <tbody valign="top">
 <tr class="row-even"><td>loc</td>
-<td>(list) [x (float), y (float)] coordinates.</td>
+<td>(Point) Shapely Point indicating location.</td>
 </tr>
 <tr class="row-odd"><td>aperture</td>
 <td>(str) The key for an aperture in apertures.</td>
@@ -361,6 +384,10 @@ associated with a region. Each is a dictionary:</li>
 </tbody>
 </table>
 <ul class="simple">
+<li><tt class="docutils literal"><span class="pre">aperture_macros</span></tt> (dictionary): Are predefined geometrical structures
+that can be instanciated with different parameters in an aperture
+definition. See <tt class="docutils literal"><span class="pre">apertures</span></tt> above. The key is the name of the macro,
+and the macro itself, the value, is a <tt class="docutils literal"><span class="pre">Aperture_Macro</span></tt> object.</li>
 <li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt> (list): List of (Shapely) geometric object resulting
 from <tt class="docutils literal"><span class="pre">flashes</span></tt>. These are generated from <tt class="docutils literal"><span class="pre">flashes</span></tt> in <tt class="docutils literal"><span class="pre">do_flashes()</span></tt>.</li>
 <li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt> (list): List of (Shapely) polygons resulting from
@@ -376,23 +403,32 @@ generated from <tt class="docutils literal"><span class="pre">paths</span></tt> 
 </div>
 <dl class="method">
 <dt id="camlib.Gerber.aperture_parse">
-<tt class="descname">aperture_parse</tt><big>(</big><em>gline</em><big>)</big><a class="headerlink" href="#camlib.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">aperture_parse</tt><big>(</big><em>apertureId</em>, <em>apertureType</em>, <em>apParameters</em><big>)</big><a class="headerlink" href="#camlib.Gerber.aperture_parse" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse gerber aperture definition into dictionary of apertures.
 The following kinds and their attributes are supported:</p>
 <ul class="simple">
 <li><em>Circular (C)</em>: size (float)</li>
 <li><em>Rectangle (R)</em>: width (float), height (float)</li>
 <li><em>Obround (O)</em>: width (float), height (float).</li>
+<li><em>Polygon (P)</em>: diameter(float), vertices(int), [rotation(float)]</li>
+<li><em>Aperture Macro (AM)</em>: macro (ApertureMacro), modifiers (list)</li>
 </ul>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gline</strong> (<em>str</em>) &#8211; Line of Gerber code known to have an aperture definition.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>apertureId</strong> (<em>str</em>) &#8211; Id of the aperture being defined.</li>
+<li><strong>apertureType</strong> (<em>str</em>) &#8211; Type of the aperture.</li>
+<li><strong>apParameters</strong> (<em>str</em>) &#8211; Parameters of the aperture.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Identifier of the aperture.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Identifier of the aperture.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -402,8 +438,15 @@ The following kinds and their attributes are supported:</p>
 <dt id="camlib.Gerber.buffer_paths">
 <tt class="descname">buffer_paths</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.buffer_paths" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is part of the parsing process. &#8220;Thickens&#8221; the paths
-by their appertures. This will only work for circular appertures.
-:return: None</p>
+by their appertures. This will only work for circular appertures.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -428,6 +471,14 @@ and regions naturally do as well.</p>
 <tt class="descname">fix_regions</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Gerber.fix_regions" title="Permalink to this definition">¶</a></dt>
 <dd><p>Overwrites the region polygons with fixed
 versions if found to be invalid (according to Shapely).</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="attribute">
@@ -470,6 +521,26 @@ box in both positive and negative, x and y axes.</li>
 </dd></dl>
 
 <dl class="method">
+<dt id="camlib.Gerber.mirror">
+<tt class="descname">mirror</tt><big>(</big><em>axis</em>, <em>point</em><big>)</big><a class="headerlink" href="#camlib.Gerber.mirror" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>axis</strong> (<em>str</em>) &#8211; &#8220;X&#8221; or &#8220;Y&#8221; indicates around which axis to mirror.</li>
+<li><strong>point</strong> (<em>list</em>) &#8211; [x, y] point belonging to the mirror axis.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
 <dt id="camlib.Gerber.offset">
 <tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.Gerber.offset" title="Permalink to this definition">¶</a></dt>
 <dd><p>Offsets the objects&#8217; geometry on the XY plane by a given vector.
@@ -480,10 +551,17 @@ These are:</p>
 <li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
 </ul>
 <p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
-are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
-:param vect: (x, y) offset vector.
-:type vect: tuple
-:return: None</p>
+are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>vect</strong> (<em>tuple</em>) &#8211; (x, y) offset vector.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -491,6 +569,16 @@ are re-created with <tt class="docutils literal"><span class="pre">self.create_g
 <tt class="descname">parse_file</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#camlib.Gerber.parse_file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calls Gerber.parse_lines() with array of lines
 read from the given file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; Gerber file to parse.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="method">
@@ -533,13 +621,251 @@ are re-created with <tt class="docutils literal"><span class="pre">self.create_g
 
 </dd></dl>
 
+</div>
+<div class="section" id="aperturemacro">
+<h2>ApertureMacro<a class="headerlink" href="#aperturemacro" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="camlib.ApertureMacro">
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">ApertureMacro</tt><big>(</big><em>name=None</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="camlib.ApertureMacro.append">
+<tt class="descname">append</tt><big>(</big><em>data</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.append" title="Permalink to this definition">¶</a></dt>
+<dd><p>Appends a string to the raw macro.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>data</strong> (<em>str</em>) &#8211; Part of the macro.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.default2zero">
+<em class="property">static </em><tt class="descname">default2zero</tt><big>(</big><em>n</em>, <em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.default2zero" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pads the <tt class="docutils literal"><span class="pre">mods</span></tt> list with zeros resulting in an
+list of length n.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>n</strong> (<em>int</em>) &#8211; Length of the resulting list.</li>
+<li><strong>mods</strong> (<em>list</em>) &#8211; List to be padded.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Zero-padded list.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_centerline">
+<em class="property">static </em><tt class="descname">make_centerline</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_centerline" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (Exposure 0/1, width &gt;=0, height &gt;=0, x-center, y-center,
+rotation angle around origin in degrees)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_circle">
+<em class="property">static </em><tt class="descname">make_circle</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_circle" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (Exposure 0/1, Diameter &gt;=0, X-coord, Y-coord)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.ApertureMacro.make_geometry">
+<tt class="descname">make_geometry</tt><big>(</big><em>modifiers</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs the macro for the given modifiers and generates
+the corresponding geometry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>modifiers</strong> (<em>list</em>) &#8211; Modifiers (parameters) for this macro</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_lowerleftline">
+<em class="property">static </em><tt class="descname">make_lowerleftline</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_lowerleftline" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (exposure 0/1, width &gt;=0, height &gt;=0, x-lowerleft, y-lowerleft,
+rotation angle around origin in degrees)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_moire">
+<em class="property">static </em><tt class="descname">make_moire</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_moire" title="Permalink to this definition">¶</a></dt>
+<dd><p>Note: Specs indicate that rotation is only allowed if the center
+(x, y) == (0, 0). I will tolerate breaking this rule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (x-center, y-center, outer_dia_outer_ring, ring thickness,
+gap, max_rings, crosshair_thickness, crosshair_len, rotation
+angle around origin in degrees)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_outline">
+<em class="property">static </em><tt class="descname">make_outline</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_outline" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_polygon">
+<em class="property">static </em><tt class="descname">make_polygon</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_polygon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Note: Specs indicate that rotation is only allowed if the center
+(x, y) == (0, 0). I will tolerate breaking this rule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (exposure 0/1, n_verts 3&lt;=n&lt;=12, x-center, y-center,
+diameter of circumscribed circle &gt;=0, rotation angle around origin)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_thermal">
+<em class="property">static </em><tt class="descname">make_thermal</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_thermal" title="Permalink to this definition">¶</a></dt>
+<dd><p>Note: Specs indicate that rotation is only allowed if the center
+(x, y) == (0, 0). I will tolerate breaking this rule.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; [x-center, y-center, diameter-outside, diameter-inside,
+gap-thickness, rotation angle around origin]</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="camlib.ApertureMacro.make_vectorline">
+<em class="property">static </em><tt class="descname">make_vectorline</tt><big>(</big><em>mods</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.make_vectorline" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mods</strong> &#8211; (Exposure 0/1, Line width &gt;= 0, X-start, Y-start, X-end, Y-end,
+rotation angle around origin in degrees)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.ApertureMacro.parse_content">
+<tt class="descname">parse_content</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.parse_content" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates numerical lists for all primitives in the aperture
+macro (in <tt class="docutils literal"><span class="pre">self.raw</span></tt>) by replacing all variables by their
+values iteratively and evaluating expressions. Results
+are stored in <tt class="docutils literal"><span class="pre">self.primitives</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="excellon">
+<h2>Excellon<a class="headerlink" href="#excellon" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="camlib.Excellon">
-<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Excellon</tt><a class="headerlink" href="#camlib.Excellon" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">Excellon</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#camlib.Excellon" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>ATTRIBUTES</em></p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">tools</span></tt> (dict): The key is the tool name and the value is
-the size (diameter).</li>
+a dictionary specifying the tool:</li>
+</ul>
+<table border="1" class="docutils">
+<colgroup>
+<col width="31%" />
+<col width="69%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>C</td>
+<td>Diameter of the tool</td>
+</tr>
+<tr class="row-odd"><td>Others</td>
+<td>Not supported (Ignored).</td>
+</tr>
+</tbody>
+</table>
+<ul class="simple">
 <li><tt class="docutils literal"><span class="pre">drills</span></tt> (list): Each is a dictionary:</li>
 </ul>
 <table border="1" class="docutils">
@@ -561,6 +887,41 @@ the size (diameter).</li>
 </tr>
 </tbody>
 </table>
+<dl class="method">
+<dt id="camlib.Excellon.create_geometry">
+<tt class="descname">create_geometry</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.Excellon.create_geometry" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates circles of the tool diameter at every point
+specified in <tt class="docutils literal"><span class="pre">self.drills</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.Excellon.mirror">
+<tt class="descname">mirror</tt><big>(</big><em>axis</em>, <em>point</em><big>)</big><a class="headerlink" href="#camlib.Excellon.mirror" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>axis</strong> (<em>str</em>) &#8211; &#8220;X&#8221; or &#8220;Y&#8221; indicates around which axis to mirror.</li>
+<li><strong>point</strong> (<em>list</em>) &#8211; [x, y] point belonging to the mirror axis.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="method">
 <dt id="camlib.Excellon.offset">
 <tt class="descname">offset</tt><big>(</big><em>vect</em><big>)</big><a class="headerlink" href="#camlib.Excellon.offset" title="Permalink to this definition">¶</a></dt>
@@ -631,9 +992,12 @@ Tool sizes, feedrates an Z-plane dimensions are untouched.</p>
 
 </dd></dl>
 
+</div>
+<div class="section" id="cncjob">
+<h2>CNCJob<a class="headerlink" href="#cncjob" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="camlib.CNCjob">
-<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">CNCjob</tt><big>(</big><em>units='in'</em>, <em>kind='generic'</em>, <em>z_move=0.1</em>, <em>feedrate=3.0</em>, <em>z_cut=-0.002</em>, <em>tooldia=0.0</em><big>)</big><a class="headerlink" href="#camlib.CNCjob" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">camlib.</tt><tt class="descname">CNCjob</tt><big>(</big><em>Geometry</em><big>)</big><a class="headerlink" href="#camlib.CNCjob" title="Permalink to this definition">¶</a></dt>
 <dd><p>Represents work to be done by a CNC machine.</p>
 <p><em>ATTRIBUTES</em></p>
 <ul class="simple">
@@ -865,6 +1229,7 @@ not altered.</p>
 
 </dd></dl>
 
+</div>
 </div>
 
 

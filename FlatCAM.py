@@ -19,7 +19,7 @@ import simplejson as json
 from matplotlib.figure import Figure
 from numpy import arange, sin, pi
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
-from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
+#from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 
 from camlib import *
 import sys
@@ -218,7 +218,7 @@ class FlatCAMObj:
 
         :param obj_dict: Dictionary representing a FlatCAMObj
         :type obj_dict: dict
-        :return None
+        :return: None
         """
         return
 
@@ -310,8 +310,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             geometry = self.solid_geometry
         else:
             geometry = self.buffered_paths + \
-                       [poly['polygon'] for poly in self.regions] + \
-                       self.flash_geometry
+                        [poly['polygon'] for poly in self.regions] + \
+                        self.flash_geometry
 
         if self.options["multicolored"]:
             linespec = '-'
@@ -418,7 +418,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, 'g-')
 
-        self.app.plotcanvas.auto_adjust_axes()
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def show_tool_chooser(self):
         win = Gtk.Window()
@@ -435,9 +436,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         def on_accept(widget):
             win.destroy()
             tool_list = []
-            for tool in self.tool_cbs:
-                if self.tool_cbs[tool].get_active():
-                    tool_list.append(tool)
+            for toolx in self.tool_cbs:
+                if self.tool_cbs[toolx].get_active():
+                    tool_list.append(toolx)
             self.options["toolselection"] = ", ".join(tool_list)
             self.to_form()
 
@@ -758,10 +759,10 @@ class App:
         t1.start()
 
         #### For debugging only ###
-        def someThreadFunc(app_obj):
+        def somethreadfunc(app_obj):
             print "Hello World!"
 
-        t = threading.Thread(target=someThreadFunc, args=(self,))
+        t = threading.Thread(target=somethreadfunc, args=(self,))
         t.daemon = True
         t.start()
 
@@ -1060,7 +1061,9 @@ class App:
         # Plot
         # TODO: (Thread-safe?)
         obj.plot()
-        self.on_zoom_fit(None)
+
+        # TODO: Threading dissaster!
+        GLib.idle_add(lambda: self.on_zoom_fit(None))
 
         return obj
 
@@ -1420,19 +1423,26 @@ class App:
 
     def on_create_mirror(self, widget):
         """
-        Creates a mirror image of a Gerber object to be used as a bottom
-        copper layer.
+        Creates a mirror image of an object to be used as a bottom layer.
 
         :param widget: Ignored.
         :return: None
         """
+        # TODO: Move (some of) this to camlib!
 
-        # Layer to mirror
-        gerb_name = self.builder.get_object("comboboxtext_bottomlayer").get_active_text()
-        gerb = self.stuff[gerb_name]
+        # Object to mirror
+        try:
+            obj_name = self.builder.get_object("comboboxtext_bottomlayer").get_active_text()
+            fcobj = self.stuff[obj_name]
+        except KeyError:
+            self.info("WARNING: Cannot mirror that object.")
+            return
 
-        # For now, lets limit to Gerbers.
-        assert isinstance(gerb, FlatCAMGerber)
+        # For now, lets limit to Gerbers and Excellons.
+        # assert isinstance(gerb, FlatCAMGerber)
+        if not isinstance(fcobj, FlatCAMGerber) and not isinstance(fcobj, FlatCAMExcellon):
+            self.info("ERROR: Only Gerber and Excellon objects can be mirrored.")
+            return
 
         # Mirror axis "X" or "Y
         axis = self.get_radio_value({"rb_mirror_x": "X",
@@ -1450,13 +1460,17 @@ class App:
             py = 0.5*(ymin+ymax)
 
         # Do the mirroring
-        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
-        mirrored = affinity.scale(gerb.solid_geometry, xscale, yscale, origin=(px, py))
+        # xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+        # mirrored = affinity.scale(fcobj.solid_geometry, xscale, yscale, origin=(px, py))
+        #
+        # def obj_init(obj_inst, app_inst):
+        #     obj_inst.solid_geometry = mirrored
+        #
+        # self.new_object("gerber", fcobj.options["name"] + "_mirror", obj_init)
 
-        def obj_init(obj_inst, app_inst):
-            obj_inst.solid_geometry = mirrored
-
-        self.new_object("gerber", gerb.options["name"] + "_mirror", obj_init)
+        fcobj.mirror(axis, [px, py])
+        fcobj.plot()
+        #self.on_update_plot(None)
 
     def on_create_aligndrill(self, widget):
         """
@@ -1484,7 +1498,8 @@ class App:
         xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
 
         # Tools
-        tools = {"1": self.get_eval("entry_dblsided_alignholediam")}
+        dia = self.get_eval("entry_dblsided_alignholediam")
+        tools = {"1": {"C": dia}}
 
         # Parse hole list
         # TODO: Better parsing
@@ -1967,7 +1982,7 @@ class App:
         Callback for button on form for all kinds of objects.
         Re-plots the current object only.
 
-        :param widget: The widget from which this was called.
+        :param widget: The widget from which this was called. Ignored.
         :return: None
         """
 

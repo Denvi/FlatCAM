@@ -3,14 +3,32 @@ Camlib
 
 .. automodule:: camlib
 
+Geometry
+~~~~~~~~
+
 .. autoclass:: Geometry
     :members:
+
+Gerber
+~~~~~~
 
 .. autoclass:: Gerber(Geometry)
     :members:
 
-.. autoclass:: Excellon
+ApertureMacro
+~~~~~~~~~~~~~
+
+.. autoclass:: ApertureMacro
     :members:
 
-.. autoclass:: CNCjob
+Excellon
+~~~~~~~~
+
+.. autoclass:: Excellon(Geometry)
+    :members:
+
+CNCJob
+~~~~~~
+
+.. autoclass:: CNCjob(Geometry)
     :members:

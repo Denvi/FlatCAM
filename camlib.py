@@ -237,7 +237,7 @@ class ApertureMacro:
                 val = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", val)
 
                 # Change x with *
-                val = re.sub(r'x', "\*", val)
+                val = re.sub(r'[xX]', "*", val)
 
                 # Eval() and store.
                 self.locvars[var] = eval(val)
@@ -258,7 +258,7 @@ class ApertureMacro:
                 part = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", part)
 
                 # Change x with *
-                part = re.sub(r'x', "\*", part)
+                part = re.sub(r'[xX]', "*", part)
 
                 ## Store
                 elements = part.split(",")
@@ -391,7 +391,7 @@ class ApertureMacro:
         pol, nverts, x, y, dia, angle = ApertureMacro.default2zero(6, mods)
         points = [(0, 0)]*nverts
 
-        for i in nverts:
+        for i in range(nverts):
             points[i] = (x + 0.5 * dia * cos(2*pi * i/nverts),
                          y + 0.5 * dia * sin(2*pi * i/nverts))
 
@@ -483,8 +483,8 @@ class ApertureMacro:
         modifiers = modifiers or []
         modifiers = [float(m) for m in modifiers]
         self.locvars = {}
-        for i in range(1, len(modifiers)+1):
-            self.locvars[str(i)] = modifiers[i]
+        for i in range(0, len(modifiers)):
+            self.locvars[str(i+1)] = modifiers[i]
 
         ## Parse
         self.primitives = []  # Cleanup
@@ -543,7 +543,7 @@ class Gerber (Geometry):
     +------------+------------------------------------------------+
     | Key        | Value                                          |
     +============+================================================+
-    | loc        | (list) [x (float), y (float)] coordinates.     |
+    | loc        | (Point) Shapely Point indicating location.     |
     +------------+------------------------------------------------+
     | aperture   | (str) The key for an aperture in apertures.    |
     +------------+------------------------------------------------+
@@ -560,6 +560,11 @@ class Gerber (Geometry):
     | aperture   | (str) The key for an aperture in apertures.         |
     +------------+-----------------------------------------------------+
 
+    * ``aperture_macros`` (dictionary): Are predefined geometrical structures
+      that can be instanciated with different parameters in an aperture
+      definition. See ``apertures`` above. The key is the name of the macro,
+      and the macro itself, the value, is a ``Aperture_Macro`` object.
+
     * ``flash_geometry`` (list): List of (Shapely) geometric object resulting
       from ``flashes``. These are generated from ``flashes`` in ``do_flashes()``.
 
@@ -573,7 +578,6 @@ class Gerber (Geometry):
         g.parse_file(filename)
         g.create_geometry()
         do_something(s.solid_geometry)
-
 
     """
 
@@ -738,9 +742,7 @@ class Gerber (Geometry):
 
         ## Flashes
         for fl in self.flashes:
-            # TODO: Shouldn't 'loc' be a numpy.array()?
-            fl['loc'][0] *= factor
-            fl['loc'][1] *= factor
+            fl['loc'] = affinity.scale(fl['loc'], factor, factor, origin=(0, 0))
 
         ## Regions
         for reg in self.regions:
@@ -776,14 +778,42 @@ class Gerber (Geometry):
 
         ## Flashes
         for fl in self.flashes:
-            # TODO: Shouldn't 'loc' be a numpy.array()?
-            fl['loc'][0] += dx
-            fl['loc'][1] += dy
+            fl['loc'] = affinity.translate(fl['loc'], xoff=dx, yoff=dy)
 
         ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.translate(reg['polygon'],
                                                 xoff=dx, yoff=dy)
+
+        # Now buffered_paths, flash_geometry and solid_geometry
+        self.create_geometry()
+
+    def mirror(self, axis, point):
+        """
+
+        :param axis: "X" or "Y" indicates around which axis to mirror.
+        :type axis: str
+        :param point: [x, y] point belonging to the mirror axis.
+        :type point: list
+        :return: None
+        """
+
+        px, py = point
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+        ## Paths
+        for path in self.paths:
+            path['linestring'] = affinity.scale(path['linestring'], xscale, yscale,
+                                                origin=(px, py))
+
+        ## Flashes
+        for fl in self.flashes:
+            fl['loc'] = affinity.scale(fl['loc'], xscale, yscale, origin=(px, py))
+
+        ## Regions
+        for reg in self.regions:
+            reg['polygon'] = affinity.scale(reg['polygon'], xscale, yscale,
+                                            origin=(px, py))
 
         # Now buffered_paths, flash_geometry and solid_geometry
         self.create_geometry()
@@ -1005,7 +1035,7 @@ class Gerber (Geometry):
 
                 # Flash
                 elif current_operation_code == 3:
-                    self.flashes.append({"loc": [current_x, current_y],
+                    self.flashes.append({"loc": Point([current_x, current_y]),
                                          "aperture": current_aperture})
 
                 continue
@@ -1202,12 +1232,13 @@ class Gerber (Geometry):
                 continue
 
             if aperture['type'] == 'C':  # Circles
-                circle = Point(flash['loc']).buffer(aperture['size']/2)
+                #circle = Point(flash['loc']).buffer(aperture['size']/2)
+                circle = flash['loc'].buffer(aperture['size']/2)
                 self.flash_geometry.append(circle)
                 continue
 
             if aperture['type'] == 'R':  # Rectangles
-                loc = flash['loc']
+                loc = flash['loc'].coords[0]
                 width = aperture['width']
                 height = aperture['height']
                 minx = loc[0] - width/2
@@ -1219,7 +1250,7 @@ class Gerber (Geometry):
                 continue
 
             if aperture['type'] == 'O':  # Obround
-                loc = flash['loc']
+                loc = flash['loc'].coords[0]
                 width = aperture['width']
                 height = aperture['height']
                 if width > height:
@@ -1237,7 +1268,7 @@ class Gerber (Geometry):
                 continue
 
             if aperture['type'] == 'P':  # Regular polygon
-                loc = flash['loc']
+                loc = flash['loc'].coords[0]
                 diam = aperture['diam']
                 n_vertices = aperture['nVertices']
                 points = []
@@ -1252,7 +1283,7 @@ class Gerber (Geometry):
                 continue
 
             if aperture['type'] == 'AM':  # Aperture Macro
-                loc = flash['loc']
+                loc = flash['loc'].coords[0]
                 flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
                 flash_geo_final = affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
                 self.flash_geometry.append(flash_geo_final)
@@ -1307,7 +1338,14 @@ class Excellon(Geometry):
     *ATTRIBUTES*
 
     * ``tools`` (dict): The key is the tool name and the value is
-      the size (diameter).
+      a dictionary specifying the tool:
+
+    ================  ====================================
+    Key               Value
+    ================  ====================================
+    C                 Diameter of the tool
+    Others            Not supported (Ignored).
+    ================  ====================================
 
     * ``drills`` (list): Each is a dictionary:
 
@@ -1524,13 +1562,19 @@ class Excellon(Geometry):
             print "WARNING: Line ignored:", eline
         
     def create_geometry(self):
+        """
+        Creates circles of the tool diameter at every point
+        specified in ``self.drills``.
+
+        :return: None
+        """
         self.solid_geometry = []
 
         for drill in self.drills:
-            poly = Point(drill['point']).buffer(self.tools[drill['tool']]["C"]/2.0)
+            #poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
+            tooldia = self.tools[drill['tool']]['C']
+            poly = drill['point'].buffer(tooldia/2.0)
             self.solid_geometry.append(poly)
-
-        #self.solid_geometry = cascaded_union(self.solid_geometry)
 
     def scale(self, factor):
         """
@@ -1564,6 +1608,27 @@ class Excellon(Geometry):
         for drill in self.drills:
             drill['point'] = affinity.translate(drill['point'], xoff=dx, yoff=dy)
 
+        # Recreate geometry
+        self.create_geometry()
+
+    def mirror(self, axis, point):
+        """
+
+        :param axis: "X" or "Y" indicates around which axis to mirror.
+        :type axis: str
+        :param point: [x, y] point belonging to the mirror axis.
+        :type point: list
+        :return: None
+        """
+
+        px, py = point
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+        # Modify data
+        for drill in self.drills:
+            drill['point'] = affinity.scale(drill['point'], xscale, yscale, origin=(px, py))
+
+        # Recreate geometry
         self.create_geometry()
 
     def convert_units(self, units):
@@ -2257,6 +2322,7 @@ def plotg(geo):
         except:
             print "Cannot plot:", str(type(g))
             continue
+
 
 def parse_gerber_number(strnumber, frac_digits):
     """

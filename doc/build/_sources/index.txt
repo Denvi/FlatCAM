@@ -16,6 +16,7 @@ Contents:
    camlib
    flatcamobj
    app
+   devman
 
 
 
