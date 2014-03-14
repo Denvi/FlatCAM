@@ -192,9 +192,37 @@ class ApertureMacro:
     def __init__(self, name=None):
         self.name = name
         self.raw = ""
+
+        ## These below are recomputed for every aperture
+        ## definition, in other words, are temporary variables.
         self.primitives = []
         self.locvars = {}
         self.geometry = None
+
+    def to_dict(self):
+        """
+        Returns the object in a serializable form. Only the name and
+        raw are required.
+
+        :return: Dictionary representing the object. JSON ready.
+        :rtype: dict
+        """
+
+        return {
+            'name': self.name,
+            'raw': self.raw
+        }
+
+    def from_dict(self, d):
+        """
+        Populates the object from a serial representation created
+        with ``self.to_dict()``.
+
+        :param d: Serial representation of an ApertureMacro object.
+        :return: None
+        """
+        for attr in ['name', 'raw']:
+            setattr(self, attr, d[attr])
 
     def parse_content(self):
         """
@@ -632,7 +660,7 @@ class Gerber (Geometry):
         # from Geometry.
         self.ser_attrs += ['int_digits', 'frac_digits', 'apertures', 'paths',
                            'buffered_paths', 'regions', 'flashes',
-                           'flash_geometry']
+                           'flash_geometry', 'aperture_macros']
 
         #### Parser patterns ####
         # FS - Format Specification
@@ -714,55 +742,74 @@ class Gerber (Geometry):
         Scales the objects' geometry on the XY plane by a given factor.
         These are:
 
-        * ``apertures``
-        * ``paths``
+        * ``buffered_paths``
+        * ``flash_geometry``
+        * ``solid_geometry``
         * ``regions``
-        * ``flashes``
 
-        Then ``buffered_paths``, ``flash_geometry`` and ``solid_geometry``
-        are re-created with ``self.create_geometry()``.
+        NOTE:
+        Does not modify the data used to create these elements. If these
+        are recreated, the scaling will be lost. This behavior was modified
+        because of the complexity reached in this class.
+
         :param factor: Number by which to scale.
         :type factor: float
         :rtype : None
         """
 
-        ## Apertures
-        # List of the non-dimension aperture parameters
-        nonDimensions = ["type", "nVertices", "rotation"]
-        for apid in self.apertures:
-            for param in self.apertures[apid]:
-                if param not in nonDimensions:  # All others are dimensions.
-                    print "Tool:", apid, "Parameter:", param
-                    self.apertures[apid][param] *= factor
-
-        ## Paths
-        for path in self.paths:
-            path['linestring'] = affinity.scale(path['linestring'],
-                                                factor, factor, origin=(0, 0))
-
-        ## Flashes
-        for fl in self.flashes:
-            fl['loc'] = affinity.scale(fl['loc'], factor, factor, origin=(0, 0))
+        # ## Apertures
+        # # List of the non-dimension aperture parameters
+        # nonDimensions = ["type", "nVertices", "rotation"]
+        # for apid in self.apertures:
+        #     for param in self.apertures[apid]:
+        #         if param not in nonDimensions:  # All others are dimensions.
+        #             print "Tool:", apid, "Parameter:", param
+        #             self.apertures[apid][param] *= factor
+        #
+        # ## Paths
+        # for path in self.paths:
+        #     path['linestring'] = affinity.scale(path['linestring'],
+        #                                         factor, factor, origin=(0, 0))
+        #
+        # ## Flashes
+        # for fl in self.flashes:
+        #     fl['loc'] = affinity.scale(fl['loc'], factor, factor, origin=(0, 0))
 
         ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.scale(reg['polygon'], factor, factor,
                                             origin=(0, 0))
 
-        # Now buffered_paths, flash_geometry and solid_geometry
-        self.create_geometry()
+        ## Flashes
+        for flash in self.flash_geometry:
+            flash = affinity.scale(flash, factor, factor, origin=(0, 0))
+
+        ## Buffered paths
+        for bp in self.buffered_paths:
+            bp = affinity.scale(bp, factor, factor, origin=(0, 0))
+
+        ## solid_geometry ???
+        #  It's a cascaded union of objects.
+        self.solid_geometry = affinity.scale(self.solid_geometry, factor,
+                                             factor, origin=(0, 0))
+
+        # # Now buffered_paths, flash_geometry and solid_geometry
+        # self.create_geometry()
 
     def offset(self, vect):
         """
         Offsets the objects' geometry on the XY plane by a given vector.
         These are:
 
-        * ``paths``
+        * ``buffered_paths``
+        * ``flash_geometry``
+        * ``solid_geometry``
         * ``regions``
-        * ``flashes``
 
-        Then ``buffered_paths``, ``flash_geometry`` and ``solid_geometry``
-        are re-created with ``self.create_geometry()``.
+        NOTE:
+        Does not modify the data used to create these elements. If these
+        are recreated, the scaling will be lost. This behavior was modified
+        because of the complexity reached in this class.
 
         :param vect: (x, y) offset vector.
         :type vect: tuple
@@ -771,25 +818,48 @@ class Gerber (Geometry):
 
         dx, dy = vect
 
-        ## Paths
-        for path in self.paths:
-            path['linestring'] = affinity.translate(path['linestring'],
-                                                    xoff=dx, yoff=dy)
-
-        ## Flashes
-        for fl in self.flashes:
-            fl['loc'] = affinity.translate(fl['loc'], xoff=dx, yoff=dy)
+        # ## Paths
+        # for path in self.paths:
+        #     path['linestring'] = affinity.translate(path['linestring'],
+        #                                             xoff=dx, yoff=dy)
+        #
+        # ## Flashes
+        # for fl in self.flashes:
+        #     fl['loc'] = affinity.translate(fl['loc'], xoff=dx, yoff=dy)
 
         ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.translate(reg['polygon'],
                                                 xoff=dx, yoff=dy)
 
-        # Now buffered_paths, flash_geometry and solid_geometry
-        self.create_geometry()
+        ## Buffered paths
+        for bp in self.buffered_paths:
+            bp = affinity.translate(bp, xoff=dx, yoff=dy)
+
+        ## Flash geometry
+        for fl in self.flash_geometry:
+            fl = affinity.translate(fl, xoff=dx, yoff=dy)
+
+        ## Solid geometry
+        self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
+
+        # # Now buffered_paths, flash_geometry and solid_geometry
+        # self.create_geometry()
 
     def mirror(self, axis, point):
         """
+        Mirrors the object around a specified axis passign through
+        the given point. What is affected:
+
+        * ``buffered_paths``
+        * ``flash_geometry``
+        * ``solid_geometry``
+        * ``regions``
+
+        NOTE:
+        Does not modify the data used to create these elements. If these
+        are recreated, the scaling will be lost. This behavior was modified
+        because of the complexity reached in this class.
 
         :param axis: "X" or "Y" indicates around which axis to mirror.
         :type axis: str
@@ -801,22 +871,35 @@ class Gerber (Geometry):
         px, py = point
         xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
 
-        ## Paths
-        for path in self.paths:
-            path['linestring'] = affinity.scale(path['linestring'], xscale, yscale,
-                                                origin=(px, py))
-
-        ## Flashes
-        for fl in self.flashes:
-            fl['loc'] = affinity.scale(fl['loc'], xscale, yscale, origin=(px, py))
+        # ## Paths
+        # for path in self.paths:
+        #     path['linestring'] = affinity.scale(path['linestring'], xscale, yscale,
+        #                                         origin=(px, py))
+        #
+        # ## Flashes
+        # for fl in self.flashes:
+        #     fl['loc'] = affinity.scale(fl['loc'], xscale, yscale, origin=(px, py))
 
         ## Regions
         for reg in self.regions:
             reg['polygon'] = affinity.scale(reg['polygon'], xscale, yscale,
                                             origin=(px, py))
 
-        # Now buffered_paths, flash_geometry and solid_geometry
-        self.create_geometry()
+        ## Flashes
+        for flash in self.flash_geometry:
+            flash = affinity.scale(flash, xscale, yscale, origin=(px, py))
+
+        ## Buffered paths
+        for bp in self.buffered_paths:
+            bp = affinity.scale(bp, xscale, yscale, origin=(px, py))
+
+        ## solid_geometry ???
+        #  It's a cascaded union of objects.
+        self.solid_geometry = affinity.scale(self.solid_geometry,
+                                             xscale, yscale, origin=(px, py))
+
+        # # Now buffered_paths, flash_geometry and solid_geometry
+        # self.create_geometry()
 
     def fix_regions(self):
         """
@@ -2266,27 +2349,44 @@ def find_polygon(poly_set, point):
     return None
 
 
-def to_dict(geo):
+def to_dict(obj):
     """
     Makes a Shapely geometry object into serializeable form.
 
-    :param geo: Shapely geometry.
-    :type geo: BaseGeometry
-    :return: Dictionary with serializable form if ``geo`` was
-        BaseGeometry, otherwise returns ``geo``.
+    :param obj: Shapely geometry.
+    :type obj: BaseGeometry
+    :return: Dictionary with serializable form if ``obj`` was
+        BaseGeometry or ApertureMacro, otherwise returns ``obj``.
     """
-    if isinstance(geo, BaseGeometry):
+    if isinstance(obj, ApertureMacro):
+        return {
+            "__class__": "ApertureMacro",
+            "__inst__": obj.to_dict()
+        }
+    if isinstance(obj, BaseGeometry):
         return {
             "__class__": "Shply",
-            "__inst__": sdumps(geo)
+            "__inst__": sdumps(obj)
         }
-    return geo
+    return obj
 
 
 def dict2obj(d):
+    """
+    Default deserializer.
+
+    :param d:  Serializable dictionary representation of an object
+        to be reconstructed.
+    :return: Reconstructed object.
+    """
     if '__class__' in d and '__inst__' in d:
-        # For now assume all classes are Shapely geometry.
-        return sloads(d['__inst__'])
+        if d['__class__'] == "Shply":
+            return sloads(d['__inst__'])
+        if d['__class__'] == "ApertureMacro":
+            am = ApertureMacro()
+            am.from_dict(d['__inst__'])
+            return am
+        return d
     else:
         return d
 

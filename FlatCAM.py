@@ -16,6 +16,7 @@ from gi.repository import GLib
 from gi.repository import GObject
 import simplejson as json
 
+import matplotlib
 from matplotlib.figure import Figure
 from numpy import arange, sin, pi
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
@@ -482,7 +483,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             return
 
         self.plot2(self.axes, tooldia=self.options["tooldia"])
-        self.app.plotcanvas.auto_adjust_axes()
+
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -625,7 +628,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             print "WARNING: Did not plot:", str(type(geo))
 
-        self.app.plotcanvas.auto_adjust_axes()
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
 
 ########################################
@@ -1267,13 +1271,16 @@ class App:
         try:
             f = open(filename, 'r')
         except:
-            print "WARNING: Failed to open project file:", filename
+            #print "WARNING: Failed to open project file:", filename
+            self.info("ERROR: Failed to open project file: %s" % filename)
             return
 
         try:
             d = json.load(f, object_hook=dict2obj)
         except:
-            print "WARNING: Failed to parse project file:", filename
+            #print sys.exc_info()
+            #print "WARNING: Failed to parse project file:", filename
+            self.info("ERROR: Failed to parse project file: %s" % filename)
             f.close()
             return
 
