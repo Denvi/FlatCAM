@@ -757,7 +757,7 @@ class App:
         self.units_label.set_text("[" + self.options["units"] + "]")
 
         #### Check for updates ####
-        self.version = 2
+        self.version = 3
         t1 = threading.Thread(target=self.versionCheck)
         t1.daemon = True
         t1.start()
@@ -937,8 +937,6 @@ class App:
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
-            #app_obj.plotcanvas.auto_adjust_axes()
-            #self.on_zoom_fit(None)
             GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
             GLib.idle_add(lambda: self.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
@@ -2308,7 +2306,7 @@ class App:
         """
         Delete the currently selected FlatCAMObj.
 
-        :param widget: The widget from which this was called.
+        :param widget: The widget from which this was called. Ignored.
         :return: None
         """
 
@@ -2852,7 +2850,6 @@ class Measurement:
     def on_click(self, event):
             if self.point1 is None:
                 self.point1 = (event.xdata, event.ydata)
-                return
             else:
                 self.point2 = copy.copy(self.point1)
                 self.point1 = (event.xdata, event.ydata)
