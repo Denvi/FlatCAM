@@ -9,6 +9,7 @@
 import threading
 
 # TODO: Bundle together. This is just for debugging.
+from docutils.nodes import image
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
@@ -695,6 +696,7 @@ class App:
         self.setup_obj_classes()
         self.stuff = {}    # FlatCAMObj's by name
         self.mouse = None  # Mouse coordinates over plot
+        self.recent = []
 
         # What is selected by the user. It is
         # a key if self.stuff
@@ -755,6 +757,7 @@ class App:
         self.options.update(self.defaults)  # Copy app defaults to project options
         self.options2form()  # Populate the app defaults form
         self.units_label.set_text("[" + self.options["units"] + "]")
+        self.setup_recent_items()
 
         #### Check for updates ####
         self.version = 3
@@ -875,6 +878,44 @@ class App:
         #box_selected.show()
         box1.show()
         label1.show()
+
+    def setup_recent_items(self):
+
+        icons = {
+            "gerber": "share/flatcam_icon16.png",
+            "excellon": "share/drill16.png",
+            "cncjob": "share/cnc16.png",
+            "project": "share/project16.png"
+        }
+
+        try:
+            f = open('recent.json')
+        except:
+            print "ERROR: Failed to load recent item list."
+            self.info("Failed to load recent item list.")
+            return
+
+        try:
+            self.recent = json.load(f)
+        except:
+            print "ERROR: Failed to parse recent item list."
+            self.info("Failed to parse recent item list.")
+            f.close()
+            return
+        f.close()
+
+        recent_menu = Gtk.Menu()
+        for recent in self.recent:
+            filename = recent['filename'].split('/')[-1].split('\\')[-1]
+            item = Gtk.ImageMenuItem.new_with_label(filename)
+            im = Gtk.Image.new_from_file(icons[recent["kind"]])
+            item.set_image(im)
+            # def opener():
+
+            recent_menu.append(item)
+
+        self.builder.get_object('open_recent').set_submenu(recent_menu)
+        recent_menu.show_all()
 
     def info(self, text):
         """
@@ -1282,6 +1323,8 @@ class App:
             f.close()
             return
 
+        self.register_recent("project", filename)
+
         # Clear the current project
         self.on_file_new(None)
 
@@ -1377,9 +1420,99 @@ class App:
     def do_nothing(self, param):
         return
 
+    def disable_plots(self, except_current=False):
+        """
+        Disables all plots with exception of the current object if specified.
+
+        :param except_current: Wether to skip the current object.
+        :rtype except_current: boolean
+        :return: None
+        """
+        # TODO: This method is very similar to replot_all. Try to merge.
+
+        self.set_progress_bar(0.1, "Re-plotting...")
+
+        def thread_func(app_obj):
+            percentage = 0.1
+            try:
+                delta = 0.9 / len(self.stuff)
+            except ZeroDivisionError:
+                GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+                return
+            for i in self.stuff:
+                if i != app_obj.selected_item_name or not except_current:
+                    self.stuff[i].options['plot'] = False
+                    self.stuff[i].plot()
+                percentage += delta
+                GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
+
+            GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        t = threading.Thread(target=thread_func, args=(self,))
+        t.daemon = True
+        t.start()
+
+    def enable_all_plots(self, *args):
+        self.plotcanvas.clear()
+        self.set_progress_bar(0.1, "Re-plotting...")
+
+        def thread_func(app_obj):
+            percentage = 0.1
+            try:
+                delta = 0.9 / len(self.stuff)
+            except ZeroDivisionError:
+                GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+                return
+            for i in self.stuff:
+                self.stuff[i].options['plot'] = True
+                self.stuff[i].plot()
+                percentage += delta
+                GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
+
+            GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        t = threading.Thread(target=thread_func, args=(self,))
+        t.daemon = True
+        t.start()
+
+    def register_recent(self, kind, filename):
+        record = {'kind': kind, 'filename': filename}
+
+        if record in self.recent:
+            return
+
+        self.recent.insert(0, record)
+
+        if len(self.recent) > 10:  # Limit reached
+            self.recent.pop()
+
+        try:
+            f = open('recent.json', 'w')
+        except:
+            print "ERROR: Failed to open recent items file for writing."
+            self.info('Failed to open recent files file for writing.')
+            return
+
+        try:
+            json.dump(self.recent, f)
+        except:
+            print "ERROR: Failed to write to recent items file."
+            self.info('Failed to write to recent items file.')
+            f.close()
+
+        f.close()
+
     ########################################
     ##         EVENT HANDLERS             ##
     ########################################
+    def on_disable_all_plots(self, widget):
+        self.disable_plots()
+
+    def on_disable_all_plots_not_current(self, widget):
+        self.disable_plots(except_current=True)
+
     def on_offset_object(self, widget):
         """
         Offsets the object's geometry by the vector specified
@@ -1710,6 +1843,7 @@ class App:
             self.on_file_saveprojectas(None)
         else:
             self.save_project(self.project_filename)
+            self.register_recent("project", self.project_filename)
             self.info("Project saved to: " + self.project_filename)
 
     def on_file_saveprojectas(self, param):
@@ -1726,6 +1860,7 @@ class App:
             assert isinstance(app_obj, App)
             app_obj.save_project(filename)
             self.project_filename = filename
+            self.register_recent("project", filename)
             app_obj.info("Project saved to: " + filename)
 
         self.file_chooser_save_action(on_success)
@@ -1744,6 +1879,7 @@ class App:
         def on_success(app_obj, filename):
             assert isinstance(app_obj, App)
             app_obj.save_project(filename)
+            self.register_recent("project", filename)
             app_obj.info("Project copy saved to: " + filename)
 
         self.file_chooser_save_action(on_success)
@@ -1998,10 +2134,7 @@ class App:
 
         def thread_func(app_obj):
             assert isinstance(app_obj, App)
-            #GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Plotting..."))
-            #GLib.idle_add(lambda: app_obj.get_current().plot(app_obj.figure))
             obj.plot()
-            #GLib.idle_add(lambda: app_obj.on_zoom_fit(None))
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
         t = threading.Thread(target=thread_func, args=(self,))
@@ -2526,6 +2659,7 @@ class App:
 
             name = filename.split('/')[-1].split('\\')[-1]
             app_obj.new_object("gerber", name, obj_init)
+            self.register_recent("gerber", filename)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
@@ -2557,6 +2691,7 @@ class App:
 
             name = filename.split('/')[-1].split('\\')[-1]
             app_obj.new_object("excellon", name, obj_init)
+            self.register_recent("excellon", filename)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
@@ -2603,6 +2738,7 @@ class App:
 
             name = filename.split('/')[-1].split('\\')[-1]
             app_obj.new_object("cncjob", name, obj_init)
+            self.register_recent("cncjob", filename)
 
             GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
@@ -2713,12 +2849,12 @@ class App:
         '1'         Zoom-fit. Fits the axes limits to the data.
         '2'         Zoom-out.
         '3'         Zoom-in.
+        'm'         Toggle on-off the measuring tool.
         ==========  ============================================
 
         :param event: Ignored.
         :return: None
         """
-        #print 'you pressed', event.key, event.xdata, event.ydata
 
         if event.key == '1':  # 1
             self.on_zoom_fit(None)
@@ -2901,8 +3037,27 @@ class PlotCanvas:
         self.canvas.connect('configure-event', self.auto_adjust_axes)
         self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
         self.canvas.connect("scroll-event", self.on_scroll)
+        self.canvas.mpl_connect('key_press_event', self.on_key_down)
+        self.canvas.mpl_connect('key_release_event', self.on_key_up)
 
-        self.mouse = [0,0]
+        self.mouse = [0, 0]
+        self.key = None
+
+    def on_key_down(self, event):
+        """
+
+        :param event:
+        :return:
+        """
+        self.key = event.key
+
+    def on_key_up(self, event):
+        """
+
+        :param event:
+        :return:
+        """
+        self.key = None
 
     def mpl_connect(self, event_name, callback):
         """
@@ -3054,6 +3209,20 @@ class PlotCanvas:
         # Re-draw
         self.canvas.queue_draw()
 
+    def pan(self, x, y):
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax - xmin
+        height = ymax - ymin
+
+        # Adjust axes
+        for ax in self.figure.get_axes():
+            ax.set_xlim((xmin + x*width, xmax + x*width))
+            ax.set_ylim((ymin + y*height, ymax + y*height))
+
+        # Re-draw
+        self.canvas.queue_draw()
+
     def new_axes(self, name):
         """
         Creates and returns an Axes object attached to this object's Figure.
@@ -3089,10 +3258,31 @@ class PlotCanvas:
         :return: None
         """
         z, direction = event.get_scroll_direction()
-        if direction is Gdk.ScrollDirection.UP:
-            self.zoom(1.5, self.mouse)
-        else:
-            self.zoom(1/1.5, self.mouse)
+
+        if self.key is None:
+
+            if direction is Gdk.ScrollDirection.UP:
+                self.zoom(1.5, self.mouse)
+            else:
+                self.zoom(1/1.5, self.mouse)
+            return
+
+        if self.key == 'shift':
+
+            if direction is Gdk.ScrollDirection.UP:
+                self.pan(0.3, 0)
+            else:
+                self.pan(-0.3, 0)
+            return
+
+        if self.key == 'ctrl+control':
+
+            if direction is Gdk.ScrollDirection.UP:
+                self.pan(0, 0.3)
+            else:
+                self.pan(0, -0.3)
+            return
+
 
     def on_mouse_move(self, event):
         """
