@@ -3157,12 +3157,24 @@ objects and options.</property>
                       </object>
                     </child>
                     <child>
+                      <object class="GtkSeparatorMenuItem" id="separatormenuitem5">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                      </object>
+                    </child>
+                    <child>
                       <object class="GtkImageMenuItem" id="open_recent">
                         <property name="label" translatable="yes">Open recent</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="image">image20</property>
                         <property name="use_stock">False</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkSeparatorMenuItem" id="separatormenuitem6">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
                       </object>
                     </child>
                     <child>

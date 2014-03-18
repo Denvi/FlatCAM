@@ -846,14 +846,17 @@ class App:
 
         self.store = Gtk.ListStore(str)
         self.tree = Gtk.TreeView(self.store)
-        #self.list = Gtk.ListBox()
-        self.tree.connect("row_activated", self.on_row_activated)
         self.tree_select = self.tree.get_selection()
-        self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
         renderer = Gtk.CellRendererText()
         column = Gtk.TreeViewColumn("Objects", renderer, text=0)
         self.tree.append_column(column)
         self.builder.get_object("box_project").pack_start(self.tree, False, False, 1)
+
+        # Double-click or Enter takes you to the object's options
+        self.tree.connect("row_activated", self.on_row_activated)
+
+        # Changes the selected item and populates the object options form
+        self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
 
     def setup_component_editor(self):
         """
@@ -888,6 +891,22 @@ class App:
             "project": "share/project16.png"
         }
 
+        openers = {
+            'gerber': self.open_gerber,
+            'excellon': self.open_excellon,
+            'cncjob': self.open_gcode,
+            'project': lambda x: ""
+        }
+
+        # Closure needed to create callbacks in a loop.
+        # Otherwise late binding occurs.
+        def make_callback(func, fname):
+            def opener(*args):
+                t = threading.Thread(target=lambda: func(fname))
+                t.daemon = True
+                t.start()
+            return opener
+
         try:
             f = open('recent.json')
         except:
@@ -910,8 +929,10 @@ class App:
             item = Gtk.ImageMenuItem.new_with_label(filename)
             im = Gtk.Image.new_from_file(icons[recent["kind"]])
             item.set_image(im)
-            # def opener():
 
+            o = make_callback(openers[recent["kind"]], recent['filename'])
+
+            item.connect('activate', o)
             recent_menu.append(item)
 
         self.builder.get_object('open_recent').set_submenu(recent_menu)
@@ -2633,6 +2654,24 @@ class App:
             self.info("Save cancelled.")  # print("Cancel clicked")
             dialog.destroy()
 
+    def open_gerber(self, filename):
+        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Gerber ..."))
+
+        def obj_init(gerber_obj, app_obj):
+            assert isinstance(gerber_obj, FlatCAMGerber)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+            gerber_obj.parse_file(filename)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
+            gerber_obj.create_geometry()
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+
+        name = filename.split('/')[-1].split('\\')[-1]
+        self.new_object("gerber", name, obj_init)
+        self.register_recent("gerber", filename)
+
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
+
     def on_fileopengerber(self, param):
         """
         Callback for menu item File->Open Gerber. Defines a function that is then passed
@@ -2645,27 +2684,44 @@ class App:
         # IMPORTANT: on_success will run on a separate thread. Use
         # GLib.idle_add(function, **kwargs) to launch actions that will
         # updata the GUI.
-        def on_success(app_obj, filename):
-            assert isinstance(app_obj, App)
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Gerber ..."))
-
-            def obj_init(gerber_obj, app_obj):
-                assert isinstance(gerber_obj, FlatCAMGerber)
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
-                gerber_obj.parse_file(filename)
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
-                gerber_obj.create_geometry()
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
-
-            name = filename.split('/')[-1].split('\\')[-1]
-            app_obj.new_object("gerber", name, obj_init)
-            self.register_recent("gerber", filename)
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+        # def on_success(app_obj, filename):
+        #     assert isinstance(app_obj, App)
+        #     GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Gerber ..."))
+        #
+        #     def obj_init(gerber_obj, app_obj):
+        #         assert isinstance(gerber_obj, FlatCAMGerber)
+        #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+        #         gerber_obj.parse_file(filename)
+        #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
+        #         gerber_obj.create_geometry()
+        #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+        #
+        #     name = filename.split('/')[-1].split('\\')[-1]
+        #     app_obj.new_object("gerber", name, obj_init)
+        #     app_obj.register_recent("gerber", filename)
+        #
+        #     GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+        #     GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
         # on_success gets run on a separate thread
-        self.file_chooser_action(on_success)
+        # self.file_chooser_action(on_success)
+        self.file_chooser_action(lambda ao, filename: self.open_gerber(filename))
+
+    def open_excellon(self, filename):
+        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Excellon ..."))
+
+        def obj_init(excellon_obj, app_obj):
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+            excellon_obj.parse_file(filename)
+            excellon_obj.create_geometry()
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+
+        name = filename.split('/')[-1].split('\\')[-1]
+        self.new_object("excellon", name, obj_init)
+        self.register_recent("excellon", filename)
+
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
 
     def on_fileopenexcellon(self, param):
         """
@@ -2679,25 +2735,57 @@ class App:
         # IMPORTANT: on_success will run on a separate thread. Use
         # GLib.idle_add(function, **kwargs) to launch actions that will
         # updata the GUI.
-        def on_success(app_obj, filename):
-            assert isinstance(app_obj, App)
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Excellon ..."))
-
-            def obj_init(excellon_obj, app_obj):
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
-                excellon_obj.parse_file(filename)
-                excellon_obj.create_geometry()
-                GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
-
-            name = filename.split('/')[-1].split('\\')[-1]
-            app_obj.new_object("excellon", name, obj_init)
-            self.register_recent("excellon", filename)
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+        # def on_success(app_obj, filename):
+        #     assert isinstance(app_obj, App)
+        #     GLib.idle_add(lambda: app_obj.set_progress_bar(0.1, "Opening Excellon ..."))
+        #
+        #     def obj_init(excellon_obj, app_obj):
+        #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+        #         excellon_obj.parse_file(filename)
+        #         excellon_obj.create_geometry()
+        #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+        #
+        #     name = filename.split('/')[-1].split('\\')[-1]
+        #     app_obj.new_object("excellon", name, obj_init)
+        #     self.register_recent("excellon", filename)
+        #
+        #     GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+        #     GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
         # on_success gets run on a separate thread
-        self.file_chooser_action(on_success)
+        # self.file_chooser_action(on_success)
+        self.file_chooser_action(lambda ao, filename: self.open_excellon(filename))
+
+    def open_gcode(self, filename):
+
+        def obj_init(job_obj, app_obj_):
+            """
+
+            :type app_obj_: App
+            """
+            assert isinstance(app_obj_, App)
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
+
+            f = open(filename)
+            gcode = f.read()
+            f.close()
+
+            job_obj.gcode = gcode
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
+            job_obj.gcode_parse()
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
+            job_obj.create_geometry()
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
+
+        name = filename.split('/')[-1].split('\\')[-1]
+        self.new_object("cncjob", name, obj_init)
+        self.register_recent("cncjob", filename)
+
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
 
     def on_fileopengcode(self, param):
         """
@@ -2711,40 +2799,41 @@ class App:
         # IMPORTANT: on_success will run on a separate thread. Use
         # GLib.idle_add(function, **kwargs) to launch actions that will
         # updata the GUI.
-        def on_success(app_obj, filename):
-            assert isinstance(app_obj, App)
-
-            def obj_init(job_obj, app_obj_):
-                """
-
-                :type app_obj_: App
-                """
-                assert isinstance(app_obj_, App)
-                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
-
-                f = open(filename)
-                gcode = f.read()
-                f.close()
-
-                job_obj.gcode = gcode
-
-                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
-                job_obj.gcode_parse()
-
-                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
-                job_obj.create_geometry()
-
-                GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
-
-            name = filename.split('/')[-1].split('\\')[-1]
-            app_obj.new_object("cncjob", name, obj_init)
-            self.register_recent("cncjob", filename)
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+        # def on_success(app_obj, filename):
+        #     assert isinstance(app_obj, App)
+        #
+        #     def obj_init(job_obj, app_obj_):
+        #         """
+        #
+        #         :type app_obj_: App
+        #         """
+        #         assert isinstance(app_obj_, App)
+        #         GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
+        #
+        #         f = open(filename)
+        #         gcode = f.read()
+        #         f.close()
+        #
+        #         job_obj.gcode = gcode
+        #
+        #         GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
+        #         job_obj.gcode_parse()
+        #
+        #         GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
+        #         job_obj.create_geometry()
+        #
+        #         GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
+        #
+        #     name = filename.split('/')[-1].split('\\')[-1]
+        #     app_obj.new_object("cncjob", name, obj_init)
+        #     self.register_recent("cncjob", filename)
+        #
+        #     GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+        #     GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
         # on_success gets run on a separate thread
-        self.file_chooser_action(on_success)
+        # self.file_chooser_action(on_success)
+        self.file_chooser_action(lambda ao, filename: self.open_gcode(filename))
 
     def on_mouse_move_over_plot(self, event):
         """

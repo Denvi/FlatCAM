@@ -1513,11 +1513,11 @@ class Excellon(Geometry):
         # Coordinates
         #self.xcoord_re = re.compile(r'^X(\d*\.?\d*)(?:Y\d*\.?\d*)?$')
         #self.ycoord_re = re.compile(r'^(?:X\d*\.?\d*)?Y(\d*\.?\d*)$')
-        self.coordsperiod_re = re.compile(r'(?=.*X(\d*\.\d*))?(?=.*Y(\d*\.\d*))?[XY]')
-        self.coordsnoperiod_re = re.compile(r'(?!.*\.)(?=.*X(\d*))?(?=.*Y(\d*))?[XY]')
+        self.coordsperiod_re = re.compile(r'(?=.*X(-?\d*\.\d*))?(?=.*Y(-?\d*\.\d*))?[XY]')
+        self.coordsnoperiod_re = re.compile(r'(?!.*\.)(?=.*X(-?\d*))?(?=.*Y(-?\d*))?[XY]')
 
         # R - Repeat hole (# times, X offset, Y offset)
-        self.rep_re = re.compile(r'^R(\d+)(?=.*[XY])+(?:X(\d*\.?\d*))?(?:Y(\d*\.?\d*))?$')
+        self.rep_re = re.compile(r'^R(\d+)(?=.*[XY])+(?:X(-?\d*\.?\d*))?(?:Y(-?\d*\.?\d*))?$')
 
         # Various stop/pause commands
         self.stop_re = re.compile(r'^((G04)|(M09)|(M06)|(M00)|(M30))')
