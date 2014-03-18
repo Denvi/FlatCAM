@@ -688,7 +688,7 @@ class Gerber (Geometry):
 
         # G01 - Linear interpolation plus flashes
         # Operation code (D0x) missing is deprecated... oh well I will support it.
-        self.lin_re = re.compile(r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0([123]))?\*$')
+        self.lin_re = re.compile(r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0?([123]))?\*$')
 
         self.setlin_re = re.compile(r'^(?:G0?1)\*')
 
