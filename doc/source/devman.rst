@@ -56,3 +56,7 @@ This creates a dictionary with attributes specified in the object's ``ser_attrs`
         return geo
 
 This is used in ``json.dump(d, f, default=to_dict)`` and is applied to objects that json encounters to be in a non-serialized form.
+
+Geometry Processing
+~~~~~~~~~~~~~~~~~~~
+
