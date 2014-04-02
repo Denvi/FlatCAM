@@ -111,8 +111,8 @@ class FlatCAMObj:
         # Put in the UI
         box_selected.pack_start(sw, True, True, 0)
 
-        entry_name = self.app.builder.get_object("entry_text_" + self.kind + "_name")
-        entry_name.connect("activate", self.app.on_activate_name)
+        # entry_name = self.app.builder.get_object("entry_text_" + self.kind + "_name")
+        # entry_name.connect("activate", self.app.on_activate_name)
         self.to_form()
         sw.show()
 

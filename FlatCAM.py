@@ -23,14 +23,17 @@ from numpy import arange, sin, pi
 from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
 #from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
 
-from camlib import *
+
 import sys
 import urllib
 import copy
 import random
 
+########################################
+##      Imports part of FlatCAM       ##
+########################################
+from camlib import *
 from FlatCAMObj import *
-
 from FlatCAMWorker import Worker
 
 ########################################
@@ -40,6 +43,8 @@ class App:
     """
     The main application class. The constructor starts the GUI.
     """
+
+    version_url = "http://caram.cl/flatcam/VERSION"
 
     def __init__(self):
         """
@@ -78,7 +83,7 @@ class App:
         self.combo_options = self.builder.get_object("combo_options")
         self.combo_options.set_active(1)
 
-        self.setup_project_list()  # The "Project" tab
+        #self.setup_project_list()  # The "Project" tab
         self.setup_component_editor()  # The "Selected" tab
 
         ## Setup the toolbar. Adds buttons.
@@ -95,16 +100,20 @@ class App:
 
         self.setup_tooltips()
 
+        # TODO: Hardcoded list
+        for kind in ['gerber', 'excellon', 'geometry', 'cncjob']:
+            entry_name = self.builder.get_object("entry_text_" + kind + "_name")
+            entry_name.connect("activate", self.on_activate_name)
+
         #### DATA ####
         self.clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         self.setup_obj_classes()
-        self.stuff = {}    # FlatCAMObj's by name
         self.mouse = None  # Mouse coordinates over plot
         self.recent = []
-
-        # What is selected by the user. It is
-        # a key if self.stuff
-        self.selected_item_name = None
+        self.collection = ObjectCollection()
+        self.builder.get_object("box_project").pack_start(self.collection.view, False, False, 1)
+        # TODO: Do this different
+        self.collection.view.connect("row_activated", self.on_row_activated)
 
         # Used to inhibit the on_options_update callback when
         # the options are being changed by the program and not the user.
@@ -140,6 +149,7 @@ class App:
                 #     self.radios_inv.update({obj.kind + "_" + option: obj.radios_inv[option]})
 
         ## Event subscriptions ##
+        # TODO: Move to plotcanvas
         self.plot_click_subscribers = {}
         self.plot_mousemove_subscribers = {}
 
@@ -168,11 +178,11 @@ class App:
         self.worker.start()
 
         #### Check for updates ####
+        # Separate thread (Not worker)
         self.version = 4
         t1 = threading.Thread(target=self.versionCheck)
         t1.daemon = True
         t1.start()
-        # self.worker.add_task(self.versionCheck)
 
         #### For debugging only ###
         def somethreadfunc(app_obj):
@@ -245,27 +255,47 @@ class App:
         """
         FlatCAMObj.app = self
 
-    def setup_project_list(self):
-        """
-        Sets up list or Tree where whatever has been loaded or created is
-        displayed.
-
-        :return: None
-        """
-
-        self.store = Gtk.ListStore(str)
-        self.tree = Gtk.TreeView(self.store)
-        self.tree_select = self.tree.get_selection()
-        renderer = Gtk.CellRendererText()
-        column = Gtk.TreeViewColumn("Objects", renderer, text=0)
-        self.tree.append_column(column)
-        self.builder.get_object("box_project").pack_start(self.tree, False, False, 1)
-
-        # Double-click or Enter takes you to the object's options
-        self.tree.connect("row_activated", self.on_row_activated)
-
-        # Changes the selected item and populates the object options form
-        self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
+    # def setup_project_list(self):
+    #     """
+    #     Sets up list or Tree where whatever has been loaded or created is
+    #     displayed.
+    #
+    #     :return: None
+    #     """
+    #
+    #     # Model
+    #     self.store = Gtk.ListStore(GdkPixbuf.Pixbuf, str)
+    #     #self.store = Gtk.ListStore(str, str)
+    #
+    #     # View
+    #     self.tree = Gtk.TreeView(model=self.store)
+    #
+    #     # Renderers
+    #     renderer_pixbuf = Gtk.CellRendererPixbuf()
+    #     column_pixbuf = Gtk.TreeViewColumn("Type", renderer_pixbuf, pixbuf=0)
+    #     # column_pixbuf = Gtk.TreeViewColumn("Type")
+    #     # column_pixbuf.pack_start(renderer_pixbuf, False)
+    #     # column_pixbuf.add_attribute(renderer_pixbuf, "pixbuf", 1)
+    #     self.tree.append_column(column_pixbuf)
+    #
+    #     # renderer1 = Gtk.CellRendererText()
+    #     # column1 = Gtk.TreeViewColumn("Type", renderer1, text=0)
+    #     # self.tree.append_column(column1)
+    #
+    #     renderer = Gtk.CellRendererText()
+    #     column = Gtk.TreeViewColumn("Object name", renderer, text=1)
+    #     self.tree.append_column(column)
+    #
+    #     self.tree_select = self.tree.get_selection()
+    #
+    #
+    #     self.builder.get_object("box_project").pack_start(self.tree, False, False, 1)
+    #
+    #     # Double-click or Enter takes you to the object's options
+    #     self.tree.connect("row_activated", self.on_row_activated)
+    #
+    #     # Changes the selected item and populates the object options form
+    #     self.signal_id = self.tree_select.connect("changed", self.on_tree_selection_changed)
 
     def setup_component_editor(self):
         """
@@ -293,6 +323,7 @@ class App:
 
     def setup_recent_items(self):
 
+        # TODO: Move this to constructor
         icons = {
             "gerber": "share/flatcam_icon16.png",
             "excellon": "share/drill16.png",
@@ -309,13 +340,6 @@ class App:
 
         # Closure needed to create callbacks in a loop.
         # Otherwise late binding occurs.
-        # def make_callback(func, fname):
-        #     def opener(*args):
-        #         t = threading.Thread(target=lambda: func(fname))
-        #         t.daemon = True
-        #         t.start()
-        #     return opener
-
         def make_callback(func, fname):
             def opener(*args):
                 self.worker.add_task(func, [fname])
@@ -362,21 +386,31 @@ class App:
         """
         self.info_label.set_text(text)
 
-    def build_list(self):
-        """
-        Clears and re-populates the list of objects in currently
-        in the project.
-
-        :return: None
-        """
-        print "build_list(): clearing"
-        self.tree_select.unselect_all()
-        self.store.clear()
-        print "repopulating...",
-        for key in self.stuff:
-            print key,
-            self.store.append([key])
-        print
+    # def build_list(self):
+    #     """
+    #     Clears and re-populates the list of objects in currently
+    #     in the project.
+    #
+    #     :return: None
+    #     """
+    #     icons = {
+    #         "gerber": "share/flatcam_icon16.png",
+    #         "excellon": "share/drill16.png",
+    #         "cncjob": "share/cnc16.png",
+    #         "geometry": "share/geometry16.png"
+    #     }
+    #
+    #
+    #     print "build_list(): clearing"
+    #     self.tree_select.unselect_all()
+    #     self.store.clear()
+    #     print "repopulating...",
+    #     for key in self.stuff:
+    #         print key,
+    #         obj = self.stuff[key]
+    #         icon = GdkPixbuf.Pixbuf.new_from_file(icons[obj.kind])
+    #         self.store.append([icon, key])
+    #     print
 
     def get_radio_value(self, radio_set):
         """
@@ -401,26 +435,24 @@ class App:
         self.plotcanvas.clear()
         self.set_progress_bar(0.1, "Re-plotting...")
 
-        def thread_func(app_obj):
+        def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.stuff)
+                delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
                 GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 return
-            for i in self.stuff:
-                self.stuff[i].plot()
+            for obj in self.collection.get_list():
+                obj.plot()
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
             GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
             GLib.idle_add(lambda: self.on_zoom_fit(None))
-            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
+            GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
-        # t = threading.Thread(target=thread_func, args=(self,))
-        # t.daemon = True
-        # t.start()
-        self.worker.add_task(thread_func, [self])
+        # Send to worker
+        self.worker.add_task(worker_task, [self])
 
     def get_eval(self, widget_name):
         """
@@ -442,26 +474,26 @@ class App:
             self.info("Could not evaluate: " + value)
             return None
 
-    def set_list_selection(self, name):
-        """
-        Marks a given object as selected in the list ob objects
-        in the GUI. This selection will in turn trigger
-        ``self.on_tree_selection_changed()``.
-
-        :param name: Name of the object.
-        :type name: str
-        :return: None
-        """
-
-        iter = self.store.get_iter_first()
-        while iter is not None and self.store[iter][0] != name:
-            iter = self.store.iter_next(iter)
-        self.tree_select.unselect_all()
-        self.tree_select.select_iter(iter)
-
-        # Need to return False such that GLib.idle_add
-        # or .timeout_add do not repeat.
-        return False
+    # def set_list_selection(self, name):
+    #     """
+    #     Marks a given object as selected in the list ob objects
+    #     in the GUI. This selection will in turn trigger
+    #     ``self.on_tree_selection_changed()``.
+    #
+    #     :param name: Name of the object.
+    #     :type name: str
+    #     :return: None
+    #     """
+    #
+    #     iter = self.store.get_iter_first()
+    #     while iter is not None and self.store[iter][1] != name:
+    #         iter = self.store.iter_next(iter)
+    #     self.tree_select.unselect_all()
+    #     self.tree_select.select_iter(iter)
+    #
+    #     # Need to return False such that GLib.idle_add
+    #     # or .timeout_add do not repeat.
+    #     return False
 
     def new_object(self, kind, name, initialize):
         """
@@ -482,7 +514,7 @@ class App:
         """
 
         ### Check for existing name
-        if name in self.stuff:
+        if name in self.collection.get_names():
             ## Create a new name
             # Ends with number?
             match = re.search(r'(.*[^\d])?(\d+)$', name)
@@ -503,12 +535,6 @@ class App:
         obj = classdict[kind](name)
         obj.units = self.options["units"]  # TODO: The constructor should look at defaults.
 
-        # Initialize as per user request
-        # User must take care to implement initialize
-        # in a thread-safe way as is is likely that we
-        # have been invoked in a separate thread.
-        #initialize(obj, self)
-
         # Set default options from self.options
         for option in self.options:
             if option.find(kind + "_") == 0:
@@ -527,14 +553,10 @@ class App:
             obj.convert_units(self.options["units"])
 
         # Add to our records
-        self.stuff[name] = obj
+        # TODO: Perhaps make collection thread safe instead?
+        GLib.idle_add(lambda: self.collection.append(obj, active=True))
 
-        # Update GUI list and select it (Thread-safe?)
-        self.store.append([name])
-        #self.build_list()
-        GLib.idle_add(lambda: self.set_list_selection(name))
-        # TODO: Gtk.notebook.set_current_page is not known to
-        # TODO: return False. Fix this??
+        # Show object details now.
         GLib.timeout_add(100, lambda: self.notebook.set_current_page(1))
 
         # Plot
@@ -560,22 +582,22 @@ class App:
         self.progress_bar.set_fraction(percentage)
         return False
 
-    def get_current(self):
-        """
-        Returns the currently selected FlatCAMObj in the application.
-
-        :return: Currently selected FlatCAMObj in the application.
-        :rtype: FlatCAMObj or None
-        """
-
-        # TODO: Could possibly read the form into the object here.
-        # But there are some cases when the form for the object
-        # is not up yet. See on_tree_selection_changed.
-
-        try:
-            return self.stuff[self.selected_item_name]
-        except:
-            return None
+    # def get_current(self):
+    #     """
+    #     Returns the currently selected FlatCAMObj in the application.
+    #
+    #     :return: Currently selected FlatCAMObj in the application.
+    #     :rtype: FlatCAMObj or None
+    #     """
+    #
+    #     # TODO: Could possibly read the form into the object here.
+    #     # But there are some cases when the form for the object
+    #     # is not up yet. See on_tree_selection_changed.
+    #
+    #     try:
+    #         return self.stuff[self.selected_item_name]
+    #     except:
+    #         return None
 
     def load_defaults(self):
         """
@@ -712,11 +734,11 @@ class App:
 
         # Capture the latest changes
         try:
-            self.get_current().read_form()
+            self.collection.get_active().read_form()
         except:
             pass
 
-        d = {"objs": [self.stuff[o].to_dict() for o in self.stuff],
+        d = {"objs": [obj.to_dict() for obj in self.collection.get_list()],
              "options": self.options}
 
         try:
@@ -746,15 +768,12 @@ class App:
         try:
             f = open(filename, 'r')
         except:
-            #print "WARNING: Failed to open project file:", filename
             self.info("ERROR: Failed to open project file: %s" % filename)
             return
 
         try:
             d = json.load(f, object_hook=dict2obj)
         except:
-            #print sys.exc_info()
-            #print "WARNING: Failed to parse project file:", filename
             self.info("ERROR: Failed to parse project file: %s" % filename)
             f.close()
             return
@@ -790,8 +809,8 @@ class App:
             combo = self.builder.get_object(combo)
 
         combo.remove_all()
-        for obj in self.stuff:
-            combo.append_text(obj)
+        for name in self.collection.get_names():
+            combo.append_text(name)
 
     def versionCheck(self, *args):
         """
@@ -803,7 +822,7 @@ class App:
         """
 
         try:
-            f = urllib.urlopen("http://caram.cl/flatcam/VERSION")  # TODO: Hardcoded.
+            f = urllib.urlopen(App.version_url)
         except:
             GLib.idle_add(lambda: self.info("ERROR trying to check for latest version."))
             return
@@ -868,52 +887,49 @@ class App:
 
         self.set_progress_bar(0.1, "Re-plotting...")
 
-        def thread_func(app_obj):
+        def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.stuff)
+                delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
                 GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 return
-            for i in self.stuff:
-                if i != app_obj.selected_item_name or not except_current:
-                    self.stuff[i].options['plot'] = False
-                    self.stuff[i].plot()
+            for obj in self.collection.get_list():
+                #if i != app_obj.selected_item_name or not except_current:
+                if obj != self.collection.get_active() or not except_current:
+                    obj.options['plot'] = False
+                    obj.plot()
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
             GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
 
-        # t = threading.Thread(target=thread_func, args=(self,))
-        # t.daemon = True
-        # t.start()
-        self.worker.add_task(thread_func, [self])
+        # Send to worker
+        self.worker.add_task(worker_task, [self])
 
     def enable_all_plots(self, *args):
         self.plotcanvas.clear()
         self.set_progress_bar(0.1, "Re-plotting...")
 
-        def thread_func(app_obj):
+        def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.stuff)
+                delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
                 GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 return
-            for i in self.stuff:
-                self.stuff[i].options['plot'] = True
-                self.stuff[i].plot()
+            for obj in self.collection.get_list():
+                obj.options['plot'] = True
+                obj.plot()
                 percentage += delta
                 GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
 
             GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
             GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
 
-        # t = threading.Thread(target=thread_func, args=(self,))
-        # t.daemon = True
-        # t.start()
-        self.worker.add_task(thread_func, [self])
+        # Send to worker
+        self.worker.add_task(worker_task, [self])
 
     def register_recent(self, kind, filename):
         record = {'kind': kind, 'filename': filename}
@@ -960,7 +976,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         obj.read_form()
         assert isinstance(obj, FlatCAMObj)
         try:
@@ -981,8 +997,10 @@ class App:
         :return: None
         """
 
-        self.get_current().read_form()
-        self.get_current().plot()
+        # self.get_current().read_form()
+        # self.get_current().plot()
+        self.collection.get_active().read_form()
+        self.collection.get_active().plot()
 
     def on_about(self, widget):
         """
@@ -1007,12 +1025,8 @@ class App:
         # TODO: Move (some of) this to camlib!
 
         # Object to mirror
-        try:
-            obj_name = self.builder.get_object("comboboxtext_bottomlayer").get_active_text()
-            fcobj = self.stuff[obj_name]
-        except KeyError:
-            self.info("WARNING: Cannot mirror that object.")
-            return
+        obj_name = self.builder.get_object("comboboxtext_bottomlayer").get_active_text()
+        fcobj = self.collection.get_by_name(obj_name)
 
         # For now, lets limit to Gerbers and Excellons.
         # assert isinstance(gerb, FlatCAMGerber)
@@ -1030,23 +1044,13 @@ class App:
             px, py = eval(self.point_entry.get_text())
         else:  # The axis is the line dividing the box in the middle
             name = self.box_combo.get_active_text()
-            bb_obj = self.stuff[name]
+            bb_obj = self.collection.get_by_name(name)
             xmin, ymin, xmax, ymax = bb_obj.bounds()
             px = 0.5*(xmin+xmax)
             py = 0.5*(ymin+ymax)
 
-        # Do the mirroring
-        # xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
-        # mirrored = affinity.scale(fcobj.solid_geometry, xscale, yscale, origin=(px, py))
-        #
-        # def obj_init(obj_inst, app_inst):
-        #     obj_inst.solid_geometry = mirrored
-        #
-        # self.new_object("gerber", fcobj.options["name"] + "_mirror", obj_init)
-
         fcobj.mirror(axis, [px, py])
         fcobj.plot()
-        #self.on_update_plot(None)
 
     def on_create_aligndrill(self, widget):
         """
@@ -1067,7 +1071,7 @@ class App:
             px, py = eval(self.point_entry.get_text())
         else:
             name = self.box_combo.get_active_text()
-            bb_obj = self.stuff[name]
+            bb_obj = self.collection.get_by_name(name)
             xmin, ymin, xmax, ymax = bb_obj.bounds()
             px = 0.5*(xmin+xmax)
             py = 0.5*(ymin+ymax)
@@ -1232,11 +1236,10 @@ class App:
             self.read_form()
             scale_options(factor)
             self.options2form()
-            for obj in self.stuff:
+            for obj in self.collection.get_list():
                 units = self.get_radio_value({"rb_mm": "MM", "rb_inch": "IN"})
-                #print "Converting ", obj, " to ", units
-                self.stuff[obj].convert_units(units)
-            current = self.get_current()
+                obj.convert_units(units)
+            current = self.collection.get_active()
             if current is not None:
                 current.to_form()
             self.plot_all()
@@ -1355,7 +1358,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
             return
@@ -1374,7 +1377,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
             return
@@ -1393,7 +1396,7 @@ class App:
         :param param: Ignored.
         :return: None
         """
-        obj = self.get_current()
+        obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
             return
@@ -1413,7 +1416,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
             return
@@ -1501,7 +1504,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         factor = self.get_eval("entry_eval_" + obj.kind + "_scalefactor")
         obj.scale(factor)
         obj.to_form()
@@ -1542,7 +1545,7 @@ class App:
         :return: None
         """
         # TODO: Use Gerber.get_bounding_box(...)
-        gerber = self.get_current()
+        gerber = self.collection.get_active()
         gerber.read_form()
         name = gerber.options["name"] + "_bbox"
 
@@ -1565,7 +1568,7 @@ class App:
         :return: None
         """
 
-        obj = self.get_current()
+        obj = self.collection.get_active()
         obj.read_form()
 
         self.set_progress_bar(0.5, "Plotting...")
@@ -1589,7 +1592,7 @@ class App:
         :return: None
         """
 
-        excellon = self.get_current()
+        excellon = self.collection.get_active()
         excellon.read_form()
         job_name = excellon.options["name"] + "_cnc"
 
@@ -1636,7 +1639,7 @@ class App:
         :param widget: The widget from which this was called.
         :return: None
         """
-        excellon = self.get_current()
+        excellon = self.collection.get_active()
         assert isinstance(excellon, FlatCAMExcellon)
         excellon.show_tool_chooser()
 
@@ -1650,7 +1653,7 @@ class App:
         :return:
         """
         self.on_eval_update(widget)
-        obj = self.get_current()
+        obj = self.collection.get_active()
         assert isinstance(obj, FlatCAMObj)
         obj.read_form()
 
@@ -1664,7 +1667,7 @@ class App:
         :return: None
         """
 
-        gerb = self.get_current()
+        gerb = self.collection.get_active()
         gerb.read_form()
         name = gerb.options["name"] + "_noncopper"
 
@@ -1688,7 +1691,7 @@ class App:
         :return: None
         """
 
-        gerb = self.get_current()
+        gerb = self.collection.get_active()
         gerb.read_form()
         name = gerb.options["name"] + "_cutout"
 
@@ -1749,7 +1752,7 @@ class App:
         :return: None
         """
 
-        gerb = self.get_current()
+        gerb = self.collection.get_active()
         gerb.read_form()
         dia = gerb.options["isotooldia"]
         passes = int(gerb.options["isopasses"])
@@ -1779,7 +1782,7 @@ class App:
         :return: None
         """
 
-        source_geo = self.get_current()
+        source_geo = self.collection.get_active()
         source_geo.read_form()
         job_name = source_geo.options["name"] + "_cnc"
 
@@ -1834,7 +1837,7 @@ class App:
         """
 
         self.info("Click inside the desired polygon.")
-        geo = self.get_current()
+        geo = self.collection.get_active()
         geo.read_form()
         assert isinstance(geo, FlatCAMGeometry)
         tooldia = geo.options["painttooldia"]
@@ -1868,7 +1871,7 @@ class App:
         :return: None
         """
         def on_success(app_obj, filename):
-            cncjob = app_obj.get_current()
+            cncjob = app_obj.collection.get_active()
             f = open(filename, 'w')
             f.write(cncjob.gcode)
             f.close()
@@ -1885,17 +1888,17 @@ class App:
         """
 
         # Keep this for later
-        name = copy.copy(self.selected_item_name)
+        name = copy.copy(self.collection.get_active().options["name"])
 
         # Remove plot
-        self.plotcanvas.figure.delaxes(self.get_current().axes)
+        self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
         self.plotcanvas.auto_adjust_axes()
 
-        # Remove from dictionary
-        self.stuff.pop(self.selected_item_name)
+        # Clear form
+        self.setup_component_editor()
 
-        # Update UI
-        self.build_list()  # Update the items list
+        # Remove from dictionary
+        self.collection.delete_active()
 
         self.info("Object deleted: %s" % name)
 
@@ -1907,7 +1910,7 @@ class App:
         :return: None
         """
 
-        self.get_current().read_form()
+        self.collection.get_active().read_form()
 
         self.plot_all()
 
@@ -1929,49 +1932,10 @@ class App:
         :return: None
         """
 
-        # Disconnect event listener
-        self.tree.get_selection().disconnect(self.signal_id)
-
-        new_name = entry.get_text()  # Get from form
-        self.stuff[new_name] = self.stuff.pop(self.selected_item_name)  # Update dictionary
-        self.stuff[new_name].options["name"] = new_name  # update object
-        self.info('Name change: ' + self.selected_item_name + " to " + new_name)
-
-        self.selected_item_name = new_name  # Update selection name
-
-        self.build_list()  # Update the items list
-
-        # Reconnect event listener
-        self.signal_id = self.tree.get_selection().connect(
-            "changed", self.on_tree_selection_changed)
-
-    def on_tree_selection_changed(self, selection):
-        """
-        Callback for selection change in the project list. This changes
-        the currently selected FlatCAMObj.
-
-        :param selection: Selection associated to the project tree or list
-        :type selection: Gtk.TreeSelection
-        :return: None
-        """
-        print "DEBUG: on_tree_selection_change(): ",
-        model, treeiter = selection.get_selected()
-
-        if treeiter is not None:
-            # Save data for previous selection
-            obj = self.get_current()
-            if obj is not None:
-                obj.read_form()
-
-            print "DEBUG: You selected", model[treeiter][0]
-            self.selected_item_name = model[treeiter][0]
-            obj_new = self.get_current()
-            if obj_new is not None:
-                GLib.idle_add(lambda: obj_new.build_ui())
-        else:
-            print "DEBUG: Nothing selected"
-            self.selected_item_name = None
-            self.setup_component_editor()
+        old_name = copy.copy(self.collection.get_active().options["name"])
+        new_name = entry.get_text()
+        self.collection.change_name(old_name, new_name)
+        self.info("Name changed from %s to %s" % (old_name, new_name))
 
     def on_file_new(self, param):
         """
@@ -1981,19 +1945,18 @@ class App:
         :param param: Whatever is passed by the event. Ignore.
         :return: None
         """
-        # Remove everythong from memory
+        # Remove everything from memory
         # Clear plot
         self.plotcanvas.clear()
 
-        # Clear object editor
-        #self.setup_component_editor()
+        # Delete data
+        self.collection.delete_all()
 
-        # Clear data
-        self.stuff = {}
+        # Clear object editor
+        self.setup_component_editor()
 
         # Clear list
-        #self.tree_select.unselect_all()
-        self.build_list()
+        self.collection.build_list()
 
         # Clear project filename
         self.project_filename = None
@@ -2339,7 +2302,7 @@ class App:
         :param event: Ignored.
         :return: None
         """
-        xmin, ymin, xmax, ymax = get_bounds(self.stuff)
+        xmin, ymin, xmax, ymax = self.collection.get_bounds()
         width = xmax - xmin
         height = ymax - ymin
         xmin -= 0.05 * width
@@ -2804,11 +2767,79 @@ class PlotCanvas:
 
 
 class ObjectCollection:
+
+    classdict = {
+        "gerber": FlatCAMGerber,
+        "excellon": FlatCAMExcellon,
+        "cncjob": FlatCAMCNCjob,
+        "geometry": FlatCAMGeometry
+    }
+
+    icons = {
+        "gerber": "share/flatcam_icon16.png",
+        "excellon": "share/drill16.png",
+        "cncjob": "share/cnc16.png",
+        "geometry": "share/geometry16.png"
+    }
+
     def __init__(self):
+
+        ### Data
+        # List of FLatCAMObject's
         self.collection = []
         self.active = None
 
+        ### GUI List components
+        ## Model
+        self.store = Gtk.ListStore(GdkPixbuf.Pixbuf, str)
+
+        ## View
+        self.view = Gtk.TreeView(model=self.store)
+        self.view.connect("row_activated", self.on_row_activated)
+        self.tree_selection = self.view.get_selection()
+        self.change_subscription = self.tree_selection.connect("changed", self.on_list_selection_change)
+
+        # Renderers
+        renderer_pixbuf = Gtk.CellRendererPixbuf()
+        column_pixbuf = Gtk.TreeViewColumn("Type", renderer_pixbuf, pixbuf=0)
+        self.view.append_column(column_pixbuf)
+
+        renderer_text = Gtk.CellRendererText()
+        column_text = Gtk.TreeViewColumn("Name", renderer_text, text=1)
+        self.view.append_column(column_text)
+
+    def delete_all(self):
+        print "OC.delete_all()"
+        self.collection = []
+        self.active = None
+
+    def delete_active(self):
+        print "OC.delete_active()"
+        self.collection.remove(self.active)
+        self.active = None
+        self.build_list()
+
+    def on_row_activated(self, *args):
+        print "OC.on_row_activated()"
+        return
+
+    def on_list_selection_change(self, selection):
+        print "OC.on_list_selection_change()"
+        model, treeiter = selection.get_selected()
+
+        try:
+            self.get_active().read_form()
+        except:
+            pass
+
+        try:
+            self.set_active(model[treeiter][1])
+            self.get_active().build_ui()
+        except:
+            pass
+
     def set_active(self, name):
+        print "OC.set_active()"
         for obj in self.collection:
             if obj.options['name'] == name:
                 self.active = obj
@@ -2816,10 +2847,63 @@ class ObjectCollection:
         return None
 
     def get_active(self):
+        print "OC.get_active()"
         return self.active
 
-    def append(self, obj):
-        self.collection.append(obj)
+    def set_list_selection(self, name):
+        print "OC.set_list_selection()"
+        iterat = self.store.get_iter_first()
+        while iterat is not None and self.store[iterat][1] != name:
+            iterat = self.store.iter_next(iterat)
+        self.tree_selection.unselect_all()
+        self.tree_selection.select_iter(iterat)
+
+    def append(self, obj, active=False):
+        print "OC.append()"
+        if obj not in self.collection:
+            self.collection.append(obj)
+            self.build_list()
+
+        if active:
+            self.set_list_selection(obj.options["name"])
+
+    def get_names(self):
+        print "OC.get_names()"
+        return [o.options["name"] for o in self.collection]
+
+    def build_list(self):
+        print "OC.build_list()"
+        self.store.clear()
+        for obj in self.collection:
+            icon = GdkPixbuf.Pixbuf.new_from_file(ObjectCollection.icons[obj.kind])
+            self.store.append([icon, obj.options["name"]])
+
+    def get_bounds(self):
+        print "OC.get_bounds()"
+        return get_bounds(self.collection)
+
+    def get_list(self):
+        return self.collection
+
+    def get_by_name(self, name):
+        for obj in self.collection:
+            if obj.options["name"] == name:
+                return obj
+        return None
+
+    def change_name(self, old_name, new_name):
+        self.tree_selection.disconnect(self.change_subscription)
+
+        for obj in self.collection:
+            if obj.options["name"] == old_name:
+                obj.options["name"] = new_name
+                self.build_list()
+                self.tree_selection.connect("changed", self.on_list_selection_change)
+                if obj == self.get_active():
+                    self.set_active(new_name)
+                    self.set_list_selection(new_name)
+                break
+
 
 app = App()
 Gtk.main()

@@ -2251,16 +2251,35 @@ class CNCjob(Geometry):
         self.create_geometry()
 
 
-def get_bounds(geometry_set):
+# def get_bounds(geometry_set):
+#     xmin = Inf
+#     ymin = Inf
+#     xmax = -Inf
+#     ymax = -Inf
+#
+#     #print "Getting bounds of:", str(geometry_set)
+#     for gs in geometry_set:
+#         try:
+#             gxmin, gymin, gxmax, gymax = geometry_set[gs].bounds()
+#             xmin = min([xmin, gxmin])
+#             ymin = min([ymin, gymin])
+#             xmax = max([xmax, gxmax])
+#             ymax = max([ymax, gymax])
+#         except:
+#             print "DEV WARNING: Tried to get bounds of empty geometry."
+#
+#     return [xmin, ymin, xmax, ymax]
+
+def get_bounds(geometry_list):
     xmin = Inf
     ymin = Inf
     xmax = -Inf
     ymax = -Inf
 
     #print "Getting bounds of:", str(geometry_set)
-    for gs in geometry_set:
+    for gs in geometry_list:
         try:
-            gxmin, gymin, gxmax, gymax = geometry_set[gs].bounds()
+            gxmin, gymin, gxmax, gymax = gs.bounds()
             xmin = min([xmin, gxmin])
             ymin = min([ymin, gymin])
             xmax = max([xmax, gxmax])
@@ -2269,7 +2288,6 @@ def get_bounds(geometry_set):
             print "DEV WARNING: Tried to get bounds of empty geometry."
 
     return [xmin, ymin, xmax, ymax]
-
 
 def arc(center, radius, start, stop, direction, steps_per_circ):
     """
