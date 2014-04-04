@@ -28,7 +28,7 @@ import simplejson as json
 #from matplotlib.pyplot import plot
 
 
-class Geometry:
+class Geometry(object):
     def __init__(self):
         # Units (in or mm)
         self.units = 'in'

@@ -9,6 +9,7 @@
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GLib
+from gi.repository import GObject
 
 from camlib import *
 
@@ -16,7 +17,7 @@ from camlib import *
 ########################################
 ##            FlatCAMObj              ##
 ########################################
-class FlatCAMObj:
+class FlatCAMObj(GObject.GObject, object):
     """
     Base type of objects handled in FlatCAM. These become interactive
     in the GUI, can be plotted, and their options can be modified
@@ -28,6 +29,8 @@ class FlatCAMObj:
     app = None
 
     def __init__(self, name):
+        GObject.GObject.__init__(self)
+
         self.options = {"name": name}
         self.form_kinds = {"name": "entry_text"}  # Kind of form element for each option
         self.radios = {}  # Name value pairs for radio sets

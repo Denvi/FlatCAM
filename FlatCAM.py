@@ -1956,7 +1956,7 @@ class App:
         self.setup_component_editor()
 
         # Clear list
-        self.collection.build_list()
+        #self.collection.build_list()
 
         # Clear project filename
         self.project_filename = None
@@ -2775,7 +2775,7 @@ class ObjectCollection:
         "geometry": FlatCAMGeometry
     }
 
-    icons = {
+    icon_files = {
         "gerber": "share/flatcam_icon16.png",
         "excellon": "share/drill16.png",
         "cncjob": "share/cnc16.png",
@@ -2784,40 +2784,57 @@ class ObjectCollection:
 
     def __init__(self):
 
-        ### Data
-        # List of FLatCAMObject's
-        self.collection = []
-        self.active = None
+        ### Icons for the list view
+        self.icons = {}
+        for kind in ObjectCollection.icon_files:
+            self.icons[kind] = GdkPixbuf.Pixbuf.new_from_file(ObjectCollection.icon_files[kind])
 
         ### GUI List components
         ## Model
-        self.store = Gtk.ListStore(GdkPixbuf.Pixbuf, str)
+        self.store = Gtk.ListStore(FlatCAMObj)
 
         ## View
         self.view = Gtk.TreeView(model=self.store)
-        self.view.connect("row_activated", self.on_row_activated)
+        #self.view.connect("row_activated", self.on_row_activated)
         self.tree_selection = self.view.get_selection()
         self.change_subscription = self.tree_selection.connect("changed", self.on_list_selection_change)
 
-        # Renderers
+        ## Renderers
+        # Icon
         renderer_pixbuf = Gtk.CellRendererPixbuf()
-        column_pixbuf = Gtk.TreeViewColumn("Type", renderer_pixbuf, pixbuf=0)
+        column_pixbuf = Gtk.TreeViewColumn("Type", renderer_pixbuf)
+
+        def _set_cell_icon(column, cell, model, it, data):
+            obj = model.get_value(it, 0)
+            cell.set_property('pixbuf', self.icons[obj.kind])
+
+        column_pixbuf.set_cell_data_func(renderer_pixbuf, _set_cell_icon)
         self.view.append_column(column_pixbuf)
 
+        # Name
         renderer_text = Gtk.CellRendererText()
-        column_text = Gtk.TreeViewColumn("Name", renderer_text, text=1)
+        column_text = Gtk.TreeViewColumn("Name", renderer_text)
+
+        def _set_cell_text(column, cell, model, it, data):
+            obj = model.get_value(it, 0)
+            cell.set_property('text', obj.options["name"])
+
+        column_text.set_cell_data_func(renderer_text, _set_cell_text)
         self.view.append_column(column_text)
 
     def delete_all(self):
         print "OC.delete_all()"
-        self.collection = []
-        self.active = None
+        # self.collection = []
+        # self.active = None
+        self.store.clear()
 
     def delete_active(self):
         print "OC.delete_active()"
-        self.collection.remove(self.active)
-        self.active = None
-        self.build_list()
+        try:
+            model, treeiter = self.tree_selection.get_selected()
+            self.store.remove(treeiter)
+        except:
+            pass
 
     def on_row_activated(self, *args):
         print "OC.on_row_activated()"
@@ -2825,84 +2842,102 @@ class ObjectCollection:
 
     def on_list_selection_change(self, selection):
         print "OC.on_list_selection_change()"
-        model, treeiter = selection.get_selected()
-
         try:
-            self.get_active().read_form()
-        except:
-            pass
-
-        try:
-            self.set_active(model[treeiter][1])
             self.get_active().build_ui()
         except:
             pass
 
+        # TODO: Now we don't have a reference to the previously
+        # TODO: active, so cannot read form.
+
     def set_active(self, name):
         print "OC.set_active()"
-        for obj in self.collection:
-            if obj.options['name'] == name:
-                self.active = obj
-                return self.active
-        return None
+        self.set_list_selection(name)
 
     def get_active(self):
         print "OC.get_active()"
-        return self.active
+        try:
+            model, treeiter = self.tree_selection.get_selected()
+            return model[treeiter][0]
+        except ValueError:
+            return None
 
     def set_list_selection(self, name):
         print "OC.set_list_selection()"
         iterat = self.store.get_iter_first()
-        while iterat is not None and self.store[iterat][1] != name:
+        while iterat is not None and self.store[iterat][0].options["name"] != name:
             iterat = self.store.iter_next(iterat)
-        self.tree_selection.unselect_all()
         self.tree_selection.select_iter(iterat)
 
     def append(self, obj, active=False):
         print "OC.append()"
-        if obj not in self.collection:
-            self.collection.append(obj)
-            self.build_list()
 
+        self.store.append([obj])
         if active:
             self.set_list_selection(obj.options["name"])
 
     def get_names(self):
         print "OC.get_names()"
-        return [o.options["name"] for o in self.collection]
-
-    def build_list(self):
-        print "OC.build_list()"
-        self.store.clear()
-        for obj in self.collection:
-            icon = GdkPixbuf.Pixbuf.new_from_file(ObjectCollection.icons[obj.kind])
-            self.store.append([icon, obj.options["name"]])
+        names = []
+        iterat = self.store.get_iter_first()
+        while iterat is not None:
+            obj = self.store[iterat][0]
+            names.append(obj.options["name"])
+            iterat = self.store.iter_next(iterat)
+        return names
 
     def get_bounds(self):
         print "OC.get_bounds()"
-        return get_bounds(self.collection)
+
+        # TODO: Move the operation out of here.
+
+        xmin = Inf
+        ymin = Inf
+        xmax = -Inf
+        ymax = -Inf
+
+        iterat = self.store.get_iter_first()
+        while iterat is not None:
+            obj = self.store[iterat][0]
+            try:
+                gxmin, gymin, gxmax, gymax = obj.bounds()
+                xmin = min([xmin, gxmin])
+                ymin = min([ymin, gymin])
+                xmax = max([xmax, gxmax])
+                ymax = max([ymax, gymax])
+            except:
+                print "DEV WARNING: Tried to get bounds of empty geometry."
+            iterat = self.store.iter_next(iterat)
+        return [xmin, ymin, xmax, ymax]
 
     def get_list(self):
-        return self.collection
+        collection_list = []
+        iterat = self.store.get_iter_first()
+        while iterat is not None:
+            obj = self.store[iterat][0]
+            collection_list.append(obj)
+            iterat = self.store.iter_next(iterat)
+        return collection_list
 
     def get_by_name(self, name):
-        for obj in self.collection:
+        iterat = self.store.get_iter_first()
+        while iterat is not None:
+            obj = self.store[iterat][0]
             if obj.options["name"] == name:
                 return obj
+            iterat = self.store.iter_next(iterat)
         return None
 
     def change_name(self, old_name, new_name):
-        self.tree_selection.disconnect(self.change_subscription)
-
-        for obj in self.collection:
+        iterat = self.store.get_iter_first()
+        while iterat is not None:
+            obj = self.store[iterat][0]
             if obj.options["name"] == old_name:
                 obj.options["name"] = new_name
-                self.build_list()
-                self.tree_selection.connect("changed", self.on_list_selection_change)
-                if obj == self.get_active():
-                    self.set_active(new_name)
-                    self.set_list_selection(new_name)
-                break
+                self.store.row_changed(0, iterat)
+                return True
+            iterat = self.store.iter_next(iterat)
+        return False
 
 
 app = App()
