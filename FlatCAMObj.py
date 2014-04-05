@@ -38,6 +38,9 @@ class FlatCAMObj(GObject.GObject, object):
         self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
 
+    def __str__(self):
+        return "<FlatCAMObj({:12s}): {:20s}>".format(self.kind, self.options["name"])
+
     def setup_axes(self, figure):
         """
         1) Creates axes if they don't exist. 2) Clears axes. 3) Attaches

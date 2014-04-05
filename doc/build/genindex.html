@@ -99,11 +99,14 @@
 <li class="toctree-l1"><a class="reference internal" href="app.html">FlatCAM Application</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="app.html#app">App</a></li>
 <li class="toctree-l2"><a class="reference internal" href="app.html#plotcanvas">PlotCanvas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#objectcollection">ObjectCollection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#measurement">Measurement</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="devman.html">FlatCAM Developer Manual</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="devman.html#options">Options</a></li>
 <li class="toctree-l2"><a class="reference internal" href="devman.html#serialization">Serialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#geometry-processing">Geometry Processing</a></li>
 </ul>
 </li>
 </ul>
@@ -187,6 +190,12 @@
   <dt><a href="camlib.html#camlib.ApertureMacro.append">append() (camlib.ApertureMacro method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="app.html#FlatCAM.ObjectCollection.append">(FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="app.html#FlatCAM.PlotCanvas.auto_adjust_axes">auto_adjust_axes() (FlatCAM.PlotCanvas method)</a>
   </dt>
@@ -208,10 +217,6 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="app.html#FlatCAM.App.build_list">build_list() (FlatCAM.App method)</a>
-  </dt>
-
-      
   <dt><a href="flatcamobj.html#FlatCAM.FlatCAMObj.build_ui">build_ui() (FlatCAM.FlatCAMObj method)</a>
   </dt>
 
@@ -226,6 +231,10 @@
   </dt>
 
       
+  <dt><a href="app.html#FlatCAM.ObjectCollection.change_name">change_name() (FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      
   <dt><a href="app.html#FlatCAM.PlotCanvas.clear">clear() (FlatCAM.PlotCanvas method)</a>
   </dt>
 
@@ -233,12 +242,12 @@
   <dt><a href="camlib.html#camlib.Geometry.clear_polygon">clear_polygon() (camlib.Geometry method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="camlib.html#camlib.CNCjob">CNCjob (class in camlib)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="app.html#FlatCAM.PlotCanvas.connect">connect() (FlatCAM.PlotCanvas method)</a>
   </dt>
@@ -279,6 +288,10 @@
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="app.html#FlatCAM.App.disable_plots">disable_plots() (FlatCAM.App method)</a>
+  </dt>
+
       
   <dt><a href="camlib.html#camlib.Gerber.do_flashes">do_flashes() (camlib.Gerber method)</a>
   </dt>
@@ -342,9 +355,15 @@
   </dt>
 
       
-  <dt><a href="camlib.html#camlib.Geometry.from_dict">from_dict() (camlib.Geometry method)</a>
+  <dt><a href="camlib.html#camlib.ApertureMacro.from_dict">from_dict() (camlib.ApertureMacro method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="camlib.html#camlib.Geometry.from_dict">(camlib.Geometry method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -375,14 +394,18 @@
   <dt><a href="camlib.html#camlib.Gerber">Gerber (class in camlib)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="camlib.html#camlib.Gerber.get_bounding_box">get_bounding_box() (camlib.Gerber method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="app.html#FlatCAM.App.get_current">get_current() (FlatCAM.App method)</a>
+  <dt><a href="app.html#FlatCAM.ObjectCollection.get_bounds">get_bounds() (FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.ObjectCollection.get_by_name">get_by_name() (FlatCAM.ObjectCollection method)</a>
   </dt>
 
       
@@ -391,6 +414,14 @@
 
       
   <dt><a href="app.html#FlatCAM.App.get_eval">get_eval() (FlatCAM.App method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.ObjectCollection.get_list">get_list() (FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.ObjectCollection.get_names">get_names() (FlatCAM.ObjectCollection method)</a>
   </dt>
 
       
@@ -463,18 +494,22 @@
   <dt><a href="camlib.html#camlib.ApertureMacro.make_outline">make_outline() (camlib.ApertureMacro static method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="camlib.html#camlib.ApertureMacro.make_polygon">make_polygon() (camlib.ApertureMacro static method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="camlib.html#camlib.ApertureMacro.make_thermal">make_thermal() (camlib.ApertureMacro static method)</a>
   </dt>
 
       
   <dt><a href="camlib.html#camlib.ApertureMacro.make_vectorline">make_vectorline() (camlib.ApertureMacro static method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.Measurement">Measurement (class in FlatCAM)</a>
   </dt>
 
       
@@ -489,6 +524,10 @@
       </dl></dd>
       
   <dt><a href="app.html#FlatCAM.PlotCanvas.mpl_connect">mpl_connect() (FlatCAM.PlotCanvas method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.PlotCanvas.mpl_disconnect">mpl_disconnect() (FlatCAM.PlotCanvas method)</a>
   </dt>
 
   </dl></td>
@@ -513,6 +552,10 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="app.html#FlatCAM.ObjectCollection">ObjectCollection (class in FlatCAM)</a>
+  </dt>
+
       
   <dt><a href="camlib.html#camlib.CNCjob.offset">offset() (camlib.CNCjob method)</a>
   </dt>
@@ -647,12 +690,12 @@
   <dt><a href="app.html#FlatCAM.App.on_generate_isolation">on_generate_isolation() (FlatCAM.App method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="app.html#FlatCAM.App.on_generate_paintarea">on_generate_paintarea() (FlatCAM.App method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="app.html#FlatCAM.App.on_gerber_generate_cutout">on_gerber_generate_cutout() (FlatCAM.App method)</a>
   </dt>
@@ -662,7 +705,19 @@
   </dt>
 
       
+  <dt><a href="app.html#FlatCAM.PlotCanvas.on_key_down">on_key_down() (FlatCAM.PlotCanvas method)</a>
+  </dt>
+
+      
   <dt><a href="app.html#FlatCAM.App.on_key_over_plot">on_key_over_plot() (FlatCAM.App method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.PlotCanvas.on_key_up">on_key_up() (FlatCAM.PlotCanvas method)</a>
+  </dt>
+
+      
+  <dt><a href="app.html#FlatCAM.ObjectCollection.on_list_selection_change">on_list_selection_change() (FlatCAM.ObjectCollection method)</a>
   </dt>
 
       
@@ -713,6 +768,12 @@
   <dt><a href="app.html#FlatCAM.App.on_row_activated">on_row_activated() (FlatCAM.App method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="app.html#FlatCAM.ObjectCollection.on_row_activated">(FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="app.html#FlatCAM.App.on_scale_object">on_scale_object() (FlatCAM.App method)</a>
   </dt>
@@ -735,10 +796,6 @@
 
       
   <dt><a href="app.html#FlatCAM.App.on_tools_doublesided">on_tools_doublesided() (FlatCAM.App method)</a>
-  </dt>
-
-      
-  <dt><a href="app.html#FlatCAM.App.on_tree_selection_changed">on_tree_selection_changed() (FlatCAM.App method)</a>
   </dt>
 
       
@@ -896,6 +953,10 @@
   </dt>
 
       
+  <dt><a href="app.html#FlatCAM.ObjectCollection.set_active">set_active() (FlatCAM.ObjectCollection method)</a>
+  </dt>
+
+      
   <dt><a href="app.html#FlatCAM.App.set_form_item">set_form_item() (FlatCAM.App method)</a>
   </dt>
 
@@ -906,15 +967,15 @@
 
       </dl></dd>
       
-  <dt><a href="app.html#FlatCAM.App.set_list_selection">set_list_selection() (FlatCAM.App method)</a>
-  </dt>
-
-      
-  <dt><a href="app.html#FlatCAM.App.set_progress_bar">set_progress_bar() (FlatCAM.App method)</a>
+  <dt><a href="app.html#FlatCAM.ObjectCollection.set_list_selection">set_list_selection() (FlatCAM.ObjectCollection method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="app.html#FlatCAM.App.set_progress_bar">set_progress_bar() (FlatCAM.App method)</a>
+  </dt>
+
       
   <dt><a href="flatcamobj.html#FlatCAM.FlatCAMObj.setup_axes">setup_axes() (FlatCAM.FlatCAMObj method)</a>
   </dt>
@@ -928,10 +989,6 @@
   </dt>
 
       
-  <dt><a href="app.html#FlatCAM.App.setup_project_list">setup_project_list() (FlatCAM.App method)</a>
-  </dt>
-
-      
   <dt><a href="camlib.html#camlib.Geometry.size">size() (camlib.Geometry method)</a>
   </dt>
 
@@ -942,9 +999,15 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="camlib.html#camlib.Geometry.to_dict">to_dict() (camlib.Geometry method)</a>
+  <dt><a href="camlib.html#camlib.ApertureMacro.to_dict">to_dict() (camlib.ApertureMacro method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="camlib.html#camlib.Geometry.to_dict">(camlib.Geometry method)</a>
+  </dt>
+
+      </dl></dd>
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       

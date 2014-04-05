@@ -100,10 +100,14 @@
 <li class="toctree-l1"><a class="reference internal" href="app.html">FlatCAM Application</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="app.html#app">App</a></li>
 <li class="toctree-l2"><a class="reference internal" href="app.html#plotcanvas">PlotCanvas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#objectcollection">ObjectCollection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#measurement">Measurement</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="devman.html">FlatCAM Developer Manual</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="devman.html#options">Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#serialization">Serialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#geometry-processing">Geometry Processing</a></li>
 </ul>
 </li>
 </ul>
@@ -523,7 +527,19 @@ box in both positive and negative, x and y axes.</li>
 <dl class="method">
 <dt id="camlib.Gerber.mirror">
 <tt class="descname">mirror</tt><big>(</big><em>axis</em>, <em>point</em><big>)</big><a class="headerlink" href="#camlib.Gerber.mirror" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
+<dd><p>Mirrors the object around a specified axis passign through
+the given point. What is affected:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">solid_geometry</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
+</ul>
+<p>NOTE:
+Does not modify the data used to create these elements. If these
+are recreated, the scaling will be lost. This behavior was modified
+because of the complexity reached in this class.</p>
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
@@ -546,12 +562,15 @@ box in both positive and negative, x and y axes.</li>
 <dd><p>Offsets the objects&#8217; geometry on the XY plane by a given vector.
 These are:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">solid_geometry</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
 </ul>
-<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
-are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.</p>
+<p>NOTE:
+Does not modify the data used to create these elements. If these
+are recreated, the scaling will be lost. This behavior was modified
+because of the complexity reached in this class.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -607,16 +626,24 @@ one line of the source file.</td>
 <dd><p>Scales the objects&#8217; geometry on the XY plane by a given factor.
 These are:</p>
 <ul class="simple">
-<li><tt class="docutils literal"><span class="pre">apertures</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">buffered_paths</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">flash_geometry</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">solid_geometry</span></tt></li>
 <li><tt class="docutils literal"><span class="pre">regions</span></tt></li>
-<li><tt class="docutils literal"><span class="pre">flashes</span></tt></li>
 </ul>
-<p>Then <tt class="docutils literal"><span class="pre">buffered_paths</span></tt>, <tt class="docutils literal"><span class="pre">flash_geometry</span></tt> and <tt class="docutils literal"><span class="pre">solid_geometry</span></tt>
-are re-created with <tt class="docutils literal"><span class="pre">self.create_geometry()</span></tt>.
-:param factor: Number by which to scale.
-:type factor: float
-:rtype : None</p>
+<p>NOTE:
+Does not modify the data used to create these elements. If these
+are recreated, the scaling will be lost. This behavior was modified
+because of the complexity reached in this class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale.</td>
+</tr>
+</tbody>
+</table>
+<p>:rtype : None</p>
 </dd></dl>
 
 </dd></dl>
@@ -663,6 +690,23 @@ list of length n.</p>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.ApertureMacro.from_dict">
+<tt class="descname">from_dict</tt><big>(</big><em>d</em><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populates the object from a serial representation created
+with <tt class="docutils literal"><span class="pre">self.to_dict()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>d</strong> &#8211; Serial representation of an ApertureMacro object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
 </tr>
 </tbody>
 </table>
@@ -828,6 +872,23 @@ are stored in <tt class="docutils literal"><span class="pre">self.primitives</sp
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="camlib.ApertureMacro.to_dict">
+<tt class="descname">to_dict</tt><big>(</big><big>)</big><a class="headerlink" href="#camlib.ApertureMacro.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the object in a serializable form. Only the name and
+raw are required.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Dictionary representing the object. JSON ready.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
 </tr>
 </tbody>
 </table>

@@ -14,3 +14,15 @@ PlotCanvas
 
 .. autoclass:: PlotCanvas
     :members:
+
+ObjectCollection
+~~~~~~~~~~~~~~~~
+
+.. autoclass:: ObjectCollection
+    :members:
+
+Measurement
+~~~~~~~~~~~
+
+.. autoclass:: Measurement
+    :members:

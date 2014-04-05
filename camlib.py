@@ -1485,7 +1485,11 @@ class Excellon(Geometry):
 
         # Tool definition/parameters (?= is look-ahead
         # NOTE: This might be an overkill!
-        self.toolset_re = re.compile(r'^T(0?\d|\d\d)(?=.*C(\d*\.?\d*))?' +
+        # self.toolset_re = re.compile(r'^T(0?\d|\d\d)(?=.*C(\d*\.?\d*))?' +
+        #                              r'(?=.*F(\d*\.?\d*))?(?=.*S(\d*\.?\d*))?' +
+        #                              r'(?=.*B(\d*\.?\d*))?(?=.*H(\d*\.?\d*))?' +
+        #                              r'(?=.*Z([-\+]?\d*\.?\d*))?[CFSBHT]')
+        self.toolset_re = re.compile(r'^T(\d+)(?=.*C(\d*\.?\d*))?' +
                                      r'(?=.*F(\d*\.?\d*))?(?=.*S(\d*\.?\d*))?' +
                                      r'(?=.*B(\d*\.?\d*))?(?=.*H(\d*\.?\d*))?' +
                                      r'(?=.*Z([-\+]?\d*\.?\d*))?[CFSBHT]')
@@ -1494,7 +1498,8 @@ class Excellon(Geometry):
         # Can have additional data after tool number but
         # is ignored if present in the header.
         # Warning: This will match toolset_re too.
-        self.toolsel_re = re.compile(r'^T((?:\d\d)|(?:\d))')
+        # self.toolsel_re = re.compile(r'^T((?:\d\d)|(?:\d))')
+        self.toolsel_re = re.compile(r'^T(\d+)')
 
         # Comment
         self.comm_re = re.compile(r'^;(.*)$')
