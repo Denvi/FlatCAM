@@ -1,0 +1,1894 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>FlatCAM Application &mdash; Cirkuix 0.5 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'0.5',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="Cirkuix 0.5 documentation" href="index.html"/>
+        <link rel="next" title="FlatCAM Developer Manual" href="devman.html"/>
+        <link rel="prev" title="FlatCAM Objects" href="flatcamobj.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="index.html" class="icon icon-home"> Cirkuix</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camlib.html">Camlib</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#gerber">Gerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#aperturemacro">ApertureMacro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#excellon">Excellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#cncjob">CNCJob</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamobj.html">FlatCAM Objects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamobj">FlatCAMObj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgerber">FlatCAMGerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamexcellon">FlatCAMExcellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamcncjob">FlatCAMCNCjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgeometry">FlatCAMGeometry</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">FlatCAM Application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#app">App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plotcanvas">PlotCanvas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#objectcollection">ObjectCollection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#measurement">Measurement</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="devman.html">FlatCAM Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#options">Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#serialization">Serialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="devman.html#geometry-processing">Geometry Processing</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+        <a href="index.html">Cirkuix</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>FlatCAM Application</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/app.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="module-FlatCAM">
+<span id="flatcam-application"></span><h1>FlatCAM Application<a class="headerlink" href="#module-FlatCAM" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="app">
+<h2>App<a class="headerlink" href="#app" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="FlatCAM.App">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">App</tt><a class="headerlink" href="#FlatCAM.App" title="Permalink to this definition">¶</a></dt>
+<dd><p>The main application class. The constructor starts the GUI.</p>
+<dl class="method">
+<dt id="FlatCAM.App.disable_plots">
+<tt class="descname">disable_plots</tt><big>(</big><em>except_current=False</em><big>)</big><a class="headerlink" href="#FlatCAM.App.disable_plots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disables all plots with exception of the current object if specified.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>except_current</strong> &#8211; Wether to skip the current object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Rtype except_current:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body">boolean</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.file_chooser_action">
+<tt class="descname">file_chooser_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#FlatCAM.App.file_chooser_action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens the file chooser and runs on_success on a separate thread
+upon completion of valid file choice.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>on_success</strong> (<em>func</em>) &#8211; A function to run upon completion of a valid file
+selection. Takes 2 parameters: The app instance and the filename.
+Note that it is run on a separate thread, therefore it must take the
+appropriate precautions  when accessing shared resources.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.file_chooser_save_action">
+<tt class="descname">file_chooser_save_action</tt><big>(</big><em>on_success</em><big>)</big><a class="headerlink" href="#FlatCAM.App.file_chooser_save_action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens the file chooser and runs on_success upon completion of valid file choice.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>on_success</strong> &#8211; A function to run upon selection of a filename. Takes 2
+parameters: The instance of the application (App) and the chosen filename. This
+gets run immediately in the same thread.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.get_eval">
+<tt class="descname">get_eval</tt><big>(</big><em>widget_name</em><big>)</big><a class="headerlink" href="#FlatCAM.App.get_eval" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs eval() on the on the text entry of name &#8216;widget_name&#8217;
+and returns the results.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget_name</strong> (<em>str</em>) &#8211; Name of Gtk.Entry</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Depends on contents of the entry text.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.get_radio_value">
+<tt class="descname">get_radio_value</tt><big>(</big><em>radio_set</em><big>)</big><a class="headerlink" href="#FlatCAM.App.get_radio_value" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the radio_set[key] of the radiobutton
+whose name is key is active.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>radio_set</strong> (<em>dict</em>) &#8211; A dictionary containing widget_name: value pairs.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">radio_set[key]</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.info">
+<tt class="descname">info</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#FlatCAM.App.info" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show text on the status bar. This method is thread safe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>text</strong> (<em>str</em>) &#8211; Text to display.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.load_defaults">
+<tt class="descname">load_defaults</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.load_defaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the aplication&#8217;s default settings from defaults.json into
+<tt class="docutils literal"><span class="pre">self.defaults</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.new_object">
+<tt class="descname">new_object</tt><big>(</big><em>kind</em>, <em>name</em>, <em>initialize</em><big>)</big><a class="headerlink" href="#FlatCAM.App.new_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a new specalized FlatCAMObj and attaches it to the application,
+this is, updates the GUI accordingly, any other records and plots it.
+This method is thread-safe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>kind</strong> (<em>str</em>) &#8211; The kind of object to create. One of &#8216;gerber&#8217;,
+&#8216;excellon&#8217;, &#8216;cncjob&#8217; and &#8216;geometry&#8217;.</li>
+<li><strong>name</strong> (<em>str</em>) &#8211; Name for the object.</li>
+<li><strong>initialize</strong> (<em>function</em>) &#8211; Function to run after creation of the object
+but before it is attached to the application. The function is
+called with 2 parameters: the new object and the App instance.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">None</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_about">
+<tt class="descname">on_about</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_about" title="Permalink to this definition">¶</a></dt>
+<dd><p>Opens the &#8216;About&#8217; dialog box.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_activate_name">
+<tt class="descname">on_activate_name</tt><big>(</big><em>entry</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_activate_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hitting &#8216;Enter&#8217; after changing the name of an item
+updates the item dictionary and re-builds the item list.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>entry</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_canvas_configure">
+<tt class="descname">on_canvas_configure</tt><big>(</big><em>widget</em>, <em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_canvas_configure" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called whenever the canvas changes size. The axes are updated such
+as to use the whole canvas.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>widget</strong> &#8211; Ignored.</li>
+<li><strong>event</strong> &#8211; Ignored.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_cb_plot_toggled">
+<tt class="descname">on_cb_plot_toggled</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_cb_plot_toggled" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for toggling the &#8220;Plot&#8221; checkbox. Re-plots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_clear_plots">
+<tt class="descname">on_clear_plots</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_clear_plots" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for toolbar button. Clears all plots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_click_over_plot">
+<tt class="descname">on_click_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_click_over_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the mouse click event over the plot. This event is generated
+by the Matplotlib backend and has been registered in <tt class="docutils literal"><span class="pre">self.__init__()</span></tt>.
+For details, see: <a class="reference external" href="http://matplotlib.org/users/event_handling.html">http://matplotlib.org/users/event_handling.html</a></p>
+<p>Default actions are:</p>
+<ul class="simple">
+<li>Copy coordinates to clipboard. Ex.: (65.5473, -13.2679)</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Contains information about the event, like which button
+was clicked, the pixel coordinates and the axes coordinates.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_closewindow">
+<tt class="descname">on_closewindow</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_closewindow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for closing the main window.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Whatever is passed by the event. Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_cncjob_exportgcode">
+<tt class="descname">on_cncjob_exportgcode</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_cncjob_exportgcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called from button on CNCjob form to save the G-Code from the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_create_aligndrill">
+<tt class="descname">on_create_aligndrill</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_create_aligndrill" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates alignment holes Excellon object. Creates mirror duplicates
+of the specified holes around the specified axis.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_create_mirror">
+<tt class="descname">on_create_mirror</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_create_mirror" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a mirror image of an object to be used as a bottom layer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_delete">
+<tt class="descname">on_delete</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_delete" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete the currently selected FlatCAMObj.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called. Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_entry_eval_activate">
+<tt class="descname">on_entry_eval_activate</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_entry_eval_activate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when an entry is activated (eg. by hitting enter) if
+set to do so. Its text is eval()&#8217;d and set to the returned value.
+The current object is updated.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_eval_update">
+<tt class="descname">on_eval_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_eval_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Modifies the content of a Gtk.Entry by running
+eval() on its contents and puting it back as a
+string.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_excellon_tool_choose">
+<tt class="descname">on_excellon_tool_choose</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_excellon_tool_choose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Excellon form to open up a window for
+selecting tools.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_new">
+<tt class="descname">on_file_new</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_new" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;New. Returns the application to its
+startup state. This method is thread-safe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Whatever is passed by the event. Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_openproject">
+<tt class="descname">on_file_openproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_openproject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Open Project. Opens a file chooser and calls
+<tt class="docutils literal"><span class="pre">self.open_project()</span></tt> after successful selection of a filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_savedefaults">
+<tt class="descname">on_file_savedefaults</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_savedefaults" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Defaults. Saves application default options
+<tt class="docutils literal"><span class="pre">self.defaults</span></tt> to defaults.json.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_saveproject">
+<tt class="descname">on_file_saveproject</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveproject" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project. Saves the project to
+<tt class="docutils literal"><span class="pre">self.project_filename</span></tt> or calls <tt class="docutils literal"><span class="pre">self.on_file_saveprojectas()</span></tt>
+if set to None. The project is saved by calling <tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_saveprojectas">
+<tt class="descname">on_file_saveprojectas</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveprojectas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project As... Opens a file
+chooser and saves the project to the given file via
+<tt class="docutils literal"><span class="pre">self.save_project()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_file_saveprojectcopy">
+<tt class="descname">on_file_saveprojectcopy</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_file_saveprojectcopy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Save Project Copy... Opens a file
+chooser and saves the project to the given file via
+<tt class="docutils literal"><span class="pre">self.save_project</span></tt>. It does not update <tt class="docutils literal"><span class="pre">self.project_filename</span></tt> so
+subsequent save requests are done on the previous known filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_fileopenexcellon">
+<tt class="descname">on_fileopenexcellon</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopenexcellon" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Open Excellon. Defines a function that is then passed
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMExcellon object
+and updates the progress bar throughout the process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignore</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_fileopengcode">
+<tt class="descname">on_fileopengcode</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopengcode" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Open G-Code. Defines a function that is then passed
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMCNCjob object
+and updates the progress bar throughout the process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignore</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_fileopengerber">
+<tt class="descname">on_fileopengerber</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_fileopengerber" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Open Gerber. Defines a function that is then passed
+to <tt class="docutils literal"><span class="pre">self.file_chooser_action()</span></tt>. It requests the creation of a FlatCAMGerber object
+and updates the progress bar throughout the process.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignore</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_filequit">
+<tt class="descname">on_filequit</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_filequit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item File-&gt;Quit. Closes the application.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Whatever is passed by the event. Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_generate_cncjob">
+<tt class="descname">on_generate_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_cncjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on geometry form to generate CNC job.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_generate_excellon_cncjob">
+<tt class="descname">on_generate_excellon_cncjob</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_excellon_cncjob" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button active/click on Excellon form to
+create a CNC Job for the Excellon file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_generate_gerber_bounding_box">
+<tt class="descname">on_generate_gerber_bounding_box</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_gerber_bounding_box" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for request from the Gerber form to generate a bounding box for the
+geometry in the object. Creates a FlatCAMGeometry with the bounding box.
+The box can have rounded corners if specified in the form.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_generate_isolation">
+<tt class="descname">on_generate_isolation</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_isolation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create isolation routing geometry.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_generate_paintarea">
+<tt class="descname">on_generate_paintarea</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_generate_paintarea" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on geometry form.
+Subscribes to the &#8220;Click on plot&#8221; event and continues
+after the click. Finds the polygon containing
+the clicked point and runs clear_poly() on it, resulting
+in a new FlatCAMGeometry object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The  widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_gerber_generate_cutout">
+<tt class="descname">on_gerber_generate_cutout</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_gerber_generate_cutout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create geometry with lines
+for cutting off the board.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_gerber_generate_noncopper">
+<tt class="descname">on_gerber_generate_noncopper</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_gerber_generate_noncopper" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on Gerber form to create a geometry object
+with polygons covering the area without copper or negative of the
+Gerber.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_key_over_plot">
+<tt class="descname">on_key_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_key_over_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the key pressed event when the canvas is focused. Keyboard
+shortcuts are handled here. So far, these are the shortcuts:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="81%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Action</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>&#8216;1&#8217;</td>
+<td>Zoom-fit. Fits the axes limits to the data.</td>
+</tr>
+<tr class="row-odd"><td>&#8216;2&#8217;</td>
+<td>Zoom-out.</td>
+</tr>
+<tr class="row-even"><td>&#8216;3&#8217;</td>
+<td>Zoom-in.</td>
+</tr>
+<tr class="row-odd"><td>&#8216;m&#8217;</td>
+<td>Toggle on-off the measuring tool.</td>
+</tr>
+</tbody>
+</table>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_mouse_move_over_plot">
+<tt class="descname">on_mouse_move_over_plot</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_mouse_move_over_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the mouse motion event over the plot. This event is generated
+by the Matplotlib backend and has been registered in <tt class="docutils literal"><span class="pre">self.__init__()</span></tt>.
+For details, see: <a class="reference external" href="http://matplotlib.org/users/event_handling.html">http://matplotlib.org/users/event_handling.html</a></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Contains information about the event.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_offset_object">
+<tt class="descname">on_offset_object</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_offset_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Offsets the object&#8217;s geometry by the vector specified
+in the form. Re-plots.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_app2object">
+<tt class="descname">on_options_app2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_app2object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;App=&gt;Object. Copies options
+from application defaults to the currently selected object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_app2project">
+<tt class="descname">on_options_app2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_app2project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;App=&gt;Project. Copies options
+from application defaults to project defaults.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_combo_change">
+<tt class="descname">on_options_combo_change</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_combo_change" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the combo box to choose between application defaults and
+project option changes value. The corresponding variables are
+copied to the UI.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called. Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_object2app">
+<tt class="descname">on_options_object2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_object2app" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;Object=&gt;App. Copies options
+from the currently selected object to application defaults.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_object2project">
+<tt class="descname">on_options_object2project</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_object2project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;Object=&gt;Project. Copies options
+from the currently selected object to project defaults.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_project2app">
+<tt class="descname">on_options_project2app</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_project2app" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;Project=&gt;App. Copies options
+from project defaults to application defaults.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_project2object">
+<tt class="descname">on_options_project2object</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_project2object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for Options-&gt;Transfer Options-&gt;Project=&gt;Object. Copies options
+from project defaults to the currently selected object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_options_update">
+<tt class="descname">on_options_update</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_options_update" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called whenever a value in the options/defaults form changes.
+All values are updated. Can be inhibited by setting <tt class="docutils literal"><span class="pre">self.options_update_ignore</span> <span class="pre">=</span> <span class="pre">True</span></tt>,
+which may be necessary when updating the UI from code and not by the user.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called. Ignore.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_row_activated">
+<tt class="descname">on_row_activated</tt><big>(</big><em>widget</em>, <em>path</em>, <em>col</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_row_activated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for selection activation (Enter or double-click) on the Project list.
+Switches the notebook page to the object properties form. Calls
+<tt class="docutils literal"><span class="pre">self.notebook.set_current_page(1)</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>widget</strong> &#8211; Ignored.</li>
+<li><strong>path</strong> &#8211; Ignored.</li>
+<li><strong>col</strong> &#8211; Ignored.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_scale_object">
+<tt class="descname">on_scale_object</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_scale_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for request to change an objects geometry scale. The object
+is re-scaled and replotted.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_toggle_pointbox">
+<tt class="descname">on_toggle_pointbox</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toggle_pointbox" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for radio selection change between point and box in the
+Double-sided PCB tool. Updates the UI accordingly.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_toggle_units">
+<tt class="descname">on_toggle_units</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toggle_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for the Units radio-button change in the Options tab.
+Changes the application&#8217;s default units or the current project&#8217;s units.
+If changing the project&#8217;s units, the change propagates to all of
+the objects in the project.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_toolbar_replot">
+<tt class="descname">on_toolbar_replot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_toolbar_replot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for toolbar button. Re-plots all objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_tools_doublesided">
+<tt class="descname">on_tools_doublesided</tt><big>(</big><em>param</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_tools_doublesided" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for menu item Tools-&gt;Double Sided PCB Tool. Launches the
+tool placing its UI in the &#8220;Tool&#8221; tab in the notebook.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>param</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_update_plot">
+<tt class="descname">on_update_plot</tt><big>(</big><em>widget</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_update_plot" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for button on form for all kinds of objects.
+Re-plots the current object only.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>widget</strong> &#8211; The widget from which this was called. Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_zoom_fit">
+<tt class="descname">on_zoom_fit</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for zoom-out request. This can be either from the corresponding
+toolbar button or the &#8216;1&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.adjust_axes()</span></tt>
+with axes limits from the geometry bounds of all objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_zoom_in">
+<tt class="descname">on_zoom_in</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for zoom-in request. This can be either from the corresponding
+toolbar button or the &#8216;3&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.zoom()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.on_zoom_out">
+<tt class="descname">on_zoom_out</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.App.on_zoom_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for zoom-out request. This can be either from the corresponding
+toolbar button or the &#8216;2&#8217; key when the canvas is focused. Calls <tt class="docutils literal"><span class="pre">self.zoom()</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.open_project">
+<tt class="descname">open_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.App.open_project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a project from the specified file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; Name of the file from which to load.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.options2form">
+<tt class="descname">options2form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.options2form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the &#8216;Project Options&#8217; or &#8216;Application Defaults&#8217; form with values from
+<tt class="docutils literal"><span class="pre">self.options</span></tt> or <tt class="docutils literal"><span class="pre">self.defaults</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.plot_all">
+<tt class="descname">plot_all</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.plot_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Re-generates all plots from all objects.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.populate_objects_combo">
+<tt class="descname">populate_objects_combo</tt><big>(</big><em>combo</em><big>)</big><a class="headerlink" href="#FlatCAM.App.populate_objects_combo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Populates a Gtk.Comboboxtext with the list of the object in the project.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>combo</strong> (<em>str or Gtk.ComboBoxText</em>) &#8211; Name or instance of the comboboxtext.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.read_form">
+<tt class="descname">read_form</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.read_form" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the options form into self.defaults/self.options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.read_form_item">
+<tt class="descname">read_form_item</tt><big>(</big><em>name</em>, <em>dest</em><big>)</big><a class="headerlink" href="#FlatCAM.App.read_form_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads the value of a form item in the defaults/options form and
+saves it to the corresponding dictionary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the form item. A key in <tt class="docutils literal"><span class="pre">self.defaults</span></tt> or
+<tt class="docutils literal"><span class="pre">self.options</span></tt>.</li>
+<li><strong>dest</strong> (<em>dict</em>) &#8211; Dictionary to which to save the value.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.save_project">
+<tt class="descname">save_project</tt><big>(</big><em>filename</em><big>)</big><a class="headerlink" href="#FlatCAM.App.save_project" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the current project to the specified file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) &#8211; Name of the file in which to save.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.set_form_item">
+<tt class="descname">set_form_item</tt><big>(</big><em>name</em>, <em>value</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_form_item" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets a form item &#8216;name&#8217; in the GUI with the given &#8216;value&#8217;. The syntax of
+form names in the GUI is &lt;kind&gt;_app_&lt;name&gt;, where kind is one of: rb (radio button),
+cb (check button), entry_eval or entry_text (entry), combo (combo box). name is
+whatever name it&#8217;s been given. For self.defaults, name is a key in the dictionary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>name</strong> (<em>str</em>) &#8211; Name of the form field.</li>
+<li><strong>value</strong> (<em>Depends on field kind.</em>) &#8211; The value to set the form field to.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.set_progress_bar">
+<tt class="descname">set_progress_bar</tt><big>(</big><em>percentage</em>, <em>text=''</em><big>)</big><a class="headerlink" href="#FlatCAM.App.set_progress_bar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the application&#8217;s progress bar to a given frac_digits and text.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>percentage</strong> (<em>float</em>) &#8211; The frac_digits (0.0-1.0) of the progress.</li>
+<li><strong>text</strong> (<em>str</em>) &#8211; Text to display on the progress bar.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.setup_component_editor">
+<tt class="descname">setup_component_editor</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_component_editor" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initial configuration of the component editor. Creates
+a page titled &#8220;Selection&#8221; on the notebook on the left
+side of the main window.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.setup_obj_classes">
+<tt class="descname">setup_obj_classes</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.App.setup_obj_classes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets up application specifics on the FlatCAMObj class.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.App.versionCheck">
+<tt class="descname">versionCheck</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#FlatCAM.App.versionCheck" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checks for the latest version of the program. Alerts the
+user if theirs is outdated. This method is meant to be run
+in a saeparate thread.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="plotcanvas">
+<h2>PlotCanvas<a class="headerlink" href="#plotcanvas" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="FlatCAM.PlotCanvas">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">PlotCanvas</tt><big>(</big><em>container</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas" title="Permalink to this definition">¶</a></dt>
+<dd><p>Class handling the plotting area in the application.</p>
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.adjust_axes">
+<tt class="descname">adjust_axes</tt><big>(</big><em>xmin</em>, <em>ymin</em>, <em>xmax</em>, <em>ymax</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.adjust_axes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adjusts all axes while maintaining the use of the whole canvas
+and an aspect ratio to 1:1 between x and y axes. The parameters are an original
+request that will be modified to fit these restrictions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>xmin</strong> (<em>float</em>) &#8211; Requested minimum value for the X axis.</li>
+<li><strong>ymin</strong> (<em>float</em>) &#8211; Requested minimum value for the Y axis.</li>
+<li><strong>xmax</strong> (<em>float</em>) &#8211; Requested maximum value for the X axis.</li>
+<li><strong>ymax</strong> (<em>float</em>) &#8211; Requested maximum value for the Y axis.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.auto_adjust_axes">
+<tt class="descname">auto_adjust_axes</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.auto_adjust_axes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calls <tt class="docutils literal"><span class="pre">adjust_axes()</span></tt> using the extents of the base axes.</p>
+<p>:rtype : None
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.clear">
+<tt class="descname">clear</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.clear" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clears axes and figure.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.connect">
+<tt class="descname">connect</tt><big>(</big><em>event_name</em>, <em>callback</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attach an event handler to the canvas through the native GTK interface.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>event_name</strong> (<em>str</em>) &#8211; Name of the event</li>
+<li><strong>callback</strong> (<em>function</em>) &#8211; Function to call</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Nothing</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.mpl_connect">
+<tt class="descname">mpl_connect</tt><big>(</big><em>event_name</em>, <em>callback</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.mpl_connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attach an event handler to the canvas through the Matplotlib interface.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>event_name</strong> (<em>str</em>) &#8211; Name of the event</li>
+<li><strong>callback</strong> (<em>func</em>) &#8211; Function to call</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Connection id</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">int</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.mpl_disconnect">
+<tt class="descname">mpl_disconnect</tt><big>(</big><em>cid</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.mpl_disconnect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disconnect callback with the give id.
+:param cid: Callback id.
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.new_axes">
+<tt class="descname">new_axes</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.new_axes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates and returns an Axes object attached to this object&#8217;s Figure.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; Unique label for the axes.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Axes attached to the figure.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">Axes</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.on_key_down">
+<tt class="descname">on_key_down</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.on_key_down" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.on_key_up">
+<tt class="descname">on_key_up</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.on_key_up" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; </td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.on_mouse_move">
+<tt class="descname">on_mouse_move</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.on_mouse_move" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mouse movement event hadler.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> &#8211; Contains information about the event.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.on_scroll">
+<tt class="descname">on_scroll</tt><big>(</big><em>canvas</em>, <em>event</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.on_scroll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Scroll event handler.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>canvas</strong> &#8211; The widget generating the event. Ignored.</li>
+<li><strong>event</strong> &#8211; Event object containing the event information.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.PlotCanvas.zoom">
+<tt class="descname">zoom</tt><big>(</big><em>factor</em>, <em>center=None</em><big>)</big><a class="headerlink" href="#FlatCAM.PlotCanvas.zoom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Zooms the plot by factor around a given
+center point. Takes care of re-drawing.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>factor</strong> (<em>float</em>) &#8211; Number by which to scale the plot.</li>
+<li><strong>center</strong> (<em>list</em>) &#8211; Coordinates [x, y] of the point around which to scale the plot.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="objectcollection">
+<h2>ObjectCollection<a class="headerlink" href="#objectcollection" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="FlatCAM.ObjectCollection">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">ObjectCollection</tt><a class="headerlink" href="#FlatCAM.ObjectCollection" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="FlatCAM.ObjectCollection.append">
+<tt class="descname">append</tt><big>(</big><em>obj</em>, <em>active=False</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.append" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a FlatCAMObj the the collection. This method is thread-safe.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>obj</strong> (<em>FlatCAMObj</em>) &#8211; FlatCAMObj to append</li>
+<li><strong>active</strong> (<em>bool</em>) &#8211; If it is to become the active object after appending</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">None</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.change_name">
+<tt class="descname">change_name</tt><big>(</big><em>old_name</em>, <em>new_name</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.change_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes the name of <cite>FlatCAMObj</cite> named <cite>old_name</cite> to <cite>new_name</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>old_name</strong> (<em>str</em>) &#8211; Name of the object to change.</li>
+<li><strong>new_name</strong> (<em>str</em>) &#8211; New name.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">True if name change succeeded, False otherwise. Will fail
+if no object with <cite>old_name</cite> is found.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">bool</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.get_bounds">
+<tt class="descname">get_bounds</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.get_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Finds coordinates bounding all objects in the collection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">[xmin, ymin, xmax, ymax]</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.get_by_name">
+<tt class="descname">get_by_name</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.get_by_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetches the FlatCAMObj with the given <cite>name</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) &#8211; The name of the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">The requested object or None if no such object.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">FlatCAMObj or None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.get_list">
+<tt class="descname">get_list</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.get_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a list with all FlatCAMObj.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List with all FlatCAMObj.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.get_names">
+<tt class="descname">get_names</tt><big>(</big><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.get_names" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a list of the names of all objects in the collection.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of names.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.on_list_selection_change">
+<tt class="descname">on_list_selection_change</tt><big>(</big><em>selection</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.on_list_selection_change" title="Permalink to this definition">¶</a></dt>
+<dd><p>Callback for change in selection on the objects&#8217; list.
+Instructs the new selection to build the UI for its options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>selection</strong> &#8211; Ignored.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.on_row_activated">
+<tt class="descname">on_row_activated</tt><big>(</big><em>*args</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.on_row_activated" title="Permalink to this definition">¶</a></dt>
+<dd><p>Does nothing right now.
+:param args: Ignored.
+:return: None</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.set_active">
+<tt class="descname">set_active</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.set_active" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets an object as the active object in the program. Same
+as <cite>set_list_selection()</cite>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) &#8211; Name of the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="FlatCAM.ObjectCollection.set_list_selection">
+<tt class="descname">set_list_selection</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#FlatCAM.ObjectCollection.set_list_selection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets which object should be selected in the list.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> &#8211; Name of the object.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Rtype name:</th><td class="field-body">str</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="measurement">
+<h2>Measurement<a class="headerlink" href="#measurement" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="FlatCAM.Measurement">
+<em class="property">class </em><tt class="descclassname">FlatCAM.</tt><tt class="descname">Measurement</tt><big>(</big><em>container</em>, <em>plotcanvas</em>, <em>update=None</em><big>)</big><a class="headerlink" href="#FlatCAM.Measurement" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="devman.html" class="btn btn-neutral float-right" title="FlatCAM Developer Manual"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="flatcamobj.html" class="btn btn-neutral" title="FlatCAM Objects"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Juan Pablo Caram.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>

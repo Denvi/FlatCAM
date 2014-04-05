@@ -1,0 +1,231 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>FlatCAM Developer Manual &mdash; Cirkuix 0.5 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'0.5',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="Cirkuix 0.5 documentation" href="index.html"/>
+        <link rel="prev" title="FlatCAM Application" href="app.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        <a href="index.html" class="icon icon-home"> Cirkuix</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camlib.html">Camlib</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#gerber">Gerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#aperturemacro">ApertureMacro</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#excellon">Excellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camlib.html#cncjob">CNCJob</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamobj.html">FlatCAM Objects</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamobj">FlatCAMObj</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgerber">FlatCAMGerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamexcellon">FlatCAMExcellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamcncjob">FlatCAMCNCjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamobj.html#flatcamgeometry">FlatCAMGeometry</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="app.html">FlatCAM Application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="app.html#app">App</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#plotcanvas">PlotCanvas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#objectcollection">ObjectCollection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app.html#measurement">Measurement</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">FlatCAM Developer Manual</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#options">Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#serialization">Serialization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#geometry-processing">Geometry Processing</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+        <a href="index.html">Cirkuix</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>FlatCAM Developer Manual</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/devman.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="flatcam-developer-manual">
+<h1>FlatCAM Developer Manual<a class="headerlink" href="#flatcam-developer-manual" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="options">
+<h2>Options<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<p>There are <strong>Application Defaults</strong>, <strong>Project Options</strong> and <strong>Object Options</strong> in FlatCAM.</p>
+<p><strong>Application Defaults</strong> are stored in <tt class="docutils literal"><span class="pre">app.defaults</span></tt>. This gets populated (updated) from the <tt class="docutils literal"><span class="pre">defaults.json</span></tt> file upon startup. These can be edited from the Options tab, where each widget calls <tt class="docutils literal"><span class="pre">app.on_options_update()</span></tt> if a change is detected. This function iterates over the keys of <tt class="docutils literal"><span class="pre">app.defaults</span></tt> and reads the GUI elements whose name is <tt class="docutils literal"><span class="pre">type</span> <span class="pre">+</span> <span class="pre">&quot;_app_&quot;</span> <span class="pre">key</span></tt>. Therefore, for an option to be recognized, it must be added to <tt class="docutils literal"><span class="pre">defaults.json</span></tt> in the first place. When saving, done in <tt class="docutils literal"><span class="pre">app.on_file_savedefaults()</span></tt>, the file is updated, not overwritten.</p>
+<p><strong>Project Options</strong> inherit all options from Application Defaults upon startup. They can be changed thereafter from the UI or by opening a project, which contain previously saved Project Options. These are store in <tt class="docutils literal"><span class="pre">app.options</span></tt> and can be written and read from the Options tab in the same way as with Application defaults.</p>
+<p><strong>Object Options</strong> for each object are inherited from Project Options upon creation of each new object. They can be modified independently from the Project&#8217;s options thereafter through the UI, where the widget containing the option is identified by name: <tt class="docutils literal"><span class="pre">type</span> <span class="pre">+</span> <span class="pre">kind</span> <span class="pre">+</span> <span class="pre">&quot;_&quot;</span> <span class="pre">+</span> <span class="pre">option</span></tt>. They are stored in <tt class="docutils literal"><span class="pre">object.options</span></tt>. They are saved along the Project options when saving the project.</p>
+<p>The syntax of UI widget names contain a <tt class="docutils literal"><span class="pre">type</span></tt>, which identifies what <em>type of widget</em> it is and how its value is supposed to be fetched, and a <tt class="docutils literal"><span class="pre">kind</span></tt>, which refer to what <em>kind of FlatCAM Object</em> it is for.</p>
+</div>
+<div class="section" id="serialization">
+<h2>Serialization<a class="headerlink" href="#serialization" title="Permalink to this headline">¶</a></h2>
+<p>Serialization refers to converting objects into a form that can be saved in a text file and recontructing objects from a text file.</p>
+<p>Saving and loading projects require serialization. These are done in <tt class="docutils literal"><span class="pre">App.save_project(filename)</span></tt> and <tt class="docutils literal"><span class="pre">App.open_project(filename)</span></tt>.</p>
+<p>Serialization in FlatCAM takes 2 forms. The first is calling objects&#8217; <tt class="docutils literal"><span class="pre">to_dict()</span></tt> method, which is inherited from <tt class="docutils literal"><span class="pre">Geometry.to_dict()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Returns a respresentation of the object as a dictionary.</span>
+<span class="sd">    Attributes to include are listed in ``self.ser_attrs``.</span>
+
+<span class="sd">    :return: A dictionary-encoded copy of the object.</span>
+<span class="sd">    :rtype: dict</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">attr</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ser_attrs</span><span class="p">:</span>
+        <span class="n">d</span><span class="p">[</span><span class="n">attr</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">d</span>
+</pre></div>
+</div>
+<p>This creates a dictionary with attributes specified in the object&#8217;s <tt class="docutils literal"><span class="pre">ser_attrs</span></tt> list. If these are not in a serialized form, they will be processed later by the function <tt class="docutils literal"><span class="pre">to_dict()</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="n">geo</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Makes a Shapely geometry object into serializeable form.</span>
+
+<span class="sd">    :param geo: Shapely geometry.</span>
+<span class="sd">    :type geo: BaseGeometry</span>
+<span class="sd">    :return: Dictionary with serializable form if ``geo`` was</span>
+<span class="sd">        BaseGeometry, otherwise returns ``geo``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">BaseGeometry</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s">&quot;__class__&quot;</span><span class="p">:</span> <span class="s">&quot;Shply&quot;</span><span class="p">,</span>
+            <span class="s">&quot;__inst__&quot;</span><span class="p">:</span> <span class="n">sdumps</span><span class="p">(</span><span class="n">geo</span><span class="p">)</span>
+        <span class="p">}</span>
+    <span class="k">return</span> <span class="n">geo</span>
+</pre></div>
+</div>
+<p>This is used in <tt class="docutils literal"><span class="pre">json.dump(d,</span> <span class="pre">f,</span> <span class="pre">default=to_dict)</span></tt> and is applied to objects that json encounters to be in a non-serialized form.</p>
+</div>
+<div class="section" id="geometry-processing">
+<h2>Geometry Processing<a class="headerlink" href="#geometry-processing" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="app.html" class="btn btn-neutral" title="FlatCAM Application"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Juan Pablo Caram.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>
