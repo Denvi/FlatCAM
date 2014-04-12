@@ -304,6 +304,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                         [poly['polygon'] for poly in self.regions] + \
                         self.flash_geometry
 
+        # Make sure geometry is iterable.
+        try:
+            _ = iter(geometry)
+        except TypeError:
+            geometry = [geometry]
+
         if self.options["multicolored"]:
             linespec = '-'
         else:

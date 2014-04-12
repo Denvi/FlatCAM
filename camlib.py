@@ -651,6 +651,9 @@ class Gerber (Geometry):
         # Geometry from flashes
         self.flash_geometry = []
 
+        # On-the-fly geometry. Initialized to an empty polygon
+        self.otf_geometry = Polygon()
+
         # Aperture Macros
         # TODO: Make sure these can be serialized
         self.aperture_macros = {}
@@ -686,16 +689,20 @@ class Gerber (Geometry):
         # May begin with G54 but that is deprecated
         self.tool_re = re.compile(r'^(?:G54)?D(\d\d+)\*$')
 
-        # G01 - Linear interpolation plus flashes
+        # G01... - Linear interpolation plus flashes with coordinates
         # Operation code (D0x) missing is deprecated... oh well I will support it.
-        self.lin_re = re.compile(r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0?([123]))?\*$')
+        self.lin_re = re.compile(r'^(?:G0?(1))?(?=.*X(-?\d+))?(?=.*Y(-?\d+))?[XY][^DIJ]*(?:D0?([123]))?\*$')
 
-        self.setlin_re = re.compile(r'^(?:G0?1)\*')
+        #
+        self.opcode_re = re.compile(r'^D0?([123])\*$')
 
-        # G02/3 - Circular interpolation
+        # G02/3... - Circular interpolation with coordinates
         # 2-clockwise, 3-counterclockwise
-        self.circ_re = re.compile(r'^(?:G0?([23]))?(?:X(-?\d+))?(?:Y(-?\d+))' +
-                                  '?(?:I(-?\d+))?(?:J(-?\d+))?D0([12])\*$')
+        # Operation code (D0x) missing is deprecated... oh well I will support it.
+        # Optional start with G02 or G03, optional end with D01 or D02 with
+        # optional coordinates but at least one in any order.
+        self.circ_re = re.compile(r'^(?:G0?([23]))?(?=.*X(-?\d+))?(?=.*Y(-?\d+))' +
+                                  '?(?=.*I(-?\d+))?(?=.*J(-?\d+))?[XYIJ][^D]*(?:D0([12]))?\*$')
 
         # G01/2/3 Occurring without coordinates
         self.interp_re = re.compile(r'^(?:G0?([123]))\*')
@@ -1038,6 +1045,7 @@ class Gerber (Geometry):
         current_y = None
 
         # Absolute or Relative/Incremental coordinates
+        # Not implemented
         absolute = True
 
         # How to interpret circular interpolation: SINGLE or MULTI
@@ -1045,6 +1053,12 @@ class Gerber (Geometry):
 
         # Indicates we are parsing an aperture macro
         current_macro = None
+
+        # Indicates the current polarity: D-Dark, C-Clear
+        current_polarity = 'D'
+
+        # If a region is being defined
+        making_region = False
 
         #### Parsing starts here ####
         line_num = 0
@@ -1107,19 +1121,39 @@ class Gerber (Geometry):
                     path.append([current_x, current_y])
                     last_path_aperture = current_aperture
 
-                # Pen up: finish path
                 elif current_operation_code == 2:
                     if len(path) > 1:
-                        if last_path_aperture is None:
-                            print "Warning: No aperture defined for curent path. (%d)" % line_num
-                        self.paths.append({"linestring": LineString(path),
-                                           "aperture": last_path_aperture})
+
+                        # self.paths.append({"linestring": LineString(path),
+                        #                    "aperture": last_path_aperture})
+
+                        # --- OTF ---
+                        if making_region:
+                            geo = Polygon(path)
+                        else:
+                            if last_path_aperture is None:
+                                print "Warning: No aperture defined for curent path. (%d)" % line_num
+                            width = self.apertures[last_path_aperture]["size"]
+                            geo = LineString(path).buffer(width/2)
+                        if current_polarity == 'D':
+                            self.otf_geometry = self.otf_geometry.union(geo)
+                        else:
+                            self.otf_geometry = self.otf_geometry.difference(geo)
+
                     path = [[current_x, current_y]]  # Start new path
 
                 # Flash
                 elif current_operation_code == 3:
-                    self.flashes.append({"loc": Point([current_x, current_y]),
-                                         "aperture": current_aperture})
+                    # self.flashes.append({"loc": Point([current_x, current_y]),
+                    #                      "aperture": current_aperture})
+
+                    # --- OTF ---
+                    flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
+                                                         self.apertures[current_aperture])
+                    if current_polarity == 'D':
+                        self.otf_geometry = self.otf_geometry.union(flash)
+                    else:
+                        self.otf_geometry = self.otf_geometry.difference(flash)
 
                 continue
 
@@ -1168,8 +1202,17 @@ class Gerber (Geometry):
                     if len(path) > 1:
                         if last_path_aperture is None:
                             print "Warning: No aperture defined for curent path. (%d)" % line_num
-                        self.paths.append({"linestring": LineString(path),
-                                           "aperture": last_path_aperture})
+                        # self.paths.append({"linestring": LineString(path),
+                        #                    "aperture": last_path_aperture})
+
+                        # --- OTF ---
+                        width = self.apertures[last_path_aperture]["size"]
+                        buffered = LineString(path).buffer(width/2)
+                        if current_polarity == 'D':
+                            self.otf_geometry = self.otf_geometry.union(buffered)
+                        else:
+                            self.otf_geometry = self.otf_geometry.difference(buffered)
+
                     current_x = x
                     current_y = y
                     path = [[current_x, current_y]]  # Start new path
@@ -1204,6 +1247,19 @@ class Gerber (Geometry):
                 if quadrant_mode == 'SINGLE':
                     print "Warning: Single quadrant arc are not implemented yet. (%d)" % line_num
 
+            ### Operation code alone
+            match = self.opcode_re.search(gline)
+            if match:
+                current_operation_code = int(match.group(1))
+                if current_operation_code == 3:
+                    flash = Gerber.create_flash_geometry(Point(path[-1]),
+                                                         self.apertures[current_aperture])
+                    if current_polarity == 'D':
+                        self.otf_geometry = self.otf_geometry.union(flash)
+                    else:
+                        self.otf_geometry = self.otf_geometry.difference(flash)
+                continue
+
             ### G74/75* - Single or multiple quadrant arcs
             match = self.quad_re.search(gline)
             if match:
@@ -1213,20 +1269,49 @@ class Gerber (Geometry):
                     quadrant_mode = 'MULTI'
                 continue
 
+            ### G36* - Begin region
+            if self.regionon_re.search(gline):
+                if len(path) > 1:
+                    # Take care of what is left in the path
+                    width = self.apertures[last_path_aperture]["size"]
+                    geo = LineString(path).buffer(width/2)
+                    if current_polarity == 'D':
+                        self.otf_geometry = self.otf_geometry.union(geo)
+                    else:
+                        self.otf_geometry = self.otf_geometry.difference(geo)
+                    path = [path[-1]]
+
+                making_region = True
+                continue
+
             ### G37* - End region
             if self.regionoff_re.search(gline):
+                making_region = False
+
                 # Only one path defines region?
+                # This can happen if D02 happened before G37 and
+                # is not and error.
                 if len(path) < 3:
-                    print "ERROR: Path contains less than 3 points:"
-                    print path
-                    print "Line (%d): " % line_num, gline
-                    path = []
+                    # print "ERROR: Path contains less than 3 points:"
+                    # print path
+                    # print "Line (%d): " % line_num, gline
+                    # path = []
+                    #path = [[current_x, current_y]]
                     continue
 
                 # For regions we may ignore an aperture that is None
-                self.regions.append({"polygon": Polygon(path),
-                                     "aperture": last_path_aperture})
-                #path = []
+                # self.regions.append({"polygon": Polygon(path),
+                #                      "aperture": last_path_aperture})
+
+                # --- OTF ---
+                region = Polygon(path)
+                if not region.is_valid:
+                    region = region.buffer(0)
+                if current_polarity == 'D':
+                    self.otf_geometry = self.otf_geometry.union(region)
+                else:
+                    self.otf_geometry = self.otf_geometry.difference(region)
+
                 path = [[current_x, current_y]]  # Start new path
                 continue
             
@@ -1250,6 +1335,22 @@ class Gerber (Geometry):
             match = self.tool_re.search(gline)
             if match:
                 current_aperture = match.group(1)
+                continue
+
+            ### Polarity change
+            # Example: %LPD*% or %LPC*%
+            match = self.lpol_re.search(gline)
+            if match:
+                if len(path) > 1 and current_polarity != match.group(1):
+
+                    width = self.apertures[last_path_aperture]["size"]
+                    geo = LineString(path).buffer(width/2)
+                    if current_polarity == 'D':
+                        self.otf_geometry = self.otf_geometry.union(geo)
+                    else:
+                        self.otf_geometry = self.otf_geometry.difference(geo)
+                    path = [path[-1]]
+                current_polarity = match.group(1)
                 continue
 
             ### Number format
@@ -1297,8 +1398,71 @@ class Gerber (Geometry):
         
         if len(path) > 1:
             # EOF, create shapely LineString if something still in path
-            self.paths.append({"linestring": LineString(path),
-                               "aperture": last_path_aperture})
+            # self.paths.append({"linestring": LineString(path),
+            #                    "aperture": last_path_aperture})
+
+            width = self.apertures[last_path_aperture]["size"]
+            geo = LineString(path).buffer(width/2)
+            if current_polarity == 'D':
+                self.otf_geometry = self.otf_geometry.union(geo)
+            else:
+                self.otf_geometry = self.otf_geometry.difference(geo)
+
+    @staticmethod
+    def create_flash_geometry(location, aperture):
+
+        if type(location) == list:
+            location = Point(location)
+
+        if aperture['type'] == 'C':  # Circles
+            return location.buffer(aperture['size']/2)
+
+        if aperture['type'] == 'R':  # Rectangles
+            loc = location.coords[0]
+            width = aperture['width']
+            height = aperture['height']
+            minx = loc[0] - width/2
+            maxx = loc[0] + width/2
+            miny = loc[1] - height/2
+            maxy = loc[1] + height/2
+            return shply_box(minx, miny, maxx, maxy)
+
+        if aperture['type'] == 'O':  # Obround
+            loc = location.coords[0]
+            width = aperture['width']
+            height = aperture['height']
+            if width > height:
+                p1 = Point(loc[0] + 0.5*(width-height), loc[1])
+                p2 = Point(loc[0] - 0.5*(width-height), loc[1])
+                c1 = p1.buffer(height*0.5)
+                c2 = p2.buffer(height*0.5)
+            else:
+                p1 = Point(loc[0], loc[1] + 0.5*(height-width))
+                p2 = Point(loc[0], loc[1] - 0.5*(height-width))
+                c1 = p1.buffer(width*0.5)
+                c2 = p2.buffer(width*0.5)
+            return cascaded_union([c1, c2]).convex_hull
+
+        if aperture['type'] == 'P':  # Regular polygon
+            loc = location.coords[0]
+            diam = aperture['diam']
+            n_vertices = aperture['nVertices']
+            points = []
+            for i in range(0, n_vertices):
+                x = loc[0] + diam * (cos(2 * pi * i / n_vertices))
+                y = loc[1] + diam * (sin(2 * pi * i / n_vertices))
+                points.append((x, y))
+            ply = Polygon(points)
+            if 'rotation' in aperture:
+                ply = affinity.rotate(ply, aperture['rotation'])
+            return ply
+
+        if aperture['type'] == 'AM':  # Aperture Macro
+            loc = location.coords[0]
+            flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
+            return affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
+
+        return None
 
     def do_flashes(self):
         """

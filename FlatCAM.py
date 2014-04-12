@@ -16,6 +16,7 @@ from gi.repository import GdkPixbuf
 from gi.repository import GLib
 from gi.repository import GObject
 import simplejson as json
+import traceback
 
 import matplotlib
 from matplotlib.figure import Figure
@@ -29,12 +30,15 @@ import urllib
 import copy
 import random
 
+from shapely import speedups
+
 ########################################
 ##      Imports part of FlatCAM       ##
 ########################################
 from camlib import *
 from FlatCAMObj import *
 from FlatCAMWorker import Worker
+from FlatCAMException import *
 
 
 ########################################
@@ -54,6 +58,9 @@ class App:
         :return: app
         :rtype: App
         """
+
+        if speedups.available:
+            speedups.enable()
 
         # Needed to interact with the GUI from other threads.
         GObject.threads_init()
@@ -185,12 +192,9 @@ class App:
         def somethreadfunc(app_obj):
             print "Hello World!"
 
-        self.message_dialog("Starting", "The best program is starting")
-
         t = threading.Thread(target=somethreadfunc, args=(self,))
         t.daemon = True
         t.start()
-
 
         ########################################
         ##              START                 ##
@@ -203,14 +207,18 @@ class App:
         self.window.set_default_size(900, 600)
         self.window.show_all()
 
-    def message_dialog(self, title, message, type="info"):
+    def message_dialog(self, title, message, kind="info"):
         types = {"info": Gtk.MessageType.INFO,
                  "warn": Gtk.MessageType.WARNING,
                  "error": Gtk.MessageType.ERROR}
-        dlg = Gtk.MessageDialog(self.window, 0, types[type], Gtk.ButtonsType.OK, title)
+        dlg = Gtk.MessageDialog(self.window, 0, types[kind], Gtk.ButtonsType.OK, title)
         dlg.format_secondary_text(message)
-        dlg.run()
-        dlg.destroy()
+
+        def lifecycle():
+            dlg.run()
+            dlg.destroy()
+
+        GLib.idle_add(lifecycle)
 
     def question_dialog(self, title, message):
         label = Gtk.Label(message)
@@ -878,6 +886,158 @@ class App:
             f.close()
 
         f.close()
+
+    def open_gerber(self, filename):
+        """
+        Opens a Gerber file, parses it and creates a new object for
+        it in the program. Thread-safe.
+
+        :param filename: Gerber file filename
+        :type filename: str
+        :return: None
+        """
+        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Gerber ..."))
+
+        # How the object should be initialized
+        def obj_init(gerber_obj, app_obj):
+            assert isinstance(gerber_obj, FlatCAMGerber)
+
+            # Opening the file happens here
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+            gerber_obj.parse_file(filename)
+
+            # Further parsing
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
+            #gerber_obj.create_geometry()
+            gerber_obj.solid_geometry = gerber_obj.otf_geometry
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+
+        # Object name
+        name = filename.split('/')[-1].split('\\')[-1]
+
+        # New object creation and file processing
+        try:
+            self.new_object("gerber", name, obj_init)
+        except:
+            e = sys.exc_info()
+            print "ERROR:", e[0]
+            traceback.print_exc()
+            self.message_dialog("Failed to create Gerber Object",
+                                "Attempting to create a FlatCAM Gerber Object from " +
+                                "Gerber file failed during processing:\n" +
+                                str(e[0]) + " " + str(e[1]), kind="error")
+            GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
+            self.collection.delete_active()
+            return
+
+        # Register recent file
+        self.register_recent("gerber", filename)
+
+        # GUI feedback
+        self.info("Opened: " + filename)
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
+
+    def open_excellon(self, filename):
+        """
+        Opens an Excellon file, parses it and creates a new object for
+        it in the program. Thread-safe.
+
+        :param filename: Excellon file filename
+        :type filename: str
+        :return: None
+        """
+        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Excellon ..."))
+
+        # How the object should be initialized
+        def obj_init(excellon_obj, app_obj):
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
+            excellon_obj.parse_file(filename)
+            excellon_obj.create_geometry()
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
+
+        # Object name
+        name = filename.split('/')[-1].split('\\')[-1]
+
+        # New object creation and file processing
+        try:
+            self.new_object("excellon", name, obj_init)
+        except:
+            e = sys.exc_info()
+            print "ERROR:", e[0]
+            self.message_dialog("Failed to create Excellon Object",
+                                "Attempting to create a FlatCAM Excellon Object from " +
+                                "Excellon file failed during processing:\n" +
+                                str(e[0]) + " " + str(e[1]), kind="error")
+            GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
+            self.collection.delete_active()
+            return
+
+        # Register recent file
+        self.register_recent("excellon", filename)
+
+        # GUI feedback
+        self.info("Opened: " + filename)
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
+
+    def open_gcode(self, filename):
+        """
+        Opens a G-gcode file, parses it and creates a new object for
+        it in the program. Thread-safe.
+
+        :param filename: G-code file filename
+        :type filename: str
+        :return: None
+        """
+
+        # How the object should be initialized
+        def obj_init(job_obj, app_obj_):
+            """
+
+            :type app_obj_: App
+            """
+            assert isinstance(app_obj_, App)
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
+
+            f = open(filename)
+            gcode = f.read()
+            f.close()
+
+            job_obj.gcode = gcode
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
+            job_obj.gcode_parse()
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
+            job_obj.create_geometry()
+
+            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
+
+        # Object name
+        name = filename.split('/')[-1].split('\\')[-1]
+
+        # New object creation and file processing
+        try:
+            self.new_object("cncjob", name, obj_init)
+        except:
+            e = sys.exc_info()
+            print "ERROR:", e[0]
+            self.message_dialog("Failed to create CNCJob Object",
+                                "Attempting to create a FlatCAM CNCJob Object from " +
+                                "G-Code file failed during processing:\n" +
+                                str(e[0]) + " " + str(e[1]), kind="error")
+            GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
+            self.collection.delete_active()
+            return
+
+        # Register recent file
+        self.register_recent("cncjob", filename)
+
+        # GUI feedback
+        self.info("Opened: " + filename)
+        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
+        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
 
     ########################################
     ##         EVENT HANDLERS             ##
@@ -1980,29 +2140,6 @@ class App:
             self.info("Save cancelled.")  # print("Cancel clicked")
             dialog.destroy()
 
-    def open_gerber(self, filename):
-        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Gerber ..."))
-
-        def obj_init(gerber_obj, app_obj):
-            assert isinstance(gerber_obj, FlatCAMGerber)
-
-            # Opening the file happens here
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
-            gerber_obj.parse_file(filename)
-
-            # Further parsing
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
-            gerber_obj.create_geometry()
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
-
-        name = filename.split('/')[-1].split('\\')[-1]
-        self.new_object("gerber", name, obj_init)
-        self.register_recent("gerber", filename)
-
-        self.info("Opened: " + filename)
-        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
-
     def on_fileopengerber(self, param):
         """
         Callback for menu item File->Open Gerber. Defines a function that is then passed
@@ -2015,23 +2152,6 @@ class App:
 
         self.file_chooser_action(lambda ao, filename: self.open_gerber(filename))
 
-    def open_excellon(self, filename):
-        GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Excellon ..."))
-
-        def obj_init(excellon_obj, app_obj):
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
-            excellon_obj.parse_file(filename)
-            excellon_obj.create_geometry()
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
-
-        name = filename.split('/')[-1].split('\\')[-1]
-        self.new_object("excellon", name, obj_init)
-        self.register_recent("excellon", filename)
-
-        self.info("Opened: " + filename)
-        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
-
     def on_fileopenexcellon(self, param):
         """
         Callback for menu item File->Open Excellon. Defines a function that is then passed
@@ -2043,38 +2163,6 @@ class App:
         """
 
         self.file_chooser_action(lambda ao, filename: self.open_excellon(filename))
-
-    def open_gcode(self, filename):
-
-        def obj_init(job_obj, app_obj_):
-            """
-
-            :type app_obj_: App
-            """
-            assert isinstance(app_obj_, App)
-            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
-
-            f = open(filename)
-            gcode = f.read()
-            f.close()
-
-            job_obj.gcode = gcode
-
-            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
-            job_obj.gcode_parse()
-
-            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
-            job_obj.create_geometry()
-
-            GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
-
-        name = filename.split('/')[-1].split('\\')[-1]
-        self.new_object("cncjob", name, obj_init)
-        self.register_recent("cncjob", filename)
-
-        self.info("Opened: " + filename)
-        GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
 
     def on_fileopengcode(self, param):
         """
