@@ -7,38 +7,22 @@
 ############################################################
 
 import threading
-
-# TODO: Bundle together. This is just for debugging.
-from docutils.nodes import image
-from gi.repository import Gtk
-from gi.repository import Gdk
-from gi.repository import GdkPixbuf
-from gi.repository import GLib
-from gi.repository import GObject
-import simplejson as json
 import traceback
-
-import matplotlib
-from matplotlib.figure import Figure
-from numpy import arange, sin, pi
-from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
-#from mpl_toolkits.axes_grid.anchored_artists import AnchoredText
-
-
 import sys
 import urllib
 import copy
 import random
 
+from gi.repository import Gtk, GdkPixbuf
+from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
 from shapely import speedups
+
 
 ########################################
 ##      Imports part of FlatCAM       ##
 ########################################
-from camlib import *
 from FlatCAMObj import *
 from FlatCAMWorker import Worker
-from FlatCAMException import *
 
 
 ########################################
@@ -909,26 +893,28 @@ class App:
             # Further parsing
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
             #gerber_obj.create_geometry()
-            gerber_obj.solid_geometry = gerber_obj.otf_geometry
+            #gerber_obj.solid_geometry = gerber_obj.otf_geometry
             GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
 
         # Object name
         name = filename.split('/')[-1].split('\\')[-1]
 
+        self.new_object("gerber", name, obj_init)
+
         # New object creation and file processing
-        try:
-            self.new_object("gerber", name, obj_init)
-        except:
-            e = sys.exc_info()
-            print "ERROR:", e[0]
-            traceback.print_exc()
-            self.message_dialog("Failed to create Gerber Object",
-                                "Attempting to create a FlatCAM Gerber Object from " +
-                                "Gerber file failed during processing:\n" +
-                                str(e[0]) + " " + str(e[1]), kind="error")
-            GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
-            self.collection.delete_active()
-            return
+        # try:
+        #     self.new_object("gerber", name, obj_init)
+        # except:
+        #     e = sys.exc_info()
+        #     print "ERROR:", e[0]
+        #     traceback.print_exc()
+        #     self.message_dialog("Failed to create Gerber Object",
+        #                         "Attempting to create a FlatCAM Gerber Object from " +
+        #                         "Gerber file failed during processing:\n" +
+        #                         str(e[0]) + " " + str(e[1]), kind="error")
+        #     GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
+        #     self.collection.delete_active()
+        #     return
 
         # Register recent file
         self.register_recent("gerber", filename)
@@ -2848,7 +2834,7 @@ class ObjectCollection:
         try:
             model, treeiter = self.tree_selection.get_selected()
             return model[treeiter][0]
-        except ValueError:
+        except (TypeError, ValueError):
             return None
 
     def set_list_selection(self, name):

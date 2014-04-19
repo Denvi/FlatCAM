@@ -297,12 +297,13 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if not FlatCAMObj.plot(self):
             return
 
-        if self.options["mergepolys"]:
-            geometry = self.solid_geometry
-        else:
-            geometry = self.buffered_paths + \
-                        [poly['polygon'] for poly in self.regions] + \
-                        self.flash_geometry
+        # if self.options["mergepolys"]:
+        #     geometry = self.solid_geometry
+        # else:
+        #     geometry = self.buffered_paths + \
+        #                 [poly['polygon'] for poly in self.regions] + \
+        #                 self.flash_geometry
+        geometry = self.solid_geometry
 
         # Make sure geometry is iterable.
         try:
@@ -318,12 +319,16 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if self.options["solid"]:
             for poly in geometry:
                 # TODO: Too many things hardcoded.
-                patch = PolygonPatch(poly,
-                                     facecolor="#BBF268",
-                                     edgecolor="#006E20",
-                                     alpha=0.75,
-                                     zorder=2)
-                self.axes.add_patch(patch)
+                try:
+                    patch = PolygonPatch(poly,
+                                         facecolor="#BBF268",
+                                         edgecolor="#006E20",
+                                         alpha=0.75,
+                                         zorder=2)
+                    self.axes.add_patch(patch)
+                except AssertionError:
+                    print "WARNING: A geometry component was not a polygon:"
+                    print poly
         else:
             for poly in geometry:
                 x, y = poly.exterior.xy
