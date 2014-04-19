@@ -653,9 +653,6 @@ class Gerber (Geometry):
         # Geometry from flashes
         # self.flash_geometry = []
 
-        # On-the-fly geometry. Initialized to an empty polygon
-        self.otf_geometry = Polygon()
-
         # Aperture Macros
         self.aperture_macros = {}
 
@@ -765,37 +762,6 @@ class Gerber (Geometry):
         :rtype : None
         """
 
-        # ## Apertures
-        # # List of the non-dimension aperture parameters
-        # nonDimensions = ["type", "nVertices", "rotation"]
-        # for apid in self.apertures:
-        #     for param in self.apertures[apid]:
-        #         if param not in nonDimensions:  # All others are dimensions.
-        #             print "Tool:", apid, "Parameter:", param
-        #             self.apertures[apid][param] *= factor
-        #
-        # ## Paths
-        # for path in self.paths:
-        #     path['linestring'] = affinity.scale(path['linestring'],
-        #                                         factor, factor, origin=(0, 0))
-        #
-        # ## Flashes
-        # for fl in self.flashes:
-        #     fl['loc'] = affinity.scale(fl['loc'], factor, factor, origin=(0, 0))
-
-        # ## Regions
-        # for reg in self.regions:
-        #     reg['polygon'] = affinity.scale(reg['polygon'], factor, factor,
-        #                                     origin=(0, 0))
-        #
-        # ## Flashes
-        # for flash in self.flash_geometry:
-        #     flash = affinity.scale(flash, factor, factor, origin=(0, 0))
-        #
-        # ## Buffered paths
-        # for bp in self.buffered_paths:
-        #     bp = affinity.scale(bp, factor, factor, origin=(0, 0))
-
         ## solid_geometry ???
         #  It's a cascaded union of objects.
         self.solid_geometry = affinity.scale(self.solid_geometry, factor,
@@ -826,33 +792,8 @@ class Gerber (Geometry):
 
         dx, dy = vect
 
-        # ## Paths
-        # for path in self.paths:
-        #     path['linestring'] = affinity.translate(path['linestring'],
-        #                                             xoff=dx, yoff=dy)
-        #
-        # ## Flashes
-        # for fl in self.flashes:
-        #     fl['loc'] = affinity.translate(fl['loc'], xoff=dx, yoff=dy)
-
-        # ## Regions
-        # for reg in self.regions:
-        #     reg['polygon'] = affinity.translate(reg['polygon'],
-        #                                         xoff=dx, yoff=dy)
-        #
-        # ## Buffered paths
-        # for bp in self.buffered_paths:
-        #     bp = affinity.translate(bp, xoff=dx, yoff=dy)
-        #
-        # ## Flash geometry
-        # for fl in self.flash_geometry:
-        #     fl = affinity.translate(fl, xoff=dx, yoff=dy)
-
         ## Solid geometry
         self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
-
-        # # Now buffered_paths, flash_geometry and solid_geometry
-        # self.create_geometry()
 
     def mirror(self, axis, point):
         """
@@ -879,65 +820,11 @@ class Gerber (Geometry):
         px, py = point
         xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
 
-        # ## Paths
-        # for path in self.paths:
-        #     path['linestring'] = affinity.scale(path['linestring'], xscale, yscale,
-        #                                         origin=(px, py))
-        #
-        # ## Flashes
-        # for fl in self.flashes:
-        #     fl['loc'] = affinity.scale(fl['loc'], xscale, yscale, origin=(px, py))
-
-        # ## Regions
-        # for reg in self.regions:
-        #     reg['polygon'] = affinity.scale(reg['polygon'], xscale, yscale,
-        #                                     origin=(px, py))
-        #
-        # ## Flashes
-        # for flash in self.flash_geometry:
-        #     flash = affinity.scale(flash, xscale, yscale, origin=(px, py))
-        #
-        # ## Buffered paths
-        # for bp in self.buffered_paths:
-        #     bp = affinity.scale(bp, xscale, yscale, origin=(px, py))
-
         ## solid_geometry ???
         #  It's a cascaded union of objects.
         self.solid_geometry = affinity.scale(self.solid_geometry,
                                              xscale, yscale, origin=(px, py))
 
-        # # Now buffered_paths, flash_geometry and solid_geometry
-        # self.create_geometry()
-
-    # def fix_regions(self):
-    #     """
-    #     Overwrites the region polygons with fixed
-    #     versions if found to be invalid (according to Shapely).
-    #
-    #     :return: None
-    #     """
-    #
-    #     for region in self.regions:
-    #         if not region['polygon'].is_valid:
-    #             region['polygon'] = region['polygon'].buffer(0)
-    
-    # def buffer_paths(self):
-    #     """
-    #     This is part of the parsing process. "Thickens" the paths
-    #     by their appertures. This will only work for circular appertures.
-    #
-    #     :return: None
-    #     """
-    #
-    #     self.buffered_paths = []
-    #     for path in self.paths:
-    #         try:
-    #             width = self.apertures[path["aperture"]]["size"]
-    #             self.buffered_paths.append(path["linestring"].buffer(width/2))
-    #         except KeyError:
-    #             print "ERROR: Failed to buffer path: ", path
-    #             print "Apertures: ", self.apertures
-    
     def aperture_parse(self, apertureId, apertureType, apParameters):
         """
         Parse gerber aperture definition into dictionary of apertures.
@@ -1135,22 +1022,6 @@ class Gerber (Geometry):
                 elif current_operation_code == 2:
                     if len(path) > 1:
 
-                        # self.paths.append({"linestring": LineString(path),
-                        #                    "aperture": last_path_aperture})
-
-                        # --- OTF ---
-                        # if making_region:
-                        #     geo = Polygon(path)
-                        # else:
-                        #     if last_path_aperture is None:
-                        #         print "Warning: No aperture defined for curent path. (%d)" % line_num
-                        #     width = self.apertures[last_path_aperture]["size"]
-                        #     geo = LineString(path).buffer(width/2)
-                        # if current_polarity == 'D':
-                        #     self.otf_geometry = self.otf_geometry.union(geo)
-                        # else:
-                        #     self.otf_geometry = self.otf_geometry.difference(geo)
-
                         ## --- BUFFERED ---
                         if making_region:
                             geo = Polygon(path)
@@ -1165,16 +1036,6 @@ class Gerber (Geometry):
 
                 # Flash
                 elif current_operation_code == 3:
-                    # self.flashes.append({"loc": Point([current_x, current_y]),
-                    #                      "aperture": current_aperture})
-
-                    # --- OTF ---
-                    # flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
-                    #                                      self.apertures[current_aperture])
-                    # if current_polarity == 'D':
-                    #     self.otf_geometry = self.otf_geometry.union(flash)
-                    # else:
-                    #     self.otf_geometry = self.otf_geometry.difference(flash)
 
                     # --- BUFFERED ---
                     flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
@@ -1228,16 +1089,6 @@ class Gerber (Geometry):
                     if len(path) > 1:
                         if last_path_aperture is None:
                             print "Warning: No aperture defined for curent path. (%d)" % line_num
-                        # self.paths.append({"linestring": LineString(path),
-                        #                    "aperture": last_path_aperture})
-
-                        # --- OTF ---
-                        # width = self.apertures[last_path_aperture]["size"]
-                        # buffered = LineString(path).buffer(width/2)
-                        # if current_polarity == 'D':
-                        #     self.otf_geometry = self.otf_geometry.union(buffered)
-                        # else:
-                        #     self.otf_geometry = self.otf_geometry.difference(buffered)
 
                         # --- BUFFERED ---
                         width = self.apertures[last_path_aperture]["size"]
@@ -1284,14 +1135,6 @@ class Gerber (Geometry):
                 current_operation_code = int(match.group(1))
                 if current_operation_code == 3:
 
-                    ## --- OTF ---
-                    # flash = Gerber.create_flash_geometry(Point(path[-1]),
-                    #                                      self.apertures[current_aperture])
-                    # if current_polarity == 'D':
-                    #     self.otf_geometry = self.otf_geometry.union(flash)
-                    # else:
-                    #     self.otf_geometry = self.otf_geometry.difference(flash)
-
                     ## --- Buffered ---
                     flash = Gerber.create_flash_geometry(Point(path[-1]),
                                                          self.apertures[current_aperture])
@@ -1312,14 +1155,6 @@ class Gerber (Geometry):
             if self.regionon_re.search(gline):
                 if len(path) > 1:
                     # Take care of what is left in the path
-
-                    ## --- OTF ---
-                    # width = self.apertures[last_path_aperture]["size"]
-                    # geo = LineString(path).buffer(width/2)
-                    # if current_polarity == 'D':
-                    #     self.otf_geometry = self.otf_geometry.union(geo)
-                    # else:
-                    #     self.otf_geometry = self.otf_geometry.difference(geo)
 
                     ## --- Buffered ---
                     width = self.apertures[last_path_aperture]["size"]
@@ -1349,15 +1184,6 @@ class Gerber (Geometry):
                 # For regions we may ignore an aperture that is None
                 # self.regions.append({"polygon": Polygon(path),
                 #                      "aperture": last_path_aperture})
-
-                # --- OTF ---
-                # region = Polygon(path)
-                # if not region.is_valid:
-                #     region = region.buffer(0)
-                # if current_polarity == 'D':
-                #     self.otf_geometry = self.otf_geometry.union(region)
-                # else:
-                #     self.otf_geometry = self.otf_geometry.difference(region)
 
                 # --- Buffered ---
                 region = Polygon(path)
@@ -1395,14 +1221,6 @@ class Gerber (Geometry):
             match = self.lpol_re.search(gline)
             if match:
                 if len(path) > 1 and current_polarity != match.group(1):
-
-                    # --- OTF ---
-                    # width = self.apertures[last_path_aperture]["size"]
-                    # geo = LineString(path).buffer(width/2)
-                    # if current_polarity == 'D':
-                    #     self.otf_geometry = self.otf_geometry.union(geo)
-                    # else:
-                    #     self.otf_geometry = self.otf_geometry.difference(geo)
 
                     # --- Buffered ----
                     width = self.apertures[last_path_aperture]["size"]
@@ -1466,16 +1284,6 @@ class Gerber (Geometry):
         
         if len(path) > 1:
             # EOF, create shapely LineString if something still in path
-            # self.paths.append({"linestring": LineString(path),
-            #                    "aperture": last_path_aperture})
-
-            ## --- OTF ---
-            # width = self.apertures[last_path_aperture]["size"]
-            # geo = LineString(path).buffer(width/2)
-            # if current_polarity == 'D':
-            #     self.otf_geometry = self.otf_geometry.union(geo)
-            # else:
-            #     self.otf_geometry = self.otf_geometry.difference(geo)
 
             ## --- Buffered ---
             width = self.apertures[last_path_aperture]["size"]
@@ -1543,80 +1351,6 @@ class Gerber (Geometry):
             return affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
 
         return None
-
-    # def do_flashes(self):
-    #     """
-    #     Creates geometry for Gerber flashes (aperture on a single point).
-    #     """
-    #
-    #     self.flash_geometry = []
-    #     for flash in self.flashes:
-    #
-    #         try:
-    #             aperture = self.apertures[flash['aperture']]
-    #         except KeyError:
-    #             print "ERROR: Trying to flash with unknown aperture: ", flash['aperture']
-    #             continue
-    #
-    #         if aperture['type'] == 'C':  # Circles
-    #             #circle = Point(flash['loc']).buffer(aperture['size']/2)
-    #             circle = flash['loc'].buffer(aperture['size']/2)
-    #             self.flash_geometry.append(circle)
-    #             continue
-    #
-    #         if aperture['type'] == 'R':  # Rectangles
-    #             loc = flash['loc'].coords[0]
-    #             width = aperture['width']
-    #             height = aperture['height']
-    #             minx = loc[0] - width/2
-    #             maxx = loc[0] + width/2
-    #             miny = loc[1] - height/2
-    #             maxy = loc[1] + height/2
-    #             rectangle = shply_box(minx, miny, maxx, maxy)
-    #             self.flash_geometry.append(rectangle)
-    #             continue
-    #
-    #         if aperture['type'] == 'O':  # Obround
-    #             loc = flash['loc'].coords[0]
-    #             width = aperture['width']
-    #             height = aperture['height']
-    #             if width > height:
-    #                 p1 = Point(loc[0] + 0.5*(width-height), loc[1])
-    #                 p2 = Point(loc[0] - 0.5*(width-height), loc[1])
-    #                 c1 = p1.buffer(height*0.5)
-    #                 c2 = p2.buffer(height*0.5)
-    #             else:
-    #                 p1 = Point(loc[0], loc[1] + 0.5*(height-width))
-    #                 p2 = Point(loc[0], loc[1] - 0.5*(height-width))
-    #                 c1 = p1.buffer(width*0.5)
-    #                 c2 = p2.buffer(width*0.5)
-    #             obround = cascaded_union([c1, c2]).convex_hull
-    #             self.flash_geometry.append(obround)
-    #             continue
-    #
-    #         if aperture['type'] == 'P':  # Regular polygon
-    #             loc = flash['loc'].coords[0]
-    #             diam = aperture['diam']
-    #             n_vertices = aperture['nVertices']
-    #             points = []
-    #             for i in range(0, n_vertices):
-    #                 x = loc[0] + diam * (cos(2 * pi * i / n_vertices))
-    #                 y = loc[1] + diam * (sin(2 * pi * i / n_vertices))
-    #                 points.append((x, y))
-    #             ply = Polygon(points)
-    #             if 'rotation' in aperture:
-    #                 ply = affinity.rotate(ply, aperture['rotation'])
-    #             self.flash_geometry.append(ply)
-    #             continue
-    #
-    #         if aperture['type'] == 'AM':  # Aperture Macro
-    #             loc = flash['loc'].coords[0]
-    #             flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
-    #             flash_geo_final = affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
-    #             self.flash_geometry.append(flash_geo_final)
-    #             continue
-    #
-    #         print "WARNING: Aperture type %s not implemented" % (aperture['type'])
     
     def create_geometry(self):
         """
