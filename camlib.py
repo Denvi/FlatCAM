@@ -554,40 +554,6 @@ class Gerber (Geometry):
     | others    | Depend on ``type``                |
     +-----------+-----------------------------------+
 
-    * ``paths`` (list): A path is described by a line an aperture that follows that
-      line. Each paths[i] is a dictionary:
-
-    +------------+------------------------------------------------+
-    | Key        | Value                                          |
-    +============+================================================+
-    | linestring | (Shapely.LineString) The actual path.          |
-    +------------+------------------------------------------------+
-    | aperture   | (str) The key for an aperture in apertures.    |
-    +------------+------------------------------------------------+
-
-    * ``flashes`` (list): Flashes are single-point strokes of an aperture. Each
-      is a dictionary:
-
-    +------------+------------------------------------------------+
-    | Key        | Value                                          |
-    +============+================================================+
-    | loc        | (Point) Shapely Point indicating location.     |
-    +------------+------------------------------------------------+
-    | aperture   | (str) The key for an aperture in apertures.    |
-    +------------+------------------------------------------------+
-
-    * ``regions`` (list): Are surfaces defined by a polygon (Shapely.Polygon),
-      which have an exterior and zero or more interiors. An aperture is also
-      associated with a region. Each is a dictionary:
-
-    +------------+-----------------------------------------------------+
-    | Key        | Value                                               |
-    +============+=====================================================+
-    | polygon    | (Shapely.Polygon) The polygon defining the region.  |
-    +------------+-----------------------------------------------------+
-    | aperture   | (str) The key for an aperture in apertures.         |
-    +------------+-----------------------------------------------------+
-
     * ``aperture_macros`` (dictionary): Are predefined geometrical structures
       that can be instanciated with different parameters in an aperture
       definition. See ``apertures`` above. The key is the name of the macro,
@@ -635,23 +601,6 @@ class Gerber (Geometry):
         #             ['size':float], ['width':float],
         #             ['height':float]}, ...}
         self.apertures = {}
-        
-        # Paths [{'linestring':LineString, 'aperture':str}]
-        # self.paths = []
-        
-        # Buffered Paths [Polygon]
-        # Paths transformed into Polygons by
-        # offsetting the aperture size/2
-        # self.buffered_paths = []
-        
-        # Polygon regions [{'polygon':Polygon, 'aperture':str}]
-        # self.regions = []
-        
-        # Flashes [{'loc':[float,float], 'aperture':str}]
-        # self.flashes = []
-        
-        # Geometry from flashes
-        # self.flash_geometry = []
 
         # Aperture Macros
         self.aperture_macros = {}
@@ -659,9 +608,8 @@ class Gerber (Geometry):
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from Geometry.
-        self.ser_attrs += ['int_digits', 'frac_digits', 'apertures', 'paths',
-                           'buffered_paths', 'regions', 'flashes',
-                           'flash_geometry', 'aperture_macros']
+        self.ser_attrs += ['int_digits', 'frac_digits', 'apertures',
+                           'aperture_macros', 'solid_geometry']
 
         #### Parser patterns ####
         # FS - Format Specification
@@ -1432,8 +1380,8 @@ class Excellon(Geometry):
         
         self.drills = []
 
-        # Trailing "T" or leading "L"
-        self.zeros = ""
+        # Trailing "T" or leading "L" (default)
+        self.zeros = "L"
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -1504,6 +1452,9 @@ class Excellon(Geometry):
 
         # Various stop/pause commands
         self.stop_re = re.compile(r'^((G04)|(M09)|(M06)|(M00)|(M30))')
+
+        # Parse coordinates
+        self.leadingzeros_re = re.compile(r'^(0*)(\d*)')
         
     def parse_file(self, filename):
         """
@@ -1538,7 +1489,7 @@ class Excellon(Geometry):
         for eline in elines:
             line_num += 1
 
-            ### Cleanup
+            ### Cleanup lines
             eline = eline.strip(' \r\n')
 
             ## Header Begin/End ##
@@ -1563,13 +1514,15 @@ class Excellon(Geometry):
                 match = self.coordsnoperiod_re.search(eline)
                 if match:
                     try:
-                        x = float(match.group(1))/10000
+                        #x = float(match.group(1))/10000
+                        x = self.parse_number(match.group(1))
                         current_x = x
                     except TypeError:
                         x = current_x
 
                     try:
-                        y = float(match.group(2))/10000
+                        #y = float(match.group(2))/10000
+                        y = self.parse_number(match.group(2))
                         current_y = y
                     except TypeError:
                         y = current_y
@@ -1581,7 +1534,7 @@ class Excellon(Geometry):
                     self.drills.append({'point': Point((x, y)), 'tool': current_tool})
                     continue
 
-                ## Coordinates with period ##
+                ## Coordinates with period: Use literally. ##
                 match = self.coordsperiod_re.search(eline)
                 if match:
                     try:
@@ -1630,6 +1583,21 @@ class Excellon(Geometry):
 
             print "WARNING: Line ignored:", eline
         
+    def parse_number(self, number_str):
+        """
+        Parses coordinate numbers without period.
+
+        :param number_str: String representing the numerical value.
+        :type number_str: str
+        :return: Floating point representation of the number
+        :rtype: foat
+        """
+        if self.zeros == "L":
+            match = self.leadingzeros_re.search(number_str)
+            return float(number_str)/(10**(len(match.group(2))-2+len(match.group(1))))
+        else:  # Trailing
+            return float(number_str)/10000
+
     def create_geometry(self):
         """
         Creates circles of the tool diameter at every point
@@ -2443,33 +2411,3 @@ def parse_gerber_number(strnumber, frac_digits):
     """
     return int(strnumber)*(10**(-frac_digits))
 
-
-def parse_gerber_coords(gstr, int_digits, frac_digits):
-    """
-    Parse Gerber coordinates
-
-    :param gstr: Line of G-Code containing coordinates.
-    :type gstr: str
-    :param int_digits: Number of digits in integer part of a number.
-    :type int_digits: int
-    :param frac_digits: Number of digits in frac_digits part of a number.
-    :type frac_digits: int
-    :return: [x, y] coordinates.
-    :rtype: list
-    """
-    global gerbx, gerby
-    xindex = gstr.find("X")
-    yindex = gstr.find("Y")
-    index = gstr.find("D")
-    if xindex == -1:
-        x = gerbx
-        y = int(gstr[(yindex+1):index])*(10**(-frac_digits))
-    elif yindex == -1:
-        y = gerby
-        x = int(gstr[(xindex+1):index])*(10**(-frac_digits))
-    else:
-        x = int(gstr[(xindex+1):yindex])*(10**(-frac_digits))
-        y = int(gstr[(yindex+1):index])*(10**(-frac_digits))
-    gerbx = x
-    gerby = y
-    return [x, y]
