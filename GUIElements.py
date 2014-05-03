@@ -1,6 +1,15 @@
+############################################################
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
+# Date: 2/5/2014                                           #
+# MIT Licence                                              #
+############################################################
+
 from gi.repository import Gtk
 import re
 from copy import copy
+import FlatCAMApp
 
 
 class RadioSet(Gtk.Box):
@@ -24,16 +33,20 @@ class RadioSet(Gtk.Box):
             else:
                 choice['radio'] = Gtk.RadioButton.new_with_label_from_widget(self.group, choice['label'])
             self.pack_start(choice['radio'], expand=True, fill=False, padding=2)
-            # choice['radio'].connect('toggled', self.on_toggle)
+            choice['radio'].connect('toggled', self.on_toggle)
 
-    # def on_toggle(self, *args):
-    #     return
+        self.group_toggle_fn = lambda x, y: None
+
+    def on_toggle(self, btn):
+        if btn.get_active():
+            self.group_toggle_fn(btn, self.get_value)
+        return
 
     def get_value(self):
         for choice in self.choices:
             if choice['radio'].get_active():
                 return choice['value']
-        print "ERROR: No button was toggled in RadioSet."
+        FlatCAMApp.App.log.error("No button was toggled in RadioSet.")
         return None
 
     def set_value(self, val):
@@ -41,7 +54,7 @@ class RadioSet(Gtk.Box):
             if choice['value'] == val:
                 choice['radio'].set_active(True)
                 return
-        print "ERROR: Value given is not part of this RadioSet:", val
+        FlatCAMApp.App.log.error("Value given is not part of this RadioSet: %s" % str(val))
 
 
 class LengthEntry(Gtk.Entry):
@@ -63,7 +76,7 @@ class LengthEntry(Gtk.Entry):
         if val is not None:
             self.set_text(str(val))
         else:
-            print "WARNING: Could not interpret entry:", self.get_text()
+            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
         raw = self.get_text().strip(' ')
@@ -76,7 +89,7 @@ class LengthEntry(Gtk.Entry):
             else:
                 return float(match.group(1))
         except:
-            print "ERROR: Could not parse value in entry:", raw
+            FlatCAMApp.App.log.error("Could not parse value in entry: %s" % str(raw))
             return None
 
     def set_value(self, val):
@@ -94,14 +107,14 @@ class FloatEntry(Gtk.Entry):
         if val is not None:
             self.set_text(str(val))
         else:
-            print "WARNING: Could not interpret entry:", self.get_text()
+            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
         raw = self.get_text().strip(' ')
         try:
             evaled = eval(raw)
         except:
-            print "ERROR: Could not evaluate:", raw
+            FlatCAMApp.App.log.error("Could not evaluate: %s" % str(raw))
             return None
 
         return float(evaled)
@@ -127,6 +140,29 @@ class FCEntry(Gtk.Entry):
 
     def get_value(self):
         return self.get_text()
+
+    def set_value(self, val):
+        self.set_text(str(val))
+
+
+class EvalEntry(Gtk.Entry):
+    def __init__(self):
+        Gtk.Entry.__init__(self)
+
+    def on_activate(self, *args):
+        val = self.get_value()
+        if val is not None:
+            self.set_text(str(val))
+        else:
+            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
+
+    def get_value(self):
+        raw = self.get_text().strip(' ')
+        try:
+            return eval(raw)
+        except:
+            FlatCAMApp.App.log.error("Could not evaluate: %s" % str(raw))
+            return None
 
     def set_value(self, val):
         self.set_text(str(val))

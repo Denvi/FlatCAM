@@ -13,7 +13,7 @@ from gi.repository import GObject
 
 import inspect  # TODO: Remove
 
-from FlatCAMApp import *
+import FlatCAMApp
 from camlib import *
 from ObjectUI import *
 
@@ -123,15 +123,15 @@ class FlatCAMObj(GObject.GObject, object):
         """
 
         if self.axes is None:
-            print "New axes"
+            FlatCAMApp.App.log.debug("setup_axes(): New axes")
             self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
                                         label=self.options["name"])
         elif self.axes not in figure.axes:
-            print "Clearing and attaching axes"
+            FlatCAMApp.App.log.debug("setup_axes(): Clearing and attaching axes")
             self.axes.cla()
             figure.add_axes(self.axes)
         else:
-            print "Clearing Axes"
+            FlatCAMApp.App.log.debug("setup_axes(): Clearing Axes")
             self.axes.cla()
 
         # Remove all decoration. The app's axes will have
@@ -158,7 +158,7 @@ class FlatCAMObj(GObject.GObject, object):
         :return: None
         :rtype: None
         """
-        print inspect.stack()[1][3], "--> FlatCAMObj.read_form()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.read_form()")
         for option in self.options:
             self.read_form_item(option)
 
@@ -171,7 +171,7 @@ class FlatCAMObj(GObject.GObject, object):
         """
 
         self.muted_ui = True
-        print inspect.stack()[1][3], "--> FlatCAMObj.build_ui()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.build_ui()")
 
         # Where the UI for this object is drawn
         # box_selected = self.app.builder.get_object("box_selected")
@@ -186,8 +186,8 @@ class FlatCAMObj(GObject.GObject, object):
         # box_selected.pack_start(sw, True, True, 0)
         box_selected.add(self.ui)
         self.to_form()
-        box_selected.show_all()
-        self.ui.show()
+        GLib.idle_add(box_selected.show_all)
+        GLib.idle_add(self.ui.show_all)
         self.muted_ui = False
 
     def set_form_item(self, option):
@@ -202,7 +202,7 @@ class FlatCAMObj(GObject.GObject, object):
         try:
             self.form_fields[option].set_value(self.options[option])
         except KeyError:
-            App.log.warn("Tried to set an option or field that does not exist: %s" % option)
+            self.app.log.warn("Tried to set an option or field that does not exist: %s" % option)
 
     def read_form_item(self, option):
         """
@@ -216,7 +216,7 @@ class FlatCAMObj(GObject.GObject, object):
         try:
             self.options[option] = self.form_fields[option].get_value()
         except KeyError:
-            App.log.warning("Failed to read option from field: %s" % option)
+            self.app.log.warning("Failed to read option from field: %s" % option)
 
     def plot(self):
         """
@@ -497,8 +497,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                                          zorder=2)
                     self.axes.add_patch(patch)
                 except AssertionError:
-                    print "WARNING: A geometry component was not a polygon:"
-                    print poly
+                    FlatCAMApp.App.log.warning("A geometry component was not a polygon:")
+                    FlatCAMApp.App.log.warning(str(poly))
         else:
             for poly in geometry:
                 x, y = poly.exterior.xy
@@ -547,15 +547,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "toolselection": ""
         })
 
-        # self.form_kinds.update({
-        #     "plot": "cb",
-        #     "solid": "cb",
-        #     "drillz": "entry_eval",
-        #     "travelz": "entry_eval",
-        #     "feedrate": "entry_eval",
-        #     "toolselection": "entry_text"
-        # })
-
         # TODO: Document this.
         self.tool_cbs = {}
 
@@ -564,10 +555,49 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
+        assert isinstance(self.ui, ExcellonObjectUI)
         self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
         self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
         self.ui.solid_cb.connect('clicked', self.on_solid_cb_click)
         self.ui.solid_cb.connect('activate', self.on_solid_cb_click)
+        self.ui.choose_tools_button.connect('clicked', lambda args: self.show_tool_chooser())
+        self.ui.choose_tools_button.connect('activate', lambda args: self.show_tool_chooser())
+        self.ui.generate_cnc_button.connect('clicked', self.on_create_cncjob_button_click)
+        self.ui.generate_cnc_button.connect('activate', self.on_create_cncjob_button_click)
+
+    def on_create_cncjob_button_click(self, *args):
+        self.read_form()
+        job_name = self.options["name"] + "_cnc"
+
+        # Object initialization function for app.new_object()
+        def job_init(job_obj, app_obj):
+            assert isinstance(job_obj, FlatCAMCNCjob)
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
+            job_obj.z_cut = self.options["drillz"]
+            job_obj.z_move = self.options["travelz"]
+            job_obj.feedrate = self.options["feedrate"]
+            # There could be more than one drill size...
+            # job_obj.tooldia =   # TODO: duplicate variable!
+            # job_obj.options["tooldia"] =
+            job_obj.generate_from_excellon_by_tool(self, self.options["toolselection"])
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
+            job_obj.gcode_parse()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
+            job_obj.create_geometry()
+
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
+
+        # To be run in separate thread
+        def job_thread(app_obj):
+            app_obj.new_object("cncjob", job_name, job_init)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        # Send to worker
+        self.app.worker.add_task(job_thread, [self.app])
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -669,11 +699,6 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "tooldia": self.ui.tooldia_entry
         })
 
-        # self.form_kinds.update({
-        #     "plot": "cb",
-        #     "tooldia": "entry_eval"
-        # })
-
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
@@ -681,6 +706,18 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
         self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
+
+        self.ui.export_gcode_button.connect('clicked', self.on_exportgcode_button_click)
+        self.ui.export_gcode_button.connect('activate', self.on_exportgcode_button_click)
+
+    def on_exportgcode_button_click(self, *args):
+        def on_success(app_obj, filename):
+            f = open(filename, 'w')
+            f.write(self.gcode)
+            f.close()
+            app_obj.info("Saved to: " + filename)
+
+        self.app.file_chooser_save_action(on_success)
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -702,7 +739,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
-        print "FlatCAMCNCjob.convert_units()"
+        FlatCAMApp.App.log.debug("FlatCAMCNCjob.convert_units()")
         self.options["tooldia"] *= factor
 
 
@@ -795,7 +832,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 geo_obj.options["cnctooldia"] = tooldia
 
             name = self.options["name"] + "_paint"
-            self.new_object("geometry", name, gen_paintarea)
+            self.app.new_object("geometry", name, gen_paintarea)
 
         subscription = self.app.plotcanvas.mpl_connect('button_press_event', doit)
 
@@ -934,7 +971,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                         self.axes.plot(x, y, 'r-')
                 continue
 
-            print "WARNING: Did not plot:", str(type(geo))
+            FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
         #self.app.plotcanvas.auto_adjust_axes()
         GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)

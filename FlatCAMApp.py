@@ -1,14 +1,20 @@
+############################################################
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
+# Date: 2/5/2014                                           #
+# MIT Licence                                              #
+############################################################
+
 import threading
 import traceback
 import sys
 import urllib
-import copy
+from copy import copy
 import random
 import logging
 
-from gi.repository import Gtk, GdkPixbuf, GObject, Gdk
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
+from gi.repository import Gtk, GdkPixbuf, GObject, Gdk, GLib
 from shapely import speedups
 
 
@@ -18,6 +24,7 @@ from shapely import speedups
 from FlatCAMWorker import Worker
 from ObjectCollection import *
 from FlatCAMObj import *
+from PlotCanvas import *
 
 
 class GerberOptionsGroupUI(Gtk.VBox):
@@ -347,8 +354,6 @@ class App:
         # Needed to interact with the GUI from other threads.
         GObject.threads_init()
 
-        # GLib.log_set_handler()
-
         #### GUI ####
         # Glade init
         self.gladefile = "FlatCAM.ui"
@@ -406,36 +411,153 @@ class App:
 
         self.options_box = self.builder.get_object('options_box')
         ## Application defaults ##
-        self.defaults = {
-            "units": "in"
-        }
         self.defaults_form = GlobalOptionsUI()
+        self.defaults_form_fields = {
+            "units": self.defaults_form.units_radio,
+            "gerber_plot": self.defaults_form.gerber_group.plot_cb,
+            "gerber_solid": self.defaults_form.gerber_group.solid_cb,
+            "gerber_multicolored": self.defaults_form.gerber_group.multicolored_cb,
+            "gerber_isotooldia": self.defaults_form.gerber_group.iso_tool_dia_entry,
+            "gerber_isopasses": self.defaults_form.gerber_group.iso_width_entry,
+            "gerber_isooverlap": self.defaults_form.gerber_group.iso_overlap_entry,
+            "gerber_cutouttooldia": self.defaults_form.gerber_group.cutout_tooldia_entry,
+            "gerber_cutoutmargin": self.defaults_form.gerber_group.cutout_margin_entry,
+            "gerber_cutoutgapsize": self.defaults_form.gerber_group.cutout_gap_entry,
+            "gerber_gaps": self.defaults_form.gerber_group.gaps_radio,
+            "gerber_noncoppermargin": self.defaults_form.gerber_group.noncopper_margin_entry,
+            "gerber_noncopperrounded": self.defaults_form.gerber_group.noncopper_rounded_cb,
+            "gerber_bboxmargin": self.defaults_form.gerber_group.bbmargin_entry,
+            "gerber_bboxrounded": self.defaults_form.gerber_group.bbrounded_cb,
+            "excellon_plot": self.defaults_form.excellon_group.plot_cb,
+            "excellon_solid": self.defaults_form.excellon_group.solid_cb,
+            "excellon_drillz": self.defaults_form.excellon_group.cutz_entry,
+            "excellon_travelz": self.defaults_form.excellon_group.travelz_entry,
+            "excellon_feedrate": self.defaults_form.excellon_group.feedrate_entry,
+            "geometry_plot": self.defaults_form.geometry_group.plot_cb,
+            "geometry_cutz": self.defaults_form.geometry_group.cutz_entry,
+            "geometry_travelz": self.defaults_form.geometry_group.travelz_entry,
+            "geometry_feedrate": self.defaults_form.geometry_group.cncfeedrate_entry,
+            "geometry_cnctooldia": self.defaults_form.geometry_group.cnctooldia_entry,
+            "geometry_painttooldia": self.defaults_form.geometry_group.painttooldia_entry,
+            "geometry_paintoverlap": self.defaults_form.geometry_group.paintoverlap_entry,
+            "geometry_paintmargin": self.defaults_form.geometry_group.paintmargin_entry,
+            "cncjob_plot": self.defaults_form.cncjob_group.plot_cb,
+            "cncjob_tooldia": self.defaults_form.cncjob_group.tooldia_entry
+        }
+
+        self.defaults = {
+            "units": "IN",
+            "gerber_plot": True,
+            "gerber_solid": True,
+            "gerber_multicolored": False,
+            "gerber_isotooldia": 0.016,
+            "gerber_isopasses": 1,
+            "gerber_isooverlap": 0.15,
+            "gerber_cutouttooldia": 0.07,
+            "gerber_cutoutmargin": 0.1,
+            "gerber_cutoutgapsize": 0.15,
+            "gerber_gaps": "4",
+            "gerber_noncoppermargin": 0.0,
+            "gerber_noncopperrounded": False,
+            "gerber_bboxmargin": 0.0,
+            "gerber_bboxrounded": False,
+            "excellon_plot": True,
+            "excellon_solid": False,
+            "excellon_drillz": -0.1,
+            "excellon_travelz": 0.1,
+            "excellon_feedrate": 3.0,
+            "geometry_plot": True,
+            "geometry_cutz": -0.002,
+            "geometry_travelz": 0.1,
+            "geometry_feedrate": 3.0,
+            "geometry_cnctooldia": 0.016,
+            "geometry_painttooldia": 0.07,
+            "geometry_paintoverlap": 0.15,
+            "geometry_paintmargin": 0.0,
+            "cncjob_plot": True,
+            "cncjob_tooldia": 0.016
+        }
+        self.load_defaults()
+        self.defaults_write_form()
 
         ## Current Project ##
-        self.options = {}  # Project options
-        self.project_filename = None
         self.options_form = GlobalOptionsUI()
+        self.options_form_fields = {
+            "units": self.options_form.units_radio,
+            "gerber_plot": self.options_form.gerber_group.plot_cb,
+            "gerber_solid": self.options_form.gerber_group.solid_cb,
+            "gerber_multicolored": self.options_form.gerber_group.multicolored_cb,
+            "gerber_isotooldia": self.options_form.gerber_group.iso_tool_dia_entry,
+            "gerber_isopasses": self.options_form.gerber_group.iso_width_entry,
+            "gerber_isooverlap": self.options_form.gerber_group.iso_overlap_entry,
+            "gerber_cutouttooldia": self.options_form.gerber_group.cutout_tooldia_entry,
+            "gerber_cutoutmargin": self.options_form.gerber_group.cutout_margin_entry,
+            "gerber_cutoutgapsize": self.options_form.gerber_group.cutout_gap_entry,
+            "gerber_gaps": self.options_form.gerber_group.gaps_radio,
+            "gerber_noncoppermargin": self.options_form.gerber_group.noncopper_margin_entry,
+            "gerber_noncopperrounded": self.options_form.gerber_group.noncopper_rounded_cb,
+            "gerber_bboxmargin": self.options_form.gerber_group.bbmargin_entry,
+            "gerber_bboxrounded": self.options_form.gerber_group.bbrounded_cb,
+            "excellon_plot": self.options_form.excellon_group.plot_cb,
+            "excellon_solid": self.options_form.excellon_group.solid_cb,
+            "excellon_drillz": self.options_form.excellon_group.cutz_entry,
+            "excellon_travelz": self.options_form.excellon_group.travelz_entry,
+            "excellon_feedrate": self.options_form.excellon_group.feedrate_entry,
+            "geometry_plot": self.options_form.geometry_group.plot_cb,
+            "geometry_cutz": self.options_form.geometry_group.cutz_entry,
+            "geometry_travelz": self.options_form.geometry_group.travelz_entry,
+            "geometry_feedrate": self.options_form.geometry_group.cncfeedrate_entry,
+            "geometry_cnctooldia": self.options_form.geometry_group.cnctooldia_entry,
+            "geometry_painttooldia": self.options_form.geometry_group.painttooldia_entry,
+            "geometry_paintoverlap": self.options_form.geometry_group.paintoverlap_entry,
+            "geometry_paintmargin": self.options_form.geometry_group.paintmargin_entry,
+            "cncjob_plot": self.options_form.cncjob_group.plot_cb,
+            "cncjob_tooldia": self.options_form.cncjob_group.tooldia_entry
+        }
 
-        self.options_box.pack_start(self.defaults_form, False, False, 1)
+        # Project options
+        self.options = {
+            "units": "IN",
+            "gerber_plot": True,
+            "gerber_solid": True,
+            "gerber_multicolored": False,
+            "gerber_isotooldia": 0.016,
+            "gerber_isopasses": 1,
+            "gerber_isooverlap": 0.15,
+            "gerber_cutouttooldia": 0.07,
+            "gerber_cutoutmargin": 0.1,
+            "gerber_cutoutgapsize": 0.15,
+            "gerber_gaps": "4",
+            "gerber_noncoppermargin": 0.0,
+            "gerber_noncopperrounded": False,
+            "gerber_bboxmargin": 0.0,
+            "gerber_bboxrounded": False,
+            "excellon_plot": True,
+            "excellon_solid": False,
+            "excellon_drillz": -0.1,
+            "excellon_travelz": 0.1,
+            "excellon_feedrate": 3.0,
+            "geometry_plot": True,
+            "geometry_cutz": -0.002,
+            "geometry_travelz": 0.1,
+            "geometry_feedrate": 3.0,
+            "geometry_cnctooldia": 0.016,
+            "geometry_painttooldia": 0.07,
+            "geometry_paintoverlap": 0.15,
+            "geometry_paintmargin": 0.0,
+            "cncjob_plot": True,
+            "cncjob_tooldia": 0.016
+        }
+        self.options.update(self.defaults)  # Copy app defaults to project options
+        self.options_write_form()
 
-        # self.form_kinds = {
-        #     "units": "radio"
-        # }
+        self.project_filename = None
 
-        # self.radios = {"units": {"rb_inch": "IN", "rb_mm": "MM"},
-        #                "gerber_gaps": {"rb_app_2tb": "tb", "rb_app_2lr": "lr", "rb_app_4": "4"}}
-        # self.radios_inv = {"units": {"IN": "rb_inch", "MM": "rb_mm"},
-        #                    "gerber_gaps": {"tb": "rb_app_2tb", "lr": "rb_app_2lr", "4": "rb_app_4"}}
+        # Where we draw the options/defaults forms.
+        self.on_options_combo_change(None)
+        #self.options_box.pack_start(self.defaults_form, False, False, 1)
 
-        # Options for each kind of FlatCAMObj.
-        # Example: 'gerber_plot': 'cb'. The widget name would be: 'cb_app_gerber_plot'
-        # for FlatCAMClass in [FlatCAMExcellon, FlatCAMGeometry, FlatCAMGerber, FlatCAMCNCjob]:
-        #     obj = FlatCAMClass("no_name")
-        #     for option in obj.form_kinds:
-        #         self.form_kinds[obj.kind + "_" + option] = obj.form_kinds[option]
-        #         # if obj.form_kinds[option] == "radio":
-        #         #     self.radios.update({obj.kind + "_" + option: obj.radios[option]})
-        #         #     self.radios_inv.update({obj.kind + "_" + option: obj.radios_inv[option]})
+        self.options_form.units_radio.group_toggle_fn = lambda x, y: self.on_toggle_units(x)
 
         ## Event subscriptions ##
 
@@ -452,9 +574,6 @@ class App:
         self.toolbar.insert(measure, -1)
 
         #### Initialization ####
-        self.load_defaults()
-        self.options.update(self.defaults)  # Copy app defaults to project options
-        # self.options2form()  # Populate the app defaults form
         self.units_label.set_text("[" + self.options["units"] + "]")
         self.setup_recent_items()
 
@@ -465,7 +584,7 @@ class App:
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        self.version = 4
+        self.version = 5
         App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
         t1 = threading.Thread(target=self.version_check)
         t1.daemon = True
@@ -486,7 +605,7 @@ class App:
         self.icon48 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon48.png')
         self.icon16 = GdkPixbuf.Pixbuf.new_from_file('share/flatcam_icon16.png')
         Gtk.Window.set_default_icon_list([self.icon16, self.icon48, self.icon256])
-        self.window.set_title("FlatCAM - Alpha 4 UNSTABLE")
+        self.window.set_title("FlatCAM - Alpha 5")
         self.window.set_default_size(900, 600)
         self.window.show_all()
         App.log.info("END of constructor. Releasing control.")
@@ -581,6 +700,10 @@ class App:
         """
 
         box_selected = self.builder.get_object("vp_selected")
+
+        # White background
+        box_selected.override_background_color(Gtk.StateType.NORMAL,
+                                               Gdk.RGBA(1, 1, 1, 1))
 
         # Remove anything else in the box
         box_children = box_selected.get_children()
@@ -721,7 +844,7 @@ class App:
             self.info("Could not evaluate: " + value)
             return None
 
-    def new_object(self, kind, name, initialize):
+    def new_object(self, kind, name, initialize, active=True, fit=True, plot=True):
         """
         Creates a new specalized FlatCAMObj and attaches it to the application,
         this is, updates the GUI accordingly, any other records and plots it.
@@ -782,17 +905,18 @@ class App:
             obj.convert_units(self.options["units"])
 
         # Add to our records
-        self.collection.append(obj, active=True)
+        self.collection.append(obj, active=active)
 
         # Show object details now.
         GLib.idle_add(lambda: self.notebook.set_current_page(1))
 
         # Plot
         # TODO: (Thread-safe?)
-        obj.plot()
+        if plot:
+            obj.plot()
 
-        GLib.idle_add(lambda: self.on_zoom_fit(None))
-        #self.on_zoom_fit(None)
+        if fit:
+            GLib.idle_add(lambda: self.on_zoom_fit(None))
 
         return obj
 
@@ -835,105 +959,21 @@ class App:
             return
         self.defaults.update(defaults)
 
-    def read_form(self):
-        """
-        Reads the options form into self.defaults/self.options.
+    def defaults_read_form(self):
+        for option in self.defaults_form_fields:
+            self.defaults[option] = self.defaults_form_fields[option].get_value()
 
-        :return: None
-        :rtype: None
-        """
-        combo_sel = self.combo_options.get_active()
-        options_set = [self.options, self.defaults][combo_sel]
-        for option in options_set:
-            self.read_form_item(option, options_set)
+    def options_read_form(self):
+        for option in self.options_form_fields:
+            self.options[option] = self.options_form_fields[option].get_value()
 
-    def read_form_item(self, name, dest):
-        """
-        Reads the value of a form item in the defaults/options form and
-        saves it to the corresponding dictionary.
+    def defaults_write_form(self):
+        for option in self.defaults_form_fields:
+            self.defaults_form_fields[option].set_value(self.defaults[option])
 
-        :param name: Name of the form item. A key in ``self.defaults`` or
-            ``self.options``.
-        :type name: str
-        :param dest: Dictionary to which to save the value.
-        :type dest: dict
-        :return: None
-        """
-        fkind = self.form_kinds[name]
-        fname = fkind + "_" + "app" + "_" + name
-
-        if fkind == 'entry_text':
-            dest[name] = self.builder.get_object(fname).get_text()
-            return
-        if fkind == 'entry_eval':
-            dest[name] = self.get_eval(fname)
-            return
-        if fkind == 'cb':
-            dest[name] = self.builder.get_object(fname).get_active()
-            return
-        if fkind == 'radio':
-            dest[name] = self.get_radio_value(self.radios[name])
-            return
-        print "Unknown kind of form item:", fkind
-
-    # def options2form(self):
-    #     """
-    #     Sets the 'Project Options' or 'Application Defaults' form with values from
-    #     ``self.options`` or ``self.defaults``.
-    #
-    #     :return: None
-    #     :rtype: None
-    #     """
-    #
-    #     # Set the on-change callback to do nothing while we do the changes.
-    #     self.options_update_ignore = True
-    #     self.toggle_units_ignore = True
-    #
-    #     combo_sel = self.combo_options.get_active()
-    #     options_set = [self.options, self.defaults][combo_sel]
-    #     for option in options_set:
-    #         self.set_form_item(option, options_set[option])
-    #
-    #     self.options_update_ignore = False
-    #     self.toggle_units_ignore = False
-
-    def set_form_item(self, name, value):
-        """
-        Sets a form item 'name' in the GUI with the given 'value'. The syntax of
-        form names in the GUI is <kind>_app_<name>, where kind is one of: rb (radio button),
-        cb (check button), entry_eval or entry_text (entry), combo (combo box). name is
-        whatever name it's been given. For self.defaults, name is a key in the dictionary.
-
-        :param name: Name of the form field.
-        :type name: str
-        :param value: The value to set the form field to.
-        :type value: Depends on field kind.
-        :return: None
-        """
-        if name not in self.form_kinds:
-            print "WARNING: Tried to set unknown option/form item:", name
-            return
-        fkind = self.form_kinds[name]
-        fname = fkind + "_" + "app" + "_" + name
-        if fkind == 'entry_eval' or fkind == 'entry_text':
-            try:
-                self.builder.get_object(fname).set_text(str(value))
-            except:
-                print "ERROR: Failed to set value of %s to %s" % (fname, str(value))
-            return
-        if fkind == 'cb':
-            try:
-                self.builder.get_object(fname).set_active(value)
-            except:
-                print "ERROR: Failed to set value of %s to %s" % (fname, str(value))
-            return
-        if fkind == 'radio':
-            try:
-                self.builder.get_object(self.radios_inv[name][value]).set_active(True)
-            except:
-                print "ERROR: Failed to set value of %s to %s" % (fname, str(value))
-            return
-        print "Unknown kind of form item:", fkind
+    def options_write_form(self):
+        for option in self.options_form_fields:
+            self.options_form_fields[option].set_value(self.options[option])
 
     def save_project(self, filename):
         """
@@ -956,14 +996,14 @@ class App:
 
         try:
             f = open(filename, 'w')
-        except:
-            print "ERROR: Failed to open file for saving:", filename
+        except IOError:
+            App.log.error("ERROR: Failed to open file for saving:", filename)
             return
 
         try:
             json.dump(d, f, default=to_dict)
         except:
-            print "ERROR: File open but failed to write:", filename
+            App.log.error("ERROR: File open but failed to write:", filename)
             f.close()
             return
 
@@ -977,6 +1017,7 @@ class App:
         :type filename: str
         :return: None
         """
+        App.log.debug("Opening project: " + filename)
 
         try:
             f = open(filename, 'r')
@@ -1004,12 +1045,16 @@ class App:
         GLib.idle_add(lambda: self.units_label.set_text(self.options["units"]))
 
         # Re create objects
+        App.log.debug("Re-creating objects...")
         for obj in d['objs']:
             def obj_init(obj_inst, app_inst):
                 obj_inst.from_dict(obj)
-            self.new_object(obj['kind'], obj['options']['name'], obj_init)
+            App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
+            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=False)
 
+        self.plot_all()
         self.info("Project loaded from: " + filename)
+        App.log.debug("Project loaded")
 
     def populate_objects_combo(self, combo):
         """
@@ -1019,7 +1064,7 @@ class App:
         :type combo: str or Gtk.ComboBoxText
         :return: None
         """
-        print "Populating combo!"
+        App.log.debug("Populating combo!")
         if type(combo) == str:
             combo = self.builder.get_object(combo)
 
@@ -1078,17 +1123,6 @@ class App:
 
         return
 
-    # def setup_tooltips(self):
-    #     tooltips = {
-    #         "cb_gerber_plot": "Plot this object on the main window.",
-    #         # "cb_gerber_mergepolys": "Show overlapping polygons as single.",
-    #         "cb_gerber_solid": "Paint inside polygons.",
-    #         "cb_gerber_multicolored": "Draw polygons with different colors."
-    #     }
-    #
-    #     for widget in tooltips:
-    #         self.builder.get_object(widget).set_tooltip_markup(tooltips[widget])
-
     def do_nothing(self, param):
         return
 
@@ -1112,7 +1146,6 @@ class App:
                 GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 return
             for obj in self.collection.get_list():
-                #if i != app_obj.selected_item_name or not except_current:
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
                     obj.plot()
@@ -1339,39 +1372,6 @@ class App:
     def on_disable_all_plots_not_current(self, widget):
         self.disable_plots(except_current=True)
 
-    # def on_offset_object(self, widget):
-    #     """
-    #     Offsets the object's geometry by the vector specified
-    #     in the form. Re-plots.
-    #
-    #     :param widget: Ignored
-    #     :return: None
-    #     """
-    #
-    #     obj = self.collection.get_active()
-    #     obj.read_form()
-    #     assert isinstance(obj, FlatCAMObj)
-    #     try:
-    #         vect = self.get_eval("entry_eval_" + obj.kind + "_offset")
-    #     except:
-    #         self.info("ERROR: Vector is not in (x, y) format.")
-    #         return
-    #     assert isinstance(obj, Geometry)
-    #     obj.offset(vect)
-    #     obj.plot()
-    #     return
-
-    # def on_cb_plot_toggled(self, widget):
-    #     """
-    #     Callback for toggling the "Plot" checkbox. Re-plots.
-    #
-    #     :param widget: Ignored.
-    #     :return: None
-    #     """
-    #
-    #     self.collection.get_active().read_form()
-    #     self.collection.get_active().plot()
-
     def on_about(self, widget):
         """
         Opens the 'About' dialog box.
@@ -1556,9 +1556,6 @@ class App:
         if self.toggle_units_ignore:
             return
 
-        combo_sel = self.combo_options.get_active()
-        options_set = [self.options, self.defaults][combo_sel]
-
         # Options to scale
         dimensions = ['gerber_isotooldia', 'gerber_cutoutmargin', 'gerber_cutoutgapsize',
                       'gerber_noncoppermargin', 'gerber_bboxmargin', 'excellon_drillz',
@@ -1569,19 +1566,12 @@ class App:
 
         def scale_options(sfactor):
             for dim in dimensions:
-                options_set[dim] *= sfactor
+                self.options[dim] *= sfactor
 
         # The scaling factor depending on choice of units.
         factor = 1/25.4
-        if self.builder.get_object('rb_mm').get_active():
+        if self.options_form.units_radio.get_value().upper() == 'MM':
             factor = 25.4
-
-        # App units. Convert without warning.
-        if combo_sel == 1:
-            self.read_form()
-            scale_options(factor)
-            self.options2form()
-            return
 
         # Changing project units. Warn user.
         label = Gtk.Label("Changing the units of the project causes all geometrical \n" +
@@ -1599,13 +1589,11 @@ class App:
         dialog.destroy()
 
         if response == Gtk.ResponseType.OK:
-            #print "Converting units..."
-            #print "Converting options..."
-            self.read_form()
+            self.options_read_form()
             scale_options(factor)
-            self.options2form()
+            self.options_write_form()
             for obj in self.collection.get_list():
-                units = self.get_radio_value({"rb_mm": "MM", "rb_inch": "IN"})
+                units = self.options_form.units_radio.get_value().upper()
                 obj.convert_units(units)
             current = self.collection.get_active()
             if current is not None:
@@ -1614,13 +1602,13 @@ class App:
         else:
             # Undo toggling
             self.toggle_units_ignore = True
-            if self.builder.get_object('rb_mm').get_active():
-                self.builder.get_object('rb_inch').set_active(True)
+            if self.options_form.units_radio.get_value().upper() == 'MM':
+                self.options_form.units_radio.set_value('IN')
             else:
-                self.builder.get_object('rb_mm').set_active(True)
+                self.options_form.units_radio.set_value('MM')
             self.toggle_units_ignore = False
 
-        self.read_form()
+        self.options_read_form()
         self.info("Converted units to %s" % self.options["units"])
         self.units_label.set_text("[" + self.options["units"] + "]")
 
@@ -1636,6 +1624,7 @@ class App:
         def on_success(app_obj, filename):
             app_obj.open_project(filename)
 
+        # Runs on_success on worker
         self.file_chooser_action(on_success)
 
     def on_file_saveproject(self, param):
@@ -1726,8 +1715,9 @@ class App:
         :return: None
         """
 
+        self.defaults_read_form()
         self.options.update(self.defaults)
-        self.options2form()  # Update UI
+        self.options_write_form()
 
     def on_options_project2app(self, param):
         """
@@ -1738,8 +1728,9 @@ class App:
         :return: None
         """
 
+        self.options_read_form()
         self.defaults.update(self.options)
-        self.options2form()  # Update UI
+        self.defaults_write_form()
 
     def on_options_project2object(self, param):
         """
@@ -1750,6 +1741,7 @@ class App:
         :return: None
         """
 
+        self.options_read_form()
         obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
@@ -1778,7 +1770,7 @@ class App:
             if option in ['name']:  # TODO: Handle this better...
                 continue
             self.options[obj.kind + "_" + option] = obj.options[option]
-        self.options2form()  # Update UI
+        self.options_write_form()
 
     def on_options_object2app(self, param):
         """
@@ -1797,7 +1789,7 @@ class App:
             if option in ['name']:  # TODO: Handle this better...
                 continue
             self.defaults[obj.kind + "_" + option] = obj.options[option]
-        self.options2form()  # Update UI
+        self.defaults_write_form()
 
     def on_options_app2object(self, param):
         """
@@ -1808,6 +1800,7 @@ class App:
         :return: None
         """
 
+        self.defaults_read_form()
         obj = self.collection.get_active()
         if obj is None:
             self.info("WARNING: No object selected.")
@@ -1833,6 +1826,7 @@ class App:
             options = f.read()
             f.close()
         except:
+            App.log.error("Could not load defaults file.")
             self.info("ERROR: Could not load defaults file.")
             return
 
@@ -1840,12 +1834,13 @@ class App:
             defaults = json.loads(options)
         except:
             e = sys.exc_info()[0]
-            print e
+            App.log.error("Failed to parse defaults file.")
+            App.log.error(str(e))
             self.info("ERROR: Failed to parse defaults file.")
             return
 
         # Update options
-        assert isinstance(defaults, dict)
+        self.defaults_read_form()
         defaults.update(self.defaults)
 
         # Save update options
@@ -1870,7 +1865,7 @@ class App:
         """
 
         combo_sel = self.combo_options.get_active()
-        print "Options --> ", combo_sel
+        App.log.debug("Options --> %s" % combo_sel)
 
         # Remove anything else in the box
         box_children = self.options_box.get_children()
@@ -1882,35 +1877,6 @@ class App:
         form.show_all()
 
         # self.options2form()
-
-    def on_options_update(self, widget):
-        """
-        Called whenever a value in the options/defaults form changes.
-        All values are updated. Can be inhibited by setting ``self.options_update_ignore = True``,
-        which may be necessary when updating the UI from code and not by the user.
-
-        :param widget: The widget from which this was called. Ignore.
-        :return: None
-        """
-
-        if self.options_update_ignore:
-            return
-        self.read_form()
-
-    # def on_scale_object(self, widget):
-    #     """
-    #     Callback for request to change an objects geometry scale. The object
-    #     is re-scaled and replotted.
-    #
-    #     :param widget: Ignored.
-    #     :return: None
-    #     """
-    #
-    #     obj = self.collection.get_active()
-    #     factor = self.get_eval("entry_eval_" + obj.kind + "_scalefactor")
-    #     obj.scale(factor)
-    #     obj.to_form()
-    #     self.on_update_plot(None)
 
     def on_canvas_configure(self, widget, event):
         """
@@ -1937,30 +1903,6 @@ class App:
         """
         self.notebook.set_current_page(1)
 
-    # def on_generate_gerber_bounding_box(self, widget):
-    #     """
-    #     Callback for request from the Gerber form to generate a bounding box for the
-    #     geometry in the object. Creates a FlatCAMGeometry with the bounding box.
-    #     The box can have rounded corners if specified in the form.
-    #
-    #     :param widget: Ignored.
-    #     :return: None
-    #     """
-    #     # TODO: Use Gerber.get_bounding_box(...)
-    #     gerber = self.collection.get_active()
-    #     gerber.read_form()
-    #     name = gerber.options["name"] + "_bbox"
-    #
-    #     def geo_init(geo_obj, app_obj):
-    #         assert isinstance(geo_obj, FlatCAMGeometry)
-    #         # Bounding box with rounded corners
-    #         bounding_box = gerber.solid_geometry.envelope.buffer(gerber.options["bboxmargin"])
-    #         if not gerber.options["bboxrounded"]:  # Remove rounded corners
-    #             bounding_box = bounding_box.envelope
-    #         geo_obj.solid_geometry = bounding_box
-    #
-    #     self.new_object("geometry", name, geo_init)
-
     def on_update_plot(self, widget):
         """
         Callback for button on form for all kinds of objects.
@@ -1982,51 +1924,6 @@ class App:
 
         # Send to worker
         self.worker.add_task(thread_func, [self])
-
-    def on_generate_excellon_cncjob(self, widget):
-        """
-        Callback for button active/click on Excellon form to
-        create a CNC Job for the Excellon file.
-
-        :param widget: Ignored
-        :return: None
-        """
-
-        excellon = self.collection.get_active()
-        excellon.read_form()
-        job_name = excellon.options["name"] + "_cnc"
-
-        # Object initialization function for app.new_object()
-        def job_init(job_obj, app_obj):
-            # excellon_ = self.get_current()
-            # assert isinstance(excellon_, FlatCAMExcellon)
-            assert isinstance(job_obj, FlatCAMCNCjob)
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-            job_obj.z_cut = excellon.options["drillz"]
-            job_obj.z_move = excellon.options["travelz"]
-            job_obj.feedrate = excellon.options["feedrate"]
-            # There could be more than one drill size...
-            # job_obj.tooldia =   # TODO: duplicate variable!
-            # job_obj.options["tooldia"] =
-            job_obj.generate_from_excellon_by_tool(excellon, excellon.options["toolselection"])
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
-            job_obj.gcode_parse()
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-            job_obj.create_geometry()
-
-            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
-
-        # To be run in separate thread
-        def job_thread(app_obj):
-            app_obj.new_object("cncjob", job_name, job_init)
-            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
-
-        # Send to worker
-        self.worker.add_task(job_thread, [self])
 
     def on_excellon_tool_choose(self, widget):
         """
@@ -2054,81 +1951,6 @@ class App:
         assert isinstance(obj, FlatCAMObj)
         obj.read_form()
 
-    # def on_gerber_generate_noncopper(self, widget):
-    #     """
-    #     Callback for button on Gerber form to create a geometry object
-    #     with polygons covering the area without copper or negative of the
-    #     Gerber.
-    #
-    #     :param widget: The widget from which this was called.
-    #     :return: None
-    #     """
-    #
-    #     gerb = self.collection.get_active()
-    #     gerb.read_form()
-    #     name = gerb.options["name"] + "_noncopper"
-    #
-    #     def geo_init(geo_obj, app_obj):
-    #         assert isinstance(geo_obj, FlatCAMGeometry)
-    #         bounding_box = gerb.solid_geometry.envelope.buffer(gerb.options["noncoppermargin"])
-    #         if not gerb.options["noncopperrounded"]:
-    #             bounding_box = bounding_box.envelope
-    #         non_copper = bounding_box.difference(gerb.solid_geometry)
-    #         geo_obj.solid_geometry = non_copper
-    #
-    #     # TODO: Check for None
-    #     self.new_object("geometry", name, geo_init)
-
-    # def on_gerber_generate_cutout(self, widget):
-    #     """
-    #     Callback for button on Gerber form to create geometry with lines
-    #     for cutting off the board.
-    #
-    #     :param widget: The widget from which this was called.
-    #     :return: None
-    #     """
-    #
-    #     gerb = self.collection.get_active()
-    #     gerb.read_form()
-    #     name = gerb.options["name"] + "_cutout"
-    #
-    #     def geo_init(geo_obj, app_obj):
-    #         margin = gerb.options["cutoutmargin"] + gerb.options["cutouttooldia"]/2
-    #         gap_size = gerb.options["cutoutgapsize"] + gerb.options["cutouttooldia"]
-    #         minx, miny, maxx, maxy = gerb.bounds()
-    #         minx -= margin
-    #         maxx += margin
-    #         miny -= margin
-    #         maxy += margin
-    #         midx = 0.5 * (minx + maxx)
-    #         midy = 0.5 * (miny + maxy)
-    #         hgap = 0.5 * gap_size
-    #         pts = [[midx - hgap, maxy],
-    #                [minx, maxy],
-    #                [minx, midy + hgap],
-    #                [minx, midy - hgap],
-    #                [minx, miny],
-    #                [midx - hgap, miny],
-    #                [midx + hgap, miny],
-    #                [maxx, miny],
-    #                [maxx, midy - hgap],
-    #                [maxx, midy + hgap],
-    #                [maxx, maxy],
-    #                [midx + hgap, maxy]]
-    #         cases = {"tb": [[pts[0], pts[1], pts[4], pts[5]],
-    #                         [pts[6], pts[7], pts[10], pts[11]]],
-    #                  "lr": [[pts[9], pts[10], pts[1], pts[2]],
-    #                         [pts[3], pts[4], pts[7], pts[8]]],
-    #                  "4": [[pts[0], pts[1], pts[2]],
-    #                        [pts[3], pts[4], pts[5]],
-    #                        [pts[6], pts[7], pts[8]],
-    #                        [pts[9], pts[10], pts[11]]]}
-    #         cuts = cases[app.get_radio_value({"rb_2tb": "tb", "rb_2lr": "lr", "rb_4": "4"})]
-    #         geo_obj.solid_geometry = cascaded_union([LineString(segment) for segment in cuts])
-    #
-    #     # TODO: Check for None
-    #     self.new_object("geometry", name, geo_init)
-
     def on_eval_update(self, widget):
         """
         Modifies the content of a Gtk.Entry by running
@@ -2141,143 +1963,21 @@ class App:
         # TODO: error handling here
         widget.set_text(str(eval(widget.get_text())))
 
-    # def on_generate_isolation(self, widget):
+    # def on_cncjob_exportgcode(self, widget):
     #     """
-    #     Callback for button on Gerber form to create isolation routing geometry.
+    #     Called from button on CNCjob form to save the G-Code from the object.
     #
     #     :param widget: The widget from which this was called.
     #     :return: None
     #     """
+    #     def on_success(app_obj, filename):
+    #         cncjob = app_obj.collection.get_active()
+    #         f = open(filename, 'w')
+    #         f.write(cncjob.gcode)
+    #         f.close()
+    #         app_obj.info("Saved to: " + filename)
     #
-    #     gerb = self.collection.get_active()
-    #     gerb.read_form()
-    #     dia = gerb.options["isotooldia"]
-    #     passes = int(gerb.options["isopasses"])
-    #     overlap = gerb.options["isooverlap"] * dia
-    #
-    #     for i in range(passes):
-    #
-    #         offset = (2*i + 1)/2.0 * dia - i*overlap
-    #         iso_name = gerb.options["name"] + "_iso%d" % (i+1)
-    #
-    #         # TODO: This is ugly. Create way to pass data into init function.
-    #         def iso_init(geo_obj, app_obj):
-    #             # Propagate options
-    #             geo_obj.options["cnctooldia"] = gerb.options["isotooldia"]
-    #
-    #             geo_obj.solid_geometry = gerb.isolation_geometry(offset)
-    #             app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
-    #
-    #         # TODO: Do something if this is None. Offer changing name?
-    #         self.new_object("geometry", iso_name, iso_init)
-
-    # def on_generate_cncjob(self, widget):
-    #     """
-    #     Callback for button on geometry form to generate CNC job.
-    #
-    #     :param widget: The widget from which this was called.
-    #     :return: None
-    #     """
-    #
-    #     source_geo = self.collection.get_active()
-    #     source_geo.read_form()
-    #     job_name = source_geo.options["name"] + "_cnc"
-    #
-    #     # Object initialization function for app.new_object()
-    #     # RUNNING ON SEPARATE THREAD!
-    #     def job_init(job_obj, app_obj):
-    #         assert isinstance(job_obj, FlatCAMCNCjob)
-    #         # Propagate options
-    #         job_obj.options["tooldia"] = source_geo.options["cnctooldia"]
-    #
-    #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-    #         job_obj.z_cut = source_geo.options["cutz"]
-    #         job_obj.z_move = source_geo.options["travelz"]
-    #         job_obj.feedrate = source_geo.options["feedrate"]
-    #
-    #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
-    #         # TODO: The tolerance should not be hard coded. Just for testing.
-    #         job_obj.generate_from_geometry(source_geo, tolerance=0.0005)
-    #
-    #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
-    #         job_obj.gcode_parse()
-    #
-    #         # TODO: job_obj.create_geometry creates stuff that is not used.
-    #         #GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-    #         #job_obj.create_geometry()
-    #
-    #         GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
-    #
-    #     # To be run in separate thread
-    #     def job_thread(app_obj):
-    #         app_obj.new_object("cncjob", job_name, job_init)
-    #         GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
-    #         GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-    #         GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
-    #
-    #     # Send to worker
-    #     self.worker.add_task(job_thread, [self])
-
-    # def on_generate_paintarea(self, widget):
-    #     """
-    #     Callback for button on geometry form.
-    #     Subscribes to the "Click on plot" event and continues
-    #     after the click. Finds the polygon containing
-    #     the clicked point and runs clear_poly() on it, resulting
-    #     in a new FlatCAMGeometry object.
-    #
-    #     :param widget: The  widget from which this was called.
-    #     :return: None
-    #     """
-    #
-    #     self.info("Click inside the desired polygon.")
-    #     geo = self.collection.get_active()
-    #     geo.read_form()
-    #     assert isinstance(geo, FlatCAMGeometry)
-    #     tooldia = geo.options["painttooldia"]
-    #     overlap = geo.options["paintoverlap"]
-    #
-    #     # Connection ID for the click event
-    #     subscription = None
-    #
-    #     # To be called after clicking on the plot.
-    #     def doit(event):
-    #         #self.plot_click_subscribers.pop("generate_paintarea")
-    #         self.plotcanvas.mpl_disconnect(subscription)
-    #         self.info("Painting")
-    #         point = [event.xdata, event.ydata]
-    #         poly = find_polygon(geo.solid_geometry, point)
-    #
-    #         # Initializes the new geometry object
-    #         def gen_paintarea(geo_obj, app_obj):
-    #             assert isinstance(geo_obj, FlatCAMGeometry)
-    #             assert isinstance(app_obj, App)
-    #             cp = clear_poly(poly.buffer(-geo.options["paintmargin"]), tooldia, overlap)
-    #             geo_obj.solid_geometry = cp
-    #             geo_obj.options["cnctooldia"] = tooldia
-    #
-    #         #name = self.selected_item_name + "_paint"
-    #         name = geo.options["name"] + "_paint"
-    #         self.new_object("geometry", name, gen_paintarea)
-    #
-    #     #self.plot_click_subscribers["generate_paintarea"] = doit
-    #     subscription = self.plotcanvas.mpl_connect('button_press_event', doit)
-
-    def on_cncjob_exportgcode(self, widget):
-        """
-        Called from button on CNCjob form to save the G-Code from the object.
-
-        :param widget: The widget from which this was called.
-        :return: None
-        """
-        def on_success(app_obj, filename):
-            cncjob = app_obj.collection.get_active()
-            f = open(filename, 'w')
-            f.write(cncjob.gcode)
-            f.close()
-            app_obj.info("Saved to: " + filename)
-
-        self.file_chooser_save_action(on_success)
+    #     self.file_chooser_save_action(on_success)
 
     def on_delete(self, widget):
         """
@@ -2288,7 +1988,7 @@ class App:
         """
 
         # Keep this for later
-        name = copy.copy(self.collection.get_active().options["name"])
+        name = copy(self.collection.get_active().options["name"])
 
         # Remove plot
         self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
@@ -2310,7 +2010,10 @@ class App:
         :return: None
         """
 
-        self.collection.get_active().read_form()
+        try:
+            self.collection.get_active().read_form()
+        except AttributeError:
+            pass
 
         self.plot_all()
 
@@ -2323,20 +2026,6 @@ class App:
         """
         self.plotcanvas.clear()
 
-    # def on_activate_name(self, entry):
-    #     """
-    #     Hitting 'Enter' after changing the name of an item
-    #     updates the item dictionary and re-builds the item list.
-    #
-    #     :param entry: The widget from which this was called.
-    #     :return: None
-    #     """
-    #
-    #     old_name = copy.copy(self.collection.get_active().options["name"])
-    #     new_name = entry.get_text()
-    #     self.collection.change_name(old_name, new_name)
-    #     self.info("Name changed from %s to %s" % (old_name, new_name))
-
     def on_file_new(self, param):
         """
         Callback for menu item File->New. Returns the application to its
@@ -2346,16 +2035,20 @@ class App:
         :return: None
         """
         # Remove everything from memory
+        App.log.debug("on_file_bew()")
 
         # GUI things
         def task():
             # Clear plot
+            App.log.debug("   self.plotcanvas.clear()")
             self.plotcanvas.clear()
 
             # Delete data
+            App.log.debug("   self.collection.delete_all()")
             self.collection.delete_all()
 
             # Clear object editor
+            App.log.debug("   self.setup_component_editor()")
             self.setup_component_editor()
 
         GLib.idle_add(task)
@@ -2514,17 +2207,14 @@ class App:
         self.plotcanvas.canvas.grab_focus()
 
         try:
-            print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-                event.button, event.x, event.y, event.xdata, event.ydata)
-
-            # TODO: This custom subscription mechanism is probably not necessary.
-            # for subscriber in self.plot_click_subscribers:
-            #     self.plot_click_subscribers[subscriber](event)
+            App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+                event.button, event.x, event.y, event.xdata, event.ydata))
 
             self.clipboard.set_text("(%.4f, %.4f)" % (event.xdata, event.ydata), -1)
 
         except Exception, e:
-            print "Outside plot!"
+            App.log.debug("Outside plot?")
+            App.log.debug(str(e))
 
     def on_zoom_in(self, event):
         """
@@ -2679,7 +2369,7 @@ class Measurement:
             self.plotcanvas.mpl_disconnect(self.move_subscription)
             return False
         else:  # Activate
-            print "DEBUG: Activating Measurement Tool..."
+            App.log.debug("DEBUG: Activating Measurement Tool...")
             self.active = True
             self.click_subscription = self.plotcanvas.mpl_connect("button_press_event", self.on_click)
             self.move_subscription = self.plotcanvas.mpl_connect('motion_notify_event', self.on_move)
@@ -2718,308 +2408,6 @@ class Measurement:
             if self.point1 is None:
                 self.point1 = (event.xdata, event.ydata)
             else:
-                self.point2 = copy.copy(self.point1)
+                self.point2 = copy(self.point1)
                 self.point1 = (event.xdata, event.ydata)
             self.on_move(event)
-
-
-class PlotCanvas:
-    """
-    Class handling the plotting area in the application.
-    """
-
-    def __init__(self, container):
-        """
-        The constructor configures the Matplotlib figure that
-        will contain all plots, creates the base axes and connects
-        events to the plotting area.
-
-        :param container: The parent container in which to draw plots.
-        :rtype: PlotCanvas
-        """
-        # Options
-        self.x_margin = 15  # pixels
-        self.y_margin = 25  # Pixels
-
-        # Parent container
-        self.container = container
-
-        # Plots go onto a single matplotlib.figure
-        self.figure = Figure(dpi=50)  # TODO: dpi needed?
-        self.figure.patch.set_visible(False)
-
-        # These axes show the ticks and grid. No plotting done here.
-        # New axes must have a label, otherwise mpl returns an existing one.
-        self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
-        self.axes.set_aspect(1)
-        self.axes.grid(True)
-
-        # The canvas is the top level container (Gtk.DrawingArea)
-        self.canvas = FigureCanvas(self.figure)
-        self.canvas.set_hexpand(1)
-        self.canvas.set_vexpand(1)
-        self.canvas.set_can_focus(True)  # For key press
-
-        # Attach to parent
-        self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
-
-        # Events
-        self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
-        self.canvas.connect('configure-event', self.auto_adjust_axes)
-        self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
-        self.canvas.connect("scroll-event", self.on_scroll)
-        self.canvas.mpl_connect('key_press_event', self.on_key_down)
-        self.canvas.mpl_connect('key_release_event', self.on_key_up)
-
-        self.mouse = [0, 0]
-        self.key = None
-
-    def on_key_down(self, event):
-        """
-
-        :param event:
-        :return:
-        """
-        self.key = event.key
-
-    def on_key_up(self, event):
-        """
-
-        :param event:
-        :return:
-        """
-        self.key = None
-
-    def mpl_connect(self, event_name, callback):
-        """
-        Attach an event handler to the canvas through the Matplotlib interface.
-
-        :param event_name: Name of the event
-        :type event_name: str
-        :param callback: Function to call
-        :type callback: func
-        :return: Connection id
-        :rtype: int
-        """
-        return self.canvas.mpl_connect(event_name, callback)
-
-    def mpl_disconnect(self, cid):
-        """
-        Disconnect callback with the give id.
-        :param cid: Callback id.
-        :return: None
-        """
-        self.canvas.mpl_disconnect(cid)
-
-    def connect(self, event_name, callback):
-        """
-        Attach an event handler to the canvas through the native GTK interface.
-
-        :param event_name: Name of the event
-        :type event_name: str
-        :param callback: Function to call
-        :type callback: function
-        :return: Nothing
-        """
-        self.canvas.connect(event_name, callback)
-
-    def clear(self):
-        """
-        Clears axes and figure.
-
-        :return: None
-        """
-
-        # Clear
-        self.axes.cla()
-        self.figure.clf()
-
-        # Re-build
-        self.figure.add_axes(self.axes)
-        self.axes.set_aspect(1)
-        self.axes.grid(True)
-
-        # Re-draw
-        self.canvas.queue_draw()
-
-    def adjust_axes(self, xmin, ymin, xmax, ymax):
-        """
-        Adjusts all axes while maintaining the use of the whole canvas
-        and an aspect ratio to 1:1 between x and y axes. The parameters are an original
-        request that will be modified to fit these restrictions.
-
-        :param xmin: Requested minimum value for the X axis.
-        :type xmin: float
-        :param ymin: Requested minimum value for the Y axis.
-        :type ymin: float
-        :param xmax: Requested maximum value for the X axis.
-        :type xmax: float
-        :param ymax: Requested maximum value for the Y axis.
-        :type ymax: float
-        :return: None
-        """
-
-        print "PC.adjust_axes()"
-
-        width = xmax - xmin
-        height = ymax - ymin
-        try:
-            r = width / height
-        except:
-            print "ERROR: Height is", height
-            return
-        canvas_w, canvas_h = self.canvas.get_width_height()
-        canvas_r = float(canvas_w) / canvas_h
-        x_ratio = float(self.x_margin) / canvas_w
-        y_ratio = float(self.y_margin) / canvas_h
-
-        if r > canvas_r:
-            ycenter = (ymin + ymax) / 2.0
-            newheight = height * r / canvas_r
-            ymin = ycenter - newheight / 2.0
-            ymax = ycenter + newheight / 2.0
-        else:
-            xcenter = (xmax + ymin) / 2.0
-            newwidth = width * canvas_r / r
-            xmin = xcenter - newwidth / 2.0
-            xmax = xcenter + newwidth / 2.0
-
-        # Adjust axes
-        for ax in self.figure.get_axes():
-            if ax._label != 'base':
-                ax.set_frame_on(False)  # No frame
-                ax.set_xticks([])  # No tick
-                ax.set_yticks([])  # No ticks
-                ax.patch.set_visible(False)  # No background
-                ax.set_aspect(1)
-            ax.set_xlim((xmin, xmax))
-            ax.set_ylim((ymin, ymax))
-            ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
-
-        # Re-draw
-        self.canvas.queue_draw()
-
-    def auto_adjust_axes(self, *args):
-        """
-        Calls ``adjust_axes()`` using the extents of the base axes.
-
-        :rtype : None
-        :return: None
-        """
-
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        self.adjust_axes(xmin, ymin, xmax, ymax)
-
-    def zoom(self, factor, center=None):
-        """
-        Zooms the plot by factor around a given
-        center point. Takes care of re-drawing.
-
-        :param factor: Number by which to scale the plot.
-        :type factor: float
-        :param center: Coordinates [x, y] of the point around which to scale the plot.
-        :type center: list
-        :return: None
-        """
-
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        width = xmax - xmin
-        height = ymax - ymin
-
-        if center is None or center == [None, None]:
-            center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
-
-        # For keeping the point at the pointer location
-        relx = (xmax - center[0]) / width
-        rely = (ymax - center[1]) / height
-
-        new_width = width / factor
-        new_height = height / factor
-
-        xmin = center[0] - new_width * (1 - relx)
-        xmax = center[0] + new_width * relx
-        ymin = center[1] - new_height * (1 - rely)
-        ymax = center[1] + new_height * rely
-
-        # Adjust axes
-        for ax in self.figure.get_axes():
-            ax.set_xlim((xmin, xmax))
-            ax.set_ylim((ymin, ymax))
-
-        # Re-draw
-        self.canvas.queue_draw()
-
-    def pan(self, x, y):
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        width = xmax - xmin
-        height = ymax - ymin
-
-        # Adjust axes
-        for ax in self.figure.get_axes():
-            ax.set_xlim((xmin + x*width, xmax + x*width))
-            ax.set_ylim((ymin + y*height, ymax + y*height))
-
-        # Re-draw
-        self.canvas.queue_draw()
-
-    def new_axes(self, name):
-        """
-        Creates and returns an Axes object attached to this object's Figure.
-
-        :param name: Unique label for the axes.
-        :return: Axes attached to the figure.
-        :rtype: Axes
-        """
-
-        return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
-
-    def on_scroll(self, canvas, event):
-        """
-        Scroll event handler.
-
-        :param canvas: The widget generating the event. Ignored.
-        :param event: Event object containing the event information.
-        :return: None
-        """
-
-        # So it can receive key presses
-        self.canvas.grab_focus()
-
-        # Event info
-        z, direction = event.get_scroll_direction()
-
-        if self.key is None:
-
-            if direction is Gdk.ScrollDirection.UP:
-                self.zoom(1.5, self.mouse)
-            else:
-                self.zoom(1/1.5, self.mouse)
-            return
-
-        if self.key == 'shift':
-
-            if direction is Gdk.ScrollDirection.UP:
-                self.pan(0.3, 0)
-            else:
-                self.pan(-0.3, 0)
-            return
-
-        if self.key == 'ctrl+control':
-
-            if direction is Gdk.ScrollDirection.UP:
-                self.pan(0, 0.3)
-            else:
-                self.pan(0, -0.3)
-            return
-
-    def on_mouse_move(self, event):
-        """
-        Mouse movement event hadler. Stores the coordinates.
-
-        :param event: Contains information about the event.
-        :return: None
-        """
-        self.mouse = [event.xdata, event.ydata]

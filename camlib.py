@@ -27,6 +27,15 @@ import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
 #from matplotlib.pyplot import plot
 
+import logging
+
+log = logging.getLogger('base2')
+log.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(levelname)s] %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
 
 class Geometry(object):
     def __init__(self):
@@ -57,7 +66,7 @@ class Geometry(object):
         of geometry: (xmin, ymin, xmax, ymax).
         """
         if self.solid_geometry is None:
-            print "Warning: solid_geometry not computed yet."
+            log.warning("solid_geometry not computed yet.")
             return (0, 0, 0, 0)
             
         if type(self.solid_geometry) == list:
@@ -72,7 +81,7 @@ class Geometry(object):
         bounds of geometry.
         """
         if self.solid_geometry is None:
-            print "Warning: solid_geometry not computed yet."
+            log.warning("Solid_geometry not computed yet.")
             return 0
         bounds = self.bounds()
         return (bounds[2]-bounds[0], bounds[3]-bounds[1])
@@ -133,7 +142,7 @@ class Geometry(object):
         :return: Scaling factor resulting from unit change.
         :rtype: float
         """
-        print "Geometry.convert_units()"
+        log.debug("Geometry.convert_units()")
 
         if units.upper() == self.units.upper():
             return 1.0
@@ -143,7 +152,7 @@ class Geometry(object):
         elif units.upper() == "IN":
             factor = 1/25.4
         else:
-            print "Unsupported units:", units
+            log.error("Unsupported units: %s" % str(units))
             return 1.0
 
         self.units = units
@@ -293,7 +302,7 @@ class ApertureMacro:
                 self.primitives.append([eval(x) for x in elements])
                 continue
 
-            print "WARNING: Unknown syntax of aperture macro part:", part
+            log.warning("Unknown syntax of aperture macro part: %s" % str(part))
 
     def append(self, data):
         """
@@ -834,7 +843,7 @@ class Gerber (Geometry):
                                     "modifiers": paramList}
             return apid
 
-        print "WARNING: Aperture not implemented:", apertureType
+        log.warning("Aperture not implemented: %s" % str(apertureType))
         return None
         
     def parse_file(self, filename):
@@ -975,7 +984,7 @@ class Gerber (Geometry):
                             geo = Polygon(path)
                         else:
                             if last_path_aperture is None:
-                                print "Warning: No aperture defined for curent path. (%d)" % line_num
+                                log.warning("No aperture defined for curent path. (%d)" % line_num)
                             width = self.apertures[last_path_aperture]["size"]
                             geo = LineString(path).buffer(width/2)
                         poly_buffer.append(geo)
@@ -1016,13 +1025,13 @@ class Gerber (Geometry):
                     j = 0
 
                 if quadrant_mode is None:
-                    print "ERROR: Found arc without preceding quadrant specification G74 or G75. (%d)" % line_num
-                    print gline
+                    log.error("Found arc without preceding quadrant specification G74 or G75. (%d)" % line_num)
+                    log.error(gline)
                     continue
 
                 if mode is None and current_interpolation_mode not in [2, 3]:
-                    print "ERROR: Found arc without circular interpolation mode defined. (%d)" % line_num
-                    print gline
+                    log.error("Found arc without circular interpolation mode defined. (%d)" % line_num)
+                    log.error(gline)
                     continue
                 elif mode is not None:
                     current_interpolation_mode = int(mode)
@@ -1033,10 +1042,10 @@ class Gerber (Geometry):
 
                 # Nothing created! Pen Up.
                 if current_operation_code == 2:
-                    print "Warning: Arc with D2. (%d)" % line_num
+                    log.warning("Arc with D2. (%d)" % line_num)
                     if len(path) > 1:
                         if last_path_aperture is None:
-                            print "Warning: No aperture defined for curent path. (%d)" % line_num
+                            log.warning("No aperture defined for curent path. (%d)" % line_num)
 
                         # --- BUFFERED ---
                         width = self.apertures[last_path_aperture]["size"]
@@ -1050,7 +1059,7 @@ class Gerber (Geometry):
 
                 # Flash should not happen here
                 if current_operation_code == 3:
-                    print "ERROR: Trying to flash within arc. (%d)" % line_num
+                    log.error("Trying to flash within arc. (%d)" % line_num)
                     continue
 
                 if quadrant_mode == 'MULTI':
@@ -1075,7 +1084,7 @@ class Gerber (Geometry):
                     continue
 
                 if quadrant_mode == 'SINGLE':
-                    print "Warning: Single quadrant arc are not implemented yet. (%d)" % line_num
+                    log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
 
             ### Operation code alone
             match = self.opcode_re.search(gline)
@@ -1228,7 +1237,7 @@ class Gerber (Geometry):
                 continue
 
             ### Line did not match any pattern. Warn user.
-            print "WARNING: Line ignored (%d):" % line_num, gline
+            log.warning("Line ignored (%d): %s" % (line_num, gline))
         
         if len(path) > 1:
             # EOF, create shapely LineString if something still in path
@@ -1528,7 +1537,7 @@ class Excellon(Geometry):
                         y = current_y
 
                     if x is None or y is None:
-                        print "ERROR: Missing coordinates"
+                        log.error("Missing coordinates")
                         continue
 
                     self.drills.append({'point': Point((x, y)), 'tool': current_tool})
@@ -1550,7 +1559,7 @@ class Excellon(Geometry):
                         y = current_y
 
                     if x is None or y is None:
-                        print "ERROR: Missing coordinates"
+                        log.error("Missing coordinates")
                         continue
 
                     self.drills.append({'point': Point((x, y)), 'tool': current_tool})
@@ -1581,7 +1590,7 @@ class Excellon(Geometry):
                     self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
                     continue
 
-            print "WARNING: Line ignored:", eline
+            log.warning("Line ignored: %s" % eline)
         
     def parse_number(self, number_str):
         """
@@ -1724,7 +1733,7 @@ class CNCjob(Geometry):
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
-        print "CNCjob.convert_units()"
+        log.debug("CNCjob.convert_units()")
 
         self.z_cut *= factor
         self.z_move *= factor
@@ -1783,20 +1792,20 @@ class CNCjob(Geometry):
         :return: None
         :rtype: None
         """
-        print "Creating CNC Job from Excellon..."
+        log.debug("Creating CNC Job from Excellon...")
         if tools == "all":
             tools = [tool for tool in exobj.tools]
         else:
             tools = [x.strip() for x in tools.split(",")]
             tools = filter(lambda i: i in exobj.tools, tools)
-        print "Tools are:", tools
+        log.debug("Tools are: %s" % str(tools))
 
         points = []
         for drill in exobj.drills:
             if drill['tool'] in tools:
                 points.append(drill['point'])
 
-        print "Found %d drills." % len(points)
+        log.debug("Found %d drills." % len(points))
         #self.kind = "drill"
         self.gcode = []
 
@@ -1873,8 +1882,8 @@ class CNCjob(Geometry):
                     self.gcode += self.polygon2gcode(poly, tolerance=tolerance)
                 continue
 
-            print "WARNING: G-code generation not implemented for %s" % (str(type(geo)))
-        
+            log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         self.gcode += "G00 X0Y0\n"
         self.gcode += "M05\n"  # Spindle stop
@@ -1967,8 +1976,8 @@ class CNCjob(Geometry):
             ## Changing height
             if 'Z' in gobj:
                 if ('X' in gobj or 'Y' in gobj) and gobj['Z'] != current['Z']:
-                    print "WARNING: Non-orthogonal motion: From", current
-                    print "         To:", gobj
+                    log.warning("Non-orthogonal motion: From %s" % str(current))
+                    log.warning("  To: %s" % str(gobj))
                 current['Z'] = gobj['Z']
                 # Store the path into geometry and reset path
                 if len(path) > 1:
@@ -2239,7 +2248,7 @@ def get_bounds(geometry_list):
             xmax = max([xmax, gxmax])
             ymax = max([ymax, gymax])
         except:
-            print "DEV WARNING: Tried to get bounds of empty geometry."
+            log.warning("DEVELOPMENT: Tried to get bounds of empty geometry.")
 
     return [xmin, ymin, xmax, ymax]
 
@@ -2392,7 +2401,7 @@ def plotg(geo):
             _ = iter(g)
             plotg(g)
         except:
-            print "Cannot plot:", str(type(g))
+            log.error("Cannot plot: " + str(type(g)))
             continue
 
 

@@ -9,6 +9,7 @@
 from FlatCAMObj import *
 from gi.repository import Gtk, GdkPixbuf
 import inspect  # TODO: Remove
+import FlatCAMApp
 
 
 class ObjectCollection:
@@ -75,11 +76,11 @@ class ObjectCollection:
             iterat = self.store.iter_next(iterat)
 
     def delete_all(self):
-        print "OC.delete_all()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_all()")
         self.store.clear()
 
     def delete_active(self):
-        print "OC.delete_active()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_active()")
         try:
             model, treeiter = self.tree_selection.get_selected()
             self.store.remove(treeiter)
@@ -94,7 +95,7 @@ class ObjectCollection:
         :param selection: Ignored.
         :return: None
         """
-        print inspect.stack()[1][3], "--> OC.on_list_selection_change()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.on_list_selection_change()")
         try:
             self.get_active().build_ui()
         except AttributeError:  # For None being active
@@ -109,11 +110,11 @@ class ObjectCollection:
         :type name: str
         :return: None
         """
-        print "OC.set_active()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.set_active()")
         self.set_list_selection(name)
 
     def get_active(self):
-        print inspect.stack()[1][3], "--> OC.get_active()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_active()")
         try:
             model, treeiter = self.tree_selection.get_selected()
             return model[treeiter][0]
@@ -128,7 +129,7 @@ class ObjectCollection:
         :rtype name: str
         :return: None
         """
-        print inspect.stack()[1][3], "--> OC.set_list_selection()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.set_list_selection()")
         iterat = self.store.get_iter_first()
         while iterat is not None and self.store[iterat][0].options["name"] != name:
             iterat = self.store.iter_next(iterat)
@@ -144,7 +145,7 @@ class ObjectCollection:
         :type active: bool
         :return: None
         """
-        print inspect.stack()[1][3], "--> OC.append()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.append()")
 
         def guitask():
             self.store.append([obj])
@@ -159,7 +160,7 @@ class ObjectCollection:
         :return: List of names.
         :rtype: list
         """
-        print "OC.get_names()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_names()")
         names = []
         iterat = self.store.get_iter_first()
         while iterat is not None:
@@ -175,7 +176,7 @@ class ObjectCollection:
         :return: [xmin, ymin, xmax, ymax]
         :rtype: list
         """
-        print "OC.get_bounds()"
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_bounds()")
 
         # TODO: Move the operation out of here.
 
@@ -194,7 +195,7 @@ class ObjectCollection:
                 xmax = max([xmax, gxmax])
                 ymax = max([ymax, gymax])
             except:
-                print "DEV WARNING: Tried to get bounds of empty geometry."
+                FlatCAMApp.App.log.waring("DEV WARNING: Tried to get bounds of empty geometry.")
             iterat = self.store.iter_next(iterat)
         return [xmin, ymin, xmax, ymax]
 
@@ -205,6 +206,7 @@ class ObjectCollection:
         :return: List with all FlatCAMObj.
         :rtype: list
         """
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_list()")
         collection_list = []
         iterat = self.store.get_iter_first()
         while iterat is not None:
@@ -222,6 +224,8 @@ class ObjectCollection:
         :return: The requested object or None if no such object.
         :rtype: FlatCAMObj or None
         """
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_by_name()")
+
         iterat = self.store.get_iter_first()
         while iterat is not None:
             obj = self.store[iterat][0]

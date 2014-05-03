@@ -6,7 +6,7 @@
     <property name="border_width">5</property>
     <property name="type_hint">dialog</property>
     <property name="program_name">FlatCAM</property>
-    <property name="version">Version Alpha 3 (2014/03) - UNSTABLE</property>
+    <property name="version">Version Alpha 5 (2014/05)</property>
     <property name="copyright" translatable="yes">(c) 2014 Juan Pablo Caram</property>
     <property name="comments" translatable="yes">2D Post-processing for Manufacturing specialized in 
 Printed Circuit Boards</property>

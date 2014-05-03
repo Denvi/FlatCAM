@@ -1,12 +1,20 @@
+############################################################
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
+# Date: 2/5/2014                                           #
+# MIT Licence                                              #
+############################################################
 
 from gi.repository import Gtk
-import re
-from copy import copy
-
 from GUIElements import *
 
 
 class ObjectUI(Gtk.VBox):
+    """
+    Base class for the UI of FlatCAM objects.
+    """
+
     def __init__(self, icon_file='share/flatcam_icon32.png', title='FlatCAM Object'):
         Gtk.VBox.__init__(self, spacing=3, margin=5, vexpand=False)
 
@@ -26,7 +34,7 @@ class ObjectUI(Gtk.VBox):
 
         ## Object name
         self.name_box = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 2)
-        self.pack_start(self.name_box, expand=True, fill=False, padding=2)
+        self.pack_start(self.name_box, expand=False, fill=False, padding=2)
         name_label = Gtk.Label('Name:')
         name_label.set_justify(Gtk.Justification.RIGHT)
         self.name_box.pack_start(name_label,
@@ -42,10 +50,10 @@ class ObjectUI(Gtk.VBox):
         ## Scale
         self.scale_label = Gtk.Label(justify=Gtk.Justification.LEFT, xalign=0, margin_top=5)
         self.scale_label.set_markup('<b>Scale:</b>')
-        self.pack_start(self.scale_label, expand=True, fill=False, padding=2)
+        self.pack_start(self.scale_label, expand=False, fill=False, padding=2)
 
         grid5 = Gtk.Grid(column_spacing=3, row_spacing=2)
-        self.pack_start(grid5, expand=True, fill=False, padding=2)
+        self.pack_start(grid5, expand=False, fill=False, padding=2)
 
         # Factor
         l10 = Gtk.Label('Factor:', xalign=1)
@@ -56,25 +64,25 @@ class ObjectUI(Gtk.VBox):
 
         # GO Button
         self.scale_button = Gtk.Button(label='Scale')
-        self.pack_start(self.scale_button, expand=True, fill=False, padding=2)
+        self.pack_start(self.scale_button, expand=False, fill=False, padding=2)
 
         ## Offset
         self.offset_label = Gtk.Label(justify=Gtk.Justification.LEFT, xalign=0, margin_top=5)
         self.offset_label.set_markup('<b>Offset:</b>')
-        self.pack_start(self.offset_label, expand=True, fill=False, padding=2)
+        self.pack_start(self.offset_label, expand=False, fill=False, padding=2)
 
         grid6 = Gtk.Grid(column_spacing=3, row_spacing=2)
-        self.pack_start(grid6, expand=True, fill=False, padding=2)
+        self.pack_start(grid6, expand=False, fill=False, padding=2)
 
         # Vector
         l11 = Gtk.Label('Offset Vector:', xalign=1)
         grid6.attach(l11, 0, 0, 1, 1)
-        self.offsetvector_entry = FCEntry()
+        self.offsetvector_entry = EvalEntry()
         self.offsetvector_entry.set_text("(0.0, 0.0)")
         grid6.attach(self.offsetvector_entry, 1, 0, 1, 1)
 
         self.offset_button = Gtk.Button(label='Scale')
-        self.pack_start(self.offset_button, expand=True, fill=False, padding=2)
+        self.pack_start(self.offset_button, expand=False, fill=False, padding=2)
 
     def set_field(self, name, value):
         getattr(self, name).set_value(value)
@@ -84,16 +92,20 @@ class ObjectUI(Gtk.VBox):
 
 
 class CNCObjectUI(ObjectUI):
+    """
+    User interface for CNCJob objects.
+    """
+
     def __init__(self):
         ObjectUI.__init__(self, title='CNC Job Object', icon_file='share/cnc32.png')
 
         ## Plot options
         self.plot_options_label = Gtk.Label(justify=Gtk.Justification.LEFT, xalign=0, margin_top=5)
         self.plot_options_label.set_markup("<b>Plot Options:</b>")
-        self.pack_start(self.plot_options_label, expand=False, fill=True, padding=2)
+        self.custom_box.pack_start(self.plot_options_label, expand=False, fill=True, padding=2)
 
         grid0 = Gtk.Grid(column_spacing=3, row_spacing=2)
-        self.pack_start(grid0, expand=True, fill=False, padding=2)
+        self.custom_box.pack_start(grid0, expand=False, fill=False, padding=2)
 
         # Plot CB
         self.plot_cb = FCCheckBox(label='Plot')
@@ -107,19 +119,23 @@ class CNCObjectUI(ObjectUI):
 
         # Update plot button
         self.updateplot_button = Gtk.Button(label='Update Plot')
-        self.pack_start(self.updateplot_button, expand=True, fill=False, padding=2)
+        self.custom_box.pack_start(self.updateplot_button, expand=False, fill=False, padding=2)
 
         ## Export G-Code
         self.export_gcode_label = Gtk.Label(justify=Gtk.Justification.LEFT, xalign=0, margin_top=5)
         self.export_gcode_label.set_markup("<b>Export G-Code:</b>")
-        self.pack_start(self.export_gcode_label, expand=True, fill=False, padding=2)
+        self.custom_box.pack_start(self.export_gcode_label, expand=False, fill=False, padding=2)
 
         # GO Button
         self.export_gcode_button = Gtk.Button(label='Export G-Code')
-        self.pack_start(self.export_gcode_button, expand=True, fill=False, padding=2)
+        self.custom_box.pack_start(self.export_gcode_button, expand=False, fill=False, padding=2)
 
 
 class GeometryObjectUI(ObjectUI):
+    """
+    User interface for Geometry objects.
+    """
+
     def __init__(self):
         ObjectUI.__init__(self, title='Geometry Object', icon_file='share/geometry32.png')
 
@@ -200,6 +216,10 @@ class GeometryObjectUI(ObjectUI):
 
 
 class ExcellonObjectUI(ObjectUI):
+    """
+    User interface for Excellon objects.
+    """
+
     def __init__(self):
         ObjectUI.__init__(self, title='Excellon Object', icon_file='share/drill32.png')
 
@@ -254,6 +274,9 @@ class ExcellonObjectUI(ObjectUI):
 
 
 class GerberObjectUI(ObjectUI):
+    """
+    User interface for Gerber objects.
+    """
     def __init__(self):
         ObjectUI.__init__(self, title='Gerber Object')
 
