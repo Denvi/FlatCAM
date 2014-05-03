@@ -329,7 +329,8 @@ class App:
     """
 
     log = logging.getLogger('base')
-    log.setLevel(logging.DEBUG)
+    #log.setLevel(logging.DEBUG)
+    log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
