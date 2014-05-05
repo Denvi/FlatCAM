@@ -58,20 +58,48 @@ class RadioSet(Gtk.Box):
 
 
 class LengthEntry(Gtk.Entry):
+    """
+    A text entry that interprets its string as a
+    length, with or without specified units. When the user reads
+    the value, it is interpreted and replaced by a floating
+    point representation of the value in the default units. When
+    the entry is activated, its string is repalced by the interpreted
+    value.
+
+    Example:
+    Default units are 'IN', input is "1.0 mm", value returned
+    is 1.0/25.4 = 0.03937.
+    """
+
     def __init__(self, output_units='IN'):
+        """
+
+        :param output_units: The default output units, 'IN' or 'MM'
+        :return: LengthEntry
+        """
+
         Gtk.Entry.__init__(self)
         self.output_units = output_units
         self.format_re = re.compile(r"^([^\s]+)(?:\s([a-zA-Z]+))?$")
 
         # Unit conversion table OUTPUT-INPUT
         self.scales = {
-            'IN': {'MM': 1/25.4},
-            'MM': {'IN': 25.4}
+            'IN': {'IN': 1.0,
+                   'MM': 1/25.4},
+            'MM': {'IN': 25.4,
+                   'MM': 1.0}
         }
 
         self.connect('activate', self.on_activate)
 
     def on_activate(self, *args):
+        """
+        Entry "activate" callback. Replaces the text in the
+        entry with the value returned by `get_value()`.
+
+        :param args: Ignored.
+        :return: None.
+        """
         val = self.get_value()
         if val is not None:
             self.set_text(str(val))
@@ -79,17 +107,27 @@ class LengthEntry(Gtk.Entry):
             FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
+        """
+        Fetches, interprets and returns the value in the entry. The text
+        is parsed to find the numerical expression and the (input) units (if any).
+        The numerical expression is interpreted and scaled acording to the
+        input and output units `self.output_units`.
+
+        :return: Floating point representation of the value in the entry.
+        :rtype: float
+        """
+
         raw = self.get_text().strip(' ')
         match = self.format_re.search(raw)
         if not match:
             return None
         try:
             if match.group(2) is not None and match.group(2).upper() in self.scales:
-                return float(match.group(1))*self.scales[self.output_units][match.group(2).upper()]
+                return float(eval(match.group(1)))*self.scales[self.output_units][match.group(2).upper()]
             else:
-                return float(match.group(1))
+                return float(eval(match.group(1)))
         except:
-            FlatCAMApp.App.log.error("Could not parse value in entry: %s" % str(raw))
+            FlatCAMApp.App.log.warning("Could not parse value in entry: %s" % str(raw))
             return None
 
     def set_value(self, val):

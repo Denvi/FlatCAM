@@ -19,23 +19,41 @@ from ObjectUI import *
 
 
 class LoudDict(dict):
+    """
+    A Dictionary with a callback for
+    item changes.
+    """
+
     def __init__(self, *args, **kwargs):
         super(LoudDict, self).__init__(*args, **kwargs)
         self.callback = lambda x: None
         self.silence = False
 
     def set_change_callback(self, callback):
-        if self.silence:
-            return
+        """
+        Assigns a function as callback on item change. The callback
+        will receive the key of the object that was changed.
+
+        :param callback: Function to call on item change.
+        :type callback: func
+        :return: None
+        """
+
         self.callback = callback
 
     def __setitem__(self, key, value):
+        """
+        Overridden __setitem__ method. Will call self.callback
+        if the item was changed and self.silence is False.
+        """
         super(LoudDict, self).__setitem__(key, value)
         try:
             if self.__getitem__(key) == value:
                 return
         except KeyError:
             pass
+        if self.silence:
+            return
         self.callback(key)
 
 
@@ -52,8 +70,6 @@ class FlatCAMObj(GObject.GObject, object):
     # Instance of the application to which these are related.
     # The app should set this value.
     app = None
-
-    # name = GObject.property(type=str)
 
     def __init__(self, name, ui):
         """
@@ -706,9 +722,14 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
         self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
-
+        self.ui.updateplot_button.connect('clicked', self.on_updateplot_button_click)
+        self.ui.updateplot_button.connect('activate', self.on_updateplot_button_click)
         self.ui.export_gcode_button.connect('clicked', self.on_exportgcode_button_click)
         self.ui.export_gcode_button.connect('activate', self.on_exportgcode_button_click)
+
+    def on_updateplot_button_click(self, *args):
+        self.read_form()
+        self.plot()
 
     def on_exportgcode_button_click(self, *args):
         def on_success(app_obj, filename):

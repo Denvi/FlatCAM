@@ -195,7 +195,7 @@ class ObjectCollection:
                 xmax = max([xmax, gxmax])
                 ymax = max([ymax, gymax])
             except:
-                FlatCAMApp.App.log.waring("DEV WARNING: Tried to get bounds of empty geometry.")
+                FlatCAMApp.App.log.warning("DEV WARNING: Tried to get bounds of empty geometry.")
             iterat = self.store.iter_next(iterat)
         return [xmin, ymin, xmax, ymax]
 
