@@ -1,18 +1,11 @@
-############################################################
-# FlatCAM: 2D Post-processing for Manufacturing            #
-# http://caram.cl/software/flatcam                         #
-# Author: Juan Pablo Caram (c)                             #
-# Date: 4/20/2014                                           #
-# MIT Licence                                              #
-############################################################
-
+from PyQt4.QtCore import QModelIndex
 from FlatCAMObj import *
-from gi.repository import Gtk, GdkPixbuf
 import inspect  # TODO: Remove
 import FlatCAMApp
+from PyQt4 import Qt, QtGui, QtCore
 
 
-class ObjectCollection:
+class ObjectCollection(QtCore.QAbstractListModel):
 
     classdict = {
         "gerber": FlatCAMGerber,
@@ -28,130 +21,51 @@ class ObjectCollection:
         "geometry": "share/geometry16.png"
     }
 
-    def __init__(self):
-
+    def __init__(self, parent=None):
+        QtCore.QAbstractListModel.__init__(self, parent=parent)
         ### Icons for the list view
         self.icons = {}
         for kind in ObjectCollection.icon_files:
-            self.icons[kind] = GdkPixbuf.Pixbuf.new_from_file(ObjectCollection.icon_files[kind])
+            self.icons[kind] = QtGui.QPixmap(ObjectCollection.icon_files[kind])
 
-        ### GUI List components
-        ## Model
-        self.store = Gtk.ListStore(FlatCAMObj)
+        self.object_list = []
 
-        ## View
-        self.view = Gtk.TreeView(model=self.store)
-        #self.view.connect("row_activated", self.on_row_activated)
-        self.tree_selection = self.view.get_selection()
-        self.change_subscription = self.tree_selection.connect("changed", self.on_list_selection_change)
+        self.view = QtGui.QListView()
+        self.view.setModel(self)
+        self.view.selectionModel().selectionChanged.connect(self.on_list_selection_change)
+        self.view.activated.connect(self.on_item_activated)
 
-        ## Renderers
-        # Icon
-        renderer_pixbuf = Gtk.CellRendererPixbuf()
-        column_pixbuf = Gtk.TreeViewColumn("Type", renderer_pixbuf)
+    def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
+        return len(self.object_list)
 
-        def _set_cell_icon(column, cell, model, it, data):
-            obj = model.get_value(it, 0)
-            cell.set_property('pixbuf', self.icons[obj.kind])
+    def columnCount(self, *args, **kwargs):
+        return 1
 
-        column_pixbuf.set_cell_data_func(renderer_pixbuf, _set_cell_icon)
-        self.view.append_column(column_pixbuf)
-
-        # Name
-        renderer_text = Gtk.CellRendererText()
-        column_text = Gtk.TreeViewColumn("Name", renderer_text)
-
-        def _set_cell_text(column, cell, model, it, data):
-            obj = model.get_value(it, 0)
-            cell.set_property('text', obj.options["name"])
-
-        column_text.set_cell_data_func(renderer_text, _set_cell_text)
-        self.view.append_column(column_text)
+    def data(self, index, role=Qt.Qt.DisplayRole):
+        if not index.isValid() or not 0 <= index.row() < self.rowCount():
+            return QtCore.QVariant()
+        row = index.row()
+        if role == Qt.Qt.DisplayRole:
+            return self.object_list[row].options["name"]
+        if role == Qt.Qt.DecorationRole:
+            return self.icons[self.object_list[row].kind]
 
     def print_list(self):
-        iterat = self.store.get_iter_first()
-        while iterat is not None:
-            obj = self.store[iterat][0]
+        for obj in self.object_list:
             print obj
-            iterat = self.store.iter_next(iterat)
-
-    def delete_all(self):
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_all()")
-        self.store.clear()
-
-    def delete_active(self):
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_active()")
-        try:
-            model, treeiter = self.tree_selection.get_selected()
-            self.store.remove(treeiter)
-        except:
-            pass
-
-    def on_list_selection_change(self, selection):
-        """
-        Callback for change in selection on the objects' list.
-        Instructs the new selection to build the UI for its options.
-
-        :param selection: Ignored.
-        :return: None
-        """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.on_list_selection_change()")
-        try:
-            self.get_active().build_ui()
-        except AttributeError:  # For None being active
-            pass
-
-    def set_active(self, name):
-        """
-        Sets an object as the active object in the program. Same
-        as `set_list_selection()`.
-
-        :param name: Name of the object.
-        :type name: str
-        :return: None
-        """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.set_active()")
-        self.set_list_selection(name)
-
-    def get_active(self):
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_active()")
-        try:
-            model, treeiter = self.tree_selection.get_selected()
-            return model[treeiter][0]
-        except (TypeError, ValueError):
-            return None
-
-    def set_list_selection(self, name):
-        """
-        Sets which object should be selected in the list.
-
-        :param name: Name of the object.
-        :rtype name: str
-        :return: None
-        """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.set_list_selection()")
-        iterat = self.store.get_iter_first()
-        while iterat is not None and self.store[iterat][0].options["name"] != name:
-            iterat = self.store.iter_next(iterat)
-        self.tree_selection.select_iter(iterat)
 
     def append(self, obj, active=False):
-        """
-        Add a FlatCAMObj the the collection. This method is thread-safe.
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> OC.append()")
 
-        :param obj: FlatCAMObj to append
-        :type obj: FlatCAMObj
-        :param active: If it is to become the active object after appending
-        :type active: bool
-        :return: None
-        """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.append()")
+        obj.set_ui(obj.ui_type())
 
-        def guitask():
-            self.store.append([obj])
-            if active:
-                self.set_list_selection(obj.options["name"])
-        GLib.idle_add(guitask)
+        # Required before appending
+        self.beginInsertRows(QtCore.QModelIndex(), len(self.object_list), len(self.object_list))
+
+        self.object_list.append(obj)
+
+        # Required after appending
+        self.endInsertRows()
 
     def get_names(self):
         """
@@ -160,14 +74,9 @@ class ObjectCollection:
         :return: List of names.
         :rtype: list
         """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_names()")
-        names = []
-        iterat = self.store.get_iter_first()
-        while iterat is not None:
-            obj = self.store[iterat][0]
-            names.append(obj.options["name"])
-            iterat = self.store.iter_next(iterat)
-        return names
+
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> OC.get_names()")
+        return [x.options['name'] for x in self.object_list]
 
     def get_bounds(self):
         """
@@ -185,9 +94,7 @@ class ObjectCollection:
         xmax = -Inf
         ymax = -Inf
 
-        iterat = self.store.get_iter_first()
-        while iterat is not None:
-            obj = self.store[iterat][0]
+        for obj in self.object_list:
             try:
                 gxmin, gymin, gxmax, gymax = obj.bounds()
                 xmin = min([xmin, gxmin])
@@ -196,24 +103,8 @@ class ObjectCollection:
                 ymax = max([ymax, gymax])
             except:
                 FlatCAMApp.App.log.warning("DEV WARNING: Tried to get bounds of empty geometry.")
-            iterat = self.store.iter_next(iterat)
+
         return [xmin, ymin, xmax, ymax]
-
-    def get_list(self):
-        """
-        Returns a list with all FlatCAMObj.
-
-        :return: List with all FlatCAMObj.
-        :rtype: list
-        """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_list()")
-        collection_list = []
-        iterat = self.store.get_iter_first()
-        while iterat is not None:
-            obj = self.store[iterat][0]
-            collection_list.append(obj)
-            iterat = self.store.iter_next(iterat)
-        return collection_list
 
     def get_by_name(self, name):
         """
@@ -226,33 +117,57 @@ class ObjectCollection:
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_by_name()")
 
-        iterat = self.store.get_iter_first()
-        while iterat is not None:
-            obj = self.store[iterat][0]
-            if obj.options["name"] == name:
+        for obj in self.object_list:
+            if obj.options['name'] == name:
                 return obj
-            iterat = self.store.iter_next(iterat)
         return None
 
-    # def change_name(self, old_name, new_name):
-    #     """
-    #     Changes the name of `FlatCAMObj` named `old_name` to `new_name`.
-    #
-    #     :param old_name: Name of the object to change.
-    #     :type old_name: str
-    #     :param new_name: New name.
-    #     :type new_name: str
-    #     :return: True if name change succeeded, False otherwise. Will fail
-    #        if no object with `old_name` is found.
-    #     :rtype: bool
-    #     """
-    #     print inspect.stack()[1][3], "--> OC.change_name()"
-    #     iterat = self.store.get_iter_first()
-    #     while iterat is not None:
-    #         obj = self.store[iterat][0]
-    #         if obj.options["name"] == old_name:
-    #             obj.options["name"] = new_name
-    #             self.store.row_changed(0, iterat)
-    #             return True
-    #         iterat = self.store.iter_next(iterat)
-    #     return False
+    def delete_active(self):
+        selections = self.view.selectedIndexes()
+        if len(selections) == 0:
+            return
+        row = selections[0].row()
+
+        self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+
+        self.object_list.pop(row)
+
+        self.endRemoveRows()
+
+    def get_active(self):
+        selections = self.view.selectedIndexes()
+        if len(selections) == 0:
+            return None
+        row = selections[0].row()
+        return self.object_list[row]
+
+    def set_active(self, name):
+        iobj = self.createIndex(self.get_names().index(name))
+        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel)
+
+    def on_list_selection_change(self, current, previous):
+        FlatCAMApp.App.log.debug("on_list_selection_change()")
+        FlatCAMApp.App.log.debug("Current: %s, Previous %s" % (str(current), str(previous)))
+        try:
+            selection_index = current.indexes()[0].row()
+        except IndexError:
+            FlatCAMApp.App.log.debug("on_list_selection_change(): Index Error (Nothing selected?)")
+            return
+
+        self.object_list[selection_index].build_ui()
+
+    def on_item_activated(self, index):
+        self.object_list[index.row()].build_ui()
+
+    def delete_all(self):
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_all()")
+
+        self.beginResetModel()
+
+        self.object_list = []
+
+        self.endResetModel()
+
+    def get_list(self):
+        return self.object_list
+

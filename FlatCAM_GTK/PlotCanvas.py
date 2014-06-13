@@ -6,20 +6,12 @@
 # MIT Licence                                              #
 ############################################################
 
-from PyQt4 import QtGui, QtCore
+from gi.repository import Gdk
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-import FlatCAMApp
+from matplotlib.backends.backend_gtk3agg import FigureCanvasGTK3Agg as FigureCanvas
+#from FlatCAMApp import *
+from FlatCAM_GTK import FlatCAMApp
 
-
-# class FCFigureCanvas(FigureCanvas):
-#
-#     resized = QtCore.pyqtSignal()
-#
-#     def resizeEvent(self, event):
-#         FigureCanvas.resizeEvent(self, event)
-#         self.emit(QtCore.SIGNAL("resized"))
-#         print self.geometry()
 
 class PlotCanvas:
     """
@@ -54,21 +46,18 @@ class PlotCanvas:
 
         # The canvas is the top level container (Gtk.DrawingArea)
         self.canvas = FigureCanvas(self.figure)
-        #self.canvas.set_hexpand(1)
-        #self.canvas.set_vexpand(1)
-        #self.canvas.set_can_focus(True)  # For key press
+        self.canvas.set_hexpand(1)
+        self.canvas.set_vexpand(1)
+        self.canvas.set_can_focus(True)  # For key press
 
         # Attach to parent
-        #self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
-        self.container.addWidget(self.canvas)  # Qt
+        self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
 
         # Events
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
-        #self.canvas.connect('configure-event', self.auto_adjust_axes)
-        self.canvas.mpl_connect('resize_event', self.auto_adjust_axes)
-        #self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
-        #self.canvas.connect("scroll-event", self.on_scroll)
-        self.canvas.mpl_connect('scroll_event', self.on_scroll)
+        self.canvas.connect('configure-event', self.auto_adjust_axes)
+        self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
+        self.canvas.connect("scroll-event", self.on_scroll)
         self.canvas.mpl_connect('key_press_event', self.on_key_down)
         self.canvas.mpl_connect('key_release_event', self.on_key_up)
 
@@ -81,7 +70,6 @@ class PlotCanvas:
         :param event:
         :return:
         """
-        FlatCAMApp.App.log.debug('on_key_down(): ' + str(event.key))
         self.key = event.key
 
     def on_key_up(self, event):
@@ -145,7 +133,7 @@ class PlotCanvas:
         self.axes.grid(True)
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.queue_draw()
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
@@ -164,7 +152,7 @@ class PlotCanvas:
         :return: None
         """
 
-        # FlatCAMApp.App.log.debug("PC.adjust_axes()")
+        FlatCAMApp.App.log.debug("PC.adjust_axes()")
 
         width = xmax - xmin
         height = ymax - ymin
@@ -202,7 +190,7 @@ class PlotCanvas:
             ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.queue_draw()
 
     def auto_adjust_axes(self, *args):
         """
@@ -254,7 +242,7 @@ class PlotCanvas:
             ax.set_ylim((ymin, ymax))
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.queue_draw()
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -268,7 +256,7 @@ class PlotCanvas:
             ax.set_ylim((ymin + y*height, ymax + y*height))
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.queue_draw()
 
     def new_axes(self, name):
         """
@@ -281,24 +269,24 @@ class PlotCanvas:
 
         return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
 
-    def on_scroll(self, event):
+    def on_scroll(self, canvas, event):
         """
         Scroll event handler.
 
+        :param canvas: The widget generating the event. Ignored.
         :param event: Event object containing the event information.
         :return: None
         """
 
         # So it can receive key presses
-        # self.canvas.grab_focus()
-        self.canvas.setFocus()
+        self.canvas.grab_focus()
 
         # Event info
-        # z, direction = event.get_scroll_direction()
+        z, direction = event.get_scroll_direction()
 
         if self.key is None:
 
-            if event.button == 'up':
+            if direction is Gdk.ScrollDirection.UP:
                 self.zoom(1.5, self.mouse)
             else:
                 self.zoom(1/1.5, self.mouse)
@@ -306,15 +294,15 @@ class PlotCanvas:
 
         if self.key == 'shift':
 
-            if event.button == 'up':
+            if direction is Gdk.ScrollDirection.UP:
                 self.pan(0.3, 0)
             else:
                 self.pan(-0.3, 0)
             return
 
-        if self.key == 'control':
+        if self.key == 'ctrl+control':
 
-            if event.button == 'up':
+            if direction is Gdk.ScrollDirection.UP:
                 self.pan(0, 0.3)
             else:
                 self.pan(0, -0.3)
@@ -328,4 +316,3 @@ class PlotCanvas:
         :return: None
         """
         self.mouse = [event.xdata, event.ydata]
-

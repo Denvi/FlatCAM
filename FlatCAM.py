@@ -1,13 +1,15 @@
-############################################################
-# FlatCAM: 2D Post-processing for Manufacturing            #
-# http://caram.cl/software/flatcam                         #
-# Author: Juan Pablo Caram (c)                             #
-# Date: 2/5/2014                                           #
-# MIT Licence                                              #
-############################################################
+import sys
+from PyQt4 import QtGui
+from FlatCAMApp import App
 
-from gi.repository import Gtk
-from FlatCAMApp import *
+def debug_trace():
+  '''Set a tracepoint in the Python debugger that works with Qt'''
+  from PyQt4.QtCore import pyqtRemoveInputHook
+  #from pdb import set_trace
+  pyqtRemoveInputHook()
+  #set_trace()
 
-app = App()
-Gtk.main()
+debug_trace()
+app = QtGui.QApplication(sys.argv)
+fc = App()
+sys.exit(app.exec_())

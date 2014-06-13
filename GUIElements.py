@@ -1,19 +1,11 @@
-############################################################
-# FlatCAM: 2D Post-processing for Manufacturing            #
-# http://caram.cl/software/flatcam                         #
-# Author: Juan Pablo Caram (c)                             #
-# Date: 2/5/2014                                           #
-# MIT Licence                                              #
-############################################################
-
-from gi.repository import Gtk
-import re
+from PyQt4 import QtGui, QtCore
 from copy import copy
 import FlatCAMApp
+import re
 
 
-class RadioSet(Gtk.Box):
-    def __init__(self, choices):
+class RadioSet(QtGui.QWidget):
+    def __init__(self, choices, orientation='horizontal', parent=None):
         """
         The choices are specified as a list of dictionaries containing:
 
@@ -23,28 +15,37 @@ class RadioSet(Gtk.Box):
         :param choices: List of choices. See description.
         :type choices: list
         """
-        Gtk.Box.__init__(self)
+        super(RadioSet, self).__init__(parent)
         self.choices = copy(choices)
-        self.group = None
+
+        if orientation == 'horizontal':
+            layout = QtGui.QHBoxLayout()
+        else:
+            layout = QtGui.QVBoxLayout()
+
+        group = QtGui.QButtonGroup(self)
+
         for choice in self.choices:
-            if self.group is None:
-                choice['radio'] = Gtk.RadioButton.new_with_label(None, choice['label'])
-                self.group = choice['radio']
-            else:
-                choice['radio'] = Gtk.RadioButton.new_with_label_from_widget(self.group, choice['label'])
-            self.pack_start(choice['radio'], expand=True, fill=False, padding=2)
-            choice['radio'].connect('toggled', self.on_toggle)
+            choice['radio'] = QtGui.QRadioButton(choice['label'])
+            group.addButton(choice['radio'])
+            layout.addWidget(choice['radio'], stretch=0)
+            choice['radio'].toggled.connect(self.on_toggle)
 
-        self.group_toggle_fn = lambda x, y: None
+        layout.addStretch()
+        self.setLayout(layout)
 
-    def on_toggle(self, btn):
-        if btn.get_active():
-            self.group_toggle_fn(btn, self.get_value)
+        self.group_toggle_fn = lambda: None
+
+    def on_toggle(self):
+        FlatCAMApp.App.log.debug("Radio toggled")
+        radio = self.sender()
+        if radio.isChecked():
+            self.group_toggle_fn()
         return
 
     def get_value(self):
         for choice in self.choices:
-            if choice['radio'].get_active():
+            if choice['radio'].isChecked():
                 return choice['value']
         FlatCAMApp.App.log.error("No button was toggled in RadioSet.")
         return None
@@ -52,33 +53,15 @@ class RadioSet(Gtk.Box):
     def set_value(self, val):
         for choice in self.choices:
             if choice['value'] == val:
-                choice['radio'].set_active(True)
+                choice['radio'].setChecked(True)
                 return
         FlatCAMApp.App.log.error("Value given is not part of this RadioSet: %s" % str(val))
 
 
-class LengthEntry(Gtk.Entry):
-    """
-    A text entry that interprets its string as a
-    length, with or without specified units. When the user reads
-    the value, it is interpreted and replaced by a floating
-    point representation of the value in the default units. When
-    the entry is activated, its string is repalced by the interpreted
-    value.
+class LengthEntry(QtGui.QLineEdit):
+    def __init__(self, output_units='IN', parent=None):
+        super(LengthEntry, self).__init__(parent)
 
-    Example:
-    Default units are 'IN', input is "1.0 mm", value returned
-    is 1.0/25.4 = 0.03937.
-    """
-
-    def __init__(self, output_units='IN'):
-        """
-
-        :param output_units: The default output units, 'IN' or 'MM'
-        :return: LengthEntry
-        """
-
-        Gtk.Entry.__init__(self)
         self.output_units = output_units
         self.format_re = re.compile(r"^([^\s]+)(?:\s([a-zA-Z]+))?$")
 
@@ -90,40 +73,22 @@ class LengthEntry(Gtk.Entry):
                    'MM': 1.0}
         }
 
-        self.connect('activate', self.on_activate)
-
-    def on_activate(self, *args):
-        """
-        Entry "activate" callback. Replaces the text in the
-        entry with the value returned by `get_value()`.
-
-        :param args: Ignored.
-        :return: None.
-        """
+    def returnPressed(self, *args, **kwargs):
         val = self.get_value()
         if val is not None:
-            self.set_text(str(val))
+            self.set_text(QtCore.QString(str(val)))
         else:
             FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
-        """
-        Fetches, interprets and returns the value in the entry. The text
-        is parsed to find the numerical expression and the (input) units (if any).
-        The numerical expression is interpreted and scaled acording to the
-        input and output units `self.output_units`.
-
-        :return: Floating point representation of the value in the entry.
-        :rtype: float
-        """
-
-        raw = self.get_text().strip(' ')
+        raw = str(self.text()).strip(' ')
         match = self.format_re.search(raw)
+
         if not match:
             return None
         try:
             if match.group(2) is not None and match.group(2).upper() in self.scales:
-                return float(eval(match.group(1)))*self.scales[self.output_units][match.group(2).upper()]
+                return float(eval(match.group(1)))*float(self.scales[self.output_units][match.group(2).upper()])
             else:
                 return float(eval(match.group(1)))
         except:
@@ -131,24 +96,22 @@ class LengthEntry(Gtk.Entry):
             return None
 
     def set_value(self, val):
-        self.set_text(str(val))
+        self.setText(QtCore.QString(str(val)))
 
 
-class FloatEntry(Gtk.Entry):
-    def __init__(self):
-        Gtk.Entry.__init__(self)
+class FloatEntry(QtGui.QLineEdit):
+    def __init__(self, parent=None):
+        super(FloatEntry, self).__init__(parent)
 
-        self.connect('activate', self.on_activate)
-
-    def on_activate(self, *args):
+    def returnPressed(self, *args, **kwargs):
         val = self.get_value()
         if val is not None:
-            self.set_text(str(val))
+            self.set_text(QtCore.QString(str(val)))
         else:
-            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
+            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.text())
 
     def get_value(self):
-        raw = self.get_text().strip(' ')
+        raw = str(self.text()).strip(' ')
         try:
             evaled = eval(raw)
         except:
@@ -158,44 +121,44 @@ class FloatEntry(Gtk.Entry):
         return float(evaled)
 
     def set_value(self, val):
-        self.set_text(str(val))
+        self.setText("%.6f"%val)
 
 
-class IntEntry(Gtk.Entry):
-    def __init__(self):
-        Gtk.Entry.__init__(self)
-
-    def get_value(self):
-        return int(self.get_text())
-
-    def set_value(self, val):
-        self.set_text(str(val))
-
-
-class FCEntry(Gtk.Entry):
-    def __init__(self):
-        Gtk.Entry.__init__(self)
+class IntEntry(QtGui.QLineEdit):
+    def __init__(self, parent=None):
+        super(IntEntry, self).__init__(parent)
 
     def get_value(self):
-        return self.get_text()
+        return int(self.text())
 
     def set_value(self, val):
-        self.set_text(str(val))
+        self.setText(QtCore.QString(str(val)))
 
 
-class EvalEntry(Gtk.Entry):
-    def __init__(self):
-        Gtk.Entry.__init__(self)
+class FCEntry(QtGui.QLineEdit):
+    def __init__(self, parent=None):
+        super(FCEntry, self).__init__(parent)
 
-    def on_activate(self, *args):
+    def get_value(self):
+        return str(self.text())
+
+    def set_value(self, val):
+        self.setText(QtCore.QString(str(val)))
+
+
+class EvalEntry(QtGui.QLineEdit):
+    def __init__(self, parent=None):
+        super(EvalEntry, self).__init__(parent)
+
+    def returnPressed(self, *args, **kwargs):
         val = self.get_value()
         if val is not None:
-            self.set_text(str(val))
+            self.setText(QtCore.QString(str(val)))
         else:
             FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
-        raw = self.get_text().strip(' ')
+        raw = str(self.text()).strip(' ')
         try:
             return eval(raw)
         except:
@@ -203,15 +166,65 @@ class EvalEntry(Gtk.Entry):
             return None
 
     def set_value(self, val):
-        self.set_text(str(val))
+        self.setText(QtCore.QString(str(val)))
 
 
-class FCCheckBox(Gtk.CheckButton):
-    def __init__(self, label=''):
-        Gtk.CheckButton.__init__(self, label=label)
+class FCCheckBox(QtGui.QCheckBox):
+    def __init__(self, label='', parent=None):
+        super(FCCheckBox, self).__init__(QtCore.QString(label), parent)
 
     def get_value(self):
-        return self.get_active()
+        return self.isChecked()
 
     def set_value(self, val):
-        self.set_active(val)
+        self.setChecked(val)
+
+
+class FCTextArea(QtGui.QPlainTextEdit):
+    def __init__(self, parent=None):
+        super(FCTextArea, self).__init__(parent)
+
+    def set_value(self, val):
+        self.setPlainText(val)
+
+    def get_value(self):
+        return str(self.toPlainText())
+
+
+class VerticalScrollArea(QtGui.QScrollArea):
+    """
+    This widget extends QtGui.QScrollArea to make a vertical-only
+    scroll area that also expands horizontally to accomodate
+    its contents.
+    """
+    def __init__(self, parent=None):
+        QtGui.QScrollArea.__init__(self, parent=parent)
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+
+    def eventFilter(self, source, event):
+        """
+        The event filter gets automatically installed when setWidget()
+        is called.
+
+        :param source:
+        :param event:
+        :return:
+        """
+        if event.type() == QtCore.QEvent.Resize and source == self.widget():
+            # FlatCAMApp.App.log.debug("VerticalScrollArea: Widget resized:")
+            # FlatCAMApp.App.log.debug(" minimumSizeHint().width() = %d" % self.widget().minimumSizeHint().width())
+            # FlatCAMApp.App.log.debug(" verticalScrollBar().width() = %d" % self.verticalScrollBar().width())
+
+            self.setMinimumWidth(self.widget().sizeHint().width() +
+                                 self.verticalScrollBar().sizeHint().width())
+
+            # if self.verticalScrollBar().isVisible():
+            #     FlatCAMApp.App.log.debug(" Scroll bar visible")
+            #     self.setMinimumWidth(self.widget().minimumSizeHint().width() +
+            #                          self.verticalScrollBar().width())
+            # else:
+            #     FlatCAMApp.App.log.debug(" Scroll bar hidden")
+            #     self.setMinimumWidth(self.widget().minimumSizeHint().width())
+        return QtGui.QWidget.eventFilter(self, source, event)

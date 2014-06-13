@@ -1,43 +1,29 @@
-############################################################
-# FlatCAM: 2D Post-processing for Manufacturing            #
-# http://caram.cl/software/flatcam                         #
-# Author: Juan Pablo Caram (c)                             #
-# Date: 2/5/2014                                           #
-# MIT Licence                                              #
-############################################################
-
-import threading
-import Queue
+from PyQt4 import QtCore
+#import Queue
+import FlatCAMApp
 
 
-class Worker(threading.Thread):
+class Worker(QtCore.QObject):
     """
     Implements a queue of tasks to be carried out in order
     in a single independent thread.
     """
 
-    def __init__(self):
+    def __init__(self, app, name=None):
         super(Worker, self).__init__()
-        self.queue = Queue.Queue()
-        self.stoprequest = threading.Event()
+        self.app = app
+        self.name = name
 
     def run(self):
-        while not self.stoprequest.isSet():
-            try:
-                task = self.queue.get(True, 0.05)
-                self.do_task(task)
-            except Queue.Empty:
-                continue
+        FlatCAMApp.App.log.debug("Worker Started!")
+        self.app.worker_task.connect(self.do_worker_task)
 
-    @staticmethod
-    def do_task(task):
-        task['fcn'](*task['params'])
-        return
+    def do_worker_task(self, task):
+        FlatCAMApp.App.log.debug("Running task: %s" % str(task))
+        if 'worker_name' in task and task['worker_name'] == self.name:
+            task['fcn'](*task['params'])
+            return
 
-    def add_task(self, target, params=list()):
-        self.queue.put({'fcn': target, 'params': params})
-        return
-
-    def join(self, timeout=None):
-        self.stoprequest.set()
-        super(Worker, self).join()
+        if 'worker_name' not in task and self.name is None:
+            task['fcn'](*task['params'])
+            return

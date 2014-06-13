@@ -1,15 +1,64 @@
-from PyQt4 import QtCore
-from ObjectUI import *
-import FlatCAMApp
-import inspect  # TODO: For debugging only.
+############################################################
+# FlatCAM: 2D Post-processing for Manufacturing            #
+# http://caram.cl/software/flatcam                         #
+# Author: Juan Pablo Caram (c)                             #
+# Date: 2/5/2014                                           #
+# MIT Licence                                              #
+############################################################
+
+import inspect  # TODO: Remove
+
+from gi.repository import Gtk
+from gi.repository import GLib
+from gi.repository import GObject
+
 from camlib import *
-from FlatCAMCommon import LoudDict
+from ObjectUI import *
+
+
+class LoudDict(dict):
+    """
+    A Dictionary with a callback for
+    item changes.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(LoudDict, self).__init__(*args, **kwargs)
+        self.callback = lambda x: None
+        self.silence = False
+
+    def set_change_callback(self, callback):
+        """
+        Assigns a function as callback on item change. The callback
+        will receive the key of the object that was changed.
+
+        :param callback: Function to call on item change.
+        :type callback: func
+        :return: None
+        """
+
+        self.callback = callback
+
+    def __setitem__(self, key, value):
+        """
+        Overridden __setitem__ method. Will call self.callback
+        if the item was changed and self.silence is False.
+        """
+        super(LoudDict, self).__setitem__(key, value)
+        try:
+            if self.__getitem__(key) == value:
+                return
+        except KeyError:
+            pass
+        if self.silence:
+            return
+        self.callback(key)
 
 
 ########################################
 ##            FlatCAMObj              ##
 ########################################
-class FlatCAMObj(QtCore.QObject):
+class FlatCAMObj(GObject.GObject, object):
     """
     Base type of objects handled in FlatCAM. These become interactive
     in the GUI, can be plotted, and their options can be modified
@@ -20,7 +69,7 @@ class FlatCAMObj(QtCore.QObject):
     # The app should set this value.
     app = None
 
-    def __init__(self, name):
+    def __init__(self, name, ui):
         """
 
         :param name: Name of the object given by the user.
@@ -28,59 +77,52 @@ class FlatCAMObj(QtCore.QObject):
         :type ui: ObjectUI
         :return: FlatCAMObj
         """
-        QtCore.QObject.__init__(self)
+        GObject.GObject.__init__(self)
 
         # View
-        self.ui = None
+        self.ui = ui
 
         self.options = LoudDict(name=name)
         self.options.set_change_callback(self.on_options_change)
 
-        self.form_fields = {}
-
+        self.form_fields = {"name": self.ui.name_entry}
+        self.radios = {}  # Name value pairs for radio sets
+        self.radios_inv = {}  # Inverse of self.radios
         self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
 
         self.muted_ui = False
 
-        # assert isinstance(self.ui, ObjectUI)
-        # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
-        # self.ui.offset_button.clicked.connect(self.on_offset_button_click)
-        # self.ui.scale_button.clicked.connect(self.on_scale_button_click)
-
-    def on_options_change(self, key):
-        self.emit(QtCore.SIGNAL("optionChanged"), key)
-
-    def set_ui(self, ui):
-        self.ui = ui
-
-        self.form_fields = {"name": self.ui.name_entry}
-
-        assert isinstance(self.ui, ObjectUI)
-        self.ui.name_entry.returnPressed.connect(self.on_name_activate)
-        self.ui.offset_button.clicked.connect(self.on_offset_button_click)
-        self.ui.scale_button.clicked.connect(self.on_scale_button_click)
+        self.ui.name_entry.connect('activate', self.on_name_activate)
+        self.ui.offset_button.connect('clicked', self.on_offset_button_click)
+        self.ui.offset_button.connect('activate', self.on_offset_button_click)
+        self.ui.scale_button.connect('clicked', self.on_scale_button_click)
+        self.ui.scale_button.connect('activate', self.on_scale_button_click)
 
     def __str__(self):
         return "<FlatCAMObj({:12s}): {:20s}>".format(self.kind, self.options["name"])
 
-    def on_name_activate(self):
+    def on_name_activate(self, *args):
         old_name = copy(self.options["name"])
-        new_name = self.ui.name_entry.get_value()
-        self.options["name"] = self.ui.name_entry.get_value()
+        new_name = self.ui.name_entry.get_text()
+        self.options["name"] = self.ui.name_entry.get_text()
         self.app.info("Name changed from %s to %s" % (old_name, new_name))
 
-    def on_offset_button_click(self):
+    def on_offset_button_click(self, *args):
         self.read_form()
         vect = self.ui.offsetvector_entry.get_value()
         self.offset(vect)
         self.plot()
 
-    def on_scale_button_click(self):
+    def on_scale_button_click(self, *args):
         self.read_form()
         factor = self.ui.scale_entry.get_value()
         self.scale(factor)
         self.plot()
+
+    def on_options_change(self, key):
+        self.form_fields[key].set_value(self.options[key])
+        return
 
     def setup_axes(self, figure):
         """
@@ -145,24 +187,21 @@ class FlatCAMObj(QtCore.QObject):
         self.muted_ui = True
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.build_ui()")
 
+        # Where the UI for this object is drawn
+        # box_selected = self.app.builder.get_object("box_selected")
+        # box_selected = self.app.builder.get_object("vp_selected")
+
         # Remove anything else in the box
-        # box_children = self.app.ui.notebook.selected_contents.get_children()
-        # for child in box_children:
-        #     self.app.ui.notebook.selected_contents.remove(child)
-        # while self.app.ui.selected_layout.count():
-        #     self.app.ui.selected_layout.takeAt(0)
+        box_children = self.app.ui.notebook.selected_contents.get_children()
+        for child in box_children:
+            self.app.ui.notebook.selected_contents.remove(child)
 
         # Put in the UI
         # box_selected.pack_start(sw, True, True, 0)
-        # self.app.ui.notebook.selected_contents.add(self.ui)
-        # self.app.ui.selected_layout.addWidget(self.ui)
-        try:
-            self.app.ui.selected_scroll_area.takeWidget()
-        except:
-            self.app.log.debug("Nothing to remove")
-        self.app.ui.selected_scroll_area.setWidget(self.ui)
+        self.app.ui.notebook.selected_contents.add(self.ui)
         self.to_form()
-
+        GLib.idle_add(self.app.ui.notebook.selected_contents.show_all)
+        GLib.idle_add(self.ui.show_all)
         self.muted_ui = False
 
     def set_form_item(self, option):
@@ -202,7 +241,6 @@ class FlatCAMObj(QtCore.QObject):
         :return: Whether to continue plotting or not depending on the "plot" option.
         :rtype: bool
         """
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
         # Axes must exist and be attached to canvas.
         if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
@@ -244,13 +282,28 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
     Represents Gerber code.
     """
 
-    ui_type = GerberObjectUI
-
     def __init__(self, name):
         Gerber.__init__(self)
-        FlatCAMObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name, GerberObjectUI())
 
         self.kind = "gerber"
+
+        self.form_fields.update({
+            "plot": self.ui.plot_cb,
+            "multicolored": self.ui.multicolored_cb,
+            "solid": self.ui.solid_cb,
+            "isotooldia": self.ui.iso_tool_dia_entry,
+            "isopasses": self.ui.iso_width_entry,
+            "isooverlap": self.ui.iso_overlap_entry,
+            "cutouttooldia": self.ui.cutout_tooldia_entry,
+            "cutoutmargin": self.ui.cutout_margin_entry,
+            "cutoutgapsize": self.ui.cutout_gap_entry,
+            "gaps": self.ui.gaps_radio,
+            "noncoppermargin": self.ui.noncopper_margin_entry,
+            "noncopperrounded": self.ui.noncopper_rounded_cb,
+            "bboxmargin": self.ui.bbmargin_entry,
+            "bboxrounded": self.ui.bbrounded_cb
+        })
 
         # The 'name' is already in self.options from FlatCAMObj
         # Automatically updates the UI
@@ -276,45 +329,21 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-        # assert isinstance(self.ui, GerberObjectUI)
-        # self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
-        # self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
-        # self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
-        # self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
-        # self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
-        # self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
-        # self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
-
-    def set_ui(self, ui):
-        FlatCAMObj.set_ui(self, ui)
-
-        FlatCAMApp.App.log.debug("FlatCAMGerber.set_ui()")
-
-        self.form_fields.update({
-            "plot": self.ui.plot_cb,
-            "multicolored": self.ui.multicolored_cb,
-            "solid": self.ui.solid_cb,
-            "isotooldia": self.ui.iso_tool_dia_entry,
-            "isopasses": self.ui.iso_width_entry,
-            "isooverlap": self.ui.iso_overlap_entry,
-            "cutouttooldia": self.ui.cutout_tooldia_entry,
-            "cutoutmargin": self.ui.cutout_margin_entry,
-            "cutoutgapsize": self.ui.cutout_gap_entry,
-            "gaps": self.ui.gaps_radio,
-            "noncoppermargin": self.ui.noncopper_margin_entry,
-            "noncopperrounded": self.ui.noncopper_rounded_cb,
-            "bboxmargin": self.ui.bbmargin_entry,
-            "bboxrounded": self.ui.bbrounded_cb
-        })
-
         assert isinstance(self.ui, GerberObjectUI)
-        self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
-        self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
-        self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
-        self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
-        self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
-        self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
-        self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
+        self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
+        self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
+        self.ui.solid_cb.connect('clicked', self.on_solid_cb_click)
+        self.ui.solid_cb.connect('activate', self.on_solid_cb_click)
+        self.ui.multicolored_cb.connect('clicked', self.on_multicolored_cb_click)
+        self.ui.multicolored_cb.connect('activate', self.on_multicolored_cb_click)
+        self.ui.generate_iso_button.connect('clicked', self.on_iso_button_click)
+        self.ui.generate_iso_button.connect('activate', self.on_iso_button_click)
+        self.ui.generate_cutout_button.connect('clicked', self.on_generatecutout_button_click)
+        self.ui.generate_cutout_button.connect('activate', self.on_generatecutout_button_click)
+        self.ui.generate_bb_button.connect('clicked', self.on_generatebb_button_click)
+        self.ui.generate_bb_button.connect('activate', self.on_generatebb_button_click)
+        self.ui.generate_noncopper_button.connect('clicked', self.on_generatenoncopper_button_click)
+        self.ui.generate_noncopper_button.connect('activate', self.on_generatenoncopper_button_click)
 
     def on_generatenoncopper_button_click(self, *args):
         self.read_form()
@@ -447,13 +476,17 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
     def plot(self):
 
-        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMGerber.plot()")
-
         # Does all the required setup and returns False
         # if the 'ptint' option is set to False.
         if not FlatCAMObj.plot(self):
             return
 
+        # if self.options["mergepolys"]:
+        #     geometry = self.solid_geometry
+        # else:
+        #     geometry = self.buffered_paths + \
+        #                 [poly['polygon'] for poly in self.regions] + \
+        #                 self.flash_geometry
         geometry = self.solid_geometry
 
         # Make sure geometry is iterable.
@@ -488,9 +521,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, linespec)
 
-        self.app.plotcanvas.auto_adjust_axes()
-        #GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        #self.emit(QtCore.SIGNAL("plotChanged"), self)
+        # self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def serialize(self):
         return {
@@ -504,13 +536,20 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
     Represents Excellon/Drill code.
     """
 
-    ui_type = ExcellonObjectUI
-
     def __init__(self, name):
         Excellon.__init__(self)
-        FlatCAMObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name, ExcellonObjectUI())
 
         self.kind = "excellon"
+
+        self.form_fields.update({
+            "plot": self.ui.plot_cb,
+            "solid": self.ui.solid_cb,
+            "drillz": self.ui.cutz_entry,
+            "travelz": self.ui.travelz_entry,
+            "feedrate": self.ui.feedrate_entry,
+            "toolselection": self.ui.tools_entry
+        })
 
         self.options.update({
             "plot": True,
@@ -518,7 +557,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "drillz": -0.1,
             "travelz": 0.1,
             "feedrate": 5.0,
-            # "toolselection": ""
+            "toolselection": ""
         })
 
         # TODO: Document this.
@@ -529,100 +568,49 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-    def build_ui(self):
-        FlatCAMObj.build_ui(self)
-
-        # Populate tool list
-        n = len(self.tools)
-        self.ui.tools_table.setColumnCount(2)
-        self.ui.tools_table.setHorizontalHeaderLabels(['#', 'Diameter'])
-        self.ui.tools_table.setRowCount(n)
-        self.ui.tools_table.setSortingEnabled(False)
-        i = 0
-        for tool in self.tools:
-            id = QtGui.QTableWidgetItem(tool)
-            id.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-            self.ui.tools_table.setItem(i, 0, id)  # Tool name/id
-            dia = QtGui.QTableWidgetItem(str(self.tools[tool]['C']))
-            dia.setFlags(QtCore.Qt.ItemIsEnabled)
-            self.ui.tools_table.setItem(i, 1, dia)  # Diameter
-            i += 1
-        self.ui.tools_table.resizeColumnsToContents()
-        self.ui.tools_table.resizeRowsToContents()
-        self.ui.tools_table.horizontalHeader().setStretchLastSection(True)
-        self.ui.tools_table.verticalHeader().hide()
-        self.ui.tools_table.setSortingEnabled(True)
-
-    def set_ui(self, ui):
-        FlatCAMObj.set_ui(self, ui)
-
-        FlatCAMApp.App.log.debug("FlatCAMExcellon.set_ui()")
-
-        self.form_fields.update({
-            "plot": self.ui.plot_cb,
-            "solid": self.ui.solid_cb,
-            "drillz": self.ui.cutz_entry,
-            "travelz": self.ui.travelz_entry,
-            "feedrate": self.ui.feedrate_entry,
-            # "toolselection": self.ui.tools_entry
-        })
-
         assert isinstance(self.ui, ExcellonObjectUI)
-        self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
-        self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
-        # self.ui.choose_tools_button.clicked.connect(self.show_tool_chooser)
-        self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
+        self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
+        self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
+        self.ui.solid_cb.connect('clicked', self.on_solid_cb_click)
+        self.ui.solid_cb.connect('activate', self.on_solid_cb_click)
+        self.ui.choose_tools_button.connect('clicked', lambda args: self.show_tool_chooser())
+        self.ui.choose_tools_button.connect('activate', lambda args: self.show_tool_chooser())
+        self.ui.generate_cnc_button.connect('clicked', self.on_create_cncjob_button_click)
+        self.ui.generate_cnc_button.connect('activate', self.on_create_cncjob_button_click)
 
     def on_create_cncjob_button_click(self, *args):
         self.read_form()
-
-        # Get the tools from the list
-        tools = [str(x.text()) for x in self.ui.tools_table.selectedItems()]
-
-        if len(tools) == 0:
-            self.app.inform.emit("Please select one or more tools from the list and try again.")
-            return
-
         job_name = self.options["name"] + "_cnc"
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
             assert isinstance(job_obj, FlatCAMCNCjob)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-            app_obj.progress.emit(20)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             job_obj.z_cut = self.options["drillz"]
             job_obj.z_move = self.options["travelz"]
             job_obj.feedrate = self.options["feedrate"]
             # There could be more than one drill size...
             # job_obj.tooldia =   # TODO: duplicate variable!
             # job_obj.options["tooldia"] =
+            job_obj.generate_from_excellon_by_tool(self, self.options["toolselection"])
 
-            tools_csv = ','.join(tools)
-            # job_obj.generate_from_excellon_by_tool(self, self.options["toolselection"])
-            job_obj.generate_from_excellon_by_tool(self, tools_csv)
-
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
-            app_obj.progress.emit(50)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-            app_obj.progress.emit(60)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
             job_obj.create_geometry()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
-            app_obj.progress.emit(80)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
 
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            app_obj.progress.emit(100)
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
         # Send to worker
-        # self.app.worker.add_task(job_thread, [self.app])
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+        self.app.worker.add_task(job_thread, [self.app])
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -672,79 +660,78 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, 'g-')
 
-        self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def show_tool_chooser(self):
-        # win = Gtk.Window()
-        # box = Gtk.Box(spacing=2)
-        # box.set_orientation(Gtk.Orientation(1))
-        # win.add(box)
-        # for tool in self.tools:
-        #     self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + str(self.tools[tool]))
-        #     box.pack_start(self.tool_cbs[tool], False, False, 1)
-        # button = Gtk.Button(label="Accept")
-        # box.pack_start(button, False, False, 1)
-        # win.show_all()
-        #
-        # def on_accept(widget):
-        #     win.destroy()
-        #     tool_list = []
-        #     for toolx in self.tool_cbs:
-        #         if self.tool_cbs[toolx].get_active():
-        #             tool_list.append(toolx)
-        #     self.options["toolselection"] = ", ".join(tool_list)
-        #     self.to_form()
-        #
-        # button.connect("activate", on_accept)
-        # button.connect("clicked", on_accept)
-        return
+        win = Gtk.Window()
+        box = Gtk.Box(spacing=2)
+        box.set_orientation(Gtk.Orientation(1))
+        win.add(box)
+        for tool in self.tools:
+            self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + str(self.tools[tool]))
+            box.pack_start(self.tool_cbs[tool], False, False, 1)
+        button = Gtk.Button(label="Accept")
+        box.pack_start(button, False, False, 1)
+        win.show_all()
 
+        def on_accept(widget):
+            win.destroy()
+            tool_list = []
+            for toolx in self.tool_cbs:
+                if self.tool_cbs[toolx].get_active():
+                    tool_list.append(toolx)
+            self.options["toolselection"] = ", ".join(tool_list)
+            self.to_form()
+
+        button.connect("activate", on_accept)
+        button.connect("clicked", on_accept)
+
+import time
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
     Represents G-Code.
     """
 
-    ui_type = CNCObjectUI
-
     def __init__(self, name, units="in", kind="generic", z_move=0.1,
                  feedrate=3.0, z_cut=-0.002, tooldia=0.0):
         FlatCAMApp.App.log.debug("Creating CNCJob object...")
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
                         feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
-        FlatCAMObj.__init__(self, name)
-
+        ui = CNCObjectUI()
+        FlatCAMApp.App.log.debug("... UI Created")
+        time.sleep(2)
+        FlatCAMApp.App.log.debug("... 2 seconds later")
+        FlatCAMObj.__init__(self, name, ui)
+        FlatCAMApp.App.log.debug("... UI Passed to parent")
         self.kind = "cncjob"
 
         self.options.update({
             "plot": True,
             "tooldia": 0.4 / 25.4,  # 0.4mm in inches
-            "append": ""
+            #"append": ""
         })
+
+        self.form_fields.update({
+            "plot": self.ui.plot_cb,
+            "tooldia": self.ui.tooldia_entry,
+            #"append": self.ui.append_gtext
+        })
+        FlatCAMApp.App.log.debug("... Options")
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-    def set_ui(self, ui):
-        FlatCAMObj.set_ui(self, ui)
-
-        FlatCAMApp.App.log.debug("FlatCAMCNCJob.set_ui()")
-
-        assert isinstance(self.ui, CNCObjectUI)
-
-        self.form_fields.update({
-            "plot": self.ui.plot_cb,
-            "tooldia": self.ui.tooldia_entry,
-            "append": self.ui.append_text
-        })
-
-        self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
-        self.ui.updateplot_button.clicked.connect(self.on_updateplot_button_click)
-        self.ui.export_gcode_button.clicked.connect(self.on_exportgcode_button_click)
+        self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
+        self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
+        self.ui.updateplot_button.connect('clicked', self.on_updateplot_button_click)
+        self.ui.updateplot_button.connect('activate', self.on_updateplot_button_click)
+        self.ui.export_gcode_button.connect('clicked', self.on_exportgcode_button_click)
+        self.ui.export_gcode_button.connect('activate', self.on_exportgcode_button_click)
+        FlatCAMApp.App.log.debug("... Callbacks. DONE")
 
     def on_updateplot_button_click(self, *args):
         """
@@ -755,21 +742,13 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.plot()
 
     def on_exportgcode_button_click(self, *args):
+        def on_success(app_obj, filename):
+            f = open(filename, 'w')
+            f.write(self.gcode)
+            f.close()
+            app_obj.info("Saved to: " + filename)
 
-        try:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...",
-                                                         directory=self.app.last_folder)
-        except TypeError:
-            filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...")
-
-        postamble = str(self.ui.append_text.get_value())
-
-        f = open(filename, 'w')
-        f.write(self.gcode + "\n" + postamble)
-        f.close()
-
-        self.app.file_opened.emit("cncjob", filename)
-        self.app.inform.emit("Saved to: " + filename)
+        self.app.file_chooser_save_action(on_success)
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -786,7 +765,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.plot2(self.axes, tooldia=self.options["tooldia"])
 
-        self.app.plotcanvas.auto_adjust_axes()
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -800,38 +780,11 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     format.
     """
 
-    ui_type = GeometryObjectUI
-
     def __init__(self, name):
-        FlatCAMObj.__init__(self, name)
+        FlatCAMObj.__init__(self, name, GeometryObjectUI())
         Geometry.__init__(self)
 
         self.kind = "geometry"
-
-        self.options.update({
-            "plot": True,
-            # "solid": False,
-            # "multicolored": False,
-            "cutz": -0.002,
-            "travelz": 0.1,
-            "feedrate": 5.0,
-            "cnctooldia": 0.4 / 25.4,
-            "painttooldia": 0.0625,
-            "paintoverlap": 0.15,
-            "paintmargin": 0.01
-        })
-
-        # Attributes to be included in serialization
-        # Always append to it because it carries contents
-        # from predecessors.
-        self.ser_attrs += ['options', 'kind']
-
-    def set_ui(self, ui):
-        FlatCAMObj.set_ui(self, ui)
-
-        FlatCAMApp.App.log.debug("FlatCAMGeometry.set_ui()")
-
-        assert isinstance(self.ui, GeometryObjectUI)
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
@@ -846,9 +799,44 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "paintmargin": self.ui.paintmargin_entry
         })
 
-        self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
-        self.ui.generate_cnc_button.clicked.connect(self.on_generatecnc_button_click)
-        self.ui.generate_paint_button.clicked.connect(self.on_paint_button_click)
+        self.options.update({
+            "plot": True,
+            # "solid": False,
+            # "multicolored": False,
+            "cutz": -0.002,
+            "travelz": 0.1,
+            "feedrate": 5.0,
+            "cnctooldia": 0.4 / 25.4,
+            "painttooldia": 0.0625,
+            "paintoverlap": 0.15,
+            "paintmargin": 0.01
+        })
+
+        # self.form_kinds.update({
+        #     "plot": "cb",
+        #     "solid": "cb",
+        #     "multicolored": "cb",
+        #     "cutz": "entry_eval",
+        #     "travelz": "entry_eval",
+        #     "feedrate": "entry_eval",
+        #     "cnctooldia": "entry_eval",
+        #     "painttooldia": "entry_eval",
+        #     "paintoverlap": "entry_eval",
+        #     "paintmargin": "entry_eval"
+        # })
+
+        # Attributes to be included in serialization
+        # Always append to it because it carries contents
+        # from predecessors.
+        self.ser_attrs += ['options', 'kind']
+
+        assert isinstance(self.ui, GeometryObjectUI)
+        self.ui.plot_cb.connect('clicked', self.on_plot_cb_click)
+        self.ui.plot_cb.connect('activate', self.on_plot_cb_click)
+        self.ui.generate_cnc_button.connect('clicked', self.on_generatecnc_button_click)
+        self.ui.generate_cnc_button.connect('activate', self.on_generatecnc_button_click)
+        self.ui.generate_paint_button.connect('clicked', self.on_paint_button_click)
+        self.ui.generate_paint_button.connect('activate', self.on_paint_button_click)
 
     def on_paint_button_click(self, *args):
         self.app.info("Click inside the desired polygon.")
@@ -889,41 +877,35 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             # Propagate options
             job_obj.options["tooldia"] = self.options["cnctooldia"]
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
-            app_obj.progress.emit(20)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             job_obj.z_cut = self.options["cutz"]
             job_obj.z_move = self.options["travelz"]
             job_obj.feedrate = self.options["feedrate"]
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
-            app_obj.progress.emit(40)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
             # TODO: The tolerance should not be hard coded. Just for testing.
             job_obj.generate_from_geometry(self, tolerance=0.0005)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
-            app_obj.progress.emit(50)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             job_obj.gcode_parse()
 
             # TODO: job_obj.create_geometry creates stuff that is not used.
             #GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
             #job_obj.create_geometry()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
-            app_obj.progress.emit(80)
+            GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
 
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
-            # GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, "Idle"))
-            app_obj.inform.emit("CNCjob created: %s" % job_name)
-            app_obj.progress.emit(100)
+            GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
+            GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
+            GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, "Idle"))
 
         # Send to worker
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+        self.app.worker.add_task(job_thread, [self.app])
 
-    def on_plot_cb_click(self, *args):  # TODO: args not needed
+    def on_plot_cb_click(self, *args):
         if self.muted_ui:
             return
         self.read_form_item('plot')
@@ -1021,6 +1003,5 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
-        self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)
+        #self.app.plotcanvas.auto_adjust_axes()
+        GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
