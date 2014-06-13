@@ -324,7 +324,7 @@ class App(QtCore.QObject):
         self.measeurement_tool = Measurement(self)
         self.measeurement_tool.install()
 
-        App.log.info("END of constructor. Releasing control.")
+        App.log.debug("END of constructor. Releasing control.")
 
     def defaults_read_form(self):
         for option in self.defaults_form_fields:
@@ -346,8 +346,6 @@ class App(QtCore.QObject):
         :return: None
         """
         # TODO: This method is very similar to replot_all. Try to merge.
-
-        #self.set_progress_bar(0.1, "Re-plotting...")
         self.progress.emit(10)
 
         def worker_task(app_obj):
@@ -355,7 +353,6 @@ class App(QtCore.QObject):
             try:
                 delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
-                # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 self.progress.emit(0)
                 return
             for obj in self.collection.get_list():
@@ -363,16 +360,12 @@ class App(QtCore.QObject):
                     obj.options['plot'] = False
                     obj.plot()
                 percentage += delta
-                # GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
                 self.progress.emit(int(percentage*100))
 
-            # GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
-            # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
             self.progress.emit(0)
             self.plots_updated.emit()
 
         # Send to worker
-        # self.worker.add_task(worker_task, [self])
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
     def info(self, text):
@@ -410,124 +403,6 @@ class App(QtCore.QObject):
         dlg = QtGui.QMessageBox(icon, title, message, parent=self.ui)
         dlg.setText(message)
         dlg.exec_()
-
-    def setup_recent_items(self):
-        self.log.debug("setup_recent_items()")
-
-        # TODO: Move this to constructor
-        icons = {
-            "gerber": "share/flatcam_icon16.png",
-            "excellon": "share/drill16.png",
-            "cncjob": "share/cnc16.png",
-            "project": "share/project16.png"
-        }
-
-        openers = {
-            'gerber': lambda fname: self.worker_task.emit({'fcn': self.open_gerber, 'params': [fname]}),
-            'excellon': lambda fname: self.worker_task.emit({'fcn': self.open_excellon, 'params': [fname]}),
-            'cncjob': lambda fname: self.worker_task.emit({'fcn': self.open_gcode, 'params': [fname]}),
-            'project': self.open_project
-        }
-
-        # Open file
-        try:
-            f = open('recent.json')
-        except IOError:
-            App.log.error("Failed to load recent item list.")
-            self.inform.emit("ERROR: Failed to load recent item list.")
-            return
-
-        try:
-            self.recent = json.load(f)
-        except json.scanner.JSONDecodeError:
-            App.log.error("Failed to parse recent item list.")
-            self.inform.emit("ERROR: Failed to parse recent item list.")
-            f.close()
-            return
-        f.close()
-
-        # Closure needed to create callbacks in a loop.
-        # Otherwise late binding occurs.
-        def make_callback(func, fname):
-            def opener():
-                func(fname)
-            return opener
-
-        # Reset menu
-        self.ui.recent.clear()
-
-        # Create menu items
-        for recent in self.recent:
-            filename = recent['filename'].split('/')[-1].split('\\')[-1]
-            action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
-
-            o = make_callback(openers[recent["kind"]], recent['filename'])
-
-            action.triggered.connect(o)
-            self.ui.recent.addAction(action)
-
-        # self.builder.get_object('open_recent').set_submenu(recent_menu)
-        # self.ui.menufilerecent.set_submenu(recent_menu)
-        # recent_menu.show_all()
-        # self.ui.recent.show()
-
-    def setup_component_editor(self):
-        label = QtGui.QLabel("Choose an item from Project")
-        label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
-        self.ui.selected_scroll_area.setWidget(label)
-
-    def setup_obj_classes(self):
-        """
-        Sets up application specifics on the FlatCAMObj class.
-
-        :return: None
-        """
-        FlatCAMObj.app = self
-
-    def version_check(self):
-        """
-        Checks for the latest version of the program. Alerts the
-        user if theirs is outdated. This method is meant to be run
-        in a saeparate thread.
-
-        :return: None
-        """
-
-        self.log.debug("version_check()")
-
-        try:
-            f = urllib.urlopen(App.version_url)
-        except:
-            App.log.warning("Failed checking for latest version. Could not connect.")
-            # GLib.idle_add(lambda: self.inform.emit("ERROR trying to check for latest version."))
-            self.inform.emit("Failed checking for latest version. Could not connect.")
-            return
-
-        try:
-            data = json.load(f)
-        except:
-            App.log.error("Could nor parse information about latest version.")
-            # GLib.idle_add(lambda: self.inform.emit("ERROR trying to check for latest version."))
-            self.inform.emit("Could nor parse information about latest version.")
-            f.close()
-            return
-
-        f.close()
-
-        if self.version >= data["version"]:
-            App.log.debug("FlatCAM is up to date!")
-            # GLib.idle_add(lambda: self.inform.emit("FlatCAM is up to date!"))
-            self.inform.emit("FlatCAM is up to date!")
-            return
-
-        App.log.debug("Newer version available.")
-        self.message.emit(
-            "Newer Version Available",
-            "There is a newer version of FlatCAM\n" +
-            "available for download:\n\n" +
-            data["name"] + "\n\n" + data["message"],
-            "info"
-        )
 
     def register_recent(self, kind, filename):
 
@@ -651,6 +526,8 @@ class App(QtCore.QObject):
             def __init__(self, parent=None):
                 QtGui.QDialog.__init__(self, parent)
 
+                self.setWindowIcon(parent.app_icon)
+
                 layout1 = QtGui.QVBoxLayout()
                 self.setLayout(layout1)
 
@@ -680,7 +557,7 @@ class App(QtCore.QObject):
 
                 okbtn.clicked.connect(self.accept)
 
-        AboutDialog().exec_()
+        AboutDialog(self.ui).exec_()
 
     def on_file_savedefaults(self):
         """
@@ -863,22 +740,9 @@ class App(QtCore.QObject):
         msgbox.setText("<B>Change project units ...</B>")
         msgbox.setInformativeText("Changing the units of the project causes all geometrical "
                                   "properties of all objects to be scaled accordingly. Continue?")
-        # label = Gtk.Label("Changing the units of the project causes all geometrical \n" +
-        #                   "properties of all objects to be scaled accordingly. Continue?")
-        # dialog = Gtk.Dialog("Changing Project Units", self.window, 0,
-        #                     (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
-        #                      Gtk.STOCK_OK, Gtk.ResponseType.OK))
         msgbox.setStandardButtons(QtGui.QMessageBox.Cancel | QtGui.QMessageBox.Ok)
         msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
 
-        # dialog.set_default_size(150, 100)
-        # dialog.set_modal(True)
-        # box = dialog.get_content_area()
-        # box.set_border_width(10)
-        # box.add(label)
-        # dialog.show_all()
-        # response = dialog.run()
-        # dialog.destroy()
         response = msgbox.exec_()
 
         if response == QtGui.QMessageBox.Ok:
@@ -902,9 +766,7 @@ class App(QtCore.QObject):
             self.toggle_units_ignore = False
 
         self.options_read_form()
-        # self.inform.emit("Converted units to %s" % self.options["units"])
         self.inform.emit("Converted units to %s" % self.options["units"])
-        # self.units_label.set_text("[" + self.options["units"] + "]")
         self.ui.units_label.setText("[" + self.options["units"] + "]")
 
     def on_options_combo_change(self, sel):
@@ -971,7 +833,6 @@ class App(QtCore.QObject):
         # Remove from dictionary
         self.collection.delete_active()
 
-        # self.inform.emit("Object deleted: %s" % name)
         self.inform.emit("Object deleted: %s" % name)
 
     def on_plots_updated(self):
@@ -1081,7 +942,6 @@ class App(QtCore.QObject):
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
                 event.button, event.x, event.y, event.xdata, event.ydata))
 
-            # self.clipboard.clear(mode=self.clipboard.Clipboard)
             self.clipboard.setText("(%.4f, %.4f)" % (event.xdata, event.ydata))
 
         except Exception, e:
@@ -1137,9 +997,7 @@ class App(QtCore.QObject):
         :return: None
         """
 
-        # self.defaults_read_form()
         self.options.update(self.defaults)
-        # self.options_write_form()
 
     def on_fileopengerber(self):
         App.log.debug("on_fileopengerber()")
@@ -1152,7 +1010,6 @@ class App(QtCore.QObject):
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
-            #self.worker.add_task(self.open_gerber, [filename])
             self.worker_task.emit({'fcn': self.open_gerber,
                                    'params': [filename]})
 
@@ -1167,7 +1024,6 @@ class App(QtCore.QObject):
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
-            #self.worker.add_task(self.open_gerber, [filename])
             self.worker_task.emit({'fcn': self.open_excellon,
                                    'params': [filename]})
 
@@ -1183,7 +1039,6 @@ class App(QtCore.QObject):
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
-            #self.worker.add_task(self.open_gerber, [filename])
             self.worker_task.emit({'fcn': self.open_gcode,
                                    'params': [filename]})
 
@@ -1199,7 +1054,6 @@ class App(QtCore.QObject):
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
-            #self.worker.add_task(self.open_gerber, [filename])
             self.worker_task.emit({'fcn': self.open_project,
                                    'params': [filename]})
 
@@ -1252,7 +1106,6 @@ class App(QtCore.QObject):
                 return
 
         self.save_project(filename)
-        # self.register_recent("project", filename)
         self.file_opened.emit("project", filename)
 
         if not make_copy:
@@ -1273,7 +1126,6 @@ class App(QtCore.QObject):
 
         App.log.debug("open_gerber()")
 
-        #GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Gerber ..."))
         self.progress.emit(10)
 
         # How the object should be initialized
@@ -1281,13 +1133,10 @@ class App(QtCore.QObject):
             assert isinstance(gerber_obj, FlatCAMGerber)
 
             # Opening the file happens here
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
             self.progress.emit(30)
             gerber_obj.parse_file(filename)
 
             # Further parsing
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Creating Geometry ..."))
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
             self.progress.emit(70)
 
         # Object name
@@ -1311,16 +1160,12 @@ class App(QtCore.QObject):
         #     return
 
         # Register recent file
-        # self.register_recent("gerber", filename)
         self.file_opened.emit("gerber", filename)
 
         self.progress.emit(100)
 
         # GUI feedback
-        # self.inform.emit("Opened: " + filename)
         self.inform.emit("Opened: " + filename)
-        # GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        # GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
 
     def open_excellon(self, filename):
         """
@@ -1334,16 +1179,13 @@ class App(QtCore.QObject):
 
         App.log.debug("open_excellon()")
 
-        # GLib.idle_add(lambda: self.set_progress_bar(0.1, "Opening Excellon ..."))
         self.progress.emit(10)
 
         # How the object should be initialized
         def obj_init(excellon_obj, app_obj):
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Parsing ..."))
             self.progress.emit(20)
             excellon_obj.parse_file(filename)
             excellon_obj.create_geometry()
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Plotting ..."))
             self.progress.emit(70)
 
         # Object name
@@ -1359,20 +1201,15 @@ class App(QtCore.QObject):
                                 "Attempting to create a FlatCAM Excellon Object from " +
                                 "Excellon file failed during processing:\n" +
                                 str(e[0]) + " " + str(e[1]), kind="error")
-            # GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
             self.progress.emit(0)
             self.collection.delete_active()
             return
 
         # Register recent file
-        # self.register_recent("excellon", filename)
         self.file_opened.emit("excellon", filename)
 
         # GUI feedback
-        # self.inform.emit("Opened: " + filename)
         self.inform.emit("Opened: " + filename)
-        # GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        # GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
         self.progress.emit(100)
 
     def open_gcode(self, filename):
@@ -1393,7 +1230,6 @@ class App(QtCore.QObject):
             :type app_obj_: App
             """
             assert isinstance(app_obj_, App)
-            # GLib.idle_add(lambda: app_obj_.set_progress_bar(0.1, "Opening G-Code ..."))
             self.progress.emit(10)
 
             f = open(filename)
@@ -1402,15 +1238,11 @@ class App(QtCore.QObject):
 
             job_obj.gcode = gcode
 
-            # GLib.idle_add(lambda: app_obj_.set_progress_bar(0.2, "Parsing ..."))
             self.progress.emit(20)
             job_obj.gcode_parse()
 
-            # GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Creating geometry ..."))
             self.progress.emit(60)
             job_obj.create_geometry()
-
-            # GLib.idle_add(lambda: app_obj_.set_progress_bar(0.6, "Plotting ..."))
 
         # Object name
         name = filename.split('/')[-1].split('\\')[-1]
@@ -1425,20 +1257,15 @@ class App(QtCore.QObject):
                                 "Attempting to create a FlatCAM CNCJob Object from " +
                                 "G-Code file failed during processing:\n" +
                                 str(e[0]) + " " + str(e[1]), kind="error")
-            # GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
             self.progress.emit(0)
             self.collection.delete_active()
             return
 
         # Register recent file
-        # self.register_recent("cncjob", filename)
         self.file_opened.emit("cncjob", filename)
 
         # GUI feedback
-        # self.inform.emit("Opened: " + filename)
         self.inform.emit("Opened: " + filename)
-        # GLib.idle_add(lambda: self.set_progress_bar(1.0, "Done!"))
-        # GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, ""))
         self.progress.emit(100)
 
     def open_project(self, filename):
@@ -1473,7 +1300,6 @@ class App(QtCore.QObject):
             f.close()
             return
 
-        # self.register_recent("project", filename)
         self.file_opened.emit("project", filename)
 
         # Clear the current project
@@ -1482,7 +1308,6 @@ class App(QtCore.QObject):
         # Project options
         self.options.update(d['options'])
         self.project_filename = filename
-        # GLib.idle_add(lambda: self.units_label.set_text(self.options["units"]))
         self.ui.units_label.setText("[" + self.options["units"] + "]")
 
         # Re create objects
@@ -1506,7 +1331,6 @@ class App(QtCore.QObject):
         self.log.debug("plot_all()")
 
         self.plotcanvas.clear()
-        # self.set_progress_bar(0.1, "Re-plotting...")
         self.progress.emit(10)
 
         def worker_task(app_obj):
@@ -1514,18 +1338,13 @@ class App(QtCore.QObject):
             try:
                 delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
-                # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 self.progress.emit(0)
                 return
             for obj in self.collection.get_list():
                 obj.plot()
                 percentage += delta
-                # GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
                 self.progress.emit(int(percentage*100))
 
-            # GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
-            # GLib.idle_add(lambda: self.on_zoom_fit(None))
-            # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, "Idle"))
             self.progress.emit(0)
             self.plots_updated.emit()
 
@@ -1539,27 +1358,137 @@ class App(QtCore.QObject):
     def set_progress_bar(self, percentage, text=""):
         self.ui.progress_bar.setValue(int(percentage))
 
+    def setup_recent_items(self):
+        self.log.debug("setup_recent_items()")
+
+        # TODO: Move this to constructor
+        icons = {
+            "gerber": "share/flatcam_icon16.png",
+            "excellon": "share/drill16.png",
+            "cncjob": "share/cnc16.png",
+            "project": "share/project16.png"
+        }
+
+        openers = {
+            'gerber': lambda fname: self.worker_task.emit({'fcn': self.open_gerber, 'params': [fname]}),
+            'excellon': lambda fname: self.worker_task.emit({'fcn': self.open_excellon, 'params': [fname]}),
+            'cncjob': lambda fname: self.worker_task.emit({'fcn': self.open_gcode, 'params': [fname]}),
+            'project': self.open_project
+        }
+
+        # Open file
+        try:
+            f = open('recent.json')
+        except IOError:
+            App.log.error("Failed to load recent item list.")
+            self.inform.emit("ERROR: Failed to load recent item list.")
+            return
+
+        try:
+            self.recent = json.load(f)
+        except json.scanner.JSONDecodeError:
+            App.log.error("Failed to parse recent item list.")
+            self.inform.emit("ERROR: Failed to parse recent item list.")
+            f.close()
+            return
+        f.close()
+
+        # Closure needed to create callbacks in a loop.
+        # Otherwise late binding occurs.
+        def make_callback(func, fname):
+            def opener():
+                func(fname)
+            return opener
+
+        # Reset menu
+        self.ui.recent.clear()
+
+        # Create menu items
+        for recent in self.recent:
+            filename = recent['filename'].split('/')[-1].split('\\')[-1]
+            action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
+
+            o = make_callback(openers[recent["kind"]], recent['filename'])
+
+            action.triggered.connect(o)
+            self.ui.recent.addAction(action)
+
+        # self.builder.get_object('open_recent').set_submenu(recent_menu)
+        # self.ui.menufilerecent.set_submenu(recent_menu)
+        # recent_menu.show_all()
+        # self.ui.recent.show()
+
+    def setup_component_editor(self):
+        label = QtGui.QLabel("Choose an item from Project")
+        label.setAlignment(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        self.ui.selected_scroll_area.setWidget(label)
+
+    def setup_obj_classes(self):
+        """
+        Sets up application specifics on the FlatCAMObj class.
+
+        :return: None
+        """
+        FlatCAMObj.app = self
+
+    def version_check(self):
+        """
+        Checks for the latest version of the program. Alerts the
+        user if theirs is outdated. This method is meant to be run
+        in a saeparate thread.
+
+        :return: None
+        """
+
+        self.log.debug("version_check()")
+
+        try:
+            f = urllib.urlopen(App.version_url)
+        except:
+            App.log.warning("Failed checking for latest version. Could not connect.")
+            self.inform.emit("Failed checking for latest version. Could not connect.")
+            return
+
+        try:
+            data = json.load(f)
+        except:
+            App.log.error("Could nor parse information about latest version.")
+            self.inform.emit("Could nor parse information about latest version.")
+            f.close()
+            return
+
+        f.close()
+
+        if self.version >= data["version"]:
+            App.log.debug("FlatCAM is up to date!")
+            self.inform.emit("FlatCAM is up to date!")
+            return
+
+        App.log.debug("Newer version available.")
+        self.message.emit(
+            "Newer Version Available",
+            "There is a newer version of FlatCAM\n" +
+            "available for download:\n\n" +
+            data["name"] + "\n\n" + data["message"],
+            "info"
+        )
+
     def enable_all_plots(self, *args):
         self.plotcanvas.clear()
-        # self.set_progress_bar(0.1, "Re-plotting...")
 
         def worker_task(app_obj):
             percentage = 0.1
             try:
                 delta = 0.9 / len(self.collection.get_list())
             except ZeroDivisionError:
-                # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
                 self.progress.emit(0)
                 return
             for obj in self.collection.get_list():
                 obj.options['plot'] = True
                 obj.plot()
                 percentage += delta
-                # GLib.idle_add(lambda: app_obj.set_progress_bar(percentage, "Re-plotting..."))
                 self.progress.emit(int(percentage*100))
 
-            # GLib.idle_add(app_obj.plotcanvas.auto_adjust_axes)
-            # GLib.timeout_add(300, lambda: app_obj.set_progress_bar(0.0, ""))
             self.progress.emit(0)
             self.plots_updated.emit()
 

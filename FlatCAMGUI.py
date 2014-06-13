@@ -207,17 +207,17 @@ class FlatCAMGUI(QtGui.QMainWindow):
         #############
         ### Icons ###
         #############
-        app_icon = QtGui.QIcon()
-        app_icon.addFile('share/flatcam_icon16.png', QtCore.QSize(16, 16))
-        app_icon.addFile('share/flatcam_icon24.png', QtCore.QSize(24, 24))
-        app_icon.addFile('share/flatcam_icon32.png', QtCore.QSize(32, 32))
-        app_icon.addFile('share/flatcam_icon48.png', QtCore.QSize(48, 48))
-        app_icon.addFile('share/flatcam_icon128.png', QtCore.QSize(128, 128))
-        app_icon.addFile('share/flatcam_icon256.png', QtCore.QSize(256, 256))
-        self.setWindowIcon(app_icon)
+        self.app_icon = QtGui.QIcon()
+        self.app_icon.addFile('share/flatcam_icon16.png', QtCore.QSize(16, 16))
+        self.app_icon.addFile('share/flatcam_icon24.png', QtCore.QSize(24, 24))
+        self.app_icon.addFile('share/flatcam_icon32.png', QtCore.QSize(32, 32))
+        self.app_icon.addFile('share/flatcam_icon48.png', QtCore.QSize(48, 48))
+        self.app_icon.addFile('share/flatcam_icon128.png', QtCore.QSize(128, 128))
+        self.app_icon.addFile('share/flatcam_icon256.png', QtCore.QSize(256, 256))
+        self.setWindowIcon(self.app_icon)
 
-        self.setGeometry(100, 100, 750, 500)
-        self.setWindowTitle('FlatCAM - 0.5')
+        self.setGeometry(100, 100, 1024, 650)
+        self.setWindowTitle('FlatCAM - Alpha 5')
         self.show()
 
 

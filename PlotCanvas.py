@@ -12,15 +12,6 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import FlatCAMApp
 
 
-# class FCFigureCanvas(FigureCanvas):
-#
-#     resized = QtCore.pyqtSignal()
-#
-#     def resizeEvent(self, event):
-#         FigureCanvas.resizeEvent(self, event)
-#         self.emit(QtCore.SIGNAL("resized"))
-#         print self.geometry()
-
 class PlotCanvas:
     """
     Class handling the plotting area in the application.
