@@ -6,6 +6,8 @@
 # MIT Licence                                              #
 ############################################################
 
+import traceback
+
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 from matplotlib.figure import Figure
 import re
@@ -31,7 +33,8 @@ import logging
 
 log = logging.getLogger('base2')
 #log.setLevel(logging.DEBUG)
-log.setLevel(logging.WARNING)
+#log.setLevel(logging.WARNING)
+log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
@@ -191,6 +194,16 @@ class Geometry(object):
 
 
 class ApertureMacro:
+    """
+    Syntax of aperture macros.
+
+    <AM command>:           AM<Aperture macro name>*<Macro content>
+    <Macro content>:        {{<Variable definition>*}{<Primitive>*}}
+    <Variable definition>:  $K=<Arithmetic expression>
+    <Primitive>:            <Primitive code>,<Modifier>{,<Modifier>}|<Comment>
+    <Modifier>:             $M|< Arithmetic expression>
+    <Comment>:              0 <Text>
+    """
 
     ## Regular expressions
     am1_re = re.compile(r'^%AM([^\*]+)\*(.+)?(%)?$')
@@ -635,11 +648,11 @@ class Gerber (Geometry):
         self.comm_re = re.compile(r'^G0?4(.*)$')
 
         # AD - Aperture definition
-        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z0-9]*)(?:,(.*))?\*%$')
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.]*)(?:,(.*))?\*%$')
 
         # AM - Aperture Macro
         # Beginning of macro (Ends with *%):
-        self.am_re = re.compile(r'^%AM([a-zA-Z0-9]*)\*')
+        #self.am_re = re.compile(r'^%AM([a-zA-Z0-9]*)\*')
 
         # Tool change
         # May begin with G54 but that is deprecated
@@ -694,7 +707,7 @@ class Gerber (Geometry):
         self.absrel_re = re.compile(r'^G9([01])\*$')
 
         # Aperture macros
-        self.am1_re = re.compile(r'^%AM([^\*]+)\*(.+)?(%)?$')
+        self.am1_re = re.compile(r'^%AM([^\*]+)\*([^%]+)?(%)?$')
         self.am2_re = re.compile(r'(.*)%$')
 
         # TODO: This is bad.
@@ -915,344 +928,356 @@ class Gerber (Geometry):
 
         #### Parsing starts here ####
         line_num = 0
-        for gline in glines:
-            line_num += 1
+        gline = ""
+        try:
+            for gline in glines:
+                line_num += 1
 
-            ### Cleanup
-            gline = gline.strip(' \r\n')
+                ### Cleanup
+                gline = gline.strip(' \r\n')
 
-            ### Aperture Macros
-            # Having this at the beggining will slow things down
-            # but macros can have complicated statements than could
-            # be caught by other ptterns.
-            if current_macro is None:  # No macro started yet
-                match = self.am1_re.search(gline)
-                # Start macro if match, else not an AM, carry on.
-                if match:
-                    current_macro = match.group(1)
-                    self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
-                    if match.group(2):  # Append
-                        self.aperture_macros[current_macro].append(match.group(2))
-                    if match.group(3):  # Finish macro
+                ### Aperture Macros
+                # Having this at the beggining will slow things down
+                # but macros can have complicated statements than could
+                # be caught by other ptterns.
+                if current_macro is None:  # No macro started yet
+                    match = self.am1_re.search(gline)
+                    # Start macro if match, else not an AM, carry on.
+                    if match:
+                        log.info("Starting macro. Line %d: %s" % (line_num, gline))
+                        current_macro = match.group(1)
+                        self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
+                        if match.group(2):  # Append
+                            self.aperture_macros[current_macro].append(match.group(2))
+                        if match.group(3):  # Finish macro
+                            #self.aperture_macros[current_macro].parse_content()
+                            current_macro = None
+                            log.info("Macro complete in 1 line.")
+                        continue
+                else:  # Continue macro
+                    log.info("Continuing macro. Line %d." % line_num)
+                    match = self.am2_re.search(gline)
+                    if match:  # Finish macro
+                        log.info("End of macro. Line %d." % line_num)
+                        self.aperture_macros[current_macro].append(match.group(1))
                         #self.aperture_macros[current_macro].parse_content()
                         current_macro = None
-                    continue
-            else:  # Continue macro
-                match = self.am2_re.search(gline)
-                if match:  # Finish macro
-                    self.aperture_macros[current_macro].append(match.group(1))
-                    #self.aperture_macros[current_macro].parse_content()
-                    current_macro = None
-                else:  # Append
-                    self.aperture_macros[current_macro].append(gline)
-                continue
-
-            ### G01 - Linear interpolation plus flashes
-            # Operation code (D0x) missing is deprecated... oh well I will support it.
-            # REGEX: r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0([123]))?\*$'
-            match = self.lin_re.search(gline)
-            if match:
-                # Dxx alone?
-                # if match.group(1) is None and match.group(2) is None and match.group(3) is None:
-                #     try:
-                #         current_operation_code = int(match.group(4))
-                #     except:
-                #         pass  # A line with just * will match too.
-                #     continue
-                # NOTE: Letting it continue allows it to react to the
-                #       operation code.
-
-                # Parse coordinates
-                if match.group(2) is not None:
-                    current_x = parse_gerber_number(match.group(2), self.frac_digits)
-                if match.group(3) is not None:
-                    current_y = parse_gerber_number(match.group(3), self.frac_digits)
-
-                # Parse operation code
-                if match.group(4) is not None:
-                    current_operation_code = int(match.group(4))
-
-                # Pen down: add segment
-                if current_operation_code == 1:
-                    path.append([current_x, current_y])
-                    last_path_aperture = current_aperture
-
-                elif current_operation_code == 2:
-                    if len(path) > 1:
-
-                        ## --- BUFFERED ---
-                        if making_region:
-                            geo = Polygon(path)
-                        else:
-                            if last_path_aperture is None:
-                                log.warning("No aperture defined for curent path. (%d)" % line_num)
-                            width = self.apertures[last_path_aperture]["size"]
-                            geo = LineString(path).buffer(width/2)
-                        poly_buffer.append(geo)
-
-                    path = [[current_x, current_y]]  # Start new path
-
-                # Flash
-                elif current_operation_code == 3:
-
-                    # --- BUFFERED ---
-                    flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
-                                                         self.apertures[current_aperture])
-                    poly_buffer.append(flash)
-
-                continue
-
-            ### G02/3 - Circular interpolation
-            # 2-clockwise, 3-counterclockwise
-            match = self.circ_re.search(gline)
-            if match:
-
-                mode, x, y, i, j, d = match.groups()
-                try:
-                    x = parse_gerber_number(x, self.frac_digits)
-                except:
-                    x = current_x
-                try:
-                    y = parse_gerber_number(y, self.frac_digits)
-                except:
-                    y = current_y
-                try:
-                    i = parse_gerber_number(i, self.frac_digits)
-                except:
-                    i = 0
-                try:
-                    j = parse_gerber_number(j, self.frac_digits)
-                except:
-                    j = 0
-
-                if quadrant_mode is None:
-                    log.error("Found arc without preceding quadrant specification G74 or G75. (%d)" % line_num)
-                    log.error(gline)
+                    else:  # Append
+                        self.aperture_macros[current_macro].append(gline)
                     continue
 
-                if mode is None and current_interpolation_mode not in [2, 3]:
-                    log.error("Found arc without circular interpolation mode defined. (%d)" % line_num)
-                    log.error(gline)
-                    continue
-                elif mode is not None:
-                    current_interpolation_mode = int(mode)
+                ### G01 - Linear interpolation plus flashes
+                # Operation code (D0x) missing is deprecated... oh well I will support it.
+                # REGEX: r'^(?:G0?(1))?(?:X(-?\d+))?(?:Y(-?\d+))?(?:D0([123]))?\*$'
+                match = self.lin_re.search(gline)
+                if match:
+                    # Dxx alone?
+                    # if match.group(1) is None and match.group(2) is None and match.group(3) is None:
+                    #     try:
+                    #         current_operation_code = int(match.group(4))
+                    #     except:
+                    #         pass  # A line with just * will match too.
+                    #     continue
+                    # NOTE: Letting it continue allows it to react to the
+                    #       operation code.
 
-                # Set operation code if provided
-                if d is not None:
-                    current_operation_code = int(d)
+                    # Parse coordinates
+                    if match.group(2) is not None:
+                        current_x = parse_gerber_number(match.group(2), self.frac_digits)
+                    if match.group(3) is not None:
+                        current_y = parse_gerber_number(match.group(3), self.frac_digits)
 
-                # Nothing created! Pen Up.
-                if current_operation_code == 2:
-                    log.warning("Arc with D2. (%d)" % line_num)
-                    if len(path) > 1:
-                        if last_path_aperture is None:
-                            log.warning("No aperture defined for curent path. (%d)" % line_num)
+                    # Parse operation code
+                    if match.group(4) is not None:
+                        current_operation_code = int(match.group(4))
+
+                    # Pen down: add segment
+                    if current_operation_code == 1:
+                        path.append([current_x, current_y])
+                        last_path_aperture = current_aperture
+
+                    elif current_operation_code == 2:
+                        if len(path) > 1:
+
+                            ## --- BUFFERED ---
+                            if making_region:
+                                geo = Polygon(path)
+                            else:
+                                if last_path_aperture is None:
+                                    log.warning("No aperture defined for curent path. (%d)" % line_num)
+                                width = self.apertures[last_path_aperture]["size"]
+                                geo = LineString(path).buffer(width/2)
+                            poly_buffer.append(geo)
+
+                        path = [[current_x, current_y]]  # Start new path
+
+                    # Flash
+                    elif current_operation_code == 3:
 
                         # --- BUFFERED ---
-                        width = self.apertures[last_path_aperture]["size"]
-                        buffered = LineString(path).buffer(width/2)
-                        poly_buffer.append(buffered)
+                        flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
+                                                             self.apertures[current_aperture])
+                        poly_buffer.append(flash)
 
-                    current_x = x
-                    current_y = y
+                    continue
+
+                ### G02/3 - Circular interpolation
+                # 2-clockwise, 3-counterclockwise
+                match = self.circ_re.search(gline)
+                if match:
+
+                    mode, x, y, i, j, d = match.groups()
+                    try:
+                        x = parse_gerber_number(x, self.frac_digits)
+                    except:
+                        x = current_x
+                    try:
+                        y = parse_gerber_number(y, self.frac_digits)
+                    except:
+                        y = current_y
+                    try:
+                        i = parse_gerber_number(i, self.frac_digits)
+                    except:
+                        i = 0
+                    try:
+                        j = parse_gerber_number(j, self.frac_digits)
+                    except:
+                        j = 0
+
+                    if quadrant_mode is None:
+                        log.error("Found arc without preceding quadrant specification G74 or G75. (%d)" % line_num)
+                        log.error(gline)
+                        continue
+
+                    if mode is None and current_interpolation_mode not in [2, 3]:
+                        log.error("Found arc without circular interpolation mode defined. (%d)" % line_num)
+                        log.error(gline)
+                        continue
+                    elif mode is not None:
+                        current_interpolation_mode = int(mode)
+
+                    # Set operation code if provided
+                    if d is not None:
+                        current_operation_code = int(d)
+
+                    # Nothing created! Pen Up.
+                    if current_operation_code == 2:
+                        log.warning("Arc with D2. (%d)" % line_num)
+                        if len(path) > 1:
+                            if last_path_aperture is None:
+                                log.warning("No aperture defined for curent path. (%d)" % line_num)
+
+                            # --- BUFFERED ---
+                            width = self.apertures[last_path_aperture]["size"]
+                            buffered = LineString(path).buffer(width/2)
+                            poly_buffer.append(buffered)
+
+                        current_x = x
+                        current_y = y
+                        path = [[current_x, current_y]]  # Start new path
+                        continue
+
+                    # Flash should not happen here
+                    if current_operation_code == 3:
+                        log.error("Trying to flash within arc. (%d)" % line_num)
+                        continue
+
+                    if quadrant_mode == 'MULTI':
+                        center = [i + current_x, j + current_y]
+                        radius = sqrt(i**2 + j**2)
+                        start = arctan2(-j, -i)
+                        stop = arctan2(-center[1] + y, -center[0] + x)
+                        arcdir = [None, None, "cw", "ccw"]
+                        this_arc = arc(center, radius, start, stop,
+                                       arcdir[current_interpolation_mode],
+                                       self.steps_per_circ)
+
+                        # Last point in path is current point
+                        current_x = this_arc[-1][0]
+                        current_y = this_arc[-1][1]
+
+                        # Append
+                        path += this_arc
+
+                        last_path_aperture = current_aperture
+
+                        continue
+
+                    if quadrant_mode == 'SINGLE':
+                        log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
+
+                ### Operation code alone
+                match = self.opcode_re.search(gline)
+                if match:
+                    current_operation_code = int(match.group(1))
+                    if current_operation_code == 3:
+
+                        ## --- Buffered ---
+                        flash = Gerber.create_flash_geometry(Point(path[-1]),
+                                                             self.apertures[current_aperture])
+                        poly_buffer.append(flash)
+
+                    continue
+
+                ### G74/75* - Single or multiple quadrant arcs
+                match = self.quad_re.search(gline)
+                if match:
+                    if match.group(1) == '4':
+                        quadrant_mode = 'SINGLE'
+                    else:
+                        quadrant_mode = 'MULTI'
+                    continue
+
+                ### G36* - Begin region
+                if self.regionon_re.search(gline):
+                    if len(path) > 1:
+                        # Take care of what is left in the path
+
+                        ## --- Buffered ---
+                        width = self.apertures[last_path_aperture]["size"]
+                        geo = LineString(path).buffer(width/2)
+                        poly_buffer.append(geo)
+
+                        path = [path[-1]]
+
+                    making_region = True
+                    continue
+
+                ### G37* - End region
+                if self.regionoff_re.search(gline):
+                    making_region = False
+
+                    # Only one path defines region?
+                    # This can happen if D02 happened before G37 and
+                    # is not and error.
+                    if len(path) < 3:
+                        # print "ERROR: Path contains less than 3 points:"
+                        # print path
+                        # print "Line (%d): " % line_num, gline
+                        # path = []
+                        #path = [[current_x, current_y]]
+                        continue
+
+                    # For regions we may ignore an aperture that is None
+                    # self.regions.append({"polygon": Polygon(path),
+                    #                      "aperture": last_path_aperture})
+
+                    # --- Buffered ---
+                    region = Polygon(path)
+                    if not region.is_valid:
+                        region = region.buffer(0)
+                    poly_buffer.append(region)
+
                     path = [[current_x, current_y]]  # Start new path
                     continue
 
-                # Flash should not happen here
-                if current_operation_code == 3:
-                    log.error("Trying to flash within arc. (%d)" % line_num)
+                ### Aperture definitions %ADD...
+                match = self.ad_re.search(gline)
+                if match:
+                    log.info("Found aperture definition. Line %d: %s" % (line_num, gline))
+                    self.aperture_parse(match.group(1), match.group(2), match.group(3))
                     continue
 
-                if quadrant_mode == 'MULTI':
-                    center = [i + current_x, j + current_y]
-                    radius = sqrt(i**2 + j**2)
-                    start = arctan2(-j, -i)
-                    stop = arctan2(-center[1] + y, -center[0] + x)
-                    arcdir = [None, None, "cw", "ccw"]
-                    this_arc = arc(center, radius, start, stop,
-                                   arcdir[current_interpolation_mode],
-                                   self.steps_per_circ)
-
-                    # Last point in path is current point
-                    current_x = this_arc[-1][0]
-                    current_y = this_arc[-1][1]
-
-                    # Append
-                    path += this_arc
-
-                    last_path_aperture = current_aperture
-
+                ### G01/2/3* - Interpolation mode change
+                # Can occur along with coordinates and operation code but
+                # sometimes by itself (handled here).
+                # Example: G01*
+                match = self.interp_re.search(gline)
+                if match:
+                    current_interpolation_mode = int(match.group(1))
                     continue
 
-                if quadrant_mode == 'SINGLE':
-                    log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
-
-            ### Operation code alone
-            match = self.opcode_re.search(gline)
-            if match:
-                current_operation_code = int(match.group(1))
-                if current_operation_code == 3:
-
-                    ## --- Buffered ---
-                    flash = Gerber.create_flash_geometry(Point(path[-1]),
-                                                         self.apertures[current_aperture])
-                    poly_buffer.append(flash)
-
-                continue
-
-            ### G74/75* - Single or multiple quadrant arcs
-            match = self.quad_re.search(gline)
-            if match:
-                if match.group(1) == '4':
-                    quadrant_mode = 'SINGLE'
-                else:
-                    quadrant_mode = 'MULTI'
-                continue
-
-            ### G36* - Begin region
-            if self.regionon_re.search(gline):
-                if len(path) > 1:
-                    # Take care of what is left in the path
-
-                    ## --- Buffered ---
-                    width = self.apertures[last_path_aperture]["size"]
-                    geo = LineString(path).buffer(width/2)
-                    poly_buffer.append(geo)
-
-                    path = [path[-1]]
-
-                making_region = True
-                continue
-
-            ### G37* - End region
-            if self.regionoff_re.search(gline):
-                making_region = False
-
-                # Only one path defines region?
-                # This can happen if D02 happened before G37 and
-                # is not and error.
-                if len(path) < 3:
-                    # print "ERROR: Path contains less than 3 points:"
-                    # print path
-                    # print "Line (%d): " % line_num, gline
-                    # path = []
-                    #path = [[current_x, current_y]]
+                ### Tool/aperture change
+                # Example: D12*
+                match = self.tool_re.search(gline)
+                if match:
+                    current_aperture = match.group(1)
                     continue
 
-                # For regions we may ignore an aperture that is None
-                # self.regions.append({"polygon": Polygon(path),
-                #                      "aperture": last_path_aperture})
+                ### Polarity change
+                # Example: %LPD*% or %LPC*%
+                match = self.lpol_re.search(gline)
+                if match:
+                    if len(path) > 1 and current_polarity != match.group(1):
 
-                # --- Buffered ---
-                region = Polygon(path)
-                if not region.is_valid:
-                    region = region.buffer(0)
-                poly_buffer.append(region)
+                        # --- Buffered ----
+                        width = self.apertures[last_path_aperture]["size"]
+                        geo = LineString(path).buffer(width/2)
+                        poly_buffer.append(geo)
 
-                path = [[current_x, current_y]]  # Start new path
-                continue
-            
-            ### Aperture definitions %ADD...
-            match = self.ad_re.search(gline)
-            if match:
-                self.aperture_parse(match.group(1), match.group(2), match.group(3))
-                continue
+                        path = [path[-1]]
 
-            ### G01/2/3* - Interpolation mode change
-            # Can occur along with coordinates and operation code but
-            # sometimes by itself (handled here).
-            # Example: G01*
-            match = self.interp_re.search(gline)
-            if match:
-                current_interpolation_mode = int(match.group(1))
-                continue
+                    # --- Apply buffer ---
+                    if current_polarity == 'D':
+                        self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
+                    else:
+                        self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
+                    poly_buffer = []
 
-            ### Tool/aperture change
-            # Example: D12*
-            match = self.tool_re.search(gline)
-            if match:
-                current_aperture = match.group(1)
-                continue
+                    current_polarity = match.group(1)
+                    continue
 
-            ### Polarity change
-            # Example: %LPD*% or %LPC*%
-            match = self.lpol_re.search(gline)
-            if match:
-                if len(path) > 1 and current_polarity != match.group(1):
+                ### Number format
+                # Example: %FSLAX24Y24*%
+                # TODO: This is ignoring most of the format. Implement the rest.
+                match = self.fmt_re.search(gline)
+                if match:
+                    absolute = {'A': True, 'I': False}
+                    self.int_digits = int(match.group(3))
+                    self.frac_digits = int(match.group(4))
+                    continue
 
-                    # --- Buffered ----
-                    width = self.apertures[last_path_aperture]["size"]
-                    geo = LineString(path).buffer(width/2)
-                    poly_buffer.append(geo)
+                ### Mode (IN/MM)
+                # Example: %MOIN*%
+                match = self.mode_re.search(gline)
+                if match:
+                    self.units = match.group(1)
+                    continue
 
-                    path = [path[-1]]
+                ### Units (G70/1) OBSOLETE
+                match = self.units_re.search(gline)
+                if match:
+                    self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+                    continue
 
-                # --- Apply buffer ---
-                if current_polarity == 'D':
-                    self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
-                else:
-                    self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
-                poly_buffer = []
+                ### Absolute/relative coordinates G90/1 OBSOLETE
+                match = self.absrel_re.search(gline)
+                if match:
+                    absolute = {'0': True, '1': False}[match.group(1)]
+                    continue
 
-                current_polarity = match.group(1)
-                continue
+                #### Ignored lines
+                ## Comments
+                match = self.comm_re.search(gline)
+                if match:
+                    continue
 
-            ### Number format
-            # Example: %FSLAX24Y24*%
-            # TODO: This is ignoring most of the format. Implement the rest.
-            match = self.fmt_re.search(gline)
-            if match:
-                absolute = {'A': True, 'I': False}
-                self.int_digits = int(match.group(3))
-                self.frac_digits = int(match.group(4))
-                continue
+                ## EOF
+                match = self.eof_re.search(gline)
+                if match:
+                    continue
 
-            ### Mode (IN/MM)
-            # Example: %MOIN*%
-            match = self.mode_re.search(gline)
-            if match:
-                self.units = match.group(1)
-                continue
+                ### Line did not match any pattern. Warn user.
+                log.warning("Line ignored (%d): %s" % (line_num, gline))
 
-            ### Units (G70/1) OBSOLETE
-            match = self.units_re.search(gline)
-            if match:
-                self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
-                continue
+            if len(path) > 1:
+                # EOF, create shapely LineString if something still in path
 
-            ### Absolute/relative coordinates G90/1 OBSOLETE
-            match = self.absrel_re.search(gline)
-            if match:
-                absolute = {'0': True, '1': False}[match.group(1)]
-                continue
+                ## --- Buffered ---
+                width = self.apertures[last_path_aperture]["size"]
+                geo = LineString(path).buffer(width/2)
+                poly_buffer.append(geo)
 
-            #### Ignored lines
-            ## Comments
-            match = self.comm_re.search(gline)
-            if match:
-                continue
+            # --- Apply buffer ---
+            if current_polarity == 'D':
+                self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
+            else:
+                self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
 
-            ## EOF
-            match = self.eof_re.search(gline)
-            if match:
-                continue
-
-            ### Line did not match any pattern. Warn user.
-            log.warning("Line ignored (%d): %s" % (line_num, gline))
-        
-        if len(path) > 1:
-            # EOF, create shapely LineString if something still in path
-
-            ## --- Buffered ---
-            width = self.apertures[last_path_aperture]["size"]
-            geo = LineString(path).buffer(width/2)
-            poly_buffer.append(geo)
-
-        # --- Apply buffer ---
-        if current_polarity == 'D':
-            self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
-        else:
-            self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
+        except Exception, err:
+            #print traceback.format_exc()
+            log.error("PARSING FAILED. Line %d: %s" % (line_num, gline))
+            raise
 
     @staticmethod
     def create_flash_geometry(location, aperture):
