@@ -834,19 +834,22 @@ class Gerber (Geometry):
         if apertureType == "R":  # Rectangle, example: %ADD15R,0.05X0.12*%
             self.apertures[apid] = {"type": "R",
                                     "width": float(paramList[0]),
-                                    "height": float(paramList[1])}
+                                    "height": float(paramList[1]),
+                                    "size": sqrt(float(paramList[0])**2 + float(paramList[1])**2)}  # Hack
             return apid
 
         if apertureType == "O":  # Obround
             self.apertures[apid] = {"type": "O",
                                     "width": float(paramList[0]),
-                                    "height": float(paramList[1])}
+                                    "height": float(paramList[1]),
+                                    "size": sqrt(float(paramList[0])**2 + float(paramList[1])**2)}  # Hack
             return apid
         
         if apertureType == "P":  # Polygon (regular)
             self.apertures[apid] = {"type": "P",
                                     "diam": float(paramList[0]),
-                                    "nVertices": int(paramList[1])}
+                                    "nVertices": int(paramList[1]),
+                                    "size": float(paramList[0])}  # Hack
             if len(paramList) >= 3:
                 self.apertures[apid]["rotation"] = float(paramList[2])
             return apid
@@ -1107,15 +1110,20 @@ class Gerber (Geometry):
                         log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
 
                 ### Operation code alone
+                # Operation code alone, usually just D03 (Flash)
+                # self.opcode_re = re.compile(r'^D0?([123])\*$')
                 match = self.opcode_re.search(gline)
                 if match:
                     current_operation_code = int(match.group(1))
                     if current_operation_code == 3:
 
                         ## --- Buffered ---
-                        flash = Gerber.create_flash_geometry(Point(path[-1]),
-                                                             self.apertures[current_aperture])
-                        poly_buffer.append(flash)
+                        try:
+                            flash = Gerber.create_flash_geometry(Point(path[-1]),
+                                                                 self.apertures[current_aperture])
+                            poly_buffer.append(flash)
+                        except IndexError:
+                            log.warning("Line %d: %s -> Nothing there to flash!" % (line_num, gline))
 
                     continue
 
@@ -1900,6 +1908,7 @@ class CNCjob(Geometry):
                 continue
             
             if type(geo) == Point:
+                # TODO: point2gcode does not return anything...
                 self.gcode += self.point2gcode(geo)
                 continue
 
