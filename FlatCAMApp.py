@@ -1007,6 +1007,11 @@ class App(QtCore.QObject):
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber")
 
+        # The Qt methods above will return a QString which can cause problems later.
+        # So far json.dump() will fail to serialize it.
+        # TODO: Improve the serialization methods and remove this fix.
+        filename = str(filename)
+
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
@@ -1020,6 +1025,11 @@ class App(QtCore.QObject):
                                                          directory=self.last_folder)
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon")
+
+        # The Qt methods above will return a QString which can cause problems later.
+        # So far json.dump() will fail to serialize it.
+        # TODO: Improve the serialization methods and remove this fix.
+        filename = str(filename)
 
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
@@ -1036,6 +1046,11 @@ class App(QtCore.QObject):
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open G-Code")
 
+        # The Qt methods above will return a QString which can cause problems later.
+        # So far json.dump() will fail to serialize it.
+        # TODO: Improve the serialization methods and remove this fix.
+        filename = str(filename)
+
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
@@ -1050,6 +1065,11 @@ class App(QtCore.QObject):
                                                          directory=self.last_folder)
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Project")
+
+        # The Qt methods above will return a QString which can cause problems later.
+        # So far json.dump() will fail to serialize it.
+        # TODO: Improve the serialization methods and remove this fix.
+        filename = str(filename)
 
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
