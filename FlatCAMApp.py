@@ -251,7 +251,7 @@ class App(QtCore.QObject):
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        self.version = 5
+        self.version = 6
         App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
         self.worker2 = Worker(self, name="worker2")
@@ -540,7 +540,7 @@ class App(QtCore.QObject):
 
                 title = QtGui.QLabel(
                     "<font size=8><B>FlatCAM</B></font><BR>"
-                    "Version Alpha 5 (2015/06)<BR>"
+                    "Version Alpha 6 (2014/09)<BR>"
                     "<BR>"
                     "2D Post-processing for Manufacturing specialized in<BR>"
                     "Printed Circuit Boards<BR>"
@@ -1211,19 +1211,20 @@ class App(QtCore.QObject):
         # Object name
         name = filename.split('/')[-1].split('\\')[-1]
 
+        self.new_object("excellon", name, obj_init)
         # New object creation and file processing
-        try:
-            self.new_object("excellon", name, obj_init)
-        except:
-            e = sys.exc_info()
-            App.log.error(str(e))
-            self.message_dialog("Failed to create Excellon Object",
-                                "Attempting to create a FlatCAM Excellon Object from " +
-                                "Excellon file failed during processing:\n" +
-                                str(e[0]) + " " + str(e[1]), kind="error")
-            self.progress.emit(0)
-            self.collection.delete_active()
-            return
+        # try:
+        #     self.new_object("excellon", name, obj_init)
+        # except:
+        #     e = sys.exc_info()
+        #     App.log.error(str(e))
+        #     self.message_dialog("Failed to create Excellon Object",
+        #                         "Attempting to create a FlatCAM Excellon Object from " +
+        #                         "Excellon file failed during processing:\n" +
+        #                         str(e[0]) + " " + str(e[1]), kind="error")
+        #     self.progress.emit(0)
+        #     self.collection.delete_active()
+        #     return
 
         # Register recent file
         self.file_opened.emit("excellon", filename)

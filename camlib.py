@@ -1424,7 +1424,7 @@ class Excellon(Geometry):
         self.drills = []
 
         # Trailing "T" or leading "L" (default)
-        self.zeros = "L"
+        self.zeros = "T"
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -1625,6 +1625,8 @@ class Excellon(Geometry):
                     continue
 
             log.warning("Line ignored: %s" % eline)
+
+        log.info("Zeros: %s, Units %s." % (self.zeros, self.units))
         
     def parse_number(self, number_str):
         """

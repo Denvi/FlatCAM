@@ -217,7 +217,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM - Alpha 5')
+        self.setWindowTitle('FlatCAM - Alpha 6')
         self.show()
 
 
@@ -635,6 +635,9 @@ class CNCJobOptionsGroupUI(OptionsGroupUI):
 
 
 class GlobalOptionsUI(QtGui.QWidget):
+    """
+    This is the app and project options editor.
+    """
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent=parent)
 
