@@ -8,6 +8,7 @@ import simplejson as json
 import re
 import webbrowser
 import os
+import Tkinter
 
 from PyQt4 import QtCore
 
@@ -21,6 +22,8 @@ from PlotCanvas import *
 from FlatCAMGUI import *
 from FlatCAMCommon import LoudDict
 from FlatCAMTool import *
+
+from FlatCAMShell import FCShell
 
 
 ########################################
@@ -251,7 +254,7 @@ class App(QtCore.QObject):
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        self.version = 6
+        self.version = 7
         App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
         self.worker2 = Worker(self, name="worker2")
@@ -293,6 +296,7 @@ class App(QtCore.QObject):
         self.ui.menuviewdisableall.triggered.connect(self.disable_plots)
         self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(except_current=True))
         self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
+        self.ui.menutoolshell.triggered.connect(lambda: self.shell.show())
         self.ui.menuhelp_about.triggered.connect(self.on_about)
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.app_url))
         # Toolbar
@@ -302,6 +306,7 @@ class App(QtCore.QObject):
         self.ui.clear_plot_btn.triggered.connect(self.plotcanvas.clear)
         self.ui.replot_btn.triggered.connect(self.on_toolbar_replot)
         self.ui.delete_btn.triggered.connect(self.on_delete)
+        self.ui.shell_btn.triggered.connect(lambda: self.shell.show())
         # Object list
         self.collection.view.activated.connect(self.on_row_activated)
         # Options
@@ -323,6 +328,20 @@ class App(QtCore.QObject):
 
         self.measeurement_tool = Measurement(self)
         self.measeurement_tool.install()
+
+        #############
+        ### Shell ###
+        #############
+        # TODO: Move this to its own class
+        self.shell = FCShell(self)
+        self.shell.setWindowIcon(self.ui.app_icon)
+        self.shell.setWindowTitle("FlatCAM Shell")
+        self.shell.show()
+        self.shell.resize(550, 300)
+        self.shell.append_output("FlatCAM Alpha 7\n(c) 2014 Juan Pablo Caram\n\n")
+        self.shell.append_output("Type help to get started.\n\n")
+        self.tcl = Tkinter.Tcl()
+        self.setup_shell()
 
         App.log.debug("END of constructor. Releasing control.")
 
@@ -367,6 +386,110 @@ class App(QtCore.QObject):
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def execCommand(self, text):
+        """
+        Hadles input from the shell.
+
+        :param text: Input command
+        :return: None
+        """
+        text = str(text)
+
+        try:
+            result = self.tcl.eval(str(text))
+            self.shell.append_output(result + '\n')
+        except Tkinter.TclError, e:
+            self.shell.append_error('ERROR: ' + str(e) + '\n')
+            raise
+        return
+
+        def shhelp(p=None):
+            if not p:
+                return "Available commands:\n" + '\n'.join(['  ' + cmd for cmd in commands])
+
+            if p not in commands:
+                return "Unknown command: %s" % p
+
+            return commands[p]["help"]
+
+
+        commands = {
+            "open_gerber": {
+                "fcn": self.open_gerber,
+                "params": 1,
+                "converters": [lambda x: x],
+                "retfcn": lambda x: None,
+                "help": "Opens a Gerber file.\n> open_gerber <filename>\n   filename: Path to file to open."
+            },
+            "open_excellon": {
+                "fcn": self.open_excellon,
+                "params": 1,
+                "converters": [lambda x: x],
+                "retfcn": lambda x: None,
+                "help": "Opens an Excellon file.\n> open_excellon <filename>\n   filename: Path to file to open."
+            },
+            "open_gcode": {
+                "fcn": self.open_gcode,
+                "params": 1,
+                "converters": [lambda x: x],
+                "retfcn": lambda x: None,
+                "help": "Opens an G-Code file.\n> open_gcode <filename>\n   filename: Path to file to open."
+            },
+            "open_project": {
+                "fcn": self.open_project,
+                "params": 1,
+                "converters": [lambda x: x],
+                "retfcn": lambda x: None,
+                "help": "Opens a FlatCAM project.\n> open_project <filename>\n   filename: Path to file to open."
+            },
+            "save_project": {
+                "fcn": self.save_project,
+                "params": 1,
+                "converters": [lambda x: x],
+                "retfcn": lambda x: None,
+                "help": "Saves the FlatCAM project to file.\n> save_project <filename>\n   filename: Path to file to save."
+            },
+            "help": {
+                "fcn": shhelp,
+                "params": [0, 1],
+                "converters": [lambda x: x],
+                "retfcn": lambda x: x,
+                "help": "Shows list of commands."
+            }
+        }
+
+        parts = re.findall(r'([\w\\:\.]+|".*?")+', text)
+        parts = [p.replace('\n', '').replace('"', '') for p in parts]
+        self.log.debug(parts)
+        try:
+            if parts[0] not in commands:
+                self.shell.append_error("Unknown command\n")
+                return
+
+            #import inspect
+            #inspect.getargspec(someMethod)
+            if (type(commands[parts[0]]["params"]) is not list and len(parts)-1 != commands[parts[0]]["params"]) or \
+                    (type(commands[parts[0]]["params"]) is list and len(parts)-1 not in commands[parts[0]]["params"]):
+                self.shell.append_error(
+                    "Command %s takes %d arguments. %d given.\n" %
+                    (parts[0], commands[parts[0]]["params"], len(parts)-1)
+                )
+                return
+
+            cmdfcn = commands[parts[0]]["fcn"]
+            cmdconv = commands[parts[0]]["converters"]
+            if len(parts)-1 > 0:
+                retval = cmdfcn(*[cmdconv[i](parts[i+1]) for i in range(len(parts)-1)])
+            else:
+                retval = cmdfcn()
+            retfcn = commands[parts[0]]["retfcn"]
+            if retval and retfcn(retval):
+                self.shell.append_output(retfcn(retval) + "\n")
+
+        except:
+            self.shell.append_error(''.join(traceback.format_exc()))
+            #self.shell.append_error("?\n")
 
     def info(self, text):
         self.ui.info_label.setText(QtCore.QString(text))
@@ -540,7 +663,7 @@ class App(QtCore.QObject):
 
                 title = QtGui.QLabel(
                     "<font size=8><B>FlatCAM</B></font><BR>"
-                    "Version Alpha 6 (2014/09)<BR>"
+                    "Version Alpha 7 (2014/10)<BR>"
                     "<BR>"
                     "2D Post-processing for Manufacturing specialized in<BR>"
                     "Printed Circuit Boards<BR>"
@@ -1379,6 +1502,114 @@ class App(QtCore.QObject):
     def set_progress_bar(self, percentage, text=""):
         self.ui.progress_bar.setValue(int(percentage))
 
+    def setup_shell(self):
+        self.log.debug("setup_shell()")
+
+        def shelp(p=None):
+            if not p:
+                return "Available commands:\n" + '\n'.join(['  ' + cmd for cmd in commands]) + \
+                "\n\nType help <command_name> for usage.\n Example: help open_gerber"
+
+            if p not in commands:
+                return "Unknown command: %s" % p
+
+            return commands[p]["help"]
+
+        def options(name):
+            ops = self.collection.get_by_name(str(name)).options
+            return '\n'.join(["%s: %s" % (o, ops[o]) for o in ops])
+
+        def isolate(name, dia=None, passes=None, overlap=None):
+            dia = float(dia) if dia is not None else None
+            passes = int(passes) if passes is not None else None
+            overlap = float(overlap) if overlap is not None else None
+            self.collection.get_by_name(str(name)).isolate(dia, passes, overlap)
+
+        commands = {
+            'help': {
+                'fcn': shelp,
+                'help': "Shows list of commands."
+            },
+            'open_gerber': {
+                'fcn': self.open_gerber,
+                'help': "Opens a Gerber file.\n> open_gerber <filename>\n   filename: Path to file to open."
+            },
+            'open_excellon': {
+                'fcn': self.open_excellon,
+                'help': "Opens an Excellon file.\n> open_excellon <filename>\n   filename: Path to file to open."
+            },
+            'open_gcode': {
+                'fcn': self.open_gcode,
+                'help': "Opens an G-Code file.\n> open_gcode <filename>\n   filename: Path to file to open."
+            },
+            'open_project': {
+                'fcn': self.open_project,
+                "help": "Opens a FlatCAM project.\n> open_project <filename>\n   filename: Path to file to open."
+            },
+            'save_project': {
+                'fcn': self.save_project,
+                'help': "Saves the FlatCAM project to file.\n> save_project <filename>\n   filename: Path to file to save."
+            },
+            'set_active': {
+                'fcn': self.collection.set_active,
+                'help': "Sets a FlatCAM object as active.\n > set_active <name>\n   name: Name of the object."
+            },
+            'get_names': {
+                'fcn': lambda: '\n'.join(self.collection.get_names()),
+                'help': "Lists the names of objects in the project.\n > get_names"
+            },
+            'new': {
+                'fcn': self.on_file_new,
+                'help': "Starts a new project. Clears objects from memory.\n > new"
+            },
+            'options': {
+                'fcn': options,
+                'help': "Shows the settings for an object.\n > options <name>\n   name: Object name."
+            },
+            'isolate': {
+                'fcn': isolate,
+                'help': "Creates isolation routing geometry for the given Gerber.\n" +
+                        "> isolate <name> [dia [passes [overlap]]]\n" +
+                        "   name: Name if the object\n"
+                        "   dia: Tool diameter\n   passes: # of tool width\n" +
+                        "   overlap: Fraction of tool diameter to overlap passes"
+            },
+            'scale': {
+                'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
+                'help': "Resizes the object by a factor.\n" +
+                        "> scale <name> <factor>\n" +
+                        "   name: Name of the object\n   factor: Fraction by which to scale"
+            },
+            'offset': {
+                'fcn': lambda name, x, y: self.collection.get_by_name(str(name)).offset([float(x), float(y)]),
+                'help': "Changes the position of the object.\n" +
+                        "> offset <name> <x> <y>\n" +
+                        "   name: Name of the object\n" +
+                        "   x: X-axis distance\n" +
+                        "   y: Y-axis distance"
+            },
+            'plot': {
+                'fcn': self.plot_all,
+                'help': 'Updates the plot on the user interface'
+            }
+        }
+
+        for cmd in commands:
+            self.tcl.createcommand(cmd, commands[cmd]['fcn'])
+
+        self.tcl.eval('''
+            rename puts original_puts
+            proc puts {args} {
+                if {[llength $args] == 1} {
+                    return "[lindex $args 0]"
+                } else {
+                    eval original_puts $args
+                }
+            }
+            ''')
+
+
+
     def setup_recent_items(self):
         self.log.debug("setup_recent_items()")
 
@@ -1473,8 +1704,8 @@ class App(QtCore.QObject):
         try:
             data = json.load(f)
         except:
-            App.log.error("Could nor parse information about latest version.")
-            self.inform.emit("Could nor parse information about latest version.")
+            App.log.error("Could not parse information about latest version.")
+            self.inform.emit("Could not parse information about latest version.")
             f.close()
             return
 

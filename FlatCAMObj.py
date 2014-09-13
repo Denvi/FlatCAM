@@ -388,9 +388,23 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
     def on_iso_button_click(self, *args):
         self.read_form()
-        dia = self.options["isotooldia"]
-        passes = int(self.options["isopasses"])
-        overlap = self.options["isooverlap"] * dia
+        self.isolate()
+
+    def isolate(self, dia=None, passes=None, overlap=None):
+        """
+        Creates an isolation routing geometry object in the project.
+
+        :param dia: Tool diameter
+        :param passes: Number of tool widths to cut
+        :param overlap: Overlap between passes in fraction of tool diameter
+        :return: None
+        """
+        if dia is None:
+            dia = self.options["isotooldia"]
+        if passes is None:
+            passes = int(self.options["isopasses"])
+        if overlap is None:
+            overlap = self.options["isooverlap"] * dia
 
         for i in range(passes):
 

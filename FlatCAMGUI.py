@@ -88,6 +88,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
 
         ### Tool ###
         self.menutool = self.menu.addMenu('&Tool')
+        self.menutoolshell = self.menutool.addAction(QtGui.QIcon('share/shell16.png'), '&Command Line')
 
         ### Help ###
         self.menuhelp = self.menu.addMenu('&Help')
@@ -106,6 +107,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.clear_plot_btn = self.toolbar.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Clear Plot")
         self.replot_btn = self.toolbar.addAction(QtGui.QIcon('share/replot32.png'), "&Replot")
         self.delete_btn = self.toolbar.addAction(QtGui.QIcon('share/delete32.png'), "&Delete")
+        self.shell_btn = self.toolbar.addAction(QtGui.QIcon('share/shell32.png'), "&Command Line")
 
         ################
         ### Splitter ###
@@ -217,7 +219,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM - Alpha 6')
+        self.setWindowTitle('FlatCAM - Alpha 7')
         self.show()
 
 
