@@ -1,5 +1,3 @@
-import sys
-from PyQt4.QtGui import QApplication
 import termwidget
 
 
@@ -24,4 +22,4 @@ class FCShell(termwidget.TermWidget):
         return True
 
     def child_exec_command(self, text):
-        self._sysShell.execCommand(text)
+        self._sysShell.exec_command(text)

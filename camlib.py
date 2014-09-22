@@ -51,7 +51,59 @@ class Geometry(object):
 
         # Attributes to be included in serialization
         self.ser_attrs = ['units', 'solid_geometry']
-        
+
+    def union(self):
+        """
+        Runs a cascaded union on the list of objects in
+        solid_geometry.
+
+        :return: None
+        """
+        self.solid_geometry = [cascaded_union(self.solid_geometry)]
+
+    def add_circle(self, origin, radius):
+        """
+        Adds a circle to the object.
+
+        :param origin: Center of the circle.
+        :param radius: Radius of the circle.
+        :return: None
+        """
+        # TODO: Decide what solid_geometry is supposed to be and how we append to it.
+
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(Point(origin).buffer(radius))
+            return
+
+        try:
+            self.solid_geometry = self.solid_geometry.union(Point(origin).buffer(radius))
+        except:
+            print "Failed to run union on polygons."
+            raise
+
+    def add_polygon(self, points):
+        """
+        Adds a polygon to the object (by union)
+
+        :param points: The vertices of the polygon.
+        :return: None
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(Polygon(points))
+            return
+
+        try:
+            self.solid_geometry = self.solid_geometry.union(Polygon(points))
+        except:
+            print "Failed to run union on polygons."
+            raise
+
     def isolation_geometry(self, offset):
         """
         Creates contours around geometry at a given
@@ -69,14 +121,22 @@ class Geometry(object):
         Returns coordinates of rectangular bounds
         of geometry: (xmin, ymin, xmax, ymax).
         """
+        log.debug("Geometry->bounds()")
         if self.solid_geometry is None:
+            log.debug("solid_geometry is None")
             log.warning("solid_geometry not computed yet.")
             return (0, 0, 0, 0)
             
-        if type(self.solid_geometry) == list:
+        if type(self.solid_geometry) is list:
+            log.debug("type(solid_geometry) is list")
             # TODO: This can be done faster. See comment from Shapely mailing lists.
+            if len(self.solid_geometry) == 0:
+                log.debug('solid_geometry is empty []')
+                return (0, 0, 0, 0)
+            log.debug('solid_geometry is not empty, returning cascaded union of items')
             return cascaded_union(self.solid_geometry).bounds
         else:
+            log.debug("type(solid_geometry) is not list, returning .bounds property")
             return self.solid_geometry.bounds
         
     def size(self):
@@ -863,21 +923,24 @@ class Gerber (Geometry):
         log.warning("Aperture not implemented: %s" % str(apertureType))
         return None
         
-    def parse_file(self, filename):
+    def parse_file(self, filename, follow=False):
         """
         Calls Gerber.parse_lines() with array of lines
         read from the given file.
 
         :param filename: Gerber file to parse.
         :type filename: str
+        :param follow: If true, will not create polygons, just lines
+            following the gerber path.
+        :type follow: bool
         :return: None
         """
         gfile = open(filename, 'r')
         gstr = gfile.readlines()
         gfile.close()
-        self.parse_lines(gstr)
+        self.parse_lines(gstr, follow=follow)
 
-    def parse_lines(self, glines):
+    def parse_lines(self, glines, follow=False):
         """
         Main Gerber parser. Reads Gerber and populates ``self.paths``, ``self.apertures``,
         ``self.flashes``, ``self.regions`` and ``self.units``.
@@ -885,6 +948,9 @@ class Gerber (Geometry):
         :param glines: Gerber code as list of strings, each element being
             one line of the source file.
         :type glines: list
+        :param follow: If true, will not create polygons, just lines
+            following the gerber path.
+        :type follow: bool
         :return: None
         :rtype: None
         """
@@ -1009,7 +1075,10 @@ class Gerber (Geometry):
                                 if last_path_aperture is None:
                                     log.warning("No aperture defined for curent path. (%d)" % line_num)
                                 width = self.apertures[last_path_aperture]["size"]
-                                geo = LineString(path).buffer(width/2)
+                                if follow:
+                                    geo = LineString(path)
+                                else:
+                                    geo = LineString(path).buffer(width/2)
                             poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path

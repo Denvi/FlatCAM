@@ -93,6 +93,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ### Help ###
         self.menuhelp = self.menu.addMenu('&Help')
         self.menuhelp_about = self.menuhelp.addAction(QtGui.QIcon('share/tv16.png'), 'About FlatCAM')
+        self.menuhelp_home = self.menuhelp.addAction(QtGui.QIcon('share/home16.png'), 'Home')
         self.menuhelp_manual = self.menuhelp.addAction(QtGui.QIcon('share/globe16.png'), 'Manual')
 
         ###############

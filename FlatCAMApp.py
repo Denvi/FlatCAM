@@ -44,10 +44,13 @@ class App(QtCore.QObject):
     log.addHandler(handler)
 
     ## URL for update checks
-    version_url = "http://caram.cl/flatcam/VERSION"
+    version_url = "http://flatcam.org/FlatCAM/apptalk/version"
 
     ## App URL
-    app_url = "http://caram.cl/software/flatcam"
+    app_url = "http://flatcam.org"
+
+    ## Manual URL
+    manual_url = "http://flatcam.org/manual/static/index.html"
 
     ## Signals
     inform = QtCore.pyqtSignal(str)  # Message
@@ -132,6 +135,8 @@ class App(QtCore.QObject):
         self.defaults = LoudDict()
         self.defaults.set_change_callback(lambda key: self.defaults_write_form())  # When the dictionary changes.
         self.defaults.update({
+            "serial": 0,
+            "stats": {},
             "units": "IN",
             "gerber_plot": True,
             "gerber_solid": True,
@@ -165,6 +170,11 @@ class App(QtCore.QObject):
             "cncjob_append": ""
         })
         self.load_defaults()
+
+        chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+        if self.defaults['serial'] == 0:
+            self.defaults['serial'] = ''.join([random.choice(chars) for i in range(20)])
+            self.save_defaults()
 
         self.options_form = GlobalOptionsUI()
         self.options_form_fields = {
@@ -298,7 +308,8 @@ class App(QtCore.QObject):
         self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
         self.ui.menutoolshell.triggered.connect(lambda: self.shell.show())
         self.ui.menuhelp_about.triggered.connect(self.on_about)
-        self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.app_url))
+        self.ui.menuhelp_home.triggered.connect(lambda: webbrowser.open(self.app_url))
+        self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
         # Toolbar
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
@@ -354,7 +365,9 @@ class App(QtCore.QObject):
             try:
                 self.defaults_form_fields[option].set_value(self.defaults[option])
             except KeyError:
-                self.log.error("defaults_write_form(): No field for: %s" % option)
+                #self.log.debug("defaults_write_form(): No field for: %s" % option)
+                # TODO: Rethink this?
+                pass
 
     def disable_plots(self, except_current=False):
         """
@@ -387,9 +400,9 @@ class App(QtCore.QObject):
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
-    def execCommand(self, text):
+    def exec_command(self, text):
         """
-        Hadles input from the shell.
+        Hadles input from the shell. See FlatCAMApp.setup_shell for shell commands.
 
         :param text: Input command
         :return: None
@@ -404,60 +417,9 @@ class App(QtCore.QObject):
             raise
         return
 
-        def shhelp(p=None):
-            if not p:
-                return "Available commands:\n" + '\n'.join(['  ' + cmd for cmd in commands])
-
-            if p not in commands:
-                return "Unknown command: %s" % p
-
-            return commands[p]["help"]
-
-
-        commands = {
-            "open_gerber": {
-                "fcn": self.open_gerber,
-                "params": 1,
-                "converters": [lambda x: x],
-                "retfcn": lambda x: None,
-                "help": "Opens a Gerber file.\n> open_gerber <filename>\n   filename: Path to file to open."
-            },
-            "open_excellon": {
-                "fcn": self.open_excellon,
-                "params": 1,
-                "converters": [lambda x: x],
-                "retfcn": lambda x: None,
-                "help": "Opens an Excellon file.\n> open_excellon <filename>\n   filename: Path to file to open."
-            },
-            "open_gcode": {
-                "fcn": self.open_gcode,
-                "params": 1,
-                "converters": [lambda x: x],
-                "retfcn": lambda x: None,
-                "help": "Opens an G-Code file.\n> open_gcode <filename>\n   filename: Path to file to open."
-            },
-            "open_project": {
-                "fcn": self.open_project,
-                "params": 1,
-                "converters": [lambda x: x],
-                "retfcn": lambda x: None,
-                "help": "Opens a FlatCAM project.\n> open_project <filename>\n   filename: Path to file to open."
-            },
-            "save_project": {
-                "fcn": self.save_project,
-                "params": 1,
-                "converters": [lambda x: x],
-                "retfcn": lambda x: None,
-                "help": "Saves the FlatCAM project to file.\n> save_project <filename>\n   filename: Path to file to save."
-            },
-            "help": {
-                "fcn": shhelp,
-                "params": [0, 1],
-                "converters": [lambda x: x],
-                "retfcn": lambda x: x,
-                "help": "Shows list of commands."
-            }
-        }
+        """
+        Code below is unsused. Saved for later.
+        """
 
         parts = re.findall(r'([\w\\:\.]+|".*?")+', text)
         parts = [p.replace('\n', '').replace('"', '') for p in parts]
@@ -690,6 +652,9 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.save_defaults()
+
+    def save_defaults(self):
         # Read options from file
         try:
             f = open("defaults.json")
@@ -1257,13 +1222,16 @@ class App(QtCore.QObject):
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
 
-    def open_gerber(self, filename):
+    def open_gerber(self, filename, follow=False, outname=None):
         """
         Opens a Gerber file, parses it and creates a new object for
         it in the program. Thread-safe.
 
         :param filename: Gerber file filename
         :type filename: str
+        :param follow: If true, the parser will not create polygons, just lines
+            following the gerber path.
+        :type follow: bool
         :return: None
         """
 
@@ -1277,13 +1245,13 @@ class App(QtCore.QObject):
 
             # Opening the file happens here
             self.progress.emit(30)
-            gerber_obj.parse_file(filename)
+            gerber_obj.parse_file(filename, follow=follow)
 
             # Further parsing
             self.progress.emit(70)
 
         # Object name
-        name = filename.split('/')[-1].split('\\')[-1]
+        name = outname or filename.split('/')[-1].split('\\')[-1]
 
         self.new_object("gerber", name, obj_init)
 
@@ -1310,7 +1278,7 @@ class App(QtCore.QObject):
         # GUI feedback
         self.inform.emit("Opened: " + filename)
 
-    def open_excellon(self, filename):
+    def open_excellon(self, filename, outname=None):
         """
         Opens an Excellon file, parses it and creates a new object for
         it in the program. Thread-safe.
@@ -1332,7 +1300,7 @@ class App(QtCore.QObject):
             self.progress.emit(70)
 
         # Object name
-        name = filename.split('/')[-1].split('\\')[-1]
+        name = outname or filename.split('/')[-1].split('\\')[-1]
 
         self.new_object("excellon", name, obj_init)
         # New object creation and file processing
@@ -1356,7 +1324,7 @@ class App(QtCore.QObject):
         self.inform.emit("Opened: " + filename)
         self.progress.emit(100)
 
-    def open_gcode(self, filename):
+    def open_gcode(self, filename, outname=None):
         """
         Opens a G-gcode file, parses it and creates a new object for
         it in the program. Thread-safe.
@@ -1389,7 +1357,7 @@ class App(QtCore.QObject):
             job_obj.create_geometry()
 
         # Object name
-        name = filename.split('/')[-1].split('\\')[-1]
+        name = outname or filename.split('/')[-1].split('\\')[-1]
 
         # New object creation and file processing
         try:
@@ -1503,12 +1471,18 @@ class App(QtCore.QObject):
         self.ui.progress_bar.setValue(int(percentage))
 
     def setup_shell(self):
+        """
+        Creates shell functions.
+
+        :return: None
+        """
+
         self.log.debug("setup_shell()")
 
         def shelp(p=None):
             if not p:
                 return "Available commands:\n" + '\n'.join(['  ' + cmd for cmd in commands]) + \
-                "\n\nType help <command_name> for usage.\n Example: help open_gerber"
+                       "\n\nType help <command_name> for usage.\n Example: help open_gerber"
 
             if p not in commands:
                 return "Unknown command: %s" % p
@@ -1519,11 +1493,252 @@ class App(QtCore.QObject):
             ops = self.collection.get_by_name(str(name)).options
             return '\n'.join(["%s: %s" % (o, ops[o]) for o in ops])
 
-        def isolate(name, dia=None, passes=None, overlap=None):
-            dia = float(dia) if dia is not None else None
-            passes = int(passes) if passes is not None else None
-            overlap = float(overlap) if overlap is not None else None
-            self.collection.get_by_name(str(name)).isolate(dia, passes, overlap)
+        def h(*args):
+            """
+            Pre-processes arguments to detect '-keyword value' pairs into dictionary
+            and standalone parameters into list.
+            """
+
+            kwa = {}
+            a = []
+            n = len(args)
+            name = None
+            for i in range(n):
+                match = re.search(r'^-([a-zA-Z].*)', args[i])
+                if match:
+                    assert name is None
+                    name = match.group(1)
+                    continue
+
+                if name is None:
+                    a.append(args[i])
+                else:
+                    kwa[name] = args[i]
+                    name = None
+
+            return a, kwa
+
+        def open_gerber(filename, *args):
+            a, kwa = h(*args)
+            types = {'follow': bool,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.open_gerber(str(filename), **kwa)
+
+        def open_excellon(filename, *args):
+            a, kwa = h(*args)
+            types = {'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.open_excellon(str(filename), **kwa)
+
+        def open_gcode(filename, *args):
+            a, kwa = h(*args)
+            types = {'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.open_gcode(str(filename), **kwa)
+
+        def isolate(name, *args):
+            a, kwa = h(*args)
+            types = {'dia': float,
+                     'passes': int,
+                     'overlap': float,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            try:
+                obj.isolate(**kwa)
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
+        def cncjob(obj_name, *args):
+            a, kwa = h(*args)
+
+            types = {'z_cut': float,
+                     'z_move': float,
+                     'feedrate': float,
+                     'tooldia': float,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            try:
+                obj.generatecncjob(**kwa)
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
+        def write_gcode(obj_name, filename, preamble='', postamble=''):
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+            obj.export_gcode(str(filename), str(preamble), str(postamble))
+
+        def paint_poly(obj_name, inside_pt_x, inside_pt_y, tooldia, overlap):
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+            obj.paint_poly([float(inside_pt_x), float(inside_pt_y)], float(tooldia), float(overlap))
+
+        def add_poly(obj_name, *args):
+            if len(args) % 2 != 0:
+                return "Incomplete coordinate."
+
+            points = [[float(args[2*i]), float(args[2*i+1])] for i in range(len(args)/2)]
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            obj.add_polygon(points)
+
+        def add_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
+            return add_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
+                            topright_x, topright_y, topright_x, botleft_y)
+
+        def add_circle(obj_name, center_x, center_y, radius):
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            obj.add_circle([float(center_x), float(center_y)], float(radius))
+
+        def set_active(obj_name):
+            try:
+                self.collection.set_active(str(obj_name))
+            except Exception, e:
+                return "Command failed: %s" % str(e)
+
+        def delete(obj_name):
+            try:
+                self.collection.set_active(str(obj_name))
+                self.on_delete()
+            except Exception, e:
+                return "Command failed: %s" % str(e)
+
+        def geo_union(obj_name):
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            obj.union()
+
+        def make_docs():
+            output = ''
+            import collections
+            od = collections.OrderedDict(sorted(commands.items()))
+            for cmd, val in od.iteritems():
+                #print cmd, '\n', ''.join(['~']*len(cmd))
+                output += cmd + ' \n' + ''.join(['~']*len(cmd)) + '\n'
+
+                t = val['help']
+                usage_i = t.find('>')
+                if usage_i < 0:
+                    expl = t
+                    #print expl + '\n'
+                    output += expl + '\n\n'
+                    continue
+
+                expl = t[:usage_i-1]
+                #print expl + '\n'
+                output += expl + '\n\n'
+
+                end_usage_i = t[usage_i:].find('\n')
+
+                if end_usage_i < 0:
+                    end_usage_i = len(t[usage_i:])
+                    #print '    ' + t[usage_i:]
+                    #print '       No parameters.\n'
+                    output += '    ' + t[usage_i:] + '\n       No parameters.\n'
+                else:
+                    extras = t[usage_i+end_usage_i+1:]
+                    parts = [s.strip() for s in extras.split('\n')]
+
+
+                    #print '    ' + t[usage_i:usage_i+end_usage_i]
+                    output += '    ' + t[usage_i:usage_i+end_usage_i] + '\n'
+                    for p in parts:
+                        #print '       ' + p + '\n'
+                        output += '       ' + p + '\n\n'
+
+            return output
+
+        def follow(obj_name, *args):
+            a, kwa = h(*args)
+
+            types = {'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            try:
+                obj.follow(**kwa)
+            except Exception, e:
+                return "ERROR: %s" % str(e)
 
         commands = {
             'help': {
@@ -1531,16 +1746,26 @@ class App(QtCore.QObject):
                 'help': "Shows list of commands."
             },
             'open_gerber': {
-                'fcn': self.open_gerber,
-                'help': "Opens a Gerber file.\n> open_gerber <filename>\n   filename: Path to file to open."
+                'fcn': open_gerber,
+                'help': "Opens a Gerber file.\n' +"
+                        "> open_gerber <filename> [-follow <0|1>] [-outname <o>]\n' +"
+                        "   filename: Path to file to open.\n" +
+                        "   follow: If 1, does not create polygons, just follows the gerber path.\n" +
+                        "   outname: Name of the created gerber object."
             },
             'open_excellon': {
-                'fcn': self.open_excellon,
-                'help': "Opens an Excellon file.\n> open_excellon <filename>\n   filename: Path to file to open."
+                'fcn': open_excellon,
+                'help': "Opens an Excellon file.\n" +
+                        "> open_excellon <filename> [-outname <o>]\n" +
+                        "   filename: Path to file to open.\n" +
+                        "   outname: Name of the created excellon object."
             },
             'open_gcode': {
-                'fcn': self.open_gcode,
-                'help': "Opens an G-Code file.\n> open_gcode <filename>\n   filename: Path to file to open."
+                'fcn': open_gcode,
+                'help': "Opens an G-Code file.\n" +
+                        "> open_gcode <filename> [-outname <o>]\n" +
+                        "   filename: Path to file to open.\n" +
+                        "   outname: Name of the created CNC Job object."
             },
             'open_project': {
                 'fcn': self.open_project,
@@ -1551,7 +1776,7 @@ class App(QtCore.QObject):
                 'help': "Saves the FlatCAM project to file.\n> save_project <filename>\n   filename: Path to file to save."
             },
             'set_active': {
-                'fcn': self.collection.set_active,
+                'fcn': set_active,
                 'help': "Sets a FlatCAM object as active.\n > set_active <name>\n   name: Name of the object."
             },
             'get_names': {
@@ -1569,8 +1794,8 @@ class App(QtCore.QObject):
             'isolate': {
                 'fcn': isolate,
                 'help': "Creates isolation routing geometry for the given Gerber.\n" +
-                        "> isolate <name> [dia [passes [overlap]]]\n" +
-                        "   name: Name if the object\n"
+                        "> isolate <name> [-dia <d>] [-passes <p>] [-overlap <o>]\n" +
+                        "   name: Name of the object\n"
                         "   dia: Tool diameter\n   passes: # of tool width\n" +
                         "   overlap: Fraction of tool diameter to overlap passes"
             },
@@ -1591,12 +1816,96 @@ class App(QtCore.QObject):
             'plot': {
                 'fcn': self.plot_all,
                 'help': 'Updates the plot on the user interface'
+            },
+            'cncjob': {
+                'fcn': cncjob,
+                'help': 'Generates a CNC Job from a Geometry Object.\n' +
+                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-outname <n>]\n' +
+                        '   name: Name of the source object\n' +
+                        '   z_cut: Z-axis cutting position\n' +
+                        '   z_move: Z-axis moving position\n' +
+                        '   feedrate: Moving speed when cutting\n' +
+                        '   tooldia: Tool diameter to show on screen\n' +
+                        '   outname: Name of the output object'
+            },
+            'write_gcode': {
+                'fcn': write_gcode,
+                'help': 'Saves G-code of a CNC Job object to file.\n' +
+                        '> write_gcode <name> <filename>\n' +
+                        '   name: Source CNC Job object\n' +
+                        '   filename: Output filename'
+            },
+            'paint_poly': {
+                'fcn': paint_poly,
+                'help': 'Creates a geometry object with toolpath to cover the inside of a polygon.\n' +
+                        '> paint_poly <name> <inside_pt_x> <inside_pt_y> <tooldia> <overlap>\n' +
+                        '   name: Name of the sourge geometry object.\n' +
+                        '   inside_pt_x, inside_pt_y: Coordinates of a point inside the polygon.\n' +
+                        '   tooldia: Diameter of the tool to be used.\n' +
+                        '   overlap: Fraction of the tool diameter to overlap cuts.'
+            },
+            'new_geometry': {
+                'fcn': lambda name: self.new_object('geometry', str(name), lambda x, y: None),
+                'help': 'Creates a new empty geometry object.\n' +
+                        '> new_geometry <name>\n' +
+                        '   name: New object name'
+            },
+            'add_poly': {
+                'fcn': add_poly,
+                'help': 'Creates a polygon in the given Geometry object.\n' +
+                        '> create_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
+                        '   name: Name of the geometry object to which to append the polygon.\n' +
+                        '   xi, yi: Coordinates of points in the polygon.'
+            },
+            'delete': {
+                'fcn': delete,
+                'help': 'Deletes the give object.\n' +
+                        '> delete <name>\n' +
+                        '   name: Name of the object to delete.'
+            },
+            'geo_union': {
+                'fcn': geo_union,
+                'help': 'Runs a union operation (addition) on the components ' +
+                        'of the geometry object. For example, if it contains ' +
+                        '2 intersecting polygons, this opperation adds them into' +
+                        'a single larger polygon.\n' +
+                        '> geo_union <name>\n' +
+                        '   name: Name of the geometry object.'
+            },
+            'add_rect': {
+                'fcn': add_rectangle,
+                'help': 'Creates a rectange in the given Geometry object.\n' +
+                        '> add_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
+                        '   name: Name of the geometry object to which to append the rectangle.\n' +
+                        '   botleft_x, botleft_y: Coordinates of the bottom left corner.\n' +
+                        '   topright_x, topright_y Coordinates of the top right corner.'
+            },
+            'add_circle': {
+                'fcn': add_circle,
+                'help': 'Creates a circle in the given Geometry object.\n' +
+                        '> add_circle <name> <center_x> <center_y> <radius>\n' +
+                        '   name: Name of the geometry object to which to append the circle.\n' +
+                        '   center_x, center_y: Coordinates of the center of the circle.\n' +
+                        '   radius: Radius of the circle.'
+            },
+            'make_docs': {
+                'fcn': make_docs,
+                'help': 'Prints command rererence in reStructuredText format.'
+            },
+            'follow': {
+                'fcn': follow,
+                'help': 'Creates a geometry object following gerber paths.\n' +
+                        '> follow <name> [-outname <oname>]\n' +
+                        '   name: Name of the gerber object.\n' +
+                        '   outname: Name of the output geometry object.'
             }
         }
 
+        # Add commands to the tcl interpreter
         for cmd in commands:
             self.tcl.createcommand(cmd, commands[cmd]['fcn'])
 
+        # Make the tcl puts function return instead of print to stdout
         self.tcl.eval('''
             rename puts original_puts
             proc puts {args} {
@@ -1607,8 +1916,6 @@ class App(QtCore.QObject):
                 }
             }
             ''')
-
-
 
     def setup_recent_items(self):
         self.log.debug("setup_recent_items()")
@@ -1693,9 +2000,11 @@ class App(QtCore.QObject):
         """
 
         self.log.debug("version_check()")
+        full_url = App.version_url + "?s=" + str(self.defaults['serial']) + "&v=" + str(self.version)
+        App.log.debug("Checking for updates @ %s" % full_url)
 
         try:
-            f = urllib.urlopen(App.version_url)
+            f = urllib.urlopen(full_url)
         except:
             App.log.warning("Failed checking for latest version. Could not connect.")
             self.inform.emit("Failed checking for latest version. Could not connect.")
@@ -1703,9 +2012,10 @@ class App(QtCore.QObject):
 
         try:
             data = json.load(f)
-        except:
+        except Exception, e:
             App.log.error("Could not parse information about latest version.")
             self.inform.emit("Could not parse information about latest version.")
+            App.log.debug("json.load(): %s" % str(e))
             f.close()
             return
 

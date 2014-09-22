@@ -171,12 +171,15 @@ class TermWidget(QWidget):
         Save current command in the history. Append it to the log. Clear edit line
         Reimplement in the child classes to actually execute command
         """
-        text = self._edit.toPlainText()
+        text = str(self._edit.toPlainText())
         self._append_to_browser('in', '> ' + text + '\n')
 
         if len(self._history) < 2 or\
            self._history[-2] != text:  # don't insert duplicating items
-            self._history.insert(-1, text)
+            if text[-1] == '\n':
+                self._history.insert(-1, text[:-1])
+            else:
+                self._history.insert(-1, text)
 
         self._historyIndex = len(self._history) - 1
 

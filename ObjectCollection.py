@@ -142,8 +142,15 @@ class ObjectCollection(QtCore.QAbstractListModel):
         return self.object_list[row]
 
     def set_active(self, name):
-        iobj = self.createIndex(self.get_names().index(name))
-        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel)
+        """
+        Selects object by name from the project list. This trigger the
+        list_selection_changed event and call on_list_selection changed.
+
+        :param name: Name of the FlatCAM Object
+        :return: None
+        """
+        iobj = self.createIndex(self.get_names().index(name), 0)  # Column 0
+        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel.Select)
 
     def on_list_selection_change(self, current, previous):
         FlatCAMApp.App.log.debug("on_list_selection_change()")
