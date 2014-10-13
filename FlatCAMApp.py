@@ -172,9 +172,17 @@ class App(QtCore.QObject):
         self.load_defaults()
 
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-        if self.defaults['serial'] == 0:
+        if self.defaults['serial'] == 0 or len(str(self.defaults['serial'])) < 10:
             self.defaults['serial'] = ''.join([random.choice(chars) for i in range(20)])
             self.save_defaults()
+
+        def auto_save_defaults():
+            try:
+                self.save_defaults()
+            finally:
+                QtCore.QTimer.singleShot(20000, auto_save_defaults)
+
+        QtCore.QTimer.singleShot(20000, auto_save_defaults)
 
         self.options_form = GlobalOptionsUI()
         self.options_form_fields = {
@@ -400,6 +408,20 @@ class App(QtCore.QObject):
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
+    def report_usage(self, resource):
+        """
+        Increments usage counter for the given resource
+        in self.defaults['stats'].
+
+        :param resource: Name of the resource.
+        :return: None
+        """
+
+        if resource in self.defaults['stats']:
+            self.defaults['stats'][resource] += 1
+        else:
+            self.defaults['stats'][resource] = 1
+
     def exec_command(self, text):
         """
         Hadles input from the shell. See FlatCAMApp.setup_shell for shell commands.
@@ -407,6 +429,8 @@ class App(QtCore.QObject):
         :param text: Input command
         :return: None
         """
+        self.report_usage('exec_command')
+
         text = str(text)
 
         try:
@@ -606,6 +630,12 @@ class App(QtCore.QObject):
                 self.log.error("options_write_form(): No field for: %s" % option)
 
     def on_about(self):
+        """
+        Displays the "about" dialog.
+
+        :return: None
+        """
+        self.report_usage("on_about")
 
         class AboutDialog(QtGui.QDialog):
             def __init__(self, parent=None):
@@ -655,6 +685,15 @@ class App(QtCore.QObject):
         self.save_defaults()
 
     def save_defaults(self):
+        """
+        Saves application default options
+        ``self.defaults`` to defaults.json.
+
+        :return: None
+        """
+
+        self.report_usage("save_defaults")
+
         # Read options from file
         try:
             f = open("defaults.json")
@@ -697,6 +736,8 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.report_usage("on_options_app2project")
+
         self.defaults_read_form()
         self.options.update(self.defaults)
         self.options_write_form()
@@ -709,6 +750,8 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.report_usage("on_options_project2app")
+
         self.options_read_form()
         self.defaults.update(self.options)
         self.defaults_write_form()
@@ -720,6 +763,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_options_project2object")
 
         self.options_read_form()
         obj = self.collection.get_active()
@@ -740,6 +785,8 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.report_usage("on_options_object2project")
+
         obj = self.collection.get_active()
         if obj is None:
             self.inform.emit("WARNING: No object selected.")
@@ -758,6 +805,9 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_options_object2app")
+
         obj = self.collection.get_active()
         if obj is None:
             self.inform.emit("WARNING: No object selected.")
@@ -776,6 +826,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_options_app2object")
 
         self.defaults_read_form()
         obj = self.collection.get_active()
@@ -797,6 +849,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_toggle_units")
 
         if self.toggle_units_ignore:
             return
@@ -904,6 +958,8 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.report_usage("on_delete")
+
         # Keep this for later
         try:
             name = copy(self.collection.get_active().options["name"])
@@ -924,6 +980,12 @@ class App(QtCore.QObject):
         self.inform.emit("Object deleted: %s" % name)
 
     def on_plots_updated(self):
+        """
+        Callback used to report when the plots have changed.
+        Adjust axes and zooms to fit.
+
+        :return: None
+        """
         self.plotcanvas.auto_adjust_axes()
         self.on_zoom_fit(None)
 
@@ -933,6 +995,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_toolbar_replot")
         self.log.debug("on_toolbar_replot()")
 
         try:
@@ -947,6 +1011,12 @@ class App(QtCore.QObject):
         self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
     def on_object_created(self, obj):
+        """
+        Event callback for object creation.
+
+        :param obj: The newly created FlatCAM object.
+        :return: None
+        """
         self.log.debug("on_object_created()")
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.collection.append(obj)
@@ -962,6 +1032,7 @@ class App(QtCore.QObject):
         :param event: Ignored.
         :return: None
         """
+
         xmin, ymin, xmax, ymax = self.collection.get_bounds()
         width = xmax - xmin
         height = ymax - ymin
@@ -1062,6 +1133,9 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_file_new")
+
         # Remove everything from memory
         App.log.debug("on_file_new()")
 
@@ -1077,18 +1151,16 @@ class App(QtCore.QObject):
         # Re-fresh project options
         self.on_options_app2project()
 
-    def on_options_app2project(self):
+    def on_fileopengerber(self):
         """
-        Callback for Options->Transfer Options->App=>Project. Copies options
-        from application defaults to project defaults.
+        File menu callback for opening a Gerber.
 
         :return: None
         """
 
-        self.options.update(self.defaults)
-
-    def on_fileopengerber(self):
+        self.report_usage("on_fileopengerber")
         App.log.debug("on_fileopengerber()")
+
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber",
                                                          directory=self.last_folder)
@@ -1107,7 +1179,15 @@ class App(QtCore.QObject):
                                    'params': [filename]})
 
     def on_fileopenexcellon(self):
+        """
+        File menu callback for opening an Excellon file.
+
+        :return: None
+        """
+
+        self.report_usage("on_fileopenexcellon")
         App.log.debug("on_fileopenexcellon()")
+
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon",
                                                          directory=self.last_folder)
@@ -1126,6 +1206,13 @@ class App(QtCore.QObject):
                                    'params': [filename]})
 
     def on_fileopengcode(self):
+        """
+        File menu call back for opening gcode.
+
+        :return: None
+        """
+
+        self.report_usage("on_fileopengcode")
         App.log.debug("on_fileopengcode()")
 
         try:
@@ -1146,6 +1233,13 @@ class App(QtCore.QObject):
                                    'params': [filename]})
 
     def on_file_openproject(self):
+        """
+        File menu callback for opening a project.
+
+        :return: None
+        """
+
+        self.report_usage("on_file_openproject")
         App.log.debug("on_file_openproject()")
 
         try:
@@ -1174,6 +1268,8 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.report_usage("on_file_saveproject")
+
         if self.project_filename is None:
             self.on_file_saveprojectas()
         else:
@@ -1189,6 +1285,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
+        self.report_usage("on_file_saveprojectas")
 
         try:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...",
@@ -1472,7 +1570,7 @@ class App(QtCore.QObject):
 
     def setup_shell(self):
         """
-        Creates shell functions.
+        Creates shell functions. Runs once at startup.
 
         :return: None
         """
@@ -1994,13 +2092,16 @@ class App(QtCore.QObject):
         """
         Checks for the latest version of the program. Alerts the
         user if theirs is outdated. This method is meant to be run
-        in a saeparate thread.
+        in a separate thread.
 
         :return: None
         """
 
         self.log.debug("version_check()")
-        full_url = App.version_url + "?s=" + str(self.defaults['serial']) + "&v=" + str(self.version)
+        full_url = App.version_url + \
+            "?s=" + str(self.defaults['serial']) + \
+            "&v=" + str(self.version) + \
+            "&" + urllib.urlencode(self.defaults["stats"])
         App.log.debug("Checking for updates @ %s" % full_url)
 
         try:

@@ -71,12 +71,15 @@ class FlatCAMObj(QtCore.QObject):
         self.app.info("Name changed from %s to %s" % (old_name, new_name))
 
     def on_offset_button_click(self):
+        self.app.report_usage("obj_on_offset_button")
+
         self.read_form()
         vect = self.ui.offsetvector_entry.get_value()
         self.offset(vect)
         self.plot()
 
     def on_scale_button_click(self):
+        self.app.report_usage("obj_on_scale_button")
         self.read_form()
         factor = self.ui.scale_entry.get_value()
         self.scale(factor)
@@ -317,6 +320,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
 
     def on_generatenoncopper_button_click(self, *args):
+        self.app.report_usage("gerber_on_generatenoncopper_button")
+
         self.read_form()
         name = self.options["name"] + "_noncopper"
 
@@ -332,6 +337,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.new_object("geometry", name, geo_init)
 
     def on_generatebb_button_click(self, *args):
+        self.app.report_usage("gerber_on_generatebb_button")
         self.read_form()
         name = self.options["name"] + "_bbox"
 
@@ -346,6 +352,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.new_object("geometry", name, geo_init)
 
     def on_generatecutout_button_click(self, *args):
+        self.app.report_usage("gerber_on_generatecutout_button")
         self.read_form()
         name = self.options["name"] + "_cutout"
 
@@ -387,6 +394,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.new_object("geometry", name, geo_init)
 
     def on_iso_button_click(self, *args):
+        self.app.report_usage("gerber_on_iso_button")
         self.read_form()
         self.isolate()
 
@@ -615,6 +623,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
 
     def on_create_cncjob_button_click(self, *args):
+        self.app.report_usage("excellon_on_create_cncjob_button")
         self.read_form()
 
         # Get the tools from the list
@@ -796,6 +805,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.plot()
 
     def on_exportgcode_button_click(self, *args):
+        self.app.report_usage("cncjob_on_exportgcode_button")
 
         try:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...",
@@ -895,6 +905,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.ui.generate_paint_button.clicked.connect(self.on_paint_button_click)
 
     def on_paint_button_click(self, *args):
+        self.app.report_usage("geometry_on_paint_button")
+
         self.app.info("Click inside the desired polygon.")
         self.read_form()
         tooldia = self.options["painttooldia"]
@@ -926,6 +938,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.app.new_object("geometry", name, gen_paintarea)
 
     def on_generatecnc_button_click(self, *args):
+        self.app.report_usage("geometry_on_generatecnc_button")
         self.read_form()
         self.generatecncjob()
 
