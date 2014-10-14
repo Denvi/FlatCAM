@@ -4,7 +4,7 @@ from GUIElements import *
 
 class FlatCAMGUI(QtGui.QMainWindow):
 
-    def __init__(self):
+    def __init__(self, version):
         super(FlatCAMGUI, self).__init__()
 
         # Divine icon pack by Ipapun @ finicons.com
@@ -220,7 +220,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM - Alpha 7')
+        self.setWindowTitle('FlatCAM %s' % version)
         self.show()
 
 

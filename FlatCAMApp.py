@@ -43,7 +43,11 @@ class App(QtCore.QObject):
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
-    ## URL for update checks
+    ## Version
+    version = 7
+    version_date = "2014/10"
+
+    ## URL for update checks and statistics
     version_url = "http://flatcam.org/FlatCAM/apptalk/version"
 
     ## App URL
@@ -73,7 +77,7 @@ class App(QtCore.QObject):
 
         QtCore.QObject.__init__(self)
 
-        self.ui = FlatCAMGUI()
+        self.ui = FlatCAMGUI(self.version)
 
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
@@ -272,7 +276,6 @@ class App(QtCore.QObject):
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        self.version = 7
         App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
         self.worker2 = Worker(self, name="worker2")
@@ -357,7 +360,7 @@ class App(QtCore.QObject):
         self.shell.setWindowTitle("FlatCAM Shell")
         self.shell.show()
         self.shell.resize(550, 300)
-        self.shell.append_output("FlatCAM Alpha 7\n(c) 2014 Juan Pablo Caram\n\n")
+        self.shell.append_output("FlatCAM %s\n(c) 2014 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
         self.tcl = Tkinter.Tcl()
         self.setup_shell()
@@ -637,6 +640,9 @@ class App(QtCore.QObject):
         """
         self.report_usage("on_about")
 
+        version = self.version
+        version_date = self.version_date
+
         class AboutDialog(QtGui.QDialog):
             def __init__(self, parent=None):
                 QtGui.QDialog.__init__(self, parent)
@@ -655,12 +661,12 @@ class App(QtCore.QObject):
 
                 title = QtGui.QLabel(
                     "<font size=8><B>FlatCAM</B></font><BR>"
-                    "Version Alpha 7 (2014/10)<BR>"
+                    "Version %s (%s)<BR>"
                     "<BR>"
                     "2D Post-processing for Manufacturing specialized in<BR>"
                     "Printed Circuit Boards<BR>"
                     "<BR>"
-                    "(c) 2014 Juan Pablo Caram"
+                    "(c) 2014 Juan Pablo Caram" % (version, version_date)
                 )
                 layout2.addWidget(title, stretch=1)
 
