@@ -24,6 +24,7 @@ from FlatCAMCommon import LoudDict
 from FlatCAMTool import *
 
 from FlatCAMShell import FCShell
+from FlatCAMDraw import FlatCAMDraw
 
 
 ########################################
@@ -48,7 +49,7 @@ class App(QtCore.QObject):
     version_date = "2014/10"
 
     ## URL for update checks and statistics
-    version_url = "http://flatcam.org/FlatCAM/apptalk/version"
+    version_url = "http://flatcam.org/version"
 
     ## App URL
     app_url = "http://flatcam.org"
@@ -74,6 +75,9 @@ class App(QtCore.QObject):
         """
 
         App.log.info("FlatCAM Starting...")
+        self.path = os.path.dirname(sys.argv[0])
+        #App.log.debug("Running in " + os.path.realpath(__file__))
+        App.log.debug("Running in " + self.path)
 
         QtCore.QObject.__init__(self)
 
@@ -307,6 +311,9 @@ class App(QtCore.QObject):
         self.ui.menufilesaveprojectas.triggered.connect(self.on_file_saveprojectas)
         self.ui.menufilesaveprojectcopy.triggered.connect(lambda: self.on_file_saveprojectas(make_copy=True))
         self.ui.menufilesavedefaults.triggered.connect(self.on_file_savedefaults)
+        self.ui.menueditnew.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
+        self.ui.menueditedit.triggered.connect(self.edit_geometry)
+        self.ui.menueditok.triggered.connect(self.editor2geometry)
         self.ui.menueditdelete.triggered.connect(self.on_delete)
         self.ui.menuoptions_transfer_a2o.triggered.connect(self.on_options_app2object)
         self.ui.menuoptions_transfer_a2p.triggered.connect(self.on_options_app2project)
@@ -327,6 +334,9 @@ class App(QtCore.QObject):
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1/1.5))
         self.ui.clear_plot_btn.triggered.connect(self.plotcanvas.clear)
         self.ui.replot_btn.triggered.connect(self.on_toolbar_replot)
+        self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
+        self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
+        self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
         self.ui.delete_btn.triggered.connect(self.on_delete)
         self.ui.shell_btn.triggered.connect(lambda: self.shell.show())
         # Object list
@@ -350,6 +360,8 @@ class App(QtCore.QObject):
 
         self.measeurement_tool = Measurement(self)
         self.measeurement_tool.install()
+
+        self.draw = FlatCAMDraw(self, disabled=True)
 
         #############
         ### Shell ###
@@ -410,6 +422,34 @@ class App(QtCore.QObject):
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def edit_geometry(self):
+        """
+        Send the current geometry object (if any) into the editor.
+
+        :return: None
+        """
+        if not isinstance(self.collection.get_active(), FlatCAMGeometry):
+            self.info("Select a Geometry Object to edit.")
+            return
+
+        self.draw.edit_fcgeometry(self.collection.get_active())
+
+    def editor2geometry(self):
+        """
+        Transfers the geometry in the editor to the current geometry object.
+
+        :return:
+        """
+        geo = self.collection.get_active()
+        if not isinstance(geo, FlatCAMGeometry):
+            self.info("Select a Geometry Object to update.")
+            return
+
+        self.draw.update_fcgeometry(geo)
+        self.draw.clear()
+        self.draw.drawing_toolbar.setDisabled(True)
+        geo.plot()
 
     def report_usage(self, resource):
         """
@@ -491,7 +531,7 @@ class App(QtCore.QObject):
         :return: None
         """
         try:
-            f = open("defaults.json")
+            f = open(self.path + "/defaults.json")
             options = f.read()
             f.close()
         except IOError:
@@ -630,7 +670,9 @@ class App(QtCore.QObject):
             try:
                 self.options_form_fields[option].set_value(self.options[option])
             except KeyError:
-                self.log.error("options_write_form(): No field for: %s" % option)
+                # Changed from error to debug. This allows to have data stored
+                # which is not user-editable.
+                self.log.debug("options_write_form(): No field for: %s" % option)
 
     def on_about(self):
         """
@@ -702,11 +744,13 @@ class App(QtCore.QObject):
 
         # Read options from file
         try:
-            f = open("defaults.json")
+            f = open(self.path + "/defaults.json")
             options = f.read()
             f.close()
         except:
+            e = sys.exc_info()[0]
             App.log.error("Could not load defaults file.")
+            App.log.error(str(e))
             self.inform.emit("ERROR: Could not load defaults file.")
             return
 
@@ -1262,8 +1306,11 @@ class App(QtCore.QObject):
         if str(filename) == "":
             self.inform.emit("Open cancelled.")
         else:
-            self.worker_task.emit({'fcn': self.open_project,
-                                   'params': [filename]})
+            # self.worker_task.emit({'fcn': self.open_project,
+            #                        'params': [filename]})
+            # The above was failing because open_project() is not
+            # thread safe. The new_project()
+            self.open_project(filename)
 
     def on_file_saveproject(self):
         """
@@ -1501,6 +1548,7 @@ class App(QtCore.QObject):
         """
         App.log.debug("Opening project: " + filename)
 
+        ## Open and parse
         try:
             f = open(filename, 'r')
         except IOError:
@@ -1518,15 +1566,16 @@ class App(QtCore.QObject):
 
         self.file_opened.emit("project", filename)
 
-        # Clear the current project
+        ## Clear the current project
+        ## NOT THREAD SAFE ##
         self.on_file_new()
 
-        # Project options
+        ##Project options
         self.options.update(d['options'])
         self.project_filename = filename
         self.ui.units_label.setText("[" + self.options["units"] + "]")
 
-        # Re create objects
+        ## Re create objects
         App.log.debug("Re-creating objects...")
         for obj in d['objs']:
             def obj_init(obj_inst, app_inst):

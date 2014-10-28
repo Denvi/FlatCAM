@@ -53,6 +53,10 @@ class PlotCanvas:
         #self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
         self.container.addWidget(self.canvas)  # Qt
 
+        # Copy a bitmap of the canvas for quick animation.
+        # Update every time the canvas is re-drawn.
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
         # Events
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         #self.canvas.connect('configure-event', self.auto_adjust_axes)
@@ -194,6 +198,7 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def auto_adjust_axes(self, *args):
         """
@@ -246,6 +251,7 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -260,6 +266,7 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def new_axes(self, name):
         """

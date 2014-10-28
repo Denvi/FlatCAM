@@ -4,6 +4,7 @@ import FlatCAMApp
 import inspect  # TODO: For debugging only.
 from camlib import *
 from FlatCAMCommon import LoudDict
+from FlatCAMDraw import FlatCAMDraw
 
 
 ########################################
@@ -879,6 +880,11 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         # Always append to it because it carries contents
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
+
+    def build_ui(self):
+        FlatCAMObj.build_ui(self)
+
+
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)

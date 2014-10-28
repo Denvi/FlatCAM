@@ -135,6 +135,11 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.endRemoveRows()
 
     def get_active(self):
+        """
+        Returns the active object or None
+
+        :return: FlatCAMObj or None
+        """
         selections = self.view.selectedIndexes()
         if len(selections) == 0:
             return None
@@ -143,8 +148,8 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
     def set_active(self, name):
         """
-        Selects object by name from the project list. This trigger the
-        list_selection_changed event and call on_list_selection changed.
+        Selects object by name from the project list. This triggers the
+        list_selection_changed event and call on_list_selection_changed.
 
         :param name: Name of the FlatCAM Object
         :return: None

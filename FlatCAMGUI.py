@@ -67,6 +67,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
 
         ### Edit ###
         self.menuedit = self.menu.addMenu('&Edit')
+        self.menueditnew = self.menuedit.addAction(QtGui.QIcon('share/new_geo16.png'), 'New Geometry')
+        self.menueditedit = self.menuedit.addAction(QtGui.QIcon('share/edit16.png'), 'Edit Geometry')
+        self.menueditok = self.menuedit.addAction(QtGui.QIcon('share/edit_ok16.png'), 'Update Geometry')
+        #self.menueditcancel = self.menuedit.addAction(QtGui.QIcon('share/cancel_edit16.png'), "Cancel Edit")
         self.menueditdelete = self.menuedit.addAction(QtGui.QIcon('share/trash16.png'), 'Delete')
 
         ### Options ###
@@ -107,6 +111,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.zoom_in_btn = self.toolbar.addAction(QtGui.QIcon('share/zoom_in32.png'), "&Zoom In")
         self.clear_plot_btn = self.toolbar.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Clear Plot")
         self.replot_btn = self.toolbar.addAction(QtGui.QIcon('share/replot32.png'), "&Replot")
+        self.newgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/new_geo32.png'), "New Blank Geometry")
+        self.editgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit32.png'), "Edit Geometry")
+        self.updategeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit_ok32.png'), "Update Geometry")
+        #self.canceledit_btn = self.toolbar.addAction(QtGui.QIcon('share/cancel_edit32.png'), "Cancel Edit")
         self.delete_btn = self.toolbar.addAction(QtGui.QIcon('share/delete32.png'), "&Delete")
         self.shell_btn = self.toolbar.addAction(QtGui.QIcon('share/shell32.png'), "&Command Line")
 
