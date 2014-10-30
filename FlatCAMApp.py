@@ -141,7 +141,7 @@ class App(QtCore.QObject):
         }
 
         self.defaults = LoudDict()
-        self.defaults.set_change_callback(lambda key: self.defaults_write_form())  # When the dictionary changes.
+        self.defaults.set_change_callback(lambda field: self.defaults_write_form_field(field))  # When the dictionary changes.
         self.defaults.update({
             "serial": 0,
             "stats": {},
@@ -228,7 +228,7 @@ class App(QtCore.QObject):
         }
 
         self.options = LoudDict()
-        self.options.set_change_callback(lambda key: self.options_write_form())
+        self.options.set_change_callback(lambda field: self.options_write_form_field(field))
         self.options.update({
             "units": "IN",
             "gerber_plot": True,
@@ -385,12 +385,21 @@ class App(QtCore.QObject):
 
     def defaults_write_form(self):
         for option in self.defaults:
-            try:
-                self.defaults_form_fields[option].set_value(self.defaults[option])
-            except KeyError:
-                #self.log.debug("defaults_write_form(): No field for: %s" % option)
-                # TODO: Rethink this?
-                pass
+            self.defaults_write_form_field(option)
+            # try:
+            #     self.defaults_form_fields[option].set_value(self.defaults[option])
+            # except KeyError:
+            #     #self.log.debug("defaults_write_form(): No field for: %s" % option)
+            #     # TODO: Rethink this?
+            #     pass
+
+    def defaults_write_form_field(self, field):
+        try:
+            self.defaults_form_fields[field].set_value(self.defaults[field])
+        except KeyError:
+            #self.log.debug("defaults_write_form(): No field for: %s" % option)
+            # TODO: Rethink this?
+            pass
 
     def disable_plots(self, except_current=False):
         """
@@ -667,12 +676,15 @@ class App(QtCore.QObject):
 
     def options_write_form(self):
         for option in self.options:
-            try:
-                self.options_form_fields[option].set_value(self.options[option])
-            except KeyError:
-                # Changed from error to debug. This allows to have data stored
-                # which is not user-editable.
-                self.log.debug("options_write_form(): No field for: %s" % option)
+            self.options_write_form_field(option)
+
+    def options_write_form_field(self, field):
+        try:
+            self.options_form_fields[field].set_value(self.options[field])
+        except KeyError:
+            # Changed from error to debug. This allows to have data stored
+            # which is not user-editable.
+            self.log.debug("options_write_form_field(): No field for: %s" % field)
 
     def on_about(self):
         """
@@ -742,7 +754,7 @@ class App(QtCore.QObject):
 
         self.report_usage("save_defaults")
 
-        # Read options from file
+        ## Read options from file ##
         try:
             f = open(self.path + "/defaults.json")
             options = f.read()
