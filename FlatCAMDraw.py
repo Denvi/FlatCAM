@@ -491,6 +491,13 @@ class FlatCAMDraw:
         self.plot_all()
 
     def edit_fcgeometry(self, fcgeometry):
+        """
+        Imports the geometry from the given FlatCAM Geometry object
+        into the editor.
+
+        :param fcgeometry: FlatCAMGeometry
+        :return: None
+        """
         try:
             _ = iter(fcgeometry.solid_geometry)
             geometry = fcgeometry.solid_geometry

@@ -612,10 +612,10 @@ class App(QtCore.QObject):
         App.log.debug("new_object()")
 
         ### Check for existing name
-        if name in self.collection.get_names():
+        while name in self.collection.get_names():
             ## Create a new name
             # Ends with number?
-            App.log.debug("new_object(): Object name exists, changing.")
+            App.log.debug("new_object(): Object name (%s) exists, changing." % name)
             match = re.search(r'(.*[^\d])?(\d+)$', name)
             if match:  # Yes: Increment the number!
                 base = match.group(1) or ''

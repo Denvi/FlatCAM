@@ -116,9 +116,17 @@
 
     {# SIDE NAV, TOGGLES ON MOBILE #}
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
-      <div class="wy-side-nav-search">
+      <div class="wy-side-nav-search" style="background-color: #3d3d3d;">
         <!--<a href="{{ pathto(master_doc) }}" class="icon icon-home"> {{ project }}</a>-->
-        <a href="http://flatcam.org" class="icon icon-home"> {{ project }}</a>
+        <!--<a href="http://flatcam.org" class="icon icon-home"> {{ project }}</a>-->
+        <a href="http://flatcam.org">
+            <img src="http://flatcam.org/static/images/fcweblogo1_halloween.png"
+                    style="height: auto;
+                    width: auto;
+                    border-radius: 0px;
+                    background-color: #3d3d3d;
+                    margin: auto">
+        </a>
         {% include "searchbox.html" %}
       </div>
 
