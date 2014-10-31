@@ -175,6 +175,56 @@ class FCSelect(DrawTool):
         return "Nothing selected."
 
 
+class FCMove(FCShapeTool):
+    def __init__(self, draw_app):
+        FCShapeTool.__init__(self, draw_app)
+        self.shape_buffer = self.draw_app.shape_buffer
+        self.origin = None
+        self.destination = None
+        self.start_msg = "Click on reference point."
+
+    def set_origin(self, origin):
+        self.origin = origin
+
+    def click(self, point):
+        if self.origin is None:
+            self.set_origin(point)
+            return "Click on final location."
+        else:
+            self.destination = point
+            self.make()
+            return "Done."
+
+    def make(self):
+        # Create new geometry
+        dx = self.destination[0] - self.origin[0]
+        dy = self.destination[1] - self.origin[1]
+        self.geometry = [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+
+        # Delete old
+        for geo in self.draw_app.get_selected():
+            self.draw_app.shape_buffer.remove(geo)
+
+        self.complete = True
+
+    def utility_geometry(self, data=None):
+        if self.origin is None:
+            return None
+
+        dx = data[0] - self.origin[0]
+        dy = data[1] - self.origin[1]
+
+        return [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+
+
+class FCCopy(FCMove):
+    def make(self):
+        # Create new geometry
+        dx = self.destination[0] - self.origin[0]
+        dy = self.destination[1] - self.origin[1]
+        self.geometry = [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+        self.complete = True
+
 class FlatCAMDraw:
     def __init__(self, app, disabled=False):
         assert isinstance(app, FlatCAMApp.App)
@@ -192,6 +242,8 @@ class FlatCAMDraw:
         self.add_polygon_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/polygon32.png'), 'Add Polygon')
         self.add_path_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/path32.png'), 'Add Path')
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
+        self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), 'Move Objects')
+        self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), 'Copy Objects')
 
         ### Event handlers ###
         ## Canvas events
@@ -213,7 +265,11 @@ class FlatCAMDraw:
             "polygon": {"button": self.add_polygon_btn,
                         "constructor": FCPolygon},
             "path": {"button": self.add_path_btn,
-                     "constructor": FCPath}
+                     "constructor": FCPath},
+            "move": {"button": self.move_btn,
+                     "constructor": FCMove},
+            "copy": {"button": self.copy_btn,
+                     "constructor": FCCopy}
         }
 
         # Data
@@ -249,7 +305,7 @@ class FlatCAMDraw:
         # This is to make the group behave as radio group
         if tool in self.tools:
             if self.tools[tool]["button"].isChecked():
-                self.app.log.debug("%s is checked.")
+                self.app.log.debug("%s is checked." % tool)
                 for t in self.tools:
                     if t != tool:
                         self.tools[t]["button"].setChecked(False)
@@ -257,7 +313,7 @@ class FlatCAMDraw:
                 self.active_tool = self.tools[tool]["constructor"](self)
                 self.app.info(self.active_tool.start_msg)
             else:
-                self.app.log.debug("%s is NOT checked.")
+                self.app.log.debug("%s is NOT checked." % tool)
                 for t in self.tools:
                     self.tools[t]["button"].setChecked(False)
                 self.active_tool = None
@@ -283,6 +339,8 @@ class FlatCAMDraw:
             if isinstance(self.active_tool, FCSelect):
                 self.app.log.debug("Replotting after click.")
                 self.replot()
+        else:
+            self.app.log.debug("No active tool to respond to click!")
 
     def on_canvas_move(self, event):
         """
@@ -387,6 +445,8 @@ class FlatCAMDraw:
                 self.shape_buffer.remove(shape)
 
             self.replot()
+            self.select_btn.setChecked(True)
+            self.on_tool_select('select')
             return
 
         ### Delete selected object
@@ -394,13 +454,26 @@ class FlatCAMDraw:
             self.delete_selected()
             self.replot()
 
+        ### Move
+        if event.key == 'm':
+            self.move_btn.setChecked(True)
+            self.on_tool_select('move')
+            self.active_tool.set_origin((event.xdata, event.ydata))
+
+        ### Copy
+        if event.key == 'c':
+            self.copy_btn.setChecked(True)
+            self.on_tool_select('copy')
+            self.active_tool.set_origin((event.xdata, event.ydata))
+
     def on_canvas_key_release(self, event):
         self.key = None
 
-    def delete_selected(self):
-        for_deletion = [shape for shape in self.shape_buffer if shape["selected"]]
+    def get_selected(self):
+        return [shape for shape in self.shape_buffer if shape["selected"]]
 
-        for shape in for_deletion:
+    def delete_selected(self):
+        for shape in self.get_selected():
             self.shape_buffer.remove(shape)
             self.app.info("Shape deleted.")
 
@@ -473,9 +546,15 @@ class FlatCAMDraw:
         #self.plot_shape()
         #self.canvas.auto_adjust_axes()
 
-        self.shape_buffer.append({'geometry': self.active_tool.geometry,
-                                  'selected': False,
-                                  'utility': False})
+        try:
+            for geo in self.active_tool.geometry:
+                self.shape_buffer.append({'geometry': geo,
+                                          'selected': False,
+                                          'utility': False})
+        except TypeError:
+            self.shape_buffer.append({'geometry': self.active_tool.geometry,
+                                      'selected': False,
+                                      'utility': False})
 
         # Remove any utility shapes
         for shape in self.shape_buffer:

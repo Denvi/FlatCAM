@@ -227,7 +227,7 @@ class Measurement(FlatCAMTool):
         self.on_move(event)
 
     def on_key_press(self, event):
-        if event.key == 'm':
+        if event.key == 'r':
             self.toggle()
 
     def toggle(self):
