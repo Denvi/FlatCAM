@@ -32,9 +32,9 @@ import simplejson as json
 import logging
 
 log = logging.getLogger('base2')
-#log.setLevel(logging.DEBUG)
+log.setLevel(logging.DEBUG)
 #log.setLevel(logging.WARNING)
-log.setLevel(logging.INFO)
+#log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
@@ -42,6 +42,10 @@ log.addHandler(handler)
 
 
 class Geometry(object):
+    """
+    Base geometry class.
+    """
+
     def __init__(self):
         # Units (in or mm)
         self.units = 'in'
@@ -1008,7 +1012,7 @@ class Gerber (Geometry):
                 ### Aperture Macros
                 # Having this at the beggining will slow things down
                 # but macros can have complicated statements than could
-                # be caught by other ptterns.
+                # be caught by other patterns.
                 if current_macro is None:  # No macro started yet
                     match = self.am1_re.search(gline)
                     # Start macro if match, else not an AM, carry on.
@@ -1074,7 +1078,8 @@ class Gerber (Geometry):
                             else:
                                 if last_path_aperture is None:
                                     log.warning("No aperture defined for curent path. (%d)" % line_num)
-                                width = self.apertures[last_path_aperture]["size"]
+                                width = self.apertures[last_path_aperture]["size"]  # TODO: WARNING this should fail!
+                                #log.debug("Line %d: Setting aperture to %s before buffering." % (line_num, last_path_aperture))
                                 if follow:
                                     geo = LineString(path)
                                 else:
@@ -1268,7 +1273,17 @@ class Gerber (Geometry):
                 # Example: D12*
                 match = self.tool_re.search(gline)
                 if match:
+                    log.debug("Line %d: Aperture change to (%s)" % (line_num, match.group(1)))
                     current_aperture = match.group(1)
+
+                    # Take care of the current path with the previous tool
+                    if len(path) > 1:
+                        # --- Buffered ----
+                        width = self.apertures[last_path_aperture]["size"]
+                        geo = LineString(path).buffer(width/2)
+                        poly_buffer.append(geo)
+                        path = [path[-1]]
+
                     continue
 
                 ### Polarity change

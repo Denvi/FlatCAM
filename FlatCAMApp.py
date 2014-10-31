@@ -45,7 +45,7 @@ class App(QtCore.QObject):
     log.addHandler(handler)
 
     ## Version
-    version = 7
+    version = 8
     version_date = "2014/10"
 
     ## URL for update checks and statistics
@@ -55,7 +55,7 @@ class App(QtCore.QObject):
     app_url = "http://flatcam.org"
 
     ## Manual URL
-    manual_url = "http://flatcam.org/manual/static/index.html"
+    manual_url = "http://flatcam.org/manual/index.html"
 
     ## Signals
     inform = QtCore.pyqtSignal(str)  # Message
