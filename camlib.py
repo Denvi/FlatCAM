@@ -46,9 +46,13 @@ class Geometry(object):
     Base geometry class.
     """
 
+    defaults = {
+        "init_units": 'in'
+    }
+
     def __init__(self):
         # Units (in or mm)
-        self.units = 'in'
+        self.units = Geometry.defaults["init_units"]
         
         # Final geometry: MultiPolygon
         self.solid_geometry = None
@@ -1493,7 +1497,7 @@ class Excellon(Geometry):
     ================  ====================================
     """
 
-    def __init__(self):
+    def __init__(self, zeros="L"):
         """
         The constructor takes no parameters.
 
@@ -1508,7 +1512,8 @@ class Excellon(Geometry):
         self.drills = []
 
         # Trailing "T" or leading "L" (default)
-        self.zeros = "T"
+        #self.zeros = "T"
+        self.zeros = zeros
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -1581,7 +1586,7 @@ class Excellon(Geometry):
         self.stop_re = re.compile(r'^((G04)|(M09)|(M06)|(M00)|(M30))')
 
         # Parse coordinates
-        self.leadingzeros_re = re.compile(r'^(0*)(\d*)')
+        self.leadingzeros_re = re.compile(r'^[-\+]?(0*)(\d*)')
         
     def parse_file(self, filename):
         """
@@ -1612,6 +1617,7 @@ class Excellon(Geometry):
         current_x = None
         current_y = None
 
+        #### Parsing starts here ####
         line_num = 0  # Line number
         for eline in elines:
             line_num += 1
@@ -1704,7 +1710,7 @@ class Excellon(Geometry):
                 ## Units and number format ##
                 match = self.units_re.match(eline)
                 if match:
-                    self.zeros = match.group(2)  # "T" or "L"
+                    self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
                     self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
                     continue
 
@@ -1722,8 +1728,13 @@ class Excellon(Geometry):
         :rtype: foat
         """
         if self.zeros == "L":
+            # r'^[-\+]?(0*)(\d*)'
+            # 6 digits are divided by 10^4
+            # If less than size digits, they are automatically added,
+            # 5 digits then are divided by 10^3
             match = self.leadingzeros_re.search(number_str)
-            return float(number_str)/(10**(len(match.group(2))-2+len(match.group(1))))
+            return float(number_str)/(10**(len(match.group(1)) + len(match.group(2)) - 2))
+
         else:  # Trailing
             return float(number_str)/10000
 

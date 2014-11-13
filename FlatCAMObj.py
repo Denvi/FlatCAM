@@ -539,8 +539,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     self.axes.plot(x, y, linespec)
 
         self.app.plotcanvas.auto_adjust_axes()
-        #GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        #self.emit(QtCore.SIGNAL("plotChanged"), self)
 
     def serialize(self):
         return {
@@ -857,6 +855,25 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
     ui_type = GeometryObjectUI
 
+    @staticmethod
+    def merge(geo_list, geo_final):
+        """
+        Merges the geometry of objects in geo_list into
+        the geometry of geo_final.
+
+        :param geo_list: List of FlatCAMGeometry Objects to join.
+        :param geo_final: Destination FlatCAMGeometry object.
+        :return: None
+        """
+        geo_final.solid_geometry = []
+
+        for geo in geo_list:
+            try:
+                for shape in geo.solid_geometry:
+                    geo_final.solid_geometry.append(shape)
+            except:
+                geo_final.solid_geometry.append(geo)
+
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)
         Geometry.__init__(self)
@@ -883,8 +900,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
     def build_ui(self):
         FlatCAMObj.build_ui(self)
-
-
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)

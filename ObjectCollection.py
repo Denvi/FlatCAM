@@ -28,12 +28,22 @@ class ObjectCollection(QtCore.QAbstractListModel):
         for kind in ObjectCollection.icon_files:
             self.icons[kind] = QtGui.QPixmap(ObjectCollection.icon_files[kind])
 
+        ### Data ###
         self.object_list = []
+        self.checked_indexes = []
 
+        ### View
         self.view = QtGui.QListView()
+        self.view.setSelectionMode(Qt.QAbstractItemView.ExtendedSelection)
         self.view.setModel(self)
+
+        self.click_modifier = None
+
         self.view.selectionModel().selectionChanged.connect(self.on_list_selection_change)
         self.view.activated.connect(self.on_item_activated)
+
+    def on_mouse_down(self, event):
+        print "Mouse button pressed on list"
 
     def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
         return len(self.object_list)
@@ -49,6 +59,11 @@ class ObjectCollection(QtCore.QAbstractListModel):
             return self.object_list[row].options["name"]
         if role == Qt.Qt.DecorationRole:
             return self.icons[self.object_list[row].kind]
+        # if role == Qt.Qt.CheckStateRole:
+        #     if row in self.checked_indexes:
+        #         return Qt.Qt.Checked
+        #     else:
+        #         return Qt.Qt.Unchecked
 
     def print_list(self):
         for obj in self.object_list:
@@ -62,6 +77,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
         # Required before appending
         self.beginInsertRows(QtCore.QModelIndex(), len(self.object_list), len(self.object_list))
 
+        # Simply append to the python list
         self.object_list.append(obj)
 
         # Required after appending
@@ -146,6 +162,14 @@ class ObjectCollection(QtCore.QAbstractListModel):
         row = selections[0].row()
         return self.object_list[row]
 
+    def get_selected(self):
+        """
+        Returns list of objects selected in the view.
+
+        :return: List of objects
+        """
+        return [self.object_list[sel.row()] for sel in self.view.selectedIndexes()]
+
     def set_active(self, name):
         """
         Selects object by name from the project list. This triggers the
@@ -169,6 +193,12 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.object_list[selection_index].build_ui()
 
     def on_item_activated(self, index):
+        """
+        Double-click or Enter on item.
+
+        :param index: Index of the item in the list.
+        :return: None
+        """
         self.object_list[index.row()].build_ui()
 
     def delete_all(self):
@@ -177,6 +207,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.beginResetModel()
 
         self.object_list = []
+        self.checked_indexes = []
 
         self.endResetModel()
 

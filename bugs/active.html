@@ -1,0 +1,173 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Active Bugs &mdash; FlatCAM Bugs 1 documentation</title>
+    
+    <link rel="stylesheet" href="_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="FlatCAM Bugs 1 documentation" href="index.html" />
+    <link rel="prev" title="Welcome to FlatCAM Bugs’s documentation!" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to FlatCAM Bugs’s documentation!"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">FlatCAM Bugs 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="active-bugs">
+<h1>Active Bugs<a class="headerlink" href="#active-bugs" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="drill-number-parsing">
+<h2>Drill number parsing<a class="headerlink" href="#drill-number-parsing" title="Permalink to this headline">¶</a></h2>
+<p>The screenshot below show the problematic file:</p>
+<img alt="_images/drill_parse_problem1.png" class="align-center" src="_images/drill_parse_problem1.png" />
+<p>The file reads:</p>
+<div class="highlight-python"><pre>G81
+M48
+METRIC
+T1C00.127
+T2C00.889
+T3C00.900
+T4C01.524
+T5C01.600
+T6C02.032
+T7C02.540
+%
+T002
+X03874Y08092
+X03874Y23333
+X06414Y08092
+X06414Y23333
+X08954Y08092
+...
+T007
+X02664Y03518
+X02664Y41618
+X76324Y03518
+X76324Y41618
+...</pre>
+</div>
+<p>After scaling by 10.0:</p>
+<img alt="_images/drill_parse_problem2.png" class="align-center" src="_images/drill_parse_problem2.png" />
+<p>The code involved is:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="o">...</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">zeros</span> <span class="o">=</span> <span class="s">&quot;T&quot;</span>
+    <span class="o">...</span>
+
+<span class="k">def</span> <span class="nf">parse_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">number_str</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">zeros</span> <span class="o">==</span> <span class="s">&quot;L&quot;</span><span class="p">:</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">leadingzeros_re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">number_str</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">number_str</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="mi">10</span><span class="o">**</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">-</span><span class="mi">2</span><span class="o">+</span><span class="nb">len</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">))))</span>
+    <span class="k">else</span><span class="p">:</span>  <span class="c"># Trailing</span>
+        <span class="k">return</span> <span class="nb">float</span><span class="p">(</span><span class="n">number_str</span><span class="p">)</span><span class="o">/</span><span class="mi">10000</span>
+</pre></div>
+</div>
+<p>The numbers are being divided by 10000. If &#8220;L&#8221; had been specified,
+the following regex would have applied:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># Parse coordinates</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">leadingzeros_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s">r&#39;^(0*)(\d*)&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Then the number 02664 would have been divided by 10**(4-2+1) = 10**3 = 1000,
+which is what is desired.</p>
+<p>Leading zeros weren&#8217;t specified, but www.excellon.com says:</p>
+<blockquote>
+<div>The CNC-7 uses leading zeros unless you specify
+otherwise through a part program or the console.</div></blockquote>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The parser has been modified to default to leading
+zeros.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Active Bugs</a><ul>
+<li><a class="reference internal" href="#drill-number-parsing">Drill number parsing</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Welcome to FlatCAM Bugs&#8217;s documentation!</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/active.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="index.html" title="Welcome to FlatCAM Bugs’s documentation!"
+             >previous</a> |</li>
+        <li><a href="index.html">FlatCAM Bugs 1 documentation</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2014, Juan Pablo Caram.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.2.
+    </div>
+  </body>
+</html>

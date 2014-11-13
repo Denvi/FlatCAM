@@ -175,7 +175,18 @@ class App(QtCore.QObject):
             "geometry_paintmargin": 0.0,
             "cncjob_plot": True,
             "cncjob_tooldia": 0.016,
-            "cncjob_append": ""
+            "cncjob_append": "",
+
+            # Constants...
+            "defaults_save_period_ms": 20000,   # Time between default saves.
+            "shell_shape": [500, 300],          # Shape of the shell in pixels.
+            "shell_at_startup": False,          # Show the shell at startup.
+            "recent_limit": 10,                 # Max. items in recent list.
+            "fit_key": '1',
+            "zoom_out_key": '2',
+            "zoom_in_key": '3',
+            "zoom_ratio": 1.5,
+            "point_clipboard_format": "(%.4f, %.4f)"
         })
         self.load_defaults()
 
@@ -188,9 +199,9 @@ class App(QtCore.QObject):
             try:
                 self.save_defaults()
             finally:
-                QtCore.QTimer.singleShot(20000, auto_save_defaults)
+                QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
-        QtCore.QTimer.singleShot(20000, auto_save_defaults)
+        QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
         self.options_form = GlobalOptionsUI()
         self.options_form_fields = {
@@ -286,9 +297,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"), lambda: self.worker_task.emit({'fcn': self.version_check,
-                                                                                           'params': [],
-                                                                                           'worker_name': "worker2"}))
+        self.connect(self.thr2, QtCore.SIGNAL("started()"),
+                     lambda: self.worker_task.emit({'fcn': self.version_check,
+                                                    'params': [],
+                                                    'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###
@@ -314,6 +326,7 @@ class App(QtCore.QObject):
         self.ui.menueditnew.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.menueditedit.triggered.connect(self.edit_geometry)
         self.ui.menueditok.triggered.connect(self.editor2geometry)
+        self.ui.menueditjoin.triggered.connect(self.on_edit_join)
         self.ui.menueditdelete.triggered.connect(self.on_delete)
         self.ui.menuoptions_transfer_a2o.triggered.connect(self.on_options_app2object)
         self.ui.menuoptions_transfer_a2p.triggered.connect(self.on_options_app2project)
@@ -370,8 +383,9 @@ class App(QtCore.QObject):
         self.shell = FCShell(self)
         self.shell.setWindowIcon(self.ui.app_icon)
         self.shell.setWindowTitle("FlatCAM Shell")
-        self.shell.show()
-        self.shell.resize(550, 300)
+        if self.defaults["shell_at_startup"]:
+            self.shell.show()
+        self.shell.resize(*self.defaults["shell_shape"])
         self.shell.append_output("FlatCAM %s\n(c) 2014 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
         self.tcl = Tkinter.Tcl()
@@ -448,7 +462,7 @@ class App(QtCore.QObject):
         """
         Transfers the geometry in the editor to the current geometry object.
 
-        :return:
+        :return: None
         """
         geo = self.collection.get_active()
         if not isinstance(geo, FlatCAMGeometry):
@@ -476,7 +490,7 @@ class App(QtCore.QObject):
 
     def exec_command(self, text):
         """
-        Hadles input from the shell. See FlatCAMApp.setup_shell for shell commands.
+        Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
 
         :param text: Input command
         :return: None
@@ -530,6 +544,12 @@ class App(QtCore.QObject):
             #self.shell.append_error("?\n")
 
     def info(self, text):
+        """
+        Writes on the status bar.
+
+        :param text: Text to write.
+        :return: None
+        """
         self.ui.info_label.setText(QtCore.QString(text))
 
     def load_defaults(self):
@@ -577,7 +597,7 @@ class App(QtCore.QObject):
 
         self.recent.insert(0, record)
 
-        if len(self.recent) > 10:  # Limit reached
+        if len(self.recent) > self.defaults['recent_limit']:  # Limit reached
             self.recent.pop()
 
         try:
@@ -789,6 +809,20 @@ class App(QtCore.QObject):
             return
 
         self.inform.emit("Defaults saved.")
+
+    def on_edit_join(self):
+        """
+        Callback for Edit->Join. Joins the selected geometry objects into
+        a new one.
+
+        :return: None
+        """
+        objs = self.collection.get_selected()
+
+        def initialize(obj, app):
+            FlatCAMGeometry.merge(objs, obj)
+
+        self.new_object("geometry", "Combo", initialize)
 
     def on_options_app2project(self):
         """
@@ -1122,16 +1156,16 @@ class App(QtCore.QObject):
         :return: None
         """
 
-        if event.key == '1':  # 1
+        if event.key == self.defaults['fit_key']:  # 1
             self.on_zoom_fit(None)
             return
 
-        if event.key == '2':  # 2
-            self.plotcanvas.zoom(1 / 1.5, self.mouse)
+        if event.key == self.defaults['zoom_out_key']:  # 2
+            self.plotcanvas.zoom(1 / self.defaults['zoom_ratio'], self.mouse)
             return
 
-        if event.key == '3':  # 3
-            self.plotcanvas.zoom(1.5, self.mouse)
+        if event.key == self.defaults['zoom_in_key']:  # 3
+            self.plotcanvas.zoom(self.defaults['zoom_ratio'], self.mouse)
             return
 
         # if event.key == 'm':
@@ -1163,7 +1197,7 @@ class App(QtCore.QObject):
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
                 event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText("(%.4f, %.4f)" % (event.xdata, event.ydata))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.xdata, event.ydata))
 
         except Exception, e:
             App.log.debug("Outside plot?")
@@ -1905,6 +1939,19 @@ class App(QtCore.QObject):
             except Exception, e:
                 return "ERROR: %s" % str(e)
 
+        def get_sys(param):
+            if param in self.defaults:
+                return self.defaults[param]
+
+            return "ERROR: No such system parameter."
+
+        def set_sys(param, value):
+            if param in self.defaults:
+                self.defaults[param] = value
+                return
+
+            return "ERROR: No such system parameter."
+
         commands = {
             'help': {
                 'fcn': shelp,
@@ -2063,6 +2110,19 @@ class App(QtCore.QObject):
                         '> follow <name> [-outname <oname>]\n' +
                         '   name: Name of the gerber object.\n' +
                         '   outname: Name of the output geometry object.'
+            },
+            'get_sys': {
+                'fcn': get_sys,
+                'help': 'Get the value of a system parameter (FlatCAM constant)\n' +
+                        '> get_sys <sysparam>\n' +
+                        '   sysparam: Name of the parameter.'
+            },
+            'set_sys': {
+                'fcn': set_sys,
+                'help': 'Set the value of a system parameter (FlatCAM constant)\n' +
+                        '> set_sys <sysparam> <paramvalue>\n' +
+                        '   sysparam: Name of the parameter.\n' +
+                        '   paramvalue: Value to set.'
             }
         }
 
