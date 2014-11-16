@@ -988,7 +988,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             # GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
             app_obj.progress.emit(40)
             # TODO: The tolerance should not be hard coded. Just for testing.
-            job_obj.generate_from_geometry(self, tolerance=0.0005)
+            #job_obj.generate_from_geometry(self, tolerance=0.0005)
+            job_obj.generate_from_geometry_2(self, tolerance=0.0005)
 
             # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             app_obj.progress.emit(50)

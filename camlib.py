@@ -5,12 +5,20 @@
 # Date: 2/5/2014                                           #
 # MIT Licence                                              #
 ############################################################
-
+#from __future__ import division
 import traceback
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 from matplotlib.figure import Figure
 import re
+
+import collections
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy.spatial import Delaunay, KDTree
+
+from rtree import index as rtindex
 
 # See: http://toblerity.org/shapely/manual.html
 from shapely.geometry import Polygon, LineString, Point, LinearRing
@@ -54,20 +62,17 @@ class Geometry(object):
         # Units (in or mm)
         self.units = Geometry.defaults["init_units"]
         
-        # Final geometry: MultiPolygon
+        # Final geometry: MultiPolygon or list (of geometry constructs)
         self.solid_geometry = None
 
         # Attributes to be included in serialization
         self.ser_attrs = ['units', 'solid_geometry']
 
-    def union(self):
-        """
-        Runs a cascaded union on the list of objects in
-        solid_geometry.
+        # Flattened geometry (list of paths only)
+        self.flat_geometry = []
 
-        :return: None
-        """
-        self.solid_geometry = [cascaded_union(self.solid_geometry)]
+        # Flat geometry rtree index
+        self.flat_geometry_rtree = rtindex.Index()
 
     def add_circle(self, origin, radius):
         """
@@ -112,6 +117,68 @@ class Geometry(object):
             print "Failed to run union on polygons."
             raise
 
+    def bounds(self):
+        """
+        Returns coordinates of rectangular bounds
+        of geometry: (xmin, ymin, xmax, ymax).
+        """
+        log.debug("Geometry->bounds()")
+        if self.solid_geometry is None:
+            log.debug("solid_geometry is None")
+            log.warning("solid_geometry not computed yet.")
+            return 0, 0, 0, 0
+
+        if type(self.solid_geometry) is list:
+            log.debug("type(solid_geometry) is list")
+            # TODO: This can be done faster. See comment from Shapely mailing lists.
+            if len(self.solid_geometry) == 0:
+                log.debug('solid_geometry is empty []')
+                return 0, 0, 0, 0
+            log.debug('solid_geometry is not empty, returning cascaded union of items')
+            return cascaded_union(self.solid_geometry).bounds
+        else:
+            log.debug("type(solid_geometry) is not list, returning .bounds property")
+            return self.solid_geometry.bounds
+
+    def flatten_to_paths(self, geometry=None, reset=True):
+        """
+        Creates a list of non-iterable linear geometry elements and
+        indexes them in rtree.
+
+        :param geometry: Iterable geometry
+        :param reset: Wether to clear (True) or append (False) to self.flat_geometry
+        :return: self.flat_geometry, self.flat_geometry_rtree
+        """
+
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        if reset:
+            self.flat_geometry = []
+
+        try:
+            for geo in geometry:
+                self.flatten_to_paths(geometry=geo, reset=False)
+        except TypeError:
+            if type(geometry) == Polygon:
+                g = geometry.exterior
+                self.flat_geometry.append(g)
+                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
+                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+
+                for interior in geometry.interiors:
+                    g = interior
+                    self.flat_geometry.append(g)
+                    self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
+                    self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+            else:
+                g = geometry
+                self.flat_geometry.append(g)
+                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
+                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+
+        return self.flat_geometry, self.flat_geometry_rtree
+
     def isolation_geometry(self, offset):
         """
         Creates contours around geometry at a given
@@ -123,29 +190,6 @@ class Geometry(object):
         :rtype: Shapely.MultiPolygon or Shapely.Polygon
         """
         return self.solid_geometry.buffer(offset)
-        
-    def bounds(self):
-        """
-        Returns coordinates of rectangular bounds
-        of geometry: (xmin, ymin, xmax, ymax).
-        """
-        log.debug("Geometry->bounds()")
-        if self.solid_geometry is None:
-            log.debug("solid_geometry is None")
-            log.warning("solid_geometry not computed yet.")
-            return (0, 0, 0, 0)
-            
-        if type(self.solid_geometry) is list:
-            log.debug("type(solid_geometry) is list")
-            # TODO: This can be done faster. See comment from Shapely mailing lists.
-            if len(self.solid_geometry) == 0:
-                log.debug('solid_geometry is empty []')
-                return (0, 0, 0, 0)
-            log.debug('solid_geometry is not empty, returning cascaded union of items')
-            return cascaded_union(self.solid_geometry).bounds
-        else:
-            log.debug("type(solid_geometry) is not list, returning .bounds property")
-            return self.solid_geometry.bounds
         
     def size(self):
         """
@@ -259,6 +303,16 @@ class Geometry(object):
         """
         for attr in self.ser_attrs:
             setattr(self, attr, d[attr])
+
+    def union(self):
+        """
+        Runs a cascaded union on the list of objects in
+        solid_geometry.
+
+        :return: None
+        """
+        self.solid_geometry = [cascaded_union(self.solid_geometry)]
+
 
 
 class ApertureMacro:
@@ -666,7 +720,11 @@ class Gerber (Geometry):
 
     """
 
-    def __init__(self):
+    defaults = {
+        "steps_per_circle": 40
+    }
+
+    def __init__(self, steps_per_circle=None):
         """
         The constructor takes no parameters. Use ``gerber.parse_files()``
         or ``gerber.parse_lines()`` to populate the object from Gerber source.
@@ -676,7 +734,7 @@ class Gerber (Geometry):
         """
 
         # Initialize parent
-        Geometry.__init__(self)        
+        Geometry.__init__(self)
 
         self.solid_geometry = Polygon()
 
@@ -778,8 +836,8 @@ class Gerber (Geometry):
         self.am1_re = re.compile(r'^%AM([^\*]+)\*([^%]+)?(%)?$')
         self.am2_re = re.compile(r'(.*)%$')
 
-        # TODO: This is bad.
-        self.steps_per_circ = 40
+        # How to discretize a circle.
+        self.steps_per_circ = steps_per_circle or Gerber.defaults['steps_per_circle']
 
     def scale(self, factor):
         """
@@ -1836,8 +1894,13 @@ class CNCjob(Geometry):
                            "C" (cut). B is "F" (fast) or "S" (slow).
     =====================  =========================================
     """
+
+    defaults = {
+        "zdownrate": None
+    }
+
     def __init__(self, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0, zdownrate=None):
 
         Geometry.__init__(self)
         self.kind = kind
@@ -1854,6 +1917,11 @@ class CNCjob(Geometry):
         self.input_geometry_bounds = None
         self.gcode_parsed = None
         self.steps_per_circ = 20  # Used when parsing G-code arcs
+        if zdownrate is not None:
+            self.zdownrate = float(zdownrate)
+        elif CNCjob.defaults["zdownrate"] is not None:
+            self.zdownrate = float(CNCjob.defaults["zdownrate"])
+
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -1861,6 +1929,34 @@ class CNCjob(Geometry):
         self.ser_attrs += ['kind', 'z_cut', 'z_move', 'feedrate', 'tooldia',
                            'gcode', 'input_geometry_bounds', 'gcode_parsed',
                            'steps_per_circ']
+
+        # Buffer for linear (No polygons or iterable geometry) elements
+        # and their properties.
+        self.flat_geometry = []
+
+        # 2D index of self.flat_geometry
+        self.flat_geometry_rtree = rtindex.Index()
+
+        # Current insert position to flat_geometry
+        self.fg_current_index = 0
+
+    def flatten(self, geo):
+        """
+        Flattens the input geometry into an array of non-iterable geometry
+        elements and indexes into rtree by their first and last coordinate
+        pairs.
+
+        :param geo:
+        :return:
+        """
+        try:
+            for g in geo:
+                self.flatten(g)
+        except TypeError:  # is not iterable
+            self.flat_geometry.append({"path": geo})
+            self.flat_geometry_rtree.insert(self.fg_current_index, geo.coords[0])
+            self.flat_geometry_rtree.insert(self.fg_current_index, geo.coords[-1])
+            self.fg_current_index += 1
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -1986,14 +2082,17 @@ class CNCjob(Geometry):
         if not append:
             self.gcode = ""
 
+        # Initial G-Code
         self.gcode = self.unitcode[self.units.upper()] + "\n"
         self.gcode += self.absolutecode + "\n"
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n" % self.feedrate
-        self.gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
+        self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
         self.gcode += "M03\n"  # Spindle start
         self.gcode += self.pausecode + "\n"
-        
+
+        # Iterate over geometry and run individual methods
+        # depending on type
         for geo in geometry.solid_geometry:
             
             if type(geo) == Polygon:
@@ -2005,7 +2104,6 @@ class CNCjob(Geometry):
                 continue
             
             if type(geo) == Point:
-                # TODO: point2gcode does not return anything...
                 self.gcode += self.point2gcode(geo)
                 continue
 
@@ -2016,6 +2114,74 @@ class CNCjob(Geometry):
 
             log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
+        # Finish
+        self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+        self.gcode += "G00 X0Y0\n"
+        self.gcode += "M05\n"  # Spindle stop
+
+    def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0):
+        """
+        Second algorithm to generate from Geometry.
+
+        :param geometry:
+        :param append:
+        :param tooldia:
+        :param tolerance:
+        :return:
+        """
+        assert isinstance(geometry, Geometry)
+        flat_geometry, rtindex = geometry.flatten_to_paths()
+
+        if tooldia is not None:
+            self.tooldia = tooldia
+
+        self.input_geometry_bounds = geometry.bounds()
+
+        if not append:
+            self.gcode = ""
+
+        # Initial G-Code
+        self.gcode = self.unitcode[self.units.upper()] + "\n"
+        self.gcode += self.absolutecode + "\n"
+        self.gcode += self.feedminutecode + "\n"
+        self.gcode += "F%.2f\n" % self.feedrate
+        self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
+        self.gcode += "M03\n"  # Spindle start
+        self.gcode += self.pausecode + "\n"
+
+        # Iterate over geometry and run individual methods
+        # depending on type
+        # for geo in flat_geometry:
+        #
+        #     if type(geo) == LineString or type(geo) == LinearRing:
+        #         self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+        #         continue
+        #
+        #     if type(geo) == Point:
+        #         self.gcode += self.point2gcode(geo)
+        #         continue
+        #
+        #     log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
+        hits = list(rtindex.nearest((0, 0), 1))
+        while len(hits) > 0:
+            geo = flat_geometry[hits[0]]
+
+            if type(geo) == LineString or type(geo) == LinearRing:
+                self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+            elif type(geo) == Point:
+                self.gcode += self.point2gcode(geo)
+            else:
+                log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
+            start_pt = geo.coords[0]
+            stop_pt = geo.coords[-1]
+            rtindex.delete(hits[0], start_pt)
+            rtindex.delete(hits[0], stop_pt)
+            hits = list(rtindex.nearest(stop_pt, 1))
+
+
+        # Finish
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         self.gcode += "G00 X0Y0\n"
         self.gcode += "M05\n"  # Spindle stop
@@ -2262,14 +2428,28 @@ class CNCjob(Geometry):
         t = "G0%d X%.4fY%.4f\n"
         path = list(target_polygon.exterior.coords)             # Polygon exterior
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-        gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
+        if self.zdownrate is not None:
+            gcode += "F%.2f\n" % self.zdownrate
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+            gcode += "F%.2f\n" % self.feedrate
+        else:
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
         gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         for ints in target_polygon.interiors:               # Polygon interiors
             path = list(ints.coords)
             gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
+            if self.zdownrate is not None:
+                gcode += "F%.2f\n" % self.zdownrate
+                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+                gcode += "F%.2f\n" % self.feedrate
+            else:
+                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
             for pt in path[1:]:
                 gcode += t % (1, pt[0], pt[1])    # Linear motion to point
             gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
@@ -2297,20 +2477,34 @@ class CNCjob(Geometry):
         t = "G0%d X%.4fY%.4f\n"
         path = list(target_linear.coords)
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-        gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
+        if self.zdownrate is not None:
+            gcode += "F%.2f\n" % self.zdownrate
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+            gcode += "F%.2f\n" % self.feedrate
+        else:
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
         gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
         return gcode
 
     def point2gcode(self, point):
-        # TODO: This is not doing anything.
         gcode = ""
         t = "G0%d X%.4fY%.4f\n"
         path = list(point.coords)
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-        gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
+        if self.zdownrate is not None:
+            gcode += "F%.2f\n" % self.zdownrate
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+            gcode += "F%.2f\n" % self.feedrate
+        else:
+            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+
         gcode += "G00 Z%.4f\n" % self.z_move      # Stop cutting
+        return gcode
 
     def scale(self, factor):
         """
@@ -2383,6 +2577,7 @@ def get_bounds(geometry_list):
             log.warning("DEVELOPMENT: Tried to get bounds of empty geometry.")
 
     return [xmin, ymin, xmax, ymax]
+
 
 def arc(center, radius, start, stop, direction, steps_per_circ):
     """
@@ -2551,4 +2746,206 @@ def parse_gerber_number(strnumber, frac_digits):
     :rtype: float
     """
     return int(strnumber)*(10**(-frac_digits))
+
+
+def voronoi(P):
+    """
+    Returns a list of all edges of the voronoi diagram for the given input points.
+    """
+    delauny = Delaunay(P)
+    triangles = delauny.points[delauny.vertices]
+
+    circum_centers = np.array([triangle_csc(tri) for tri in triangles])
+    long_lines_endpoints = []
+
+    lineIndices = []
+    for i, triangle in enumerate(triangles):
+        circum_center = circum_centers[i]
+        for j, neighbor in enumerate(delauny.neighbors[i]):
+            if neighbor != -1:
+                lineIndices.append((i, neighbor))
+            else:
+                ps = triangle[(j+1)%3] - triangle[(j-1)%3]
+                ps = np.array((ps[1], -ps[0]))
+
+                middle = (triangle[(j+1)%3] + triangle[(j-1)%3]) * 0.5
+                di = middle - triangle[j]
+
+                ps /= np.linalg.norm(ps)
+                di /= np.linalg.norm(di)
+
+                if np.dot(di, ps) < 0.0:
+                    ps *= -1000.0
+                else:
+                    ps *= 1000.0
+
+                long_lines_endpoints.append(circum_center + ps)
+                lineIndices.append((i, len(circum_centers) + len(long_lines_endpoints)-1))
+
+    vertices = np.vstack((circum_centers, long_lines_endpoints))
+
+    # filter out any duplicate lines
+    lineIndicesSorted = np.sort(lineIndices) # make (1,2) and (2,1) both (1,2)
+    lineIndicesTupled = [tuple(row) for row in lineIndicesSorted]
+    lineIndicesUnique = np.unique(lineIndicesTupled)
+
+    return vertices, lineIndicesUnique
+
+
+def triangle_csc(pts):
+    rows, cols = pts.shape
+
+    A = np.bmat([[2 * np.dot(pts, pts.T), np.ones((rows, 1))],
+                 [np.ones((1, rows)), np.zeros((1, 1))]])
+
+    b = np.hstack((np.sum(pts * pts, axis=1), np.ones((1))))
+    x = np.linalg.solve(A,b)
+    bary_coords = x[:-1]
+    return np.sum(pts * np.tile(bary_coords.reshape((pts.shape[0], 1)), (1, pts.shape[1])), axis=0)
+
+
+def voronoi_cell_lines(points, vertices, lineIndices):
+    """
+    Returns a mapping from a voronoi cell to its edges.
+
+    :param points: shape (m,2)
+    :param vertices: shape (n,2)
+    :param lineIndices: shape (o,2)
+    :rtype: dict point index -> list of shape (n,2) with vertex indices
+    """
+    kd = KDTree(points)
+
+    cells = collections.defaultdict(list)
+    for i1, i2 in lineIndices:
+        v1, v2 = vertices[i1], vertices[i2]
+        mid = (v1+v2)/2
+        _, (p1Idx, p2Idx) = kd.query(mid, 2)
+        cells[p1Idx].append((i1, i2))
+        cells[p2Idx].append((i1, i2))
+
+    return cells
+
+
+def voronoi_edges2polygons(cells):
+    """
+    Transforms cell edges into polygons.
+
+    :param cells: as returned from voronoi_cell_lines
+    :rtype: dict point index -> list of vertex indices which form a polygon
+    """
+
+    # first, close the outer cells
+    for pIdx, lineIndices_ in cells.items():
+        dangling_lines = []
+        for i1, i2 in lineIndices_:
+            connections = filter(lambda (i1_, i2_): (i1, i2) != (i1_, i2_) and (i1 == i1_ or i1 == i2_ or i2 == i1_ or i2 == i2_), lineIndices_)
+            assert 1 <= len(connections) <= 2
+            if len(connections) == 1:
+                dangling_lines.append((i1, i2))
+        assert len(dangling_lines) in [0, 2]
+        if len(dangling_lines) == 2:
+            (i11, i12), (i21, i22) = dangling_lines
+
+            # determine which line ends are unconnected
+            connected = filter(lambda (i1,i2): (i1,i2) != (i11,i12) and (i1 == i11 or i2 == i11), lineIndices_)
+            i11Unconnected = len(connected) == 0
+
+            connected = filter(lambda (i1,i2): (i1,i2) != (i21,i22) and (i1 == i21 or i2 == i21), lineIndices_)
+            i21Unconnected = len(connected) == 0
+
+            startIdx = i11 if i11Unconnected else i12
+            endIdx = i21 if i21Unconnected else i22
+
+            cells[pIdx].append((startIdx, endIdx))
+
+    # then, form polygons by storing vertex indices in (counter-)clockwise order
+    polys = dict()
+    for pIdx, lineIndices_ in cells.items():
+        # get a directed graph which contains both directions and arbitrarily follow one of both
+        directedGraph = lineIndices_ + [(i2, i1) for (i1, i2) in lineIndices_]
+        directedGraphMap = collections.defaultdict(list)
+        for (i1, i2) in directedGraph:
+            directedGraphMap[i1].append(i2)
+        orderedEdges = []
+        currentEdge = directedGraph[0]
+        while len(orderedEdges) < len(lineIndices_):
+            i1 = currentEdge[1]
+            i2 = directedGraphMap[i1][0] if directedGraphMap[i1][0] != currentEdge[0] else directedGraphMap[i1][1]
+            nextEdge = (i1, i2)
+            orderedEdges.append(nextEdge)
+            currentEdge = nextEdge
+
+        polys[pIdx] = [i1 for (i1, i2) in orderedEdges]
+
+    return polys
+
+
+def voronoi_polygons(points):
+    """
+    Returns the voronoi polygon for each input point.
+
+    :param points: shape (n,2)
+    :rtype: list of n polygons where each polygon is an array of vertices
+    """
+    vertices, lineIndices = voronoi(points)
+    cells = voronoi_cell_lines(points, vertices, lineIndices)
+    polys = voronoi_edges2polygons(cells)
+    polylist = []
+    for i in xrange(len(points)):
+        poly = vertices[np.asarray(polys[i])]
+        polylist.append(poly)
+    return polylist
+
+
+class Zprofile:
+    def __init__(self):
+
+        # data contains lists of [x, y, z]
+        self.data = []
+
+        # Computed voronoi polygons (shapely)
+        self.polygons = []
+        pass
+
+    def plot_polygons(self):
+        axes = plt.subplot(1, 1, 1)
+
+        plt.axis([-0.05, 1.05, -0.05, 1.05])
+
+        for poly in self.polygons:
+            p = PolygonPatch(poly, facecolor=np.random.rand(3, 1), alpha=0.3)
+            axes.add_patch(p)
+
+    def init_from_csv(self, filename):
+        pass
+
+    def init_from_string(self, zpstring):
+        pass
+
+    def init_from_list(self, zplist):
+        self.data = zplist
+
+    def generate_polygons(self):
+        self.polygons = [Polygon(p) for p in voronoi_polygons(array([[x[0], x[1]] for x in self.data]))]
+
+    def normalize(self, origin):
+        pass
+
+    def paste(self, path):
+        """
+        Return a list of dictionaries containing the parts of the original
+        path and their z-axis offset.
+        """
+
+        # At most one region/polygon will contain the path
+        containing = [i for i in range(len(self.polygons)) if self.polygons[i].contains(path)]
+
+        if len(containing) > 0:
+            return [{"path": path, "z": self.data[containing[0]][2]}]
+
+        # All region indexes that intersect with the path
+        crossing = [i for i in range(len(self.polygons)) if self.polygons[i].intersects(path)]
+
+        return [{"path": path.intersection(self.polygons[i]),
+                 "z": self.data[i][2]} for i in crossing]
 

@@ -6,6 +6,8 @@ Shell Command Reference
 .. warning::
     The FlatCAM Shell is under development and its behavior might change in the future. This includes available commands and their syntax.
 
+.. _add_circle:
+
 add_circle
 ~~~~~~~~~~
 Creates a circle in the given Geometry object.
@@ -17,6 +19,8 @@ Creates a circle in the given Geometry object.
 
        radius: Radius of the circle.
 
+.. _add_poly:
+
 add_poly
 ~~~~~~~~
 Creates a polygon in the given Geometry object.
@@ -25,6 +29,8 @@ Creates a polygon in the given Geometry object.
        name: Name of the geometry object to which to append the polygon.
 
        xi, yi: Coordinates of points in the polygon.
+
+.. _add_rect:
 
 add_rect
 ~~~~~~~~
@@ -70,6 +76,8 @@ Creates a geometry object following gerber paths.
 
        outname: Name of the output geometry object.
 
+.. _geo_union:
+
 geo_union
 ~~~~~~~~~
 Runs a union operation (addition) on the components of the geometry object. For example, if it contains 2 intersecting polygons, this opperation adds them intoa single larger polygon.
@@ -114,12 +122,16 @@ Starts a new project. Clears objects from memory.
     > new
        No parameters.
 
+.. _new_geometry:
+
 new_geometry
 ~~~~~~~~~~~~
 Creates a new empty geometry object.
 
     > new_geometry <name>
        name: New object name
+
+.. _offset:
 
 offset
 ~~~~~~
@@ -199,6 +211,8 @@ Saves the FlatCAM project to file.
 
     > save_project <filename>
        filename: Path to file to save.
+
+.. _scale:
 
 scale
 ~~~~~

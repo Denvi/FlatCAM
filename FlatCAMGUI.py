@@ -197,12 +197,14 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ################
         infobar = self.statusBar()
 
-        self.info_label = QtGui.QLabel("Welcome to FlatCAM.")
-        self.info_label.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
-        infobar.addWidget(self.info_label, stretch=1)
+        #self.info_label = QtGui.QLabel("Welcome to FlatCAM.")
+        #self.info_label.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+        #infobar.addWidget(self.info_label, stretch=1)
+        self.fcinfo = FlatCAMInfoBar()
+        infobar.addWidget(self.fcinfo, stretch=1)
 
         self.position_label = QtGui.QLabel("")
-        self.position_label.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
+        #self.position_label.setFrameStyle(QtGui.QFrame.StyledPanel | QtGui.QFrame.Plain)
         self.position_label.setMinimumWidth(110)
         infobar.addWidget(self.position_label)
 
@@ -231,6 +233,48 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setGeometry(100, 100, 1024, 650)
         self.setWindowTitle('FlatCAM %s' % version)
         self.show()
+
+
+class FlatCAMInfoBar(QtGui.QWidget):
+
+    def __init__(self, parent=None):
+        super(FlatCAMInfoBar, self).__init__(parent=parent)
+
+        self.icon = QtGui.QLabel(self)
+        self.icon.setGeometry(0, 0, 12, 12)
+        self.pmap = QtGui.QPixmap('share/graylight12.png')
+        self.icon.setPixmap(self.pmap)
+
+        layout = QtGui.QHBoxLayout()
+        layout.setContentsMargins(5, 0, 5, 0)
+        self.setLayout(layout)
+
+        layout.addWidget(self.icon)
+
+        self.text = QtGui.QLabel(self)
+        self.text.setText("Hello!")
+
+        layout.addWidget(self.text)
+
+        layout.addStretch()
+
+    def set_text_(self, text):
+        self.text.setText(text)
+
+    def set_status(self, text, level="info"):
+        level = str(level)
+        self.pmap.fill()
+        if level == "error":
+            self.pmap = QtGui.QPixmap('share/redlight12.png')
+        elif level == "success":
+            self.pmap = QtGui.QPixmap('share/greenlight12.png')
+        elif level == "warning":
+            self.pmap = QtGui.QPixmap('share/yellowlight12.png')
+        else:
+            self.pmap = QtGui.QPixmap('share/graylight12.png')
+
+        self.icon.setPixmap(self.pmap)
+        self.set_text_(text)
 
 
 class OptionsGroupUI(QtGui.QGroupBox):

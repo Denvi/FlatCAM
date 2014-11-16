@@ -9,6 +9,7 @@ import re
 import webbrowser
 import os
 import Tkinter
+import re
 
 from PyQt4 import QtCore
 
@@ -186,14 +187,20 @@ class App(QtCore.QObject):
             "zoom_out_key": '2',
             "zoom_in_key": '3',
             "zoom_ratio": 1.5,
-            "point_clipboard_format": "(%.4f, %.4f)"
+            "point_clipboard_format": "(%.4f, %.4f)",
+            "zdownrate": None                   #
         })
+
+        ###############################
+        ### Load defaults from file ###
         self.load_defaults()
 
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
         if self.defaults['serial'] == 0 or len(str(self.defaults['serial'])) < 10:
             self.defaults['serial'] = ''.join([random.choice(chars) for i in range(20)])
             self.save_defaults()
+
+        self.propagate_defaults()
 
         def auto_save_defaults():
             try:
@@ -543,14 +550,18 @@ class App(QtCore.QObject):
             self.shell.append_error(''.join(traceback.format_exc()))
             #self.shell.append_error("?\n")
 
-    def info(self, text):
+    def info(self, msg):
         """
         Writes on the status bar.
 
-        :param text: Text to write.
+        :param msg: Text to write.
         :return: None
         """
-        self.ui.info_label.setText(QtCore.QString(text))
+        match = re.search("\[([^\]]+)\](.*)", msg)
+        if match:
+            self.ui.fcinfo.set_status(QtCore.QString(match.group(2)), level=match.group(1))
+        else:
+            self.ui.fcinfo.set_status(QtCore.QString(msg), level="info")
 
     def load_defaults(self):
         """
@@ -783,7 +794,7 @@ class App(QtCore.QObject):
             e = sys.exc_info()[0]
             App.log.error("Could not load defaults file.")
             App.log.error(str(e))
-            self.inform.emit("ERROR: Could not load defaults file.")
+            self.inform.emit("[error] Could not load defaults file.")
             return
 
         try:
@@ -792,7 +803,7 @@ class App(QtCore.QObject):
             e = sys.exc_info()[0]
             App.log.error("Failed to parse defaults file.")
             App.log.error(str(e))
-            self.inform.emit("ERROR: Failed to parse defaults file.")
+            self.inform.emit("[error] Failed to parse defaults file.")
             return
 
         # Update options
@@ -805,7 +816,7 @@ class App(QtCore.QObject):
             json.dump(defaults, f)
             f.close()
         except:
-            self.inform.emit("ERROR: Failed to write defaults to file.")
+            self.inform.emit("[error] Failed to write defaults to file.")
             return
 
         self.inform.emit("Defaults saved.")
@@ -1442,10 +1453,14 @@ class App(QtCore.QObject):
 
             # Opening the file happens here
             self.progress.emit(30)
-            gerber_obj.parse_file(filename, follow=follow)
+            try:
+                gerber_obj.parse_file(filename, follow=follow)
+            except IOError:
+                app_obj.inform.emit("[error] Failed to open file: " + filename)
+                app_obj.progress.emit(0)
 
             # Further parsing
-            self.progress.emit(70)
+            self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here
 
         # Object name
         name = outname or filename.split('/')[-1].split('\\')[-1]
@@ -1492,7 +1507,14 @@ class App(QtCore.QObject):
         # How the object should be initialized
         def obj_init(excellon_obj, app_obj):
             self.progress.emit(20)
-            excellon_obj.parse_file(filename)
+
+            try:
+                excellon_obj.parse_file(filename)
+            except IOError:
+                app_obj.inform.emit("[error] Cannot open file: " + filename)
+                self.progress.emit(0)  # TODO: self and app_bjj mixed
+                raise IOError
+
             excellon_obj.create_geometry()
             self.progress.emit(70)
 
@@ -1599,14 +1621,14 @@ class App(QtCore.QObject):
             f = open(filename, 'r')
         except IOError:
             App.log.error("Failed to open project file: %s" % filename)
-            self.inform.emit("ERROR: Failed to open project file: %s" % filename)
+            self.inform.emit("[error] Failed to open project file: %s" % filename)
             return
 
         try:
             d = json.load(f, object_hook=dict2obj)
         except:
             App.log.error("Failed to parse project file: %s" % filename)
-            self.inform.emit("ERROR: Failed to parse project file: %s" % filename)
+            self.inform.emit("[error] Failed to parse project file: %s" % filename)
             f.close()
             return
 
@@ -1632,6 +1654,15 @@ class App(QtCore.QObject):
         self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
+
+    def propagate_defaults(self):
+
+        routes = {
+            "zdownrate": CNCjob
+        }
+
+        for param in routes:
+            routes[param].defaults[param] = self.defaults[param]
 
     def plot_all(self):
         """
@@ -1948,6 +1979,7 @@ class App(QtCore.QObject):
         def set_sys(param, value):
             if param in self.defaults:
                 self.defaults[param] = value
+                self.propagate_defaults()
                 return
 
             return "ERROR: No such system parameter."
@@ -2165,14 +2197,14 @@ class App(QtCore.QObject):
             f = open('recent.json')
         except IOError:
             App.log.error("Failed to load recent item list.")
-            self.inform.emit("ERROR: Failed to load recent item list.")
+            self.inform.emit("[error] Failed to load recent item list.")
             return
 
         try:
             self.recent = json.load(f)
         except json.scanner.JSONDecodeError:
             App.log.error("Failed to parse recent item list.")
-            self.inform.emit("ERROR: Failed to parse recent item list.")
+            self.inform.emit("[error] Failed to parse recent item list.")
             f.close()
             return
         f.close()
@@ -2190,11 +2222,13 @@ class App(QtCore.QObject):
         # Create menu items
         for recent in self.recent:
             filename = recent['filename'].split('/')[-1].split('\\')[-1]
+
             action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
 
+            # Attach callback
             o = make_callback(openers[recent["kind"]], recent['filename'])
-
             action.triggered.connect(o)
+
             self.ui.recent.addAction(action)
 
         # self.builder.get_object('open_recent').set_submenu(recent_menu)
@@ -2235,14 +2269,14 @@ class App(QtCore.QObject):
             f = urllib.urlopen(full_url)
         except:
             App.log.warning("Failed checking for latest version. Could not connect.")
-            self.inform.emit("Failed checking for latest version. Could not connect.")
+            self.inform.emit("[warning] Failed checking for latest version. Could not connect.")
             return
 
         try:
             data = json.load(f)
         except Exception, e:
             App.log.error("Could not parse information about latest version.")
-            self.inform.emit("Could not parse information about latest version.")
+            self.inform.emit("[error] Could not parse information about latest version.")
             App.log.debug("json.load(): %s" % str(e))
             f.close()
             return
@@ -2251,7 +2285,7 @@ class App(QtCore.QObject):
 
         if self.version >= data["version"]:
             App.log.debug("FlatCAM is up to date!")
-            self.inform.emit("FlatCAM is up to date!")
+            self.inform.emit("[success] FlatCAM is up to date!")
             return
 
         App.log.debug("Newer version available.")
@@ -2301,7 +2335,7 @@ class App(QtCore.QObject):
         try:
             self.collection.get_active().read_form()
         except:
-            self.log.debug("There was no active object")
+            self.log.debug("[warning] There was no active object")
             pass
         # Project options
         self.options_read_form()
@@ -2315,14 +2349,14 @@ class App(QtCore.QObject):
         try:
             f = open(filename, 'w')
         except IOError:
-            App.log.error("ERROR: Failed to open file for saving:", filename)
+            App.log.error("[error] Failed to open file for saving:", filename)
             return
 
         # Write
         try:
             json.dump(d, f, default=to_dict)
         except:
-            App.log.error("ERROR: File open but failed to write:", filename)
+            App.log.error("[error] File open but failed to write:", filename)
             f.close()
             return
 
