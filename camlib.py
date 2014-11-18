@@ -1921,6 +1921,8 @@ class CNCjob(Geometry):
             self.zdownrate = float(zdownrate)
         elif CNCjob.defaults["zdownrate"] is not None:
             self.zdownrate = float(CNCjob.defaults["zdownrate"])
+        else:
+            self.zdownrate = None
 
 
         # Attributes to be included in serialization
