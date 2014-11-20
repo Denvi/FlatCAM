@@ -234,6 +234,9 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowTitle('FlatCAM %s' % version)
         self.show()
 
+    def closeEvent(self, event):
+        QtGui.qApp.quit()
+
 
 class FlatCAMInfoBar(QtGui.QWidget):
 

@@ -142,7 +142,7 @@ class App(QtCore.QObject):
         }
 
         self.defaults = LoudDict()
-        self.defaults.set_change_callback(lambda field: self.defaults_write_form_field(field))  # When the dictionary changes.
+        self.defaults.set_change_callback(self.on_defaults_dict_change)  # When the dictionary changes.
         self.defaults.update({
             "serial": 0,
             "stats": {},
@@ -246,7 +246,7 @@ class App(QtCore.QObject):
         }
 
         self.options = LoudDict()
-        self.options.set_change_callback(lambda field: self.options_write_form_field(field))
+        self.options.set_change_callback(self.on_options_dict_change)
         self.options.update({
             "units": "IN",
             "gerber_plot": True,
@@ -947,6 +947,18 @@ class App(QtCore.QObject):
                 obj.options[oname] = self.defaults[option]
         obj.to_form()  # Update UI
 
+    def on_options_dict_change(self, field):
+        self.options_write_form_field(field)
+
+        if field == "units":
+            self.set_screen_units(self.options['units'])
+
+    def on_defaults_dict_change(self, field):
+        self.defaults_write_form_field(field)
+
+    def set_screen_units(self, units):
+        self.ui.units_label.setText("[" + self.options["units"].lower() + "]")
+
     def on_toggle_units(self):
         """
         Callback for the Units radio-button change in the Options tab.
@@ -1016,7 +1028,8 @@ class App(QtCore.QObject):
 
         self.options_read_form()
         self.inform.emit("Converted units to %s" % self.options["units"])
-        self.ui.units_label.setText("[" + self.options["units"] + "]")
+        #self.ui.units_label.setText("[" + self.options["units"] + "]")
+        self.set_screen_units(self.options["units"])
 
     def on_options_combo_change(self, sel):
         """
@@ -1641,7 +1654,8 @@ class App(QtCore.QObject):
         ##Project options
         self.options.update(d['options'])
         self.project_filename = filename
-        self.ui.units_label.setText("[" + self.options["units"] + "]")
+        #self.ui.units_label.setText("[" + self.options["units"] + "]")
+        self.set_screen_units(self.options["units"])
 
         ## Re create objects
         App.log.debug("Re-creating objects...")
@@ -1657,6 +1671,7 @@ class App(QtCore.QObject):
 
     def propagate_defaults(self):
 
+        # Which objects to update the given parameters.
         routes = {
             "zdownrate": CNCjob
         }
