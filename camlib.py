@@ -1,6 +1,6 @@
 ############################################################
 # FlatCAM: 2D Post-processing for Manufacturing            #
-# http://caram.cl/software/flatcam                         #
+# http://flatcam.org                                       #
 # Author: Juan Pablo Caram (c)                             #
 # Date: 2/5/2014                                           #
 # MIT Licence                                              #
@@ -1226,7 +1226,14 @@ class Gerber (Geometry):
                         center = [i + current_x, j + current_y]
                         radius = sqrt(i**2 + j**2)
                         start = arctan2(-j, -i)  # Start angle
-                        stop = arctan2(-center[1] + y, -center[0] + x)  # Stop angle
+                        # Numerical errors might prevent start == stop therefore
+                        # we check ahead of time. This should result in a
+                        # 360 degree arc.
+                        if current_x == x and current_y == y:
+                            stop = start
+                        else:
+                            stop = arctan2(-center[1] + y, -center[0] + x)  # Stop angle
+
                         this_arc = arc(center, radius, start, stop,
                                        arcdir[current_interpolation_mode],
                                        self.steps_per_circ)
@@ -1243,7 +1250,6 @@ class Gerber (Geometry):
                         continue
 
                     if quadrant_mode == 'SINGLE':
-                        #log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
 
                         center_candidates = [
                             [i + current_x, j + current_y],
