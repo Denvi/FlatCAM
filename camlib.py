@@ -200,7 +200,7 @@ class Geometry(object):
             log.warning("Solid_geometry not computed yet.")
             return 0
         bounds = self.bounds()
-        return (bounds[2]-bounds[0], bounds[3]-bounds[1])
+        return bounds[2]-bounds[0], bounds[3]-bounds[1]
         
     def get_empty_area(self, boundary=None):
         """
@@ -1164,6 +1164,7 @@ class Gerber (Geometry):
                 # 2-clockwise, 3-counterclockwise
                 match = self.circ_re.search(gline)
                 if match:
+                    arcdir = [None, None, "cw", "ccw"]
 
                     mode, x, y, i, j, d = match.groups()
                     try:
@@ -1224,9 +1225,8 @@ class Gerber (Geometry):
                     if quadrant_mode == 'MULTI':
                         center = [i + current_x, j + current_y]
                         radius = sqrt(i**2 + j**2)
-                        start = arctan2(-j, -i)
-                        stop = arctan2(-center[1] + y, -center[0] + x)
-                        arcdir = [None, None, "cw", "ccw"]
+                        start = arctan2(-j, -i)  # Start angle
+                        stop = arctan2(-center[1] + y, -center[0] + x)  # Stop angle
                         this_arc = arc(center, radius, start, stop,
                                        arcdir[current_interpolation_mode],
                                        self.steps_per_circ)
@@ -1243,7 +1243,56 @@ class Gerber (Geometry):
                         continue
 
                     if quadrant_mode == 'SINGLE':
-                        log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
+                        #log.warning("Single quadrant arc are not implemented yet. (%d)" % line_num)
+
+                        center_candidates = [
+                            [i + current_x, j + current_y],
+                            [-i + current_x, j + current_y],
+                            [i + current_x, -j + current_y],
+                            [-i + current_x, -j + current_y]
+                        ]
+
+                        valid = False
+                        log.debug("I: %f  J: %f" % (i, j))
+                        for center in center_candidates:
+                            radius = sqrt(i**2 + j**2)
+
+                            # Make sure radius to start is the same as radius to end.
+                            radius2 = sqrt((center[0] - x)**2 + (center[1] - y)**2)
+                            if radius2 < radius*0.95 or radius2 > radius*1.05:
+                                continue  # Not a valid center.
+
+                            # Correct i and j and continue as with multi-quadrant.
+                            i = center[0] - current_x
+                            j = center[1] - current_y
+
+                            start = arctan2(-j, -i)  # Start angle
+                            stop = arctan2(-center[1] + y, -center[0] + x)  # Stop angle
+                            angle = abs(arc_angle(start, stop, arcdir[current_interpolation_mode]))
+                            log.debug("ARC START: %f, %f  CENTER: %f, %f  STOP: %f, %f" %
+                                      (current_x, current_y, center[0], center[1], x, y))
+                            log.debug("START Ang: %f, STOP Ang: %f, DIR: %s, ABS: %.12f <= %.12f: %s" %
+                                      (start*180/pi, stop*180/pi, arcdir[current_interpolation_mode],
+                                       angle*180/pi, pi/2*180/pi, angle <= (pi+1e-6)/2))
+
+                            if angle <= (pi+1e-6)/2:
+                                log.debug("########## ACCEPTING ARC ############")
+                                this_arc = arc(center, radius, start, stop,
+                                               arcdir[current_interpolation_mode],
+                                               self.steps_per_circ)
+                                current_x = this_arc[-1][0]
+                                current_y = this_arc[-1][1]
+                                path += this_arc
+                                last_path_aperture = current_aperture
+                                valid = True
+                                break
+
+                        if valid:
+                            continue
+                        else:
+                            log.warning("Invalid arc in line %d." % line_num)
+
+
 
                 ### Operation code alone
                 # Operation code alone, usually just D03 (Flash)
@@ -1786,15 +1835,24 @@ class Excellon(Geometry):
         :rtype: foat
         """
         if self.zeros == "L":
+            # With leading zeros, when you type in a coordinate,
+            # the leading zeros must always be included.  Trailing zeros
+            # are unneeded and may be left off. The CNC-7 will automatically add them.
             # r'^[-\+]?(0*)(\d*)'
             # 6 digits are divided by 10^4
             # If less than size digits, they are automatically added,
-            # 5 digits then are divided by 10^3
+            # 5 digits then are divided by 10^3 and so on.
             match = self.leadingzeros_re.search(number_str)
             return float(number_str)/(10**(len(match.group(1)) + len(match.group(2)) - 2))
 
         else:  # Trailing
-            return float(number_str)/10000
+            # You must show all zeros to the right of the number and can omit
+            # all zeros to the left of the number. The CNC-7 will count the number
+            # of digits you typed and automatically fill in the missing zeros.
+            if self.units.lower() == "in":  # Inches is 00.0000
+                return float(number_str)/10000
+
+            return float(number_str)/1000  # Metric is 000.000
 
     def create_geometry(self):
         """
@@ -2619,6 +2677,16 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
         theta = start + delta_angle*i
         points.append((center[0]+radius*cos(theta), center[1]+radius*sin(theta)))
     return points
+
+
+def arc_angle(start, stop, direction):
+    if direction == "ccw" and stop <= start:
+        stop += 2*pi
+    if direction == "cw" and stop >= start:
+        stop -= 2*pi
+
+    angle = abs(stop - start)
+    return angle
 
 
 def clear_poly(poly, tooldia, overlap=0.1):

@@ -12,7 +12,7 @@ Contents:
    :maxdepth: 2
 
    active
-
+   excellonparse
 
 Indices and tables
 ==================
