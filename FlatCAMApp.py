@@ -10,7 +10,6 @@ import webbrowser
 import os
 import Tkinter
 import re
-
 from PyQt4 import QtCore
 
 ########################################
@@ -23,7 +22,6 @@ from PlotCanvas import *
 from FlatCAMGUI import *
 from FlatCAMCommon import LoudDict
 from FlatCAMTool import *
-
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
 
@@ -142,8 +140,6 @@ class App(QtCore.QObject):
 
         self.project_filename = None
 
-        self.last_folder = None
-
         self.toggle_units_ignore = False
 
         self.defaults_form = GlobalOptionsUI()
@@ -217,6 +213,9 @@ class App(QtCore.QObject):
             "cncjob_plot": True,
             "cncjob_tooldia": 0.016,
             "cncjob_append": "",
+
+            # Persistence
+            "last_folder": None,
 
             # Constants...
             "defaults_save_period_ms": 20000,   # Time between default saves.
@@ -520,6 +519,9 @@ class App(QtCore.QObject):
         self.draw.clear()
         self.draw.drawing_toolbar.setDisabled(True)
         geo.plot()
+
+    def get_last_folder(self):
+        return self.defaults["last_folder"]
 
     def report_usage(self, resource):
         """
@@ -1323,7 +1325,7 @@ class App(QtCore.QObject):
 
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber",
-                                                         directory=self.last_folder)
+                                                         directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Gerber")
 
@@ -1350,7 +1352,7 @@ class App(QtCore.QObject):
 
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon",
-                                                         directory=self.last_folder)
+                                                         directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Excellon")
 
@@ -1377,7 +1379,7 @@ class App(QtCore.QObject):
 
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open G-Code",
-                                                         directory=self.last_folder)
+                                                         directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open G-Code")
 
@@ -1404,7 +1406,7 @@ class App(QtCore.QObject):
 
         try:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Project",
-                                                         directory=self.last_folder)
+                                                         directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getOpenFileName(caption="Open Project")
 
@@ -1453,7 +1455,7 @@ class App(QtCore.QObject):
 
         try:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...",
-                                                         directory=self.last_folder)
+                                                         directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
 
@@ -1511,6 +1513,7 @@ class App(QtCore.QObject):
             except IOError:
                 app_obj.inform.emit("[error] Failed to open file: " + filename)
                 app_obj.progress.emit(0)
+                raise IOError('Failed to open file: ' + filename)
 
             # Further parsing
             self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here
@@ -1566,7 +1569,7 @@ class App(QtCore.QObject):
             except IOError:
                 app_obj.inform.emit("[error] Cannot open file: " + filename)
                 self.progress.emit(0)  # TODO: self and app_bjj mixed
-                raise IOError
+                raise IOError("Cannot open file: " + filename)
 
             excellon_obj.create_geometry()
             self.progress.emit(70)
@@ -1616,9 +1619,14 @@ class App(QtCore.QObject):
             assert isinstance(app_obj_, App)
             self.progress.emit(10)
 
-            f = open(filename)
-            gcode = f.read()
-            f.close()
+            try:
+                f = open(filename)
+                gcode = f.read()
+                f.close()
+            except IOError:
+                app_obj_.inform.emit("[error] Failed to open " + filename)
+                self.progress.emit(0)
+                raise IOError("Failed to open " + filename)
 
             job_obj.gcode = gcode
 
@@ -1750,7 +1758,7 @@ class App(QtCore.QObject):
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
     def register_folder(self, filename):
-        self.last_folder = os.path.split(str(filename))[0]
+        self.defaults["last_folder"] = os.path.split(str(filename))[0]
 
     def set_progress_bar(self, percentage, text=""):
         self.ui.progress_bar.setValue(int(percentage))
