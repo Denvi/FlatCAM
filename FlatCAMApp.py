@@ -76,9 +76,49 @@ class App(QtCore.QObject):
         """
 
         App.log.info("FlatCAM Starting...")
-        self.path = os.path.dirname(sys.argv[0])
+
+        ###################
+        ### OS-specific ###
+        ###################
+
+        if sys.platform == 'win32':
+            from win32com.shell import shell, shellcon
+            App.log.debug("Win32!")
+            self.data_path = shell.SHGetFolderPath(0, shellcon.CSIDL_APPDATA, None, 0) + \
+                '/FlatCAM'
+        else:  # Linux/Unix/MacOS
+            self.data_path = os.path.expanduser('~') + \
+                '/.FlatCAM'
+
+        ###############################
+        ### Setup folders and files ###
+        ###############################
+
+        if not os.path.exists(self.data_path):
+            os.makedirs(self.data_path)
+            App.log.debug('Created data folder: ' + self.data_path)
+
+        try:
+            f = open(self.data_path + '/defaults.json')
+            f.close()
+        except IOError:
+            App.log.debug('Creating empty defaults.json')
+            f = open(self.data_path + '/defaults.json', 'w')
+            json.dump({}, f)
+            f.close()
+
+        try:
+            f = open(self.data_path + '/recent.json')
+            f.close()
+        except IOError:
+            App.log.debug('Creating empty recent.json')
+            f = open(self.data_path + '/recent.json', 'w')
+            json.dump([], f)
+            f.close()
+
+        #self.path = os.path.dirname(sys.argv[0])
         #App.log.debug("Running in " + os.path.realpath(__file__))
-        App.log.debug("Running in " + self.path)
+        #App.log.debug("Running in " + self.path)
 
         QtCore.QObject.__init__(self)
 
@@ -571,7 +611,7 @@ class App(QtCore.QObject):
         :return: None
         """
         try:
-            f = open(self.path + "/defaults.json")
+            f = open(self.data_path + "/defaults.json")
             options = f.read()
             f.close()
         except IOError:
@@ -612,7 +652,7 @@ class App(QtCore.QObject):
             self.recent.pop()
 
         try:
-            f = open('recent.json', 'w')
+            f = open(self.data_path + '/recent.json', 'w')
         except IOError:
             App.log.error("Failed to open recent items file for writing.")
             self.inform.emit('Failed to open recent files file for writing.')
@@ -787,7 +827,7 @@ class App(QtCore.QObject):
 
         ## Read options from file ##
         try:
-            f = open(self.path + "/defaults.json")
+            f = open(self.data_path + "/defaults.json")
             options = f.read()
             f.close()
         except:
@@ -2209,7 +2249,7 @@ class App(QtCore.QObject):
 
         # Open file
         try:
-            f = open('recent.json')
+            f = open(self.data_path + '/recent.json')
         except IOError:
             App.log.error("Failed to load recent item list.")
             self.inform.emit("[error] Failed to load recent item list.")
