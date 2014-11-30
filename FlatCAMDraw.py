@@ -265,14 +265,17 @@ class FlatCAMDraw(QtCore.QObject):
         self.grid_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/grid32.png'), 'Snap to grid')
         self.grid_gap_x_entry = QtGui.QLineEdit()
         self.grid_gap_x_entry.setMaximumWidth(70)
+        self.grid_gap_x_entry.setToolTip("Grid X distance")
         self.snap_toolbar.addWidget(self.grid_gap_x_entry)
         self.grid_gap_y_entry = QtGui.QLineEdit()
         self.grid_gap_y_entry.setMaximumWidth(70)
+        self.grid_gap_y_entry.setToolTip("Grid Y distante")
         self.snap_toolbar.addWidget(self.grid_gap_y_entry)
 
         self.corner_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/corner32.png'), 'Snap to corner')
         self.snap_max_dist_entry = QtGui.QLineEdit()
         self.snap_max_dist_entry.setMaximumWidth(70)
+        self.snap_max_dist_entry.setToolTip("Max. magnet distance")
         self.snap_toolbar.addWidget(self.snap_max_dist_entry)
 
         self.snap_toolbar.setDisabled(disabled)
@@ -502,7 +505,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.canvas.canvas.restore_region(self.canvas.background)
         geo = self.active_tool.utility_geometry(data=(x, y))
 
-        if geo is not None and not geo.is_empty:
+        if geo is not None and ((type(geo) == list and len(geo) > 0) or
+                                (type(geo) != list and not geo.is_empty)):
 
             # Remove any previous utility shape
             for shape in self.shape_buffer:
@@ -574,13 +578,19 @@ class FlatCAMDraw(QtCore.QObject):
         if event.key == 'm':
             self.move_btn.setChecked(True)
             self.on_tool_select('move')
-            self.active_tool.set_origin((event.xdata, event.ydata))
+            self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
 
         ### Copy
         if event.key == 'c':
             self.copy_btn.setChecked(True)
             self.on_tool_select('copy')
-            self.active_tool.set_origin((event.xdata, event.ydata))
+            self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
+
+        ### Snap
+        if event.key == 'g':
+            self.grid_snap_btn.trigger()
+        if event.key == 'k':
+            self.corner_snap_btn.trigger()
 
     def on_canvas_key_release(self, event):
         self.key = None
@@ -594,7 +604,6 @@ class FlatCAMDraw(QtCore.QObject):
             self.app.info("Shape deleted.")
 
     def plot_shape(self, geometry=None, linespec='b-', linewidth=1, animated=False):
-        self.app.log.debug("plot_shape()")
         plot_elements = []
 
         if geometry is None:
