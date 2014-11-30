@@ -516,8 +516,8 @@ class App(QtCore.QObject):
             return
 
         self.draw.update_fcgeometry(geo)
-        self.draw.clear()
-        self.draw.drawing_toolbar.setDisabled(True)
+        self.draw.deactivate()
+
         geo.plot()
 
     def get_last_folder(self):

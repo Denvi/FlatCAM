@@ -12,6 +12,9 @@ from shapely.geometry.base import BaseGeometry
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
 
+from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
+
+from rtree import index as rtindex
 
 class DrawTool(object):
     def __init__(self, draw_app):
@@ -208,6 +211,12 @@ class FCMove(FCShapeTool):
         self.complete = True
 
     def utility_geometry(self, data=None):
+        """
+        Temporary geometry on screen while using this tool.
+
+        :param data:
+        :return:
+        """
         if self.origin is None:
             return None
 
@@ -225,9 +234,15 @@ class FCCopy(FCMove):
         self.geometry = [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
         self.complete = True
 
-class FlatCAMDraw:
+
+########################
+### Main Application ###
+########################
+class FlatCAMDraw(QtCore.QObject):
     def __init__(self, app, disabled=False):
         assert isinstance(app, FlatCAMApp.App)
+        super(FlatCAMDraw, self).__init__()
+
         self.app = app
         self.canvas = app.plotcanvas
         self.axes = self.canvas.new_axes("draw")
@@ -244,6 +259,24 @@ class FlatCAMDraw:
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
         self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), 'Move Objects')
         self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), 'Copy Objects')
+
+        ### Snap Toolbar ###
+        self.snap_toolbar = QtGui.QToolBar()
+        self.grid_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/grid32.png'), 'Snap to grid')
+        self.grid_gap_x_entry = QtGui.QLineEdit()
+        self.grid_gap_x_entry.setMaximumWidth(70)
+        self.snap_toolbar.addWidget(self.grid_gap_x_entry)
+        self.grid_gap_y_entry = QtGui.QLineEdit()
+        self.grid_gap_y_entry.setMaximumWidth(70)
+        self.snap_toolbar.addWidget(self.grid_gap_y_entry)
+
+        self.corner_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/corner32.png'), 'Snap to corner')
+        self.snap_max_dist_entry = QtGui.QLineEdit()
+        self.snap_max_dist_entry.setMaximumWidth(70)
+        self.snap_toolbar.addWidget(self.snap_max_dist_entry)
+
+        self.snap_toolbar.setDisabled(disabled)
+        self.app.ui.addToolBar(self.snap_toolbar)
 
         ### Event handlers ###
         ## Canvas events
@@ -290,13 +323,85 @@ class FlatCAMDraw:
             self.tools[tool]["button"].triggered.connect(make_callback(tool))  # Events
             self.tools[tool]["button"].setCheckable(True)  # Checkable
 
+        # for snap_tool in [self.grid_snap_btn, self.corner_snap_btn]:
+        #     snap_tool.triggered.connect(lambda: self.toolbar_tool_toggle("grid_snap"))
+        #     snap_tool.setCheckable(True)
+        self.grid_snap_btn.setCheckable(True)
+        self.grid_snap_btn.triggered.connect(lambda: self.toolbar_tool_toggle("grid_snap"))
+        self.corner_snap_btn.setCheckable(True)
+        self.corner_snap_btn.triggered.connect(lambda: self.toolbar_tool_toggle("corner_snap"))
+
+        self.options = {
+            "snap-x": 0.1,
+            "snap-y": 0.1,
+            "snap_max": 0.05,
+            "grid_snap": False,
+            "corner_snap": False,
+        }
+
+        self.grid_gap_x_entry.setText(str(self.options["snap-x"]))
+        self.grid_gap_y_entry.setText(str(self.options["snap-y"]))
+        self.snap_max_dist_entry.setText(str(self.options["snap_max"]))
+
+        self.rtree_index = rtindex.Index()
+
+        def entry2option(option, entry):
+            self.options[option] = float(entry.text())
+
+        self.grid_gap_x_entry.setValidator(QtGui.QDoubleValidator())
+        self.grid_gap_x_entry.editingFinished.connect(lambda: entry2option("snap-x", self.grid_gap_x_entry))
+        self.grid_gap_y_entry.setValidator(QtGui.QDoubleValidator())
+        self.grid_gap_y_entry.editingFinished.connect(lambda: entry2option("snap-y", self.grid_gap_y_entry))
+        self.snap_max_dist_entry.setValidator(QtGui.QDoubleValidator())
+        self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
+
+    def activate(self):
+        pass
+
+    def deactivate(self):
+        self.clear()
+        self.drawing_toolbar.setDisabled(True)
+        self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
+
+    def toolbar_tool_toggle(self, key):
+        self.options[key] = self.sender().isChecked()
+        print "grid_snap", self.options["grid_snap"]
+
     def clear(self):
         self.active_tool = None
         self.shape_buffer = []
         self.replot()
 
+    def edit_fcgeometry(self, fcgeometry):
+        """
+        Imports the geometry from the given FlatCAM Geometry object
+        into the editor.
+
+        :param fcgeometry: FlatCAMGeometry
+        :return: None
+        """
+        try:
+            _ = iter(fcgeometry.solid_geometry)
+            geometry = fcgeometry.solid_geometry
+        except TypeError:
+            geometry = [fcgeometry.solid_geometry]
+
+        # Delete contents of editor.
+        self.shape_buffer = []
+
+        # Link shapes into editor.
+        for shape in geometry:
+            self.shape_buffer.append({'geometry': shape,
+                                      'selected': False,
+                                      'utility': False})
+
+        self.replot()
+        self.drawing_toolbar.setDisabled(False)
+        self.snap_toolbar.setDisabled(False)
+
     def on_tool_select(self, tool):
         """
+        Behavior of the toolbar. Tool initialization.
 
         :rtype : None
         """
@@ -328,7 +433,7 @@ class FlatCAMDraw:
         """
         if self.active_tool is not None:
             # Dispatch event to active_tool
-            msg = self.active_tool.click((event.xdata, event.ydata))
+            msg = self.active_tool.click(self.snap(event.xdata, event.ydata))
             self.app.info(msg)
 
             # If it is a shape generating tool
@@ -353,20 +458,20 @@ class FlatCAMDraw:
         self.on_canvas_move_effective(event)
         return
 
-        self.move_timer.stop()
-
-        if self.active_tool is None:
-            return
-
-        # Make a function to avoid late evaluation
-        def make_callback():
-            def f():
-                self.on_canvas_move_effective(event)
-            return f
-        callback = make_callback()
-
-        self.move_timer.timeout.connect(callback)
-        self.move_timer.start(500)  # Stops if aready running
+        # self.move_timer.stop()
+        #
+        # if self.active_tool is None:
+        #     return
+        #
+        # # Make a function to avoid late evaluation
+        # def make_callback():
+        #     def f():
+        #         self.on_canvas_move_effective(event)
+        #     return f
+        # callback = make_callback()
+        #
+        # self.move_timer.timeout.connect(callback)
+        # self.move_timer.start(500)  # Stops if aready running
 
     def on_canvas_move_effective(self, event):
         """
@@ -391,9 +496,13 @@ class FlatCAMDraw:
         if self.active_tool is None:
             return
 
+        x, y = self.snap(x, y)
+
+        ### Utility geometry (animated)
+        self.canvas.canvas.restore_region(self.canvas.background)
         geo = self.active_tool.utility_geometry(data=(x, y))
 
-        if geo is not None:
+        if geo is not None and not geo.is_empty:
 
             # Remove any previous utility shape
             for shape in self.shape_buffer:
@@ -408,13 +517,20 @@ class FlatCAMDraw:
             })
 
             # Efficient plotting for fast animation
+
+            #self.canvas.canvas.restore_region(self.canvas.background)
             elements = self.plot_shape(geometry=geo, linespec="b--", animated=True)
-            self.canvas.canvas.restore_region(self.canvas.background)
             for el in elements:
                 self.axes.draw_artist(el)
-            self.canvas.canvas.blit(self.axes.bbox)
+            #self.canvas.canvas.blit(self.axes.bbox)
 
             #self.replot()
+
+
+        elements = self.axes.plot(x, y, 'bo', animated=True)
+        for el in elements:
+                self.axes.draw_artist(el)
+        self.canvas.canvas.blit(self.axes.bbox)
 
     def on_canvas_key(self, event):
         """
@@ -429,7 +545,7 @@ class FlatCAMDraw:
         ### complete automatically, like a polygon or path.
         if event.key == ' ':
             if isinstance(self.active_tool, FCShapeTool):
-                self.active_tool.click((event.xdata, event.ydata))
+                self.active_tool.click(self.snap(event.xdata, event.ydata))
                 self.active_tool.make()
                 if self.active_tool.complete:
                     self.on_shape_complete()
@@ -537,6 +653,15 @@ class FlatCAMDraw:
 
         self.canvas.auto_adjust_axes()
 
+    def add2index(self, id, geo):
+        try:
+            for pt in geo.coords:
+                self.rtree_index.add(id, pt)
+        except NotImplementedError:
+            # It's a polygon?
+            for pt in geo.exterior.coords:
+                self.rtree_index.add(id, pt)
+
     def on_shape_complete(self):
         self.app.log.debug("on_shape_complete()")
 
@@ -551,10 +676,12 @@ class FlatCAMDraw:
                 self.shape_buffer.append({'geometry': geo,
                                           'selected': False,
                                           'utility': False})
+                self.add2index(len(self.shape_buffer)-1, geo)
         except TypeError:
             self.shape_buffer.append({'geometry': self.active_tool.geometry,
                                       'selected': False,
                                       'utility': False})
+            self.add2index(len(self.shape_buffer)-1, self.active_tool.geometry)
 
         # Remove any utility shapes
         for shape in self.shape_buffer:
@@ -569,31 +696,47 @@ class FlatCAMDraw:
         self.axes = self.canvas.new_axes("draw")
         self.plot_all()
 
-    def edit_fcgeometry(self, fcgeometry):
+    def snap(self, x, y):
         """
-        Imports the geometry from the given FlatCAM Geometry object
-        into the editor.
+        Adjusts coordinates to snap settings.
 
-        :param fcgeometry: FlatCAMGeometry
-        :return: None
+        :param x: Input coordinate X
+        :param y: Input coordinate Y
+        :return: Snapped (x, y)
         """
-        try:
-            _ = iter(fcgeometry.solid_geometry)
-            geometry = fcgeometry.solid_geometry
-        except TypeError:
-            geometry = [fcgeometry.solid_geometry]
 
-        # Delete contents of editor.
-        self.shape_buffer = []
+        snap_x, snap_y = (x, y)
+        snap_distance = Inf
 
-        # Link shapes into editor.
-        for shape in geometry:
-            self.shape_buffer.append({'geometry': shape,
-                                      'selected': False,
-                                      'utility': False})
+        ### Object (corner?) snap
+        if self.options["corner_snap"]:
+            try:
+                bbox = self.rtree_index.nearest((x, y), objects=True).next().bbox
+                nearest_pt = (bbox[0], bbox[1])
 
-        self.replot()
-        self.drawing_toolbar.setDisabled(False)
+                nearest_pt_distance = distance((x, y), nearest_pt)
+                if nearest_pt_distance <= self.options["snap_max"]:
+                    snap_distance = nearest_pt_distance
+                    snap_x, snap_y = nearest_pt
+            except StopIteration:
+                pass
+
+        ### Grid snap
+        if self.options["grid_snap"]:
+            if self.options["snap-x"] != 0:
+                snap_x_ = round(x/self.options["snap-x"])*self.options['snap-x']
+            else:
+                snap_x_ = x
+
+            if self.options["snap-y"] != 0:
+                snap_y_ = round(y/self.options["snap-y"])*self.options['snap-y']
+            else:
+                snap_y_ = y
+            nearest_grid_distance = distance((x, y), (snap_x_, snap_y_))
+            if nearest_grid_distance < snap_distance:
+                snap_x, snap_y = (snap_x_, snap_y_)
+
+        return snap_x, snap_y
 
     def update_fcgeometry(self, fcgeometry):
         """
@@ -637,3 +780,7 @@ class FlatCAMDraw:
             })
 
         self.replot()
+
+
+def distance(pt1, pt2):
+    return sqrt((pt1[0]-pt2[0])**2 + (pt1[1]-pt2[1])**2)
