@@ -245,7 +245,9 @@ class GeometryObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.generate_cnc_button)
 
-        ## Paint area
+        ################
+        ## Paint area ##
+        ################
         self.paint_label = QtGui.QLabel('<b>Paint Area:</b>')
         self.paint_label.setToolTip(
             "Creates tool paths to cover the\n"
@@ -288,7 +290,19 @@ class GeometryObjectUI(ObjectUI):
         )
         grid2.addWidget(marginlabel, 2, 0)
         self.paintmargin_entry = LengthEntry()
-        grid2.addWidget(self.paintmargin_entry)
+        grid2.addWidget(self.paintmargin_entry, 2, 1)
+
+        # Method
+        methodlabel = QtGui.QLabel('Method:')
+        methodlabel.setToolTip(
+            "Algorithm to paint the polygon."
+        )
+        grid2.addWidget(methodlabel, 3, 0)
+        self.paintmethod_combo = RadioSet([
+            {"label": "Standard", "value": "standard"},
+            {"label": "Seed-based", "value": "seed"}
+        ])
+        grid2.addWidget(self.paintmethod_combo, 3, 1)
 
         # GO Button
         self.generate_paint_button = QtGui.QPushButton('Generate')
@@ -386,6 +400,35 @@ class ExcellonObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.generate_cnc_button)
 
+        ## Milling Holes
+        self.mill_hole_label = QtGui.QLabel('<b>Mill Holes</b>')
+        self.mill_hole_label.setToolTip(
+            "Create Geometry for milling holes."
+        )
+        self.custom_box.addWidget(self.mill_hole_label)
+
+        grid1 = QtGui.QGridLayout()
+        self.custom_box.addLayout(grid1)
+        tdlabel = QtGui.QLabel('Tool dia:')
+        tdlabel.setToolTip(
+            "Diameter of the cutting tool."
+        )
+        grid1.addWidget(tdlabel, 0, 0)
+        self.tooldia_entry = LengthEntry()
+        grid1.addWidget(self.tooldia_entry, 0, 1)
+
+        choose_tools_label2 = QtGui.QLabel(
+            "Select from the tools section above\n"
+            "the tools you want to include."
+        )
+        self.custom_box.addWidget(choose_tools_label2)
+
+        self.generate_milling_button = QtGui.QPushButton('Generate Geometry')
+        self.generate_milling_button.setToolTip(
+            "Create the Geometry Object\n"
+            "for milling toolpaths."
+        )
+        self.custom_box.addWidget(self.generate_milling_button)
 
 class GerberObjectUI(ObjectUI):
     """

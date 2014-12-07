@@ -567,6 +567,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "travelz": 0.1,
             "feedrate": 5.0,
             # "toolselection": ""
+            "tooldia": 0.1
         })
 
         # TODO: Document this.
@@ -613,6 +614,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.feedrate_entry,
             # "toolselection": self.ui.tools_entry
+            "tooldia": self.ui.tooldia_entry
         })
 
         assert isinstance(self.ui, ExcellonObjectUI)
@@ -620,13 +622,54 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         # self.ui.choose_tools_button.clicked.connect(self.show_tool_chooser)
         self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
+        self.ui.generate_milling_button.clicked.connect(self.on_generate_milling_button_click)
+
+    def get_selected_tools_list(self):
+        """
+        Returns the keys to the self.tools dictionary corresponding
+        to the selections on the tool list in the GUI.
+        """
+        return [str(x.text()) for x in self.ui.tools_table.selectedItems()]
+
+    def on_generate_milling_button_click(self, *args):
+        self.app.report_usage("excellon_on_create_milling_button")
+        self.read_form()
+
+        # Get the tools from the list
+        tools = self.get_selected_tools_list()
+
+        if len(tools) == 0:
+            self.app.inform.emit("Please select one or more tools from the list and try again.")
+            return
+
+        geo_name = self.options["name"] + "_mill"
+
+        def geo_init(geo_obj, app_obj):
+            assert isinstance(geo_obj, FlatCAMGeometry)
+            app_obj.progress.emit(20)
+
+            geo_obj.solid_geometry = []
+
+            for hole in self.drills:
+                if hole['tool'] in tools:
+                    geo_obj.solid_geometry.append(
+                        Point(hole['point']).buffer(self.tools[hole['tool']]["C"]/2 - self.options["tooldia"]/2).exterior
+                    )
+
+        def geo_thread(app_obj):
+            app_obj.new_object("geometry", geo_name, geo_init)
+            app_obj.progress.emit(100)
+
+        # Send to worker
+        # self.app.worker.add_task(job_thread, [self.app])
+        self.app.worker_task.emit({'fcn': geo_thread, 'params': [self.app]})
 
     def on_create_cncjob_button_click(self, *args):
         self.app.report_usage("excellon_on_create_cncjob_button")
         self.read_form()
 
         # Get the tools from the list
-        tools = [str(x.text()) for x in self.ui.tools_table.selectedItems()]
+        tools = self.get_selected_tools_list()
 
         if len(tools) == 0:
             self.app.inform.emit("Please select one or more tools from the list and try again.")
@@ -890,7 +933,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "cnctooldia": 0.4 / 25.4,
             "painttooldia": 0.0625,
             "paintoverlap": 0.15,
-            "paintmargin": 0.01
+            "paintmargin": 0.01,
+            "paintmethod": "standard"
         })
 
         # Attributes to be included in serialization
@@ -918,7 +962,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "cnctooldia": self.ui.cnctooldia_entry,
             "painttooldia": self.ui.painttooldia_entry,
             "paintoverlap": self.ui.paintoverlap_entry,
-            "paintmargin": self.ui.paintmargin_entry
+            "paintmargin": self.ui.paintmargin_entry,
+            "paintmethod": self.ui.paintmethod_combo
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -945,13 +990,18 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         subscription = self.app.plotcanvas.mpl_connect('button_press_event', doit)
 
     def paint_poly(self, inside_pt, tooldia, overlap):
+
+        # Which polygon.
         poly = find_polygon(self.solid_geometry, inside_pt)
 
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
             #assert isinstance(app_obj, App)
-            cp = clear_poly(poly.buffer(-self.options["paintmargin"]), tooldia, overlap)
+            #cp = clear_poly(poly.buffer(-self.options["paintmargin"]), tooldia, overlap)
+            cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
+            if self.options["paintmethod"] == "seed":
+                cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             geo_obj.solid_geometry = cp
             geo_obj.options["cnctooldia"] = tooldia
 
@@ -1067,6 +1117,26 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         return factor
 
+    def plot_element(self, element):
+        try:
+            for sub_el in element:
+                self.plot_element(sub_el)
+        except TypeError:
+            if type(element) == Polygon:
+                x, y = element.exterior.coords.xy
+                self.axes.plot(x, y, 'r-')
+                for ints in element.interiors:
+                    x, y = ints.coords.xy
+                    self.axes.plot(x, y, 'r-')
+                return
+
+            if type(element) == LineString or type(element) == LinearRing:
+                x, y = element.coords.xy
+                self.axes.plot(x, y, 'r-')
+                return
+
+        FlatCAMApp.App.log.warning("Did not plot:", str(type(element)))
+
     def plot(self):
         """
         Plots the object into its axes. If None, of if the axes
@@ -1082,39 +1152,41 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         # Make sure solid_geometry is iterable.
         # TODO: This method should not modify the object !!!
-        try:
-            _ = iter(self.solid_geometry)
-        except TypeError:
-            if self.solid_geometry is None:
-                self.solid_geometry = []
-            else:
-                self.solid_geometry = [self.solid_geometry]
+        # try:
+        #     _ = iter(self.solid_geometry)
+        # except TypeError:
+        #     if self.solid_geometry is None:
+        #         self.solid_geometry = []
+        #     else:
+        #         self.solid_geometry = [self.solid_geometry]
+        #
+        # for geo in self.solid_geometry:
+        #
+        #     if type(geo) == Polygon:
+        #         x, y = geo.exterior.coords.xy
+        #         self.axes.plot(x, y, 'r-')
+        #         for ints in geo.interiors:
+        #             x, y = ints.coords.xy
+        #             self.axes.plot(x, y, 'r-')
+        #         continue
+        #
+        #     if type(geo) == LineString or type(geo) == LinearRing:
+        #         x, y = geo.coords.xy
+        #         self.axes.plot(x, y, 'r-')
+        #         continue
+        #
+        #     if type(geo) == MultiPolygon:
+        #         for poly in geo:
+        #             x, y = poly.exterior.coords.xy
+        #             self.axes.plot(x, y, 'r-')
+        #             for ints in poly.interiors:
+        #                 x, y = ints.coords.xy
+        #                 self.axes.plot(x, y, 'r-')
+        #         continue
+        #
+        #     FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
-        for geo in self.solid_geometry:
-
-            if type(geo) == Polygon:
-                x, y = geo.exterior.coords.xy
-                self.axes.plot(x, y, 'r-')
-                for ints in geo.interiors:
-                    x, y = ints.coords.xy
-                    self.axes.plot(x, y, 'r-')
-                continue
-
-            if type(geo) == LineString or type(geo) == LinearRing:
-                x, y = geo.coords.xy
-                self.axes.plot(x, y, 'r-')
-                continue
-
-            if type(geo) == MultiPolygon:
-                for poly in geo:
-                    x, y = poly.exterior.coords.xy
-                    self.axes.plot(x, y, 'r-')
-                    for ints in poly.interiors:
-                        x, y = ints.coords.xy
-                        self.axes.plot(x, y, 'r-')
-                continue
-
-            FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
+        self.plot_element(self.solid_geometry)
 
         self.app.plotcanvas.auto_adjust_axes()
         # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)

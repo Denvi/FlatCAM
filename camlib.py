@@ -216,6 +216,14 @@ class Geometry(object):
         """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
+
+        This algorithm shrinks the edges of the polygon and takes
+        the resulting edges as toolpaths.
+
+        :param polygon: Polygon to clear.
+        :param tooldia: Diameter of the tool.
+        :param overlap: Overlap of toolpasses.
+        :return:
         """
         poly_cuts = [polygon.buffer(-tooldia/2.0)]
         while True:
@@ -225,6 +233,58 @@ class Geometry(object):
             else:
                 break
         return poly_cuts
+
+    def clear_polygon2(self, polygon, tooldia, seedpoint=None, overlap=0.15):
+        """
+        Creates geometry inside a polygon for a tool to cover
+        the whole area.
+
+        This algorithm starts with a seed point inside the polygon
+        and draws circles around it. Arcs inside the polygons are
+        valid cuts. Finalizes by cutting around the inside edge of
+        the polygon.
+
+        :param polygon:
+        :param tooldia:
+        :param seedpoint:
+        :param overlap:
+        :return:
+        """
+
+        if seedpoint is None:
+            seedpoint = polygon.representative_point()
+
+        # Current buffer radius
+        radius = tooldia/2*(1-overlap)
+
+        # The toolpaths
+        geoms = [Point(seedpoint).buffer(radius).exterior]
+
+        # Path margin
+        path_margin = polygon.buffer(-tooldia/2)
+
+        # Grow from seed until outside the box.
+        while 1:
+            path = Point(seedpoint).buffer(radius).exterior
+            path = path.intersection(path_margin)
+
+            # Touches polygon?
+            if path.is_empty:
+                break
+            else:
+                geoms.append(path)
+
+            radius += tooldia*(1-overlap)
+
+        # Clean edges
+        outer_edges = [x.exterior for x in autolist(polygon.buffer(-tooldia/2))]
+        inner_edges = []
+        for x in autolist(polygon.buffer(-tooldia/2)):  # Over resulting polygons
+            for y in x.interiors:  # Over interiors of each polygon
+                inner_edges.append(y)
+        geoms += outer_edges + inner_edges
+
+        return geoms
 
     def scale(self, factor):
         """
@@ -2695,30 +2755,30 @@ def arc_angle(start, stop, direction):
     return angle
 
 
-def clear_poly(poly, tooldia, overlap=0.1):
-    """
-    Creates a list of Shapely geometry objects covering the inside
-    of a Shapely.Polygon. Use for removing all the copper in a region
-    or bed flattening.
-
-    :param poly: Target polygon
-    :type poly: Shapely.Polygon
-    :param tooldia: Diameter of the tool
-    :type tooldia: float
-    :param overlap: Fraction of the tool diameter to overlap
-        in each pass.
-    :type overlap: float
-    :return: list of Shapely.Polygon
-    :rtype: list
-    """
-    poly_cuts = [poly.buffer(-tooldia/2.0)]
-    while True:
-        poly = poly_cuts[-1].buffer(-tooldia*(1-overlap))
-        if poly.area > 0:
-            poly_cuts.append(poly)
-        else:
-            break
-    return poly_cuts
+# def clear_poly(poly, tooldia, overlap=0.1):
+#     """
+#     Creates a list of Shapely geometry objects covering the inside
+#     of a Shapely.Polygon. Use for removing all the copper in a region
+#     or bed flattening.
+#
+#     :param poly: Target polygon
+#     :type poly: Shapely.Polygon
+#     :param tooldia: Diameter of the tool
+#     :type tooldia: float
+#     :param overlap: Fraction of the tool diameter to overlap
+#         in each pass.
+#     :type overlap: float
+#     :return: list of Shapely.Polygon
+#     :rtype: list
+#     """
+#     poly_cuts = [poly.buffer(-tooldia/2.0)]
+#     while True:
+#         poly = poly_cuts[-1].buffer(-tooldia*(1-overlap))
+#         if poly.area > 0:
+#             poly_cuts.append(poly)
+#         else:
+#             break
+#     return poly_cuts
 
 
 def find_polygon(poly_set, point):
@@ -2775,7 +2835,7 @@ def dict2obj(d):
         return d
 
 
-def plotg(geo):
+def plotg(geo, solid_poly=False):
     try:
         _ = iter(geo)
     except:
@@ -2783,12 +2843,21 @@ def plotg(geo):
 
     for g in geo:
         if type(g) == Polygon:
-            x, y = g.exterior.coords.xy
-            plot(x, y)
-            for ints in g.interiors:
-                x, y = ints.coords.xy
+            if solid_poly:
+                patch = PolygonPatch(g,
+                                     facecolor="#BBF268",
+                                     edgecolor="#006E20",
+                                     alpha=0.75,
+                                     zorder=2)
+                ax = subplot(111)
+                ax.add_patch(patch)
+            else:
+                x, y = g.exterior.coords.xy
                 plot(x, y)
-            continue
+                for ints in g.interiors:
+                    x, y = ints.coords.xy
+                    plot(x, y)
+                continue
 
         if type(g) == LineString or type(g) == LinearRing:
             x, y = g.coords.xy
@@ -3025,3 +3094,10 @@ class Zprofile:
         return [{"path": path.intersection(self.polygons[i]),
                  "z": self.data[i][2]} for i in crossing]
 
+
+def autolist(obj):
+    try:
+        _ = iter(obj)
+        return obj
+    except TypeError:
+        return [obj]

@@ -383,11 +383,15 @@ class FlatCAMDraw(QtCore.QObject):
         :param fcgeometry: FlatCAMGeometry
         :return: None
         """
-        try:
-            _ = iter(fcgeometry.solid_geometry)
-            geometry = fcgeometry.solid_geometry
-        except TypeError:
-            geometry = [fcgeometry.solid_geometry]
+
+        if fcgeometry.solid_geometry is None:
+            geometry = []
+        else:
+            try:
+                _ = iter(fcgeometry.solid_geometry)
+                geometry = fcgeometry.solid_geometry
+            except TypeError:
+                geometry = [fcgeometry.solid_geometry]
 
         # Delete contents of editor.
         self.shape_buffer = []
@@ -650,6 +654,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.app.log.debug("plot_all()")
         self.axes.cla()
         for shape in self.shape_buffer:
+            if shape['geometry'] is None:  # TODO: This shouldn't have happened
+                continue
+
             if shape['utility']:
                 self.plot_shape(geometry=shape['geometry'], linespec='k--', linewidth=1)
                 continue
