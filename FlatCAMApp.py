@@ -84,9 +84,11 @@ class App(QtCore.QObject):
             App.log.debug("Win32!")
             self.data_path = shell.SHGetFolderPath(0, shellcon.CSIDL_APPDATA, None, 0) + \
                 '/FlatCAM'
+            self.os = 'windows'
         else:  # Linux/Unix/MacOS
             self.data_path = os.path.expanduser('~') + \
                 '/.FlatCAM'
+            self.os = 'unix'
 
         ###############################
         ### Setup folders and files ###

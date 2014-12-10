@@ -190,7 +190,16 @@ class Geometry(object):
         :rtype: Shapely.MultiPolygon or Shapely.Polygon
         """
         return self.solid_geometry.buffer(offset)
-        
+
+    def is_empty(self):
+        if self.solid_geometry is None:
+            return True
+
+        if type(self.solid_geometry) is list and len(self.solid_geometry) == 0:
+            return True
+
+        return False
+
     def size(self):
         """
         Returns (width, height) of rectangular
@@ -200,7 +209,7 @@ class Geometry(object):
             log.warning("Solid_geometry not computed yet.")
             return 0
         bounds = self.bounds()
-        return bounds[2]-bounds[0], bounds[3]-bounds[1]
+        return bounds[2] - bounds[0], bounds[3] - bounds[1]
         
     def get_empty_area(self, boundary=None):
         """

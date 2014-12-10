@@ -635,12 +635,18 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.app.report_usage("excellon_on_create_milling_button")
         self.read_form()
 
-        # Get the tools from the list
+        # Get the tools from the list. These are keys
+        # to self.tools
         tools = self.get_selected_tools_list()
 
         if len(tools) == 0:
             self.app.inform.emit("Please select one or more tools from the list and try again.")
             return
+
+        for tool in tools:
+            if self.tools[tool]["C"] < self.options["tooldia"]:
+                self.app.inform.emit("[warning] Milling tool is larger than hole size. Cancelled.")
+                return
 
         geo_name = self.options["name"] + "_mill"
 
@@ -653,7 +659,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             for hole in self.drills:
                 if hole['tool'] in tools:
                     geo_obj.solid_geometry.append(
-                        Point(hole['point']).buffer(self.tools[hole['tool']]["C"]/2 - self.options["tooldia"]/2).exterior
+                        Point(hole['point']).buffer(self.tools[hole['tool']]["C"] / 2 -
+                                                    self.options["tooldia"] / 2).exterior
                     )
 
         def geo_thread(app_obj):
@@ -1121,7 +1128,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         try:
             for sub_el in element:
                 self.plot_element(sub_el)
-        except TypeError:
+
+        except TypeError:  # Element is not iterable...
+
             if type(element) == Polygon:
                 x, y = element.exterior.coords.xy
                 self.axes.plot(x, y, 'r-')
@@ -1135,7 +1144,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 self.axes.plot(x, y, 'r-')
                 return
 
-        FlatCAMApp.App.log.warning("Did not plot:", str(type(element)))
+            FlatCAMApp.App.log.warning("Did not plot:" + str(type(element)))
 
     def plot(self):
         """
