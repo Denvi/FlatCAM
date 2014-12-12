@@ -239,13 +239,13 @@ class App(QtCore.QObject):
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
         if self.defaults['serial'] == 0 or len(str(self.defaults['serial'])) < 10:
             self.defaults['serial'] = ''.join([random.choice(chars) for i in range(20)])
-            self.save_defaults()
+            self.save_defaults(silent=True)
 
         self.propagate_defaults()
 
         def auto_save_defaults():
             try:
-                self.save_defaults()
+                self.save_defaults(silent=True)
             finally:
                 QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
@@ -819,7 +819,7 @@ class App(QtCore.QObject):
 
         self.save_defaults()
 
-    def save_defaults(self):
+    def save_defaults(self, silent=False):
         """
         Saves application default options
         ``self.defaults`` to defaults.json.
@@ -863,7 +863,8 @@ class App(QtCore.QObject):
             self.inform.emit("[error] Failed to write defaults to file.")
             return
 
-        self.inform.emit("Defaults saved.")
+        if not silent:
+            self.inform.emit("Defaults saved.")
 
     def on_edit_join(self):
         """
@@ -2327,9 +2328,11 @@ class App(QtCore.QObject):
         full_url = App.version_url + \
             "?s=" + str(self.defaults['serial']) + \
             "&v=" + str(self.version) + \
+            "&os=" + str(self.os) + \
             "&" + urllib.urlencode(self.defaults["stats"])
         App.log.debug("Checking for updates @ %s" % full_url)
 
+        ### Get the data
         try:
             f = urllib.urlopen(full_url)
         except:
@@ -2348,6 +2351,7 @@ class App(QtCore.QObject):
 
         f.close()
 
+        ### Latest version?
         if self.version >= data["version"]:
             App.log.debug("FlatCAM is up to date!")
             self.inform.emit("[success] FlatCAM is up to date!")
@@ -2356,9 +2360,10 @@ class App(QtCore.QObject):
         App.log.debug("Newer version available.")
         self.message.emit(
             "Newer Version Available",
-            "There is a newer version of FlatCAM\n" +
-            "available for download:\n\n" +
-            data["name"] + "\n\n" + data["message"],
+            QtCore.QString("There is a newer version of FlatCAM " +
+                           "available for download:<br><br>" +
+                           "<B>" + data["name"] + "</b><br>" +
+                           data["message"].replace("\n", "<br>")),
             "info"
         )
 

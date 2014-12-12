@@ -12,3 +12,5 @@ easy_install -U distribute
 apt-get install python-pip
 pip install --upgrade matplotlib
 pip install --upgrade Shapely
+apt-get install libspatialindex-dev
+pip install rtree

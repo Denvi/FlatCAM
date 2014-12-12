@@ -16,7 +16,14 @@ from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
 
 from rtree import index as rtindex
 
+
 class DrawTool(object):
+    """
+    Abstract Class representing a tool in the drawing
+    program. Can generate geometry, including temporary
+    utility geometry that is updated on user clicks
+    and mouse motion.
+    """
     def __init__(self, draw_app):
         self.draw_app = draw_app
         self.complete = False
@@ -40,6 +47,10 @@ class FCShapeTool(DrawTool):
 
 
 class FCCircle(FCShapeTool):
+    """
+    Resulting type: Polygon
+    """
+
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
         self.start_msg = "Click on CENTER ..."
@@ -60,7 +71,7 @@ class FCCircle(FCShapeTool):
         if len(self.points) == 1:
             p1 = self.points[0]
             p2 = data
-            radius = sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+            radius = sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
             return Point(p1).buffer(radius)
 
         return None
@@ -68,12 +79,16 @@ class FCCircle(FCShapeTool):
     def make(self):
         p1 = self.points[0]
         p2 = self.points[1]
-        radius = sqrt((p1[0]-p2[0])**2 + (p1[1]-p2[1])**2)
+        radius = sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
         self.geometry = Point(p1).buffer(radius)
         self.complete = True
 
 
 class FCRectangle(FCShapeTool):
+    """
+    Resulting type: Polygon
+    """
+
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
         self.start_msg = "Click on 1st corner ..."
@@ -107,6 +122,10 @@ class FCRectangle(FCShapeTool):
 
 
 class FCPolygon(FCShapeTool):
+    """
+    Resulting type: Polygon
+    """
+
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
         self.start_msg = "Click on 1st point ..."
@@ -139,6 +158,10 @@ class FCPolygon(FCShapeTool):
 
 
 class FCPath(FCPolygon):
+    """
+    Resulting type: LineString
+    """
+
     def make(self):
         self.geometry = LineString(self.points)
         self.complete = True
@@ -166,10 +189,11 @@ class FCSelect(DrawTool):
             if self.draw_app.key != 'control':
                 shape["selected"] = False
 
-            distance = Point(point).distance(shape["geometry"])
-            if distance < min_distance:
+            # TODO: Do this with rtree?
+            dist = Point(point).distance(shape["geometry"])
+            if dist < min_distance:
                 closest_shape = shape
-                min_distance = distance
+                min_distance = dist
 
         if closest_shape is not None:
             closest_shape["selected"] = True
@@ -799,4 +823,4 @@ class FlatCAMDraw(QtCore.QObject):
 
 
 def distance(pt1, pt2):
-    return sqrt((pt1[0]-pt2[0])**2 + (pt1[1]-pt2[1])**2)
+    return sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)

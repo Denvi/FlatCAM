@@ -295,7 +295,9 @@ class GeometryObjectUI(ObjectUI):
         # Method
         methodlabel = QtGui.QLabel('Method:')
         methodlabel.setToolTip(
-            "Algorithm to paint the polygon."
+            "Algorithm to paint the polygon:<BR>"
+            "<B>Standard</B>: Fixed step inwards.<BR>"
+            "<B>Seed-based</B>: Outwards from seed."
         )
         grid2.addWidget(methodlabel, 3, 0)
         self.paintmethod_combo = RadioSet([

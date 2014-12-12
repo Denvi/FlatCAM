@@ -125,19 +125,15 @@ class Geometry(object):
         log.debug("Geometry->bounds()")
         if self.solid_geometry is None:
             log.debug("solid_geometry is None")
-            log.warning("solid_geometry not computed yet.")
             return 0, 0, 0, 0
 
         if type(self.solid_geometry) is list:
-            log.debug("type(solid_geometry) is list")
             # TODO: This can be done faster. See comment from Shapely mailing lists.
             if len(self.solid_geometry) == 0:
                 log.debug('solid_geometry is empty []')
                 return 0, 0, 0, 0
-            log.debug('solid_geometry is not empty, returning cascaded union of items')
             return cascaded_union(self.solid_geometry).bounds
         else:
-            log.debug("type(solid_geometry) is not list, returning .bounds property")
             return self.solid_geometry.bounds
 
     def flatten_to_paths(self, geometry=None, reset=True):
