@@ -1470,6 +1470,16 @@ class Gerber (Geometry):
 
                 ### Polarity change
                 # Example: %LPD*% or %LPC*%
+                # If polarity changes, creates geometry from current
+                # buffer, then adds or subtracts accordingly.
+
+                ## DEBUG
+                if line_num == 11:
+                    print "LINE:", gline
+                    print "RE:", self.lpol_re.pattern
+                    print "MATCH:", self.lpol_re.search(gline)
+
+
                 match = self.lpol_re.search(gline)
                 if match:
                     if len(path) > 1 and current_polarity != match.group(1):
@@ -1482,7 +1492,9 @@ class Gerber (Geometry):
                         path = [path[-1]]
 
                     # --- Apply buffer ---
+                    print "current_polarity:", current_polarity
                     if current_polarity == 'D':
+                        print "Union with Cascaded Union of:", poly_buffer
                         self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
                     else:
                         self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
