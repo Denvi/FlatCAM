@@ -856,7 +856,7 @@ class App(QtCore.QObject):
 
         # Save update options
         try:
-            f = open("defaults.json", "w")
+            f = open(self.data_path + "/defaults.json", "w")
             json.dump(defaults, f)
             f.close()
         except:
