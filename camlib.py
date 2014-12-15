@@ -1289,7 +1289,7 @@ class Gerber (Geometry):
 
                     if quadrant_mode == 'MULTI':
                         center = [i + current_x, j + current_y]
-                        radius = sqrt(i**2 + j**2)
+                        radius = sqrt(i ** 2 + j ** 2)
                         start = arctan2(-j, -i)  # Start angle
                         # Numerical errors might prevent start == stop therefore
                         # we check ahead of time. This should result in a
@@ -1362,8 +1362,6 @@ class Gerber (Geometry):
                             continue
                         else:
                             log.warning("Invalid arc in line %d." % line_num)
-
-
 
                 ### Operation code alone
                 # Operation code alone, usually just D03 (Flash)
@@ -1479,26 +1477,28 @@ class Gerber (Geometry):
                     print "RE:", self.lpol_re.pattern
                     print "MATCH:", self.lpol_re.search(gline)
 
-
                 match = self.lpol_re.search(gline)
                 if match:
                     if len(path) > 1 and current_polarity != match.group(1):
 
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width/2)
+                        geo = LineString(path).buffer(width / 2)
                         poly_buffer.append(geo)
 
                         path = [path[-1]]
 
                     # --- Apply buffer ---
                     print "current_polarity:", current_polarity
-                    if current_polarity == 'D':
-                        print "Union with Cascaded Union of:", poly_buffer
-                        self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
-                    else:
-                        self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
-                    poly_buffer = []
+                    # If added for testing of bug #83
+                    # TODO: Remove when bug fixed
+                    if len(poly_buffer) > 0:
+                        if current_polarity == 'D':
+                            print "Union with Cascaded Union of:", poly_buffer
+                            self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
+                        else:
+                            self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
+                        poly_buffer = []
 
                     current_polarity = match.group(1)
                     continue
