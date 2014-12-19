@@ -4,8 +4,10 @@ import inspect  # TODO: Remove
 import FlatCAMApp
 from PyQt4 import Qt, QtGui, QtCore
 
-
 class ObjectCollection(QtCore.QAbstractListModel):
+    """
+    Object storage and management.
+    """
 
     classdict = {
         "gerber": FlatCAMGerber,
@@ -39,8 +41,12 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
         self.click_modifier = None
 
+        ## GUI Events
         self.view.selectionModel().selectionChanged.connect(self.on_list_selection_change)
         self.view.activated.connect(self.on_item_activated)
+
+    def on_key(self, event):
+        print event
 
     def on_mouse_down(self, event):
         print "Mouse button pressed on list"

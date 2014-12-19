@@ -1470,13 +1470,6 @@ class Gerber (Geometry):
                 # Example: %LPD*% or %LPC*%
                 # If polarity changes, creates geometry from current
                 # buffer, then adds or subtracts accordingly.
-
-                ## DEBUG
-                if line_num == 11:
-                    print "LINE:", gline
-                    print "RE:", self.lpol_re.pattern
-                    print "MATCH:", self.lpol_re.search(gline)
-
                 match = self.lpol_re.search(gline)
                 if match:
                     if len(path) > 1 and current_polarity != match.group(1):
@@ -1489,12 +1482,10 @@ class Gerber (Geometry):
                         path = [path[-1]]
 
                     # --- Apply buffer ---
-                    print "current_polarity:", current_polarity
                     # If added for testing of bug #83
                     # TODO: Remove when bug fixed
                     if len(poly_buffer) > 0:
                         if current_polarity == 'D':
-                            print "Union with Cascaded Union of:", poly_buffer
                             self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
                         else:
                             self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
@@ -1578,10 +1569,10 @@ class Gerber (Geometry):
             loc = location.coords[0]
             width = aperture['width']
             height = aperture['height']
-            minx = loc[0] - width/2
-            maxx = loc[0] + width/2
-            miny = loc[1] - height/2
-            maxy = loc[1] + height/2
+            minx = loc[0] - width / 2
+            maxx = loc[0] + width / 2
+            miny = loc[1] - height / 2
+            maxy = loc[1] + height / 2
             return shply_box(minx, miny, maxx, maxy)
 
         if aperture['type'] == 'O':  # Obround
@@ -1589,15 +1580,15 @@ class Gerber (Geometry):
             width = aperture['width']
             height = aperture['height']
             if width > height:
-                p1 = Point(loc[0] + 0.5*(width-height), loc[1])
-                p2 = Point(loc[0] - 0.5*(width-height), loc[1])
-                c1 = p1.buffer(height*0.5)
-                c2 = p2.buffer(height*0.5)
+                p1 = Point(loc[0] + 0.5 * (width - height), loc[1])
+                p2 = Point(loc[0] - 0.5 * (width - height), loc[1])
+                c1 = p1.buffer(height * 0.5)
+                c2 = p2.buffer(height * 0.5)
             else:
-                p1 = Point(loc[0], loc[1] + 0.5*(height-width))
-                p2 = Point(loc[0], loc[1] - 0.5*(height-width))
-                c1 = p1.buffer(width*0.5)
-                c2 = p2.buffer(width*0.5)
+                p1 = Point(loc[0], loc[1] + 0.5 * (height - width))
+                p2 = Point(loc[0], loc[1] - 0.5 * (height - width))
+                c1 = p1.buffer(width * 0.5)
+                c2 = p2.buffer(width * 0.5)
             return cascaded_union([c1, c2]).convex_hull
 
         if aperture['type'] == 'P':  # Regular polygon
