@@ -1,5 +1,6 @@
 from PyQt4 import QtGui, QtCore, Qt
 import FlatCAMApp
+from camlib import *
 
 from shapely.geometry import Polygon, LineString, Point, LinearRing
 from shapely.geometry import MultiPoint, MultiPolygon
@@ -10,7 +11,8 @@ from shapely.wkt import loads as sloads
 from shapely.wkt import dumps as sdumps
 from shapely.geometry.base import BaseGeometry
 
-from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
+from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, sign, dot
+from numpy.linalg import solve
 
 from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
 
@@ -32,7 +34,13 @@ class DrawTool(object):
         self.geometry = None
 
     def click(self, point):
+        """
+        :param point: [x, y] Coordinate pair.
+        """
         return ""
+
+    def on_key(self, key):
+        return None
 
     def utility_geometry(self, data=None):
         return None
@@ -79,8 +87,180 @@ class FCCircle(FCShapeTool):
     def make(self):
         p1 = self.points[0]
         p2 = self.points[1]
-        radius = sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+        radius = distance(p1, p2)
         self.geometry = Point(p1).buffer(radius)
+        self.complete = True
+
+
+class FCArc(FCShapeTool):
+    def __init__(self, draw_app):
+        DrawTool.__init__(self, draw_app)
+        self.start_msg = "Click on CENTER ..."
+
+        # Direction of rotation between point 1 and 2.
+        # 'cw' or 'ccw'. Switch direction by hitting the
+        # 'o' key.
+        self.direction = "cw"
+
+        # Mode
+        # C12 = Center, p1, p2
+        # 12C = p1, p2, Center
+        # 132 = p1, p3, p2
+        self.mode = "c12"  # Center, p1, p2
+
+        self.steps_per_circ = 55
+
+    def click(self, point):
+        self.points.append(point)
+
+        if len(self.points) == 1:
+            return "Click on 1st point ..."
+
+        if len(self.points) == 2:
+            return "Click on 2nd point to complete ..."
+
+        if len(self.points) == 3:
+            self.make()
+            return "Done."
+
+        return ""
+
+    def on_key(self, key):
+        if key == 'o':
+            self.direction = 'cw' if self.direction == 'ccw' else 'ccw'
+            return 'Direction: ' + self.direction.upper()
+
+        if key == 'p':
+            if self.mode == 'c12':
+                self.mode = '12c'
+            elif self.mode == '12c':
+                self.mode = '132'
+            else:
+                self.mode = 'c12'
+            return 'Mode: ' + self.mode
+
+    def utility_geometry(self, data=None):
+        if len(self.points) == 1:  # Show the radius
+            center = self.points[0]
+            p1 = data
+
+            return LineString([center, p1])
+
+        if len(self.points) == 2:  # Show the arc
+
+            if self.mode == 'c12':
+                center = self.points[0]
+                p1 = self.points[1]
+                p2 = data
+
+                radius = sqrt((center[0] - p1[0]) ** 2 + (center[1] - p1[1]) ** 2)
+                startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+                stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
+
+            elif self.mode == '132':
+                p1 = array(self.points[0])
+                p3 = array(self.points[1])
+                p2 = array(data)
+
+                center, radius, t = three_point_circle(p1, p2, p3)
+                direction = 'cw' if sign(t) > 0 else 'ccw'
+
+                startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+                stopangle = arctan2(p3[1] - center[1], p3[0] - center[0])
+
+                return [LineString(arc(center, radius, startangle, stopangle,
+                                   direction, self.steps_per_circ)),
+                        Point(center), Point(p1), Point(p3)]
+
+            else:  # '12c'
+                p1 = array(self.points[0])
+                p2 = array(self.points[1])
+
+                # Midpoint
+                a = (p1 + p2) / 2.0
+
+                # Parallel vector
+                c = p2 - p1
+
+                # Perpendicular vector
+                b = dot(c, array([[0, -1], [1, 0]], dtype=float32))
+                b /= norm(b)
+
+                # Distance
+                t = distance(data, a)
+
+                # Which side? Cross product with c.
+                side = data[0] * c[1] - data[1] * c[0]
+                t *= sign(side)
+
+                # Center = a + bt
+                center = a + b * t
+
+                radius = norm(center - p1)
+                startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+                stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
+
+                return [LineString(arc(center, radius, startangle, stopangle,
+                                       self.direction, self.steps_per_circ)),
+                        Point(center)]
+
+        return None
+
+    def make(self):
+
+        if self.mode == 'c12':
+            center = self.points[0]
+            p1 = self.points[1]
+            p2 = self.points[2]
+
+            radius = distance(center, p1)
+            startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+            stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
+            self.geometry = LineString(arc(center, radius, startangle, stopangle,
+                                           self.direction, self.steps_per_circ))
+
+        elif self.mode == '132':
+            p1 = array(self.points[0])
+            p3 = array(self.points[1])
+            p2 = array(self.points[2])
+
+            center, radius, t = three_point_circle(p1, p2, p3)
+            direction = 'cw' if sign(t) > 0 else 'ccw'
+
+            startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+            stopangle = arctan2(p3[1] - center[1], p3[0] - center[0])
+
+            self.geometry = LineString(arc(center, radius, startangle, stopangle,
+                                           direction, self.steps_per_circ))
+
+        else:  # self.mode == '12c'
+            p1 = array(self.points[0])
+            p2 = array(self.points[1])
+
+            # Midpoint
+            a = (p1 + p2) / 2.0
+
+            # Parallel vector
+            c = p2 - p1
+
+            # Perpendicular vector
+            b = dot(c, array([[0, -1], [1, 0]], dtype=float32))
+
+            # Distance
+            t = distance(self.points[2], p1)
+
+            # Which side? Cross product with c.
+            side = self.points[2][0] * c[1] - self.points[2][1] * c[0]
+            t *= sign(side)
+
+            # Center = a + bt
+            center = a + b * t
+
+            radius = norm(center - p1)
+            startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
+            stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
+            self.geometry = LineString(arc(center, radius, startangle, stopangle,
+                                           self.direction, self.steps_per_circ))
         self.complete = True
 
 
@@ -277,6 +457,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.app.ui.addToolBar(self.drawing_toolbar)
         self.select_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/pointer32.png'), 'Select')
         self.add_circle_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/circle32.png'), 'Add Circle')
+        self.add_arc_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/arc32.png'), 'Add Arc')
         self.add_rectangle_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/rectangle32.png'), 'Add Rectangle')
         self.add_polygon_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/polygon32.png'), 'Add Polygon')
         self.add_path_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/path32.png'), 'Add Path')
@@ -320,6 +501,8 @@ class FlatCAMDraw(QtCore.QObject):
                        "constructor": FCSelect},
             "circle": {"button": self.add_circle_btn,
                        "constructor": FCCircle},
+            "arc": {"button": self.add_arc_btn,
+                    "constructor": FCArc},
             "rectangle": {"button": self.add_rectangle_btn,
                           "constructor": FCRectangle},
             "polygon": {"button": self.add_polygon_btn,
@@ -620,6 +803,11 @@ class FlatCAMDraw(QtCore.QObject):
         if event.key == 'k':
             self.corner_snap_btn.trigger()
 
+        ### Propagate to tool
+        response = self.active_tool.on_key(event.key)
+        if response is not None:
+            self.app.info(response)
+
     def on_canvas_key_release(self, event):
         self.key = None
 
@@ -669,6 +857,12 @@ class FlatCAMDraw(QtCore.QObject):
                         x, y = ints.coords.xy
                         element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
                         plot_elements.append(element)
+                continue
+
+            if type(geo) == Point:
+                x, y = geo.coords.xy
+                element, = self.axes.plot(x, y, 'bo', linewidth=linewidth, animated=animated)
+                plot_elements.append(element)
                 continue
 
         return plot_elements
@@ -824,3 +1018,7 @@ class FlatCAMDraw(QtCore.QObject):
 
 def distance(pt1, pt2):
     return sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
+
+
+def mag(vec):
+    return sqrt(vec[0] ** 2 + vec[1] ** 2)

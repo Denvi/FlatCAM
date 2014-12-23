@@ -8,7 +8,9 @@
 #from __future__ import division
 import traceback
 
-from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos
+from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
+    transpose
+from numpy.linalg import solve, norm
 from matplotlib.figure import Figure
 import re
 
@@ -2738,26 +2740,33 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
     if direction == "ccw" and stop <= start:
-        stop += 2*pi
+        stop += 2 * pi
     if direction == "cw" and stop >= start:
-        stop -= 2*pi
+        stop -= 2 * pi
     
     angle = abs(stop - start)
         
     #angle = stop-start
-    steps = max([int(ceil(angle/(2*pi)*steps_per_circ)), 2])
-    delta_angle = da_sign[direction]*angle*1.0/steps
-    for i in range(steps+1):
-        theta = start + delta_angle*i
-        points.append((center[0]+radius*cos(theta), center[1]+radius*sin(theta)))
+    steps = max([int(ceil(angle / (2 * pi) * steps_per_circ)), 2])
+    delta_angle = da_sign[direction] * angle * 1.0 / steps
+    for i in range(steps + 1):
+        theta = start + delta_angle * i
+        points.append((center[0] + radius * cos(theta), center[1] + radius * sin(theta)))
     return points
+
+
+def arc2(p1, p2, center, direction, steps_per_circ):
+    r = sqrt((center[0] - p1[0]) ** 2 + (center[1] - p1[1]) ** 2)
+    start = arctan2(p1[1] - center[1], p1[0] - center[0])
+    stop = arctan2(p2[1] - center[1], p2[0] - center[0])
+    return arc(center, r, start, stop, direction, steps_per_circ)
 
 
 def arc_angle(start, stop, direction):
     if direction == "ccw" and stop <= start:
-        stop += 2*pi
+        stop += 2 * pi
     if direction == "cw" and stop >= start:
-        stop -= 2*pi
+        stop -= 2 * pi
 
     angle = abs(stop - start)
     return angle
@@ -3109,3 +3118,34 @@ def autolist(obj):
         return obj
     except TypeError:
         return [obj]
+
+
+def three_point_circle(p1, p2, p3):
+    """
+    Computes the center and radius of a circle from
+    3 points on its circumference.
+
+    :param p1: Point 1
+    :param p2: Point 2
+    :param p3: Point 3
+    :return: center, radius
+    """
+    # Midpoints
+    a1 = (p1 + p2) / 2.0
+    a2 = (p2 + p3) / 2.0
+
+    # Normals
+    b1 = dot((p2 - p1), array([[0, -1], [1, 0]], dtype=float32))
+    b2 = dot((p3 - p2), array([[0, 1], [-1, 0]], dtype=float32))
+
+    # Params
+    T = solve(transpose(array([-b1, b2])), a1 - a2)
+    print T
+
+    # Center
+    center = a1 + b1 * T[0]
+
+    # Radius
+    radius = norm(center - p1)
+
+    return center, radius, T[0]
