@@ -157,6 +157,10 @@ class FCArc(FCShapeTool):
                 startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
                 stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
 
+                return [LineString(arc(center, radius, startangle, stopangle,
+                                       self.direction, self.steps_per_circ)),
+                        Point(center)]
+
             elif self.mode == '132':
                 p1 = array(self.points[0])
                 p3 = array(self.points[1])
@@ -190,7 +194,8 @@ class FCArc(FCShapeTool):
                 t = distance(data, a)
 
                 # Which side? Cross product with c.
-                side = data[0] * c[1] - data[1] * c[0]
+                # cross(M-A, B-A), where line is AB and M is test point.
+                side = (data[0] - p1[0]) * c[1] - (data[1] - p1[1]) * c[0]
                 t *= sign(side)
 
                 # Center = a + bt
@@ -236,6 +241,7 @@ class FCArc(FCShapeTool):
         else:  # self.mode == '12c'
             p1 = array(self.points[0])
             p2 = array(self.points[1])
+            pc = array(self.points[2])
 
             # Midpoint
             a = (p1 + p2) / 2.0
@@ -245,12 +251,14 @@ class FCArc(FCShapeTool):
 
             # Perpendicular vector
             b = dot(c, array([[0, -1], [1, 0]], dtype=float32))
+            b /= norm(b)
 
             # Distance
-            t = distance(self.points[2], p1)
+            t = distance(pc, a)
 
             # Which side? Cross product with c.
-            side = self.points[2][0] * c[1] - self.points[2][1] * c[0]
+            # cross(M-A, B-A), where line is AB and M is test point.
+            side = (pc[0] - p1[0]) * c[1] - (pc[1] - p1[1]) * c[0]
             t *= sign(side)
 
             # Center = a + bt
@@ -259,6 +267,7 @@ class FCArc(FCShapeTool):
             radius = norm(center - p1)
             startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
             stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
+
             self.geometry = LineString(arc(center, radius, startangle, stopangle,
                                            self.direction, self.steps_per_circ))
         self.complete = True
