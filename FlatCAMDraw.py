@@ -19,6 +19,22 @@ from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
 from rtree import index as rtindex
 
 
+class DrawToolShape(object):
+
+    def __init__(self, geo=[]):
+
+        # Shapely type or list of such
+        self.geo = geo
+        self.utility = False
+
+
+class DrawToolUtilityShape(DrawToolShape):
+
+    def __init__(self, geo=[]):
+        super(DrawToolUtilityShape, self).__init__(geo=geo)
+        self.utility = True
+
+
 class DrawTool(object):
     """
     Abstract Class representing a tool in the drawing
@@ -31,7 +47,7 @@ class DrawTool(object):
         self.complete = False
         self.start_msg = "Click on 1st point..."
         self.points = []
-        self.geometry = None
+        self.geometry = None  # DrawToolShape or None
 
     def click(self, point):
         """
@@ -80,7 +96,7 @@ class FCCircle(FCShapeTool):
             p1 = self.points[0]
             p2 = data
             radius = sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
-            return Point(p1).buffer(radius)
+            return DrawToolUtilityShape(Point(p1).buffer(radius))
 
         return None
 
@@ -88,7 +104,7 @@ class FCCircle(FCShapeTool):
         p1 = self.points[0]
         p2 = self.points[1]
         radius = distance(p1, p2)
-        self.geometry = Point(p1).buffer(radius)
+        self.geometry = DrawToolShape(Point(p1).buffer(radius))
         self.complete = True
 
 
@@ -144,7 +160,7 @@ class FCArc(FCShapeTool):
             center = self.points[0]
             p1 = data
 
-            return LineString([center, p1])
+            return DrawToolUtilityShape(LineString([center, p1]))
 
         if len(self.points) == 2:  # Show the arc
 
@@ -157,9 +173,9 @@ class FCArc(FCShapeTool):
                 startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
                 stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
 
-                return [LineString(arc(center, radius, startangle, stopangle,
+                return DrawToolUtilityShape([LineString(arc(center, radius, startangle, stopangle,
                                        self.direction, self.steps_per_circ)),
-                        Point(center)]
+                        Point(center)])
 
             elif self.mode == '132':
                 p1 = array(self.points[0])
@@ -172,9 +188,9 @@ class FCArc(FCShapeTool):
                 startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
                 stopangle = arctan2(p3[1] - center[1], p3[0] - center[0])
 
-                return [LineString(arc(center, radius, startangle, stopangle,
+                return DrawToolUtilityShape([LineString(arc(center, radius, startangle, stopangle,
                                    direction, self.steps_per_circ)),
-                        Point(center), Point(p1), Point(p3)]
+                        Point(center), Point(p1), Point(p3)])
 
             else:  # '12c'
                 p1 = array(self.points[0])
@@ -205,9 +221,9 @@ class FCArc(FCShapeTool):
                 startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
                 stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
 
-                return [LineString(arc(center, radius, startangle, stopangle,
+                return DrawToolUtilityShape([LineString(arc(center, radius, startangle, stopangle,
                                        self.direction, self.steps_per_circ)),
-                        Point(center)]
+                        Point(center)])
 
         return None
 
@@ -221,8 +237,8 @@ class FCArc(FCShapeTool):
             radius = distance(center, p1)
             startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
             stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
-            self.geometry = LineString(arc(center, radius, startangle, stopangle,
-                                           self.direction, self.steps_per_circ))
+            self.geometry = DrawToolShape(LineString(arc(center, radius, startangle, stopangle,
+                                           self.direction, self.steps_per_circ)))
 
         elif self.mode == '132':
             p1 = array(self.points[0])
@@ -235,8 +251,8 @@ class FCArc(FCShapeTool):
             startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
             stopangle = arctan2(p3[1] - center[1], p3[0] - center[0])
 
-            self.geometry = LineString(arc(center, radius, startangle, stopangle,
-                                           direction, self.steps_per_circ))
+            self.geometry = DrawToolShape(LineString(arc(center, radius, startangle, stopangle,
+                                           direction, self.steps_per_circ)))
 
         else:  # self.mode == '12c'
             p1 = array(self.points[0])
@@ -268,8 +284,8 @@ class FCArc(FCShapeTool):
             startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
             stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
 
-            self.geometry = LineString(arc(center, radius, startangle, stopangle,
-                                           self.direction, self.steps_per_circ))
+            self.geometry = DrawToolShape(LineString(arc(center, radius, startangle, stopangle,
+                                           self.direction, self.steps_per_circ)))
         self.complete = True
 
 
@@ -298,7 +314,7 @@ class FCRectangle(FCShapeTool):
         if len(self.points) == 1:
             p1 = self.points[0]
             p2 = data
-            return LinearRing([p1, (p2[0], p1[1]), p2, (p1[0], p2[1])])
+            return DrawToolUtilityShape(LinearRing([p1, (p2[0], p1[1]), p2, (p1[0], p2[1])]))
 
         return None
 
@@ -306,7 +322,7 @@ class FCRectangle(FCShapeTool):
         p1 = self.points[0]
         p2 = self.points[1]
         #self.geometry = LinearRing([p1, (p2[0], p1[1]), p2, (p1[0], p2[1])])
-        self.geometry = Polygon([p1, (p2[0], p1[1]), p2, (p1[0], p2[1])])
+        self.geometry = DrawToolShape(Polygon([p1, (p2[0], p1[1]), p2, (p1[0], p2[1])]))
         self.complete = True
 
 
@@ -331,18 +347,18 @@ class FCPolygon(FCShapeTool):
         if len(self.points) == 1:
             temp_points = [x for x in self.points]
             temp_points.append(data)
-            return LineString(temp_points)
+            return DrawToolUtilityShape(LineString(temp_points))
 
         if len(self.points) > 1:
             temp_points = [x for x in self.points]
             temp_points.append(data)
-            return LinearRing(temp_points)
+            return DrawToolUtilityShape(LinearRing(temp_points))
 
         return None
 
     def make(self):
         # self.geometry = LinearRing(self.points)
-        self.geometry = Polygon(self.points)
+        self.geometry = DrawToolShape(Polygon(self.points))
         self.complete = True
 
 
@@ -352,14 +368,14 @@ class FCPath(FCPolygon):
     """
 
     def make(self):
-        self.geometry = LineString(self.points)
+        self.geometry = DrawToolShape(LineString(self.points))
         self.complete = True
 
     def utility_geometry(self, data=None):
         if len(self.points) > 1:
             temp_points = [x for x in self.points]
             temp_points.append(data)
-            return LineString(temp_points)
+            return DrawToolUtilityShape(LineString(temp_points))
 
         return None
 
@@ -368,6 +384,7 @@ class FCSelect(DrawTool):
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
         self.shape_buffer = self.draw_app.shape_buffer
+        self.selected = self.draw_app.selected
         self.start_msg = "Click on geometry to select"
 
     def click(self, point):
@@ -375,17 +392,21 @@ class FCSelect(DrawTool):
         closest_shape = None
 
         for shape in self.shape_buffer:
+
+            # Remove all if 'control' is not help
             if self.draw_app.key != 'control':
-                shape["selected"] = False
+                #shape["selected"] = False
+                self.draw_app.set_unselected(shape)
 
             # TODO: Do this with rtree?
-            dist = Point(point).distance(shape["geometry"])
+            dist = Point(point).distance(cascaded_union(shape.geo))
             if dist < min_distance:
                 closest_shape = shape
                 min_distance = dist
 
         if closest_shape is not None:
-            closest_shape["selected"] = True
+            #closest_shape["selected"] = True
+            self.draw_app.set_selected(closest_shape)
             return "Shape selected."
 
         return "Nothing selected."
@@ -403,6 +424,9 @@ class FCMove(FCShapeTool):
         self.origin = origin
 
     def click(self, point):
+        if len(self.draw_app.get_selected()) == 0:
+            return "Nothing to move."
+
         if self.origin is None:
             self.set_origin(point)
             return "Click on final location."
@@ -415,11 +439,16 @@ class FCMove(FCShapeTool):
         # Create new geometry
         dx = self.destination[0] - self.origin[0]
         dy = self.destination[1] - self.origin[1]
-        self.geometry = [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+        self.geometry = [DrawToolShape(affinity.translate(geom.geo, xoff=dx, yoff=dy))
+                                       for geom in self.draw_app.get_selected()]
 
         # Delete old
-        for geo in self.draw_app.get_selected():
-            self.draw_app.shape_buffer.remove(geo)
+        self.draw_app.delete_selected()
+
+        # # Select the new
+        # for g in self.geometry:
+        #     # Note that g is not in the app's buffer yet!
+        #     self.draw_app.set_selected(g)
 
         self.complete = True
 
@@ -433,10 +462,14 @@ class FCMove(FCShapeTool):
         if self.origin is None:
             return None
 
+        if len(self.draw_app.get_selected()) == 0:
+            return None
+
         dx = data[0] - self.origin[0]
         dy = data[1] - self.origin[1]
 
-        return [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+        return DrawToolUtilityShape([affinity.translate(geom.geo, xoff=dx, yoff=dy)
+                                     for geom in self.draw_app.get_selected()])
 
 
 class FCCopy(FCMove):
@@ -444,7 +477,8 @@ class FCCopy(FCMove):
         # Create new geometry
         dx = self.destination[0] - self.origin[0]
         dy = self.destination[1] - self.origin[1]
-        self.geometry = [affinity.translate(geom['geometry'], xoff=dx, yoff=dy) for geom in self.draw_app.get_selected()]
+        self.geometry = DrawToolShape([affinity.translate(geom['geometry'], xoff=dx, yoff=dy)
+                                       for geom in self.draw_app.get_selected()])
         self.complete = True
 
 
@@ -527,6 +561,7 @@ class FlatCAMDraw(QtCore.QObject):
         # Data
         self.active_tool = None
         self.shape_buffer = []
+        self.selected = []
 
         self.move_timer = QtCore.QTimer()
         self.move_timer.setSingleShot(True)
@@ -614,9 +649,10 @@ class FlatCAMDraw(QtCore.QObject):
 
         # Link shapes into editor.
         for shape in geometry:
-            self.shape_buffer.append({'geometry': shape,
-                                      'selected': False,
-                                      'utility': False})
+            # self.shape_buffer.append({'geometry': shape,
+            #                           # 'selected': False,
+            #                           'utility': False})
+            self.shape_buffer.append(DrawToolShape(geometry))
 
         self.replot()
         self.drawing_toolbar.setDisabled(False)
@@ -648,11 +684,11 @@ class FlatCAMDraw(QtCore.QObject):
 
     def on_canvas_click(self, event):
         """
-        event.x .y have canvas coordinates
-        event.xdaya .ydata have plot coordinates
+        event.x and .y have canvas coordinates
+        event.xdaya and .ydata have plot coordinates
 
-        :param event:
-        :return:
+        :param event: Event object dispatched by Matplotlib
+        :return: None
         """
         if self.active_tool is not None:
             # Dispatch event to active_tool
@@ -672,14 +708,14 @@ class FlatCAMDraw(QtCore.QObject):
 
     def on_canvas_move(self, event):
         """
-        event.x .y have canvas coordinates
-        event.xdaya .ydata have plot coordinates
+        event.x and .y have canvas coordinates
+        event.xdaya and .ydata have plot coordinates
 
-        :param event:
+        :param event: Event object dispatched by Matplotlib
         :return:
         """
         self.on_canvas_move_effective(event)
-        return
+        return None
 
         # self.move_timer.stop()
         #
@@ -703,11 +739,11 @@ class FlatCAMDraw(QtCore.QObject):
         For details on animating on MPL see:
         http://wiki.scipy.org/Cookbook/Matplotlib/Animations
 
-        event.x .y have canvas coordinates
-        event.xdaya .ydata have plot coordinates
+        event.x and .y have canvas coordinates
+        event.xdaya and .ydata have plot coordinates
 
-        :param event:
-        :return:
+        :param event: Event object dispatched by Matplotlib
+        :return: None
         """
 
         try:
@@ -719,37 +755,32 @@ class FlatCAMDraw(QtCore.QObject):
         if self.active_tool is None:
             return
 
+        ### Snap coordinates
         x, y = self.snap(x, y)
 
         ### Utility geometry (animated)
         self.canvas.canvas.restore_region(self.canvas.background)
         geo = self.active_tool.utility_geometry(data=(x, y))
 
-        if geo is not None and ((type(geo) == list and len(geo) > 0) or
-                                (type(geo) != list and not geo.is_empty)):
+        if isinstance(geo, DrawToolShape) and geo.geo is not None:
 
             # Remove any previous utility shape
             for shape in self.shape_buffer:
-                if shape['utility']:
+                if shape.utility:
                     self.shape_buffer.remove(shape)
 
             # Add the new utility shape
-            self.shape_buffer.append({
-                'geometry': geo,
-                'selected': False,
-                'utility': True
-            })
+            self.shape_buffer.append(geo)
 
             # Efficient plotting for fast animation
 
             #self.canvas.canvas.restore_region(self.canvas.background)
-            elements = self.plot_shape(geometry=geo, linespec="b--", animated=True)
+            elements = self.plot_shape(geometry=geo.geo, linespec="b--", animated=True)
             for el in elements:
                 self.axes.draw_artist(el)
             #self.canvas.canvas.blit(self.axes.bbox)
 
             #self.replot()
-
 
         elements = self.axes.plot(x, y, 'bo', animated=True)
         for el in elements:
@@ -780,7 +811,7 @@ class FlatCAMDraw(QtCore.QObject):
             # TODO: ...?
             self.on_tool_select("select")
             self.app.info("Cancelled.")
-            for_deletion = [shape for shape in self.shape_buffer if shape['utility']]
+            for_deletion = [shape for shape in self.shape_buffer if shape.utility]
             for shape in for_deletion:
                 self.shape_buffer.remove(shape)
 
@@ -821,18 +852,39 @@ class FlatCAMDraw(QtCore.QObject):
         self.key = None
 
     def get_selected(self):
-        return [shape for shape in self.shape_buffer if shape["selected"]]
+        """
+        Returns list of shapes that are selected in the editor.
+
+        :return: List of shapes.
+        """
+        #return [shape for shape in self.shape_buffer if shape["selected"]]
+        return self.selected
 
     def delete_selected(self):
-        for shape in self.get_selected():
+        # for shape in self.get_selected():
+        #     self.shape_buffer.remove(shape)
+        #     self.app.info("Shape deleted.")
+        for shape in self.selected:
             self.shape_buffer.remove(shape)
-            self.app.info("Shape deleted.")
+
+        self.selected = []
 
     def plot_shape(self, geometry=None, linespec='b-', linewidth=1, animated=False):
+        """
+        Plots a geometric object or list of objects without rendeting. Plotted objects
+        are returned as a list. This allows for efficient/animated rendering.
+
+        :param geometry: Geometry to be plotted (Any Shapely.geom kind or list of such)
+        :param linespec: Matplotlib linespec string.
+        :param linewidth: Width of lines in # of pixels.
+        :param animated: If geometry is to be animated. (See MPL plot())
+        :return: List of plotted elements.
+        """
         plot_elements = []
 
         if geometry is None:
             geometry = self.active_tool.geometry
+
         try:
             _ = iter(geometry)
             iterable_geometry = geometry
@@ -881,22 +933,29 @@ class FlatCAMDraw(QtCore.QObject):
         self.app.log.debug("plot_all()")
         self.axes.cla()
         for shape in self.shape_buffer:
-            if shape['geometry'] is None:  # TODO: This shouldn't have happened
+            if shape.geo is None:  # TODO: This shouldn't have happened
                 continue
 
-            if shape['utility']:
-                self.plot_shape(geometry=shape['geometry'], linespec='k--', linewidth=1)
+            if shape.utility:
+                self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)
                 continue
 
-            if shape['selected']:
-                self.plot_shape(geometry=shape['geometry'], linespec='k-', linewidth=2)
+            if shape in self.selected:
+                self.plot_shape(geometry=shape.geo, linespec='k-', linewidth=2)
                 continue
 
-            self.plot_shape(geometry=shape['geometry'])
+            self.plot_shape(geometry=shape.geo)
 
         self.canvas.auto_adjust_axes()
 
     def add2index(self, id, geo):
+        """
+
+
+        :param id: Index of data in list being indexed.
+        :param geo: Some Shapely.geom kind
+        :return: None
+        """
         try:
             for pt in geo.coords:
                 self.rtree_index.add(id, pt)
@@ -914,30 +973,59 @@ class FlatCAMDraw(QtCore.QObject):
         #self.plot_shape()
         #self.canvas.auto_adjust_axes()
 
-        try:
-            for geo in self.active_tool.geometry:
-                self.shape_buffer.append({'geometry': geo,
-                                          'selected': False,
-                                          'utility': False})
-                self.add2index(len(self.shape_buffer)-1, geo)
-        except TypeError:
-            self.shape_buffer.append({'geometry': self.active_tool.geometry,
-                                      'selected': False,
-                                      'utility': False})
-            self.add2index(len(self.shape_buffer)-1, self.active_tool.geometry)
+        self.add_shape(self.active_tool.geometry)
 
         # Remove any utility shapes
         for shape in self.shape_buffer:
-            if shape['utility']:
+            if shape.utility:
                 self.shape_buffer.remove(shape)
 
         self.replot()
         self.active_tool = type(self.active_tool)(self)
 
+    def add_shape(self, shape):
+        """
+        Adds a shape to the shape buffer and the rtree index.
+
+        :param shape: Shape to be added.
+        :type shape: DrawToolShape
+        :return: None
+        """
+        print "add_shape()"
+
+        # List ?
+        if isinstance(shape, list):
+            for subshape in shape:
+                self.add_shape(subshape)
+            return
+
+        assert isinstance(shape, DrawToolShape)
+        assert shape.geo is not None
+        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
+        try:
+            for geo in shape.geo:
+                self.add2index(len(self.shape_buffer), geo)
+            self.shape_buffer.append(shape)
+        except TypeError:
+            self.shape_buffer.append(shape)
+            self.add2index(len(self.shape_buffer) - 1, shape.geo)
+
     def replot(self):
         #self.canvas.clear()
         self.axes = self.canvas.new_axes("draw")
         self.plot_all()
+
+    def set_selected(self, shape):
+
+        # Remove and add to the end.
+        if shape in self.selected:
+            self.selected.remove(shape)
+
+        self.selected.append(shape)
+
+    def set_unselected(self, shape):
+        if shape in self.selected:
+            self.selected.remove(shape)
 
     def snap(self, x, y):
         """
@@ -967,12 +1055,12 @@ class FlatCAMDraw(QtCore.QObject):
         ### Grid snap
         if self.options["grid_snap"]:
             if self.options["snap-x"] != 0:
-                snap_x_ = round(x/self.options["snap-x"])*self.options['snap-x']
+                snap_x_ = round(x / self.options["snap-x"]) * self.options['snap-x']
             else:
                 snap_x_ = x
 
             if self.options["snap-y"] != 0:
-                snap_y_ = round(y/self.options["snap-y"])*self.options['snap-y']
+                snap_y_ = round(y / self.options["snap-y"]) * self.options['snap-y']
             else:
                 snap_y_ = y
             nearest_grid_distance = distance((x, y), (snap_x_, snap_y_))
@@ -991,7 +1079,7 @@ class FlatCAMDraw(QtCore.QObject):
         """
         fcgeometry.solid_geometry = []
         for shape in self.shape_buffer:
-            fcgeometry.solid_geometry.append(shape['geometry'])
+            fcgeometry.solid_geometry.append(shape.geo)
 
     def union(self):
         """
@@ -1000,27 +1088,24 @@ class FlatCAMDraw(QtCore.QObject):
 
         :return: None.
         """
-        targets = [shape for shape in self.shape_buffer if shape['selected']]
+        #targets = [shape for shape in self.selected]
 
-        results = cascaded_union([t['geometry'] for t in targets])
+        results = cascaded_union([t.geo for t in self.get_selected()])
 
-        for shape in targets:
+        # Delete originals.
+        for shape in self.get_selected():
             self.shape_buffer.remove(shape)
 
-        try:
-            for geo in results:
+        # Selected geometry is now gone!
+        self.selected = []
 
-                self.shape_buffer.append({
-                    'geometry': geo,
-                    'selected': True,
-                    'utility': False
-                })
-        except TypeError:
-            self.shape_buffer.append({
-                'geometry': results,
-                'selected': True,
-                'utility': False
-            })
+        # try:
+        #     for geo in results:
+        #         self.shape_buffer.append(DrawToolShape(geo))
+        # except TypeError:
+        #     self.shape_buffer.append(DrawToolShape(geo))
+
+        self.add_shape(DrawToolShape(results))
 
         self.replot()
 

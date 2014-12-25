@@ -59,6 +59,7 @@ Creating Shapes
 The shape creation tools in the editor are:
 
 * Circle
+* Arc
 * Rectangle
 * Polygon
 * Path
@@ -71,6 +72,9 @@ on the status bar.
 
 Shapes that do not require a fixed number of clicks to complete, like
 polygons and paths, are complete by hitting the ``Space`` key.
+
+Certain shape tools can have different options or modes. By hitting
+`o` and/or `p` the tool will cycle through its options and/or modes.
 
 .. seealso::
 
