@@ -5,12 +5,14 @@ Drawing
 -------
 
 * [DONE] Arcs
-* Subtract Shapes
-  * Selected objects must be kept onlist to preserve order.
+* [DONE] Subtract Shapes
+  * [DONE] Selected objects must be kept onlist to preserve order.
 * Polygon to outline
 * Force perpendicular
 * Un-group (Union creates group)
 * Group (But not union)
+* Remove from index (rebuild index or make deleted instances
+  equal to None in the list).
 
 
 Algorithms

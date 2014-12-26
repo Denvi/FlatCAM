@@ -477,8 +477,8 @@ class FCCopy(FCMove):
         # Create new geometry
         dx = self.destination[0] - self.origin[0]
         dy = self.destination[1] - self.origin[1]
-        self.geometry = DrawToolShape([affinity.translate(geom['geometry'], xoff=dx, yoff=dy)
-                                       for geom in self.draw_app.get_selected()])
+        self.geometry = [DrawToolShape(affinity.translate(geom.geo, xoff=dx, yoff=dy))
+                         for geom in self.draw_app.get_selected()]
         self.complete = True
 
 
@@ -560,9 +560,17 @@ class FlatCAMDraw(QtCore.QObject):
                      "constructor": FCCopy}
         }
 
-        # Data
+        ### Data
         self.active_tool = None
+
+        ## List of shapes, None for removed ones. List
+        ## never decreases size.
+        self.main_index = []
+
+        ## List of shapes.
         self.shape_buffer = []
+
+        ## List of selected shapes.
         self.selected = []
 
         self.move_timer = QtCore.QTimer()
@@ -866,8 +874,10 @@ class FlatCAMDraw(QtCore.QObject):
         # for shape in self.get_selected():
         #     self.shape_buffer.remove(shape)
         #     self.app.info("Shape deleted.")
-        for shape in self.selected:
-            self.shape_buffer.remove(shape)
+        tempref = [s for s in self.selected]
+        for shape in tempref:
+            #self.shape_buffer.remove(shape)
+            self.delete_shape(shape)
 
         self.selected = []
 
@@ -931,6 +941,30 @@ class FlatCAMDraw(QtCore.QObject):
         return plot_elements
         # self.canvas.auto_adjust_axes()
 
+    def add_shape(self, shape):
+        """
+        Adds a shape to the shape buffer and the rtree index.
+
+        :param shape: Shape to be added.
+        :type shape: DrawToolShape
+        :return: None
+        """
+        print "add_shape()"
+
+        # List of DrawToolShape?
+        if isinstance(shape, list):
+            for subshape in shape:
+                self.add_shape(subshape)
+            return
+
+        assert isinstance(shape, DrawToolShape)
+        assert shape.geo is not None
+        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
+
+        self.main_index.append(shape)
+        self.shape_buffer.append(shape)
+        self.add2index(len(self.main_index) - 1, shape)
+
     def plot_all(self):
         self.app.log.debug("plot_all()")
         self.axes.cla()
@@ -952,19 +986,61 @@ class FlatCAMDraw(QtCore.QObject):
 
     def add2index(self, id, geo):
         """
-
+        Adds every coordinate of geo to the rtree index
+        under the given id.
 
         :param id: Index of data in list being indexed.
         :param geo: Some Shapely.geom kind
         :return: None
         """
-        try:
-            for pt in geo.coords:
-                self.rtree_index.add(id, pt)
-        except NotImplementedError:
-            # It's a polygon?
-            for pt in geo.exterior.coords:
-                self.rtree_index.add(id, pt)
+
+        if isinstance(geo, DrawToolShape):
+            self.add2index(id, geo.geo)
+        else:
+            # List or Iterable Shapely type
+            try:
+                for subgeo in geo:
+                    self.add2index(id, subgeo)
+
+            # Not iteable...
+            except TypeError:
+
+                try:
+                    for pt in geo.coords:
+                        self.rtree_index.add(id, pt)
+                except NotImplementedError:
+                    # It's a polygon?
+                    for pt in geo.exterior.coords:
+                        self.rtree_index.add(id, pt)
+
+    def remove_from_index(self, id, geo):
+        """
+
+        :param id: Index id
+        :param geo: Geometry to remove from index.
+        :return: None
+        """
+
+        # DrawToolShape
+        if isinstance(geo, DrawToolShape):
+            self.remove_from_index(id, geo.geo)
+
+        else:
+            # List or Iterable Shapely type
+            try:
+                for subgeo in geo:
+                    self.remove_from_index(id, subgeo)
+
+            # Not iteable...
+            except TypeError:
+
+                try:
+                    for pt in geo.coords:
+                        self.rtree_index.delete(id, pt)
+                except NotImplementedError:
+                    # It's a polygon?
+                    for pt in geo.exterior.coords:
+                        self.rtree_index.delete(id, pt)
 
     def on_shape_complete(self):
         self.app.log.debug("on_shape_complete()")
@@ -985,34 +1061,17 @@ class FlatCAMDraw(QtCore.QObject):
         self.replot()
         self.active_tool = type(self.active_tool)(self)
 
-    def add_shape(self, shape):
-        """
-        Adds a shape to the shape buffer and the rtree index.
-
-        :param shape: Shape to be added.
-        :type shape: DrawToolShape
-        :return: None
-        """
-        print "add_shape()"
-
-        # List ?
-        if isinstance(shape, list):
-            for subshape in shape:
-                self.add_shape(subshape)
-            return
-
-        assert isinstance(shape, DrawToolShape)
-        assert shape.geo is not None
-        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
-        try:
-            for geo in shape.geo:
-                self.add2index(len(self.shape_buffer), geo)
-            self.shape_buffer.append(shape)
-        except TypeError:
-            self.shape_buffer.append(shape)
-            self.add2index(len(self.shape_buffer) - 1, shape.geo)
-
     def delete_shape(self, shape):
+        try:
+            # Remove from index list
+            shp_idx = self.main_index.index(shape)
+            self.main_index[shp_idx] = None
+
+            # Remove from rtree index
+            self.remove_from_index(shp_idx, shape)
+        except ValueError:
+            pass
+
         if shape in self.shape_buffer:
             self.shape_buffer.remove(shape)
 
@@ -1049,6 +1108,8 @@ class FlatCAMDraw(QtCore.QObject):
         snap_distance = Inf
 
         ### Object (corner?) snap
+        ### No need for the objects, just the coordinates
+        ### in the index.
         if self.options["corner_snap"]:
             try:
                 bbox = self.rtree_index.nearest((x, y), objects=True).next().bbox
