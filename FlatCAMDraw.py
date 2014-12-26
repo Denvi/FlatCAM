@@ -505,6 +505,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.add_polygon_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/polygon32.png'), 'Add Polygon')
         self.add_path_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/path32.png'), 'Add Path')
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
+        self.subtract_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/subtract32.png'), 'Polygon Subtraction')
         self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), 'Move Objects')
         self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), 'Copy Objects')
 
@@ -537,6 +538,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
 
         self.union_btn.triggered.connect(self.union)
+        self.subtract_btn.triggered.connect(self.subtract)
 
         ## Toolbar events and properties
         self.tools = {
@@ -1010,6 +1012,13 @@ class FlatCAMDraw(QtCore.QObject):
             self.shape_buffer.append(shape)
             self.add2index(len(self.shape_buffer) - 1, shape.geo)
 
+    def delete_shape(self, shape):
+        if shape in self.shape_buffer:
+            self.shape_buffer.remove(shape)
+
+        if shape in self.selected:
+            self.selected.remove(shape)
+
     def replot(self):
         #self.canvas.clear()
         self.axes = self.canvas.new_axes("draw")
@@ -1088,7 +1097,6 @@ class FlatCAMDraw(QtCore.QObject):
 
         :return: None.
         """
-        #targets = [shape for shape in self.selected]
 
         results = cascaded_union([t.geo for t in self.get_selected()])
 
@@ -1099,15 +1107,21 @@ class FlatCAMDraw(QtCore.QObject):
         # Selected geometry is now gone!
         self.selected = []
 
-        # try:
-        #     for geo in results:
-        #         self.shape_buffer.append(DrawToolShape(geo))
-        # except TypeError:
-        #     self.shape_buffer.append(DrawToolShape(geo))
-
         self.add_shape(DrawToolShape(results))
 
         self.replot()
+
+    def subtract(self):
+        selected = self.get_selected()
+        tools = selected[1:]
+        toolgeo = cascaded_union([shp.geo for shp in tools])
+        result = selected[0].geo.difference(toolgeo)
+
+        self.delete_shape(selected[0])
+        self.add_shape(DrawToolShape(result))
+
+        self.replot()
+
 
 
 def distance(pt1, pt2):

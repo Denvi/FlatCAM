@@ -9,6 +9,8 @@ Drawing
   * Selected objects must be kept onlist to preserve order.
 * Polygon to outline
 * Force perpendicular
+* Un-group (Union creates group)
+* Group (But not union)
 
 
 Algorithms
