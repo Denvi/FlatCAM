@@ -13,6 +13,7 @@ Drawing
 * Group (But not union)
 * Remove from index (rebuild index or make deleted instances
   equal to None in the list).
+* Better handling/abstraction of geometry types and lists of such.
 
 
 Algorithms

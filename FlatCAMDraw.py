@@ -506,6 +506,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.add_path_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/path32.png'), 'Add Path')
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
         self.subtract_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/subtract32.png'), 'Polygon Subtraction')
+        self.cutpath_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/cutpath32.png'), 'Cut Path')
         self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), 'Move Objects')
         self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), 'Copy Objects')
 
@@ -539,6 +540,7 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.union_btn.triggered.connect(self.union)
         self.subtract_btn.triggered.connect(self.subtract)
+        self.cutpath_btn.triggered.connect(self.cutpath)
 
         ## Toolbar events and properties
         self.tools = {
@@ -626,6 +628,24 @@ class FlatCAMDraw(QtCore.QObject):
         self.clear()
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
+
+    def cutpath(self):
+        selected = self.get_selected()
+        tools = selected[1:]
+        toolgeo = cascaded_union([shp.geo for shp in tools])
+
+        target = selected[0]
+        if type(target.geo) == Polygon:
+            for ring in poly2rings(target.geo):
+                self.add_shape(DrawToolShape(ring.difference(toolgeo)))
+            self.delete_shape(target)
+        elif type(target.geo) == LineString or type(target.geo) == LinearRing:
+            self.add_shape(DrawToolShape(target.geo.difference(toolgeo)))
+            self.delete_shape(target)
+        else:
+            self.app.log.warning("Not implemented.")
+
+        self.replot()
 
     def toolbar_tool_toggle(self, key):
         self.options[key] = self.sender().isChecked()
@@ -780,7 +800,8 @@ class FlatCAMDraw(QtCore.QObject):
                     self.shape_buffer.remove(shape)
 
             # Add the new utility shape
-            self.shape_buffer.append(geo)
+            #self.shape_buffer.append(geo)
+            self.add_shape(geo)
 
             # Efficient plotting for fast animation
 
@@ -792,10 +813,11 @@ class FlatCAMDraw(QtCore.QObject):
 
             #self.replot()
 
-        elements = self.axes.plot(x, y, 'bo', animated=True)
-        for el in elements:
-                self.axes.draw_artist(el)
-        self.canvas.canvas.blit(self.axes.bbox)
+            elements = self.axes.plot(x, y, 'bo', animated=True)
+            for el in elements:
+                    self.axes.draw_artist(el)
+
+            self.canvas.canvas.blit(self.axes.bbox)
 
     def on_canvas_key(self, event):
         """
@@ -961,9 +983,12 @@ class FlatCAMDraw(QtCore.QObject):
         assert shape.geo is not None
         assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
 
-        self.main_index.append(shape)
         self.shape_buffer.append(shape)
-        self.add2index(len(self.main_index) - 1, shape)
+
+        # Do not add utility shapes to the index.
+        if not isinstance(shape, DrawToolUtilityShape):
+            self.main_index.append(shape)
+            self.add2index(len(self.main_index) - 1, shape)
 
     def plot_all(self):
         self.app.log.debug("plot_all()")
@@ -1191,3 +1216,7 @@ def distance(pt1, pt2):
 
 def mag(vec):
     return sqrt(vec[0] ** 2 + vec[1] ** 2)
+
+
+def poly2rings(poly):
+    return [poly.exterior] + [interior for interior in poly.interiors]
