@@ -154,26 +154,31 @@ class Geometry(object):
         if reset:
             self.flat_geometry = []
 
+        ## If iterable, expand recursively.
         try:
             for geo in geometry:
                 self.flatten_to_paths(geometry=geo, reset=False)
+
+        ## Not iterable, do the actual indexing and add.
         except TypeError:
             if type(geometry) == Polygon:
                 g = geometry.exterior
                 self.flat_geometry.append(g)
-                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
-                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+
+                ## Add first and last points of the path to the index.
+                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
 
                 for interior in geometry.interiors:
                     g = interior
                     self.flat_geometry.append(g)
-                    self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
-                    self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+                    self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+                    self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
             else:
                 g = geometry
                 self.flat_geometry.append(g)
-                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[0])
-                self.flat_geometry_rtree.insert(len(self.flat_geometry)-1, g.coords[-1])
+                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
 
         return self.flat_geometry, self.flat_geometry_rtree
 
@@ -258,17 +263,18 @@ class Geometry(object):
         :return:
         """
 
+        # Estimate good seedpoint if not provided.
         if seedpoint is None:
             seedpoint = polygon.representative_point()
 
         # Current buffer radius
-        radius = tooldia/2*(1-overlap)
+        radius = tooldia / 2 * (1 - overlap)
 
         # The toolpaths
-        geoms = [Point(seedpoint).buffer(radius).exterior]
+        geoms = []
 
         # Path margin
-        path_margin = polygon.buffer(-tooldia/2)
+        path_margin = polygon.buffer(-tooldia / 2)
 
         # Grow from seed until outside the box.
         while 1:
@@ -281,12 +287,12 @@ class Geometry(object):
             else:
                 geoms.append(path)
 
-            radius += tooldia*(1-overlap)
+            radius += tooldia * (1 - overlap)
 
         # Clean edges
-        outer_edges = [x.exterior for x in autolist(polygon.buffer(-tooldia/2))]
+        outer_edges = [x.exterior for x in autolist(polygon.buffer(-tooldia / 2))]
         inner_edges = []
-        for x in autolist(polygon.buffer(-tooldia/2)):  # Over resulting polygons
+        for x in autolist(polygon.buffer(-tooldia / 2)):  # Over resulting polygons
             for y in x.interiors:  # Over interiors of each polygon
                 inner_edges.append(y)
         geoms += outer_edges + inner_edges
@@ -2198,6 +2204,11 @@ class CNCjob(Geometry):
         """
         Generates G-Code from a Geometry object. Stores in ``self.gcode``.
 
+        Algorithm description:
+        ----------------------
+        Follow geometry paths in the order they are being read. No attempt
+        to optimize.
+
         :param geometry: Geometry defining the toolpath
         :type geometry: Geometry
         :param append: Wether to append to self.gcode or re-write it.
@@ -2259,14 +2270,21 @@ class CNCjob(Geometry):
         """
         Second algorithm to generate from Geometry.
 
+        ALgorithm description:
+        ----------------------
+        Uses RTree to find the nearest path to follow.
+
         :param geometry:
         :param append:
         :param tooldia:
         :param tolerance:
-        :return:
+        :return: None
         """
         assert isinstance(geometry, Geometry)
-        flat_geometry, rtindex = geometry.flatten_to_paths()
+
+        ## Flatten the geometry and get rtree index
+        flat_geometry, rti = geometry.flatten_to_paths()
+        log.debug("%d paths" % len(flat_geometry))
 
         if tooldia is not None:
             self.tooldia = tooldia
@@ -2285,24 +2303,28 @@ class CNCjob(Geometry):
         self.gcode += "M03\n"  # Spindle start
         self.gcode += self.pausecode + "\n"
 
-        # Iterate over geometry and run individual methods
-        # depending on type
-        # for geo in flat_geometry:
-        #
-        #     if type(geo) == LineString or type(geo) == LinearRing:
-        #         self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-        #         continue
-        #
-        #     if type(geo) == Point:
-        #         self.gcode += self.point2gcode(geo)
-        #         continue
-        #
-        #     log.warning("G-code generation not implemented for %s" % (str(type(geo))))
-
-        hits = list(rtindex.nearest((0, 0), 1))
+        ## Iterate over geometry paths getting the nearest each time.
+        path_count = 0
+        current_pt = (0, 0)
+        hits = list(rti.nearest(current_pt, 1))
         while len(hits) > 0:
+            path_count += 1
+            print "Current: ", "(%.3f, %.3f)" % current_pt
             geo = flat_geometry[hits[0]]
 
+            # Determine which end of the path is closest.
+            distance2start = distance(current_pt, geo.coords[0])
+            distance2stop = distance(current_pt, geo.coords[-1])
+            print "  Path index =", hits[0]
+            print "  Start: ", "(%.3f, %.3f)" % geo.coords[0], "  D(Start): %.3f" % distance2start
+            print "  Stop : ", "(%.3f, %.3f)" % geo.coords[-1], "  D(Stop): %.3f" % distance2stop
+
+            # Reverse if end is closest.
+            if distance2start > distance2stop:
+                print "  Reversing!"
+                geo.coords = list(geo.coords)[::-1]
+
+            # G-code
             if type(geo) == LineString or type(geo) == LinearRing:
                 self.gcode += self.linear2gcode(geo, tolerance=tolerance)
             elif type(geo) == Point:
@@ -2310,12 +2332,13 @@ class CNCjob(Geometry):
             else:
                 log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
-            start_pt = geo.coords[0]
-            stop_pt = geo.coords[-1]
-            rtindex.delete(hits[0], start_pt)
-            rtindex.delete(hits[0], stop_pt)
-            hits = list(rtindex.nearest(stop_pt, 1))
+            # Delete from index, update current location and continue.
+            rti.delete(hits[0], geo.coords[0])
+            rti.delete(hits[0], geo.coords[-1])
+            current_pt = geo.coords[-1]
+            hits = list(rti.nearest(current_pt, 1))
 
+        log.debug("%s paths traced." % path_count)
 
         # Finish
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
@@ -2518,6 +2541,8 @@ class CNCjob(Geometry):
         :param tool_tolerance: Tolerance when drawing the toolshape.
         :return: None
         """
+        path_num = 0
+
         if tooldia is None:
             tooldia = self.tooldia
         
@@ -2531,7 +2556,11 @@ class CNCjob(Geometry):
                 axes.plot(x, y, linespec, color=linecolor)
         else:
             for geo in self.gcode_parsed:
-                poly = geo['geom'].buffer(tooldia/2.0).simplify(tool_tolerance)
+                path_num += 1
+                axes.annotate(str(path_num), xy=geo['geom'].coords[0],
+                              xycoords='data')
+
+                poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
                 patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
                                      edgecolor=color[geo['kind'][0]][1],
                                      alpha=alpha[geo['kind'][0]], zorder=2)
@@ -2812,7 +2841,10 @@ def find_polygon(poly_set, point):
 
 def to_dict(obj):
     """
-    Makes a Shapely geometry object into serializeable form.
+    Makes the following types into serializable form:
+
+    * ApertureMacro
+    * BaseGeometry
 
     :param obj: Shapely geometry.
     :type obj: BaseGeometry
@@ -3149,3 +3181,7 @@ def three_point_circle(p1, p2, p3):
     radius = norm(center - p1)
 
     return center, radius, T[0]
+
+
+def distance(pt1, pt2):
+    return sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)

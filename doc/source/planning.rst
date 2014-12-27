@@ -7,7 +7,8 @@ Drawing
 * [DONE] Arcs
 * [DONE] Subtract Shapes
   * [DONE] Selected objects must be kept onlist to preserve order.
-* Polygon to outline
+* [DONE] Cut Path
+  * Polygon to outline
 * Force perpendicular
 * Un-group (Union creates group)
 * Group (But not union)

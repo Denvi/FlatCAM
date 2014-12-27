@@ -800,7 +800,6 @@ class FlatCAMDraw(QtCore.QObject):
                     self.shape_buffer.remove(shape)
 
             # Add the new utility shape
-            #self.shape_buffer.append(geo)
             self.add_shape(geo)
 
             # Efficient plotting for fast animation
@@ -811,13 +810,12 @@ class FlatCAMDraw(QtCore.QObject):
                 self.axes.draw_artist(el)
             #self.canvas.canvas.blit(self.axes.bbox)
 
-            #self.replot()
+        # Pointer (snapped)
+        elements = self.axes.plot(x, y, 'bo', animated=True)
+        for el in elements:
+                self.axes.draw_artist(el)
 
-            elements = self.axes.plot(x, y, 'bo', animated=True)
-            for el in elements:
-                    self.axes.draw_artist(el)
-
-            self.canvas.canvas.blit(self.axes.bbox)
+        self.canvas.canvas.blit(self.axes.bbox)
 
     def on_canvas_key(self, event):
         """
@@ -905,7 +903,7 @@ class FlatCAMDraw(QtCore.QObject):
 
     def plot_shape(self, geometry=None, linespec='b-', linewidth=1, animated=False):
         """
-        Plots a geometric object or list of objects without rendeting. Plotted objects
+        Plots a geometric object or list of objects without rendering. Plotted objects
         are returned as a list. This allows for efficient/animated rendering.
 
         :param geometry: Geometry to be plotted (Any Shapely.geom kind or list of such)
@@ -971,7 +969,6 @@ class FlatCAMDraw(QtCore.QObject):
         :type shape: DrawToolShape
         :return: None
         """
-        print "add_shape()"
 
         # List of DrawToolShape?
         if isinstance(shape, list):
