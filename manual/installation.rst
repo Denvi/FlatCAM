@@ -65,9 +65,11 @@ Windows
 
 An easy way to get the requirements in your system is to install WinPython_.
 This is a standalone distribution of Python which includes all of FlatCAM's
-dependencies, except for Shapely.
+dependencies, except for Shapely and RTree. These can be found here:
+`Unofficial Windows Binaries for Python Extension Packages`_.
 
 .. _WinPython: http://winpython.sourceforge.net/
+.. _Unofficial Windows Binaries for Python Extension Packages: http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
 Once the dependencies are installed, download the latest .zip
 release (or the latest source, although it is not garanteed to work),
