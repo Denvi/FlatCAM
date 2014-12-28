@@ -1848,6 +1848,161 @@ class App(QtCore.QObject):
 
             self.open_gcode(str(filename), **kwa)
 
+
+        def cutout(name, *args):
+            a, kwa = h(*args)
+            types = {'dia': float,
+                     'margin': float,
+                     'gapsize': float,
+                     'gaps': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+
+            def geo_init_me(geo_obj, app_obj):
+                margin = kwa['margin']+kwa['dia']/2
+                gap_size = kwa['dia']+kwa['gapsize']
+                minx, miny, maxx, maxy = obj.bounds()
+                minx -= margin
+                maxx += margin
+                miny -= margin
+                maxy += margin
+                midx = 0.5 * (minx + maxx)
+                midy = 0.5 * (miny + maxy)
+                hgap = 0.5 * gap_size
+                pts = [[midx - hgap, maxy],
+                       [minx, maxy],
+                       [minx, midy + hgap],
+                       [minx, midy - hgap],
+                       [minx, miny],
+                       [midx - hgap, miny],
+                       [midx + hgap, miny],
+                       [maxx, miny],
+                       [maxx, midy - hgap],
+                       [maxx, midy + hgap],
+                       [maxx, maxy],
+                       [midx + hgap, maxy]]
+                cases = {"tb": [[pts[0], pts[1], pts[4], pts[5]],
+                                [pts[6], pts[7], pts[10], pts[11]]],
+                         "lr": [[pts[9], pts[10], pts[1], pts[2]],
+                                [pts[3], pts[4], pts[7], pts[8]]],
+                         "4": [[pts[0], pts[1], pts[2]],
+                               [pts[3], pts[4], pts[5]],
+                               [pts[6], pts[7], pts[8]],
+                               [pts[9], pts[10], pts[11]]]}
+                cuts = cases[kwa['gaps']]
+                geo_obj.solid_geometry = cascaded_union([LineString(segment) for segment in cuts])
+
+            try:
+                obj.app.new_object("geometry", name+ "_cutout", geo_init_me)
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
+        def mirror(name, *args):
+            a, kwa = h(*args)
+            types = {'box': str,
+                     'axis': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            try:
+                box = self.collection.get_by_name(kwa['box'])
+            except:
+                return "Could not retrieve object box: %s" % kwa['box']
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if box is None:
+                return "Object box not found: %s" % kwa['box']
+
+
+            if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
+                return "ERROR: Only Gerber and Excellon objects can be mirrored."
+
+            try:
+                xmin, ymin, xmax, ymax = box.bounds()
+                px = 0.5*(xmin+xmax)
+                py = 0.5*(ymin+ymax)
+            
+                obj.mirror(kwa['axis'], [px, py])
+                obj.plot()
+
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
+
+        def drillcncjob(name, *args):
+            a, kwa = h(*args)
+            types = {'tools': str,
+                     'outname': str,
+                     'drillz': float,
+                     'travelz': float,
+                     'feedrate': float}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if not isinstance(obj, FlatCAMExcellon):
+                return "ERROR: Only Excellon objects can be drilled."
+
+            try:
+              
+                # Get the tools from the list
+                job_name = kwa["outname"]
+        
+                # Object initialization function for app.new_object()
+                def job_init(job_obj, app_obj):
+                    assert isinstance(job_obj, FlatCAMCNCjob)
+                    
+                    job_obj.z_cut = kwa["drillz"]
+                    job_obj.z_move = kwa["travelz"]
+                    job_obj.feedrate = kwa["feedrate"]
+                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"])
+                    
+                    job_obj.gcode_parse()
+                    
+                    job_obj.create_geometry()
+        
+                obj.app.new_object("cncjob", job_name, job_init)
+
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
         def isolate(name, *args):
             a, kwa = h(*args)
             types = {'dia': float,
@@ -1908,9 +2063,10 @@ class App(QtCore.QObject):
                 obj = self.collection.get_by_name(str(obj_name))
             except:
                 return "Could not retrieve object: %s" % obj_name
-            if obj is None:
-                return "Object not found: %s" % obj_name
-            obj.export_gcode(str(filename), str(preamble), str(postamble))
+            try:
+                obj.export_gcode(str(filename), str(preamble), str(postamble))
+            except Exception, e:
+                return "Operation failed: %s" % str(e)
 
         def paint_poly(obj_name, inside_pt_x, inside_pt_y, tooldia, overlap):
             try:
@@ -2108,6 +2264,33 @@ class App(QtCore.QObject):
                         "   name: Name of the object\n"
                         "   dia: Tool diameter\n   passes: # of tool width\n" +
                         "   overlap: Fraction of tool diameter to overlap passes"
+            },
+            'cutout': {
+                'fcn': cutout,
+                'help': "Creates cutout board.\n" +
+                        "> cutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
+                        "   name: Name of the object\n" +
+                        "   dia: Tool diameter\n   margin: # margin over bounds\n" +
+                        "   gapsize: size of gap\n   gaps: type of gaps"
+            },
+            'mirror': {
+                'fcn': mirror,
+                'help': "Mirror board.\n" +
+                        "> mirror <nameMirroredObject> -box <nameOfBox> [-axis <3.0 (X X|Y)>]\n" +
+                        "   name: Name of the object to mirror\n" +
+                        "   box: Name of   object which act as box (cutout for example)\n" +
+                        "   axis: axis mirror over x o y"
+            },
+            'drillcncjob': {
+                'fcn': drillcncjob,
+                'help': "Drill CNC job.\n" +
+                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> \n" +
+                        "   name: Name of the object\n" +
+                        "   tools: coma separated indexes of tools (example: 1,3 or 2)\n" +
+                        "   drillz: drill into material (example: -2)\n" +
+                        "   travelz: travel above  material (example: 2)\n" +
+                        "   feedrate: drilling feed rate\n" +
+                        "   outname: name of object to create\n" 
             },
             'scale': {
                 'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
