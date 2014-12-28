@@ -15,17 +15,21 @@ This  fork is  mainly for improving shell  commands.
 
 added so far:
 
-cutout
-mirror
-cncdrilljob
+* cutout
+* mirror
+* cncdrilljob
 
 
 todo:
 
-commandline  witch  reads  whole shell sequence from given file
+* commandline  witch  reads  whole shell sequence from given file
 
 
 example of  shell flow:
+
+```
+#!flatcam shell
+
 
 new 
 open_gerber /home/sopak/kicad/ThermalShield/Gerber/ThermalPicoShield2-Margin.gbr  -outname Margin
@@ -55,3 +59,4 @@ write_gcode Margin_cutout_cnc /home/sopak/kicad/ThermalShield/Gerber/ThermalPico
 write_gcode Drills_cncjob_3.0 /home/sopak/kicad/ThermalShield/Gerber/ThermalPicoShield2.drl_Drills_cncjob_3.0.ngc
 
 write_gcode Drills_cncjob_0.8 /home/sopak/kicad/ThermalShield/Gerber/ThermalPicoShield2.drl_Drills_cncjob_0.8.ngc
+```
