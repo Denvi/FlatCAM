@@ -3185,3 +3185,117 @@ def three_point_circle(p1, p2, p3):
 
 def distance(pt1, pt2):
     return sqrt((pt1[0] - pt2[0]) ** 2 + (pt1[1] - pt2[1]) ** 2)
+
+
+class FlatCAMRTree(object):
+    def __init__(self):
+        self.rti = rtindex.Index()
+        self.obj2points = []
+        self.points2obj = []
+
+    def grow_obj2points(self, idx):
+        if len(self.obj2points) > idx:
+            # len == 2, idx == 1, ok.
+            return
+        else:
+            # len == 2, idx == 2, need 1 more.
+            # range(2, 3)
+            for i in range(len(self.obj2points), idx + 1):
+                self.obj2points.append([])
+
+    def insert(self, objid, obj):
+        self.grow_obj2points(objid)
+        self.obj2points[objid] = []
+
+        for pt in obj.coords:
+            self.rti.insert(len(self.points2obj), (pt[0], pt[1], pt[0], pt[1]), obj=objid)
+            self.obj2points[objid].append(len(self.points2obj))
+            self.points2obj.append(objid)
+
+    def remove_obj(self, objid, obj):
+        # Use all ptids to delete from index
+        for i in range(len(self.obj2points[objid])):
+            pt = obj.coords[i]
+            self.rti.delete(self.obj2points[objid][i], (pt[0], pt[1], pt[0], pt[1]))
+
+    def nearest(self, pt):
+        return self.rti.nearest(pt, objects=True).next()
+
+
+class FlatCAMRTreeStorage(FlatCAMRTree):
+    def __init__(self):
+        super(FlatCAMRTreeStorage, self).__init__()
+
+        self.objects = []
+
+    def insert(self, obj):
+        self.objects.append(obj)
+        super(FlatCAMRTreeStorage, self).insert(len(self.objects) - 1, obj)
+
+    def remove(self, obj):
+        objidx = self.objects.index(obj)
+        self.objects[objidx] = None
+        self.remove_obj(objidx, obj)
+
+    def get_objects(self):
+        return (o for o in self.objects if o is not None)
+
+    def nearest(self, pt):
+        tidx = super(FlatCAMRTreeStorage, self).nearest(pt)
+        return (tidx.bbox[0], tidx.bbox[1]), self.objects[tidx.object]
+
+class myO:
+    def __init__(self, coords):
+        self.coords = coords
+
+
+def test_rti():
+
+    o1 = myO([(0, 0), (0, 1), (1, 1)])
+    o2 = myO([(2, 0), (2, 1), (2, 1)])
+    o3 = myO([(2, 0), (2, 1), (3, 1)])
+
+    os = [o1, o2]
+
+    idx = FlatCAMRTree()
+
+    for o in range(len(os)):
+        idx.insert(o, os[o])
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+
+    idx.remove_obj(0, o1)
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+
+    idx.remove_obj(1, o2)
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+
+
+def test_rtis():
+
+    o1 = myO([(0, 0), (0, 1), (1, 1)])
+    o2 = myO([(2, 0), (2, 1), (2, 1)])
+    o3 = myO([(2, 0), (2, 1), (3, 1)])
+
+    os = [o1, o2]
+
+    idx = FlatCAMRTreeStorage()
+
+    for o in range(len(os)):
+        idx.insert(os[o])
+
+    #os = None
+    #o1 = None
+    #o2 = None
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+
+    idx.remove(idx.nearest((2,0))[1])
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+
+    idx.remove(idx.nearest((0,0))[1])
+
+    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]

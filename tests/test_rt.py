@@ -6,10 +6,11 @@ def pt2rect(pt):
 
 pts = [(0.0, 0.0), (1.0, 1.0), (0.0, 1.0)]
 
-#p = rtindex.Property()
-#p.buffering_capacity = 1
-#rt = rtindex.Index(properties=p)
-rt = rtindex.Index()
+p = rtindex.Property()
+p.buffering_capacity = 1
+p.dimension = 2
+rt = rtindex.Index(properties=p)
+#rt = rtindex.Index()
 
 # If interleaved is True, the coordinates must be in
 # the form [xmin, ymin, ..., kmin, xmax, ymax, ..., kmax].
