@@ -435,6 +435,7 @@ class FCSelect(DrawTool):
             self.draw_app.selected = []
 
         self.draw_app.set_selected(closest_shape)
+        self.draw_app.app.log.debug("Selected shape containing: " + str(closest_shape.geo))
 
         return ""
 
@@ -849,6 +850,8 @@ class FlatCAMDraw(QtCore.QObject):
 
         if isinstance(geo, DrawToolShape) and geo.geo is not None:
 
+            print geo.geo
+
             # Remove any previous utility shape
             self.delete_utility_geometry()
 
@@ -858,7 +861,10 @@ class FlatCAMDraw(QtCore.QObject):
             # Efficient plotting for fast animation
 
             #self.canvas.canvas.restore_region(self.canvas.background)
-            elements = self.plot_shape(geometry=geo.geo, linespec="b--", animated=True)
+            elements = self.plot_shape(geometry=geo.geo,
+                                       linespec="b--",
+                                       linewidth=1,
+                                       animated=True)
             for el in elements:
                 self.axes.draw_artist(el)
             #self.canvas.canvas.blit(self.axes.bbox)
@@ -969,46 +975,72 @@ class FlatCAMDraw(QtCore.QObject):
         if geometry is None:
             geometry = self.active_tool.geometry
 
+        # try:
+        #     _ = iter(geometry)
+        #     iterable_geometry = geometry
+        # except TypeError:
+        #     iterable_geometry = [geometry]
+
+        ## Iterable: Descend into each element.
         try:
-            _ = iter(geometry)
-            iterable_geometry = geometry
+            for geo in geometry:
+                plot_elements += self.plot_shape(geometry=geo,
+                                                 linespec=linespec,
+                                                 linewidth=linewidth,
+                                                 animated=animated)
+
+        ## Non-iterable
         except TypeError:
-            iterable_geometry = [geometry]
 
-        for geo in iterable_geometry:
+            ## DrawToolShape
+            if isinstance(geometry, DrawToolShape):
+                plot_elements += self.plot_shape(geometry=geometry.geo,
+                                                 linespec=linespec,
+                                                 linewidth=linewidth,
+                                                 animated=animated)
 
-            if type(geo) == Polygon:
-                x, y = geo.exterior.coords.xy
+            ## Polygon: Dscend into exterior and each interior.
+            if type(geometry) == Polygon:
+                plot_elements += self.plot_shape(geometry=geometry.exterior,
+                                                 linespec=linespec,
+                                                 linewidth=linewidth,
+                                                 animated=animated)
+                plot_elements += self.plot_shape(geometry=geometry.interiors,
+                                                 linespec=linespec,
+                                                 linewidth=linewidth,
+                                                 animated=animated)
+
+                # x, y = geo.exterior.coords.xy
+                # element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
+                # plot_elements.append(element)
+                # for ints in geo.interiors:
+                #     x, y = ints.coords.xy
+                #     element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
+                #     plot_elements.append(element)
+                # continue
+
+            if type(geometry) == LineString or type(geometry) == LinearRing:
+                x, y = geometry.coords.xy
                 element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
                 plot_elements.append(element)
-                for ints in geo.interiors:
-                    x, y = ints.coords.xy
-                    element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                    plot_elements.append(element)
-                continue
+                # continue
 
-            if type(geo) == LineString or type(geo) == LinearRing:
-                x, y = geo.coords.xy
-                element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                plot_elements.append(element)
-                continue
+            # if type(geo) == MultiPolygon:
+            #     for poly in geo:
+            #         x, y = poly.exterior.coords.xy
+            #         element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
+            #         plot_elements.append(element)
+            #         for ints in poly.interiors:
+            #             x, y = ints.coords.xy
+            #             element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
+            #             plot_elements.append(element)
+            #     continue
 
-            if type(geo) == MultiPolygon:
-                for poly in geo:
-                    x, y = poly.exterior.coords.xy
-                    element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                    plot_elements.append(element)
-                    for ints in poly.interiors:
-                        x, y = ints.coords.xy
-                        element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                        plot_elements.append(element)
-                continue
-
-            if type(geo) == Point:
-                x, y = geo.coords.xy
+            if type(geometry) == Point:
+                x, y = geometry.coords.xy
                 element, = self.axes.plot(x, y, 'bo', linewidth=linewidth, animated=animated)
                 plot_elements.append(element)
-                continue
+                # continue
 
         return plot_elements
         # self.canvas.auto_adjust_axes()
