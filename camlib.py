@@ -138,6 +138,47 @@ class Geometry(object):
         else:
             return self.solid_geometry.bounds
 
+    def flatten(self, geometry=None, reset=True):
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        if reset:
+            self.flat_geometry = []
+
+        ## If iterable, expand recursively.
+        try:
+            for geo in geometry:
+                self.flatten(geometry=geo, reset=False)
+
+        ## Not iterable, do the actual indexing and add.
+        except TypeError:
+            if type(geometry) == Polygon:
+                self.flat_geometry.append(geometry)
+
+        return self.flat_geometry
+
+    def make2Dindex(self):
+
+        self.flatten()
+
+        def get_pts(o):
+            pts = []
+            if type(o) == Polygon:
+                g = o.exterior
+                pts += list(g.coords)
+                for i in o.interiors:
+                    pts += list(i.coords)
+            else:
+                pts += list(o.coords)
+            return pts
+
+        idx = FlatCAMRTreeStorage()
+        idx.get_points = get_pts
+        for shape in self.flat_geometry:
+            idx.insert(shape)
+        return idx
+
+
     def flatten_to_paths(self, geometry=None, reset=True):
         """
         Creates a list of non-iterable linear geometry elements and
@@ -3188,10 +3229,13 @@ def distance(pt1, pt2):
 
 
 class FlatCAMRTree(object):
+
     def __init__(self):
         self.rti = rtindex.Index()
         self.obj2points = []
         self.points2obj = []
+
+        self.get_points = lambda go: go.coords
 
     def grow_obj2points(self, idx):
         if len(self.obj2points) > idx:
@@ -3207,15 +3251,18 @@ class FlatCAMRTree(object):
         self.grow_obj2points(objid)
         self.obj2points[objid] = []
 
-        for pt in obj.coords:
+        #for pt in obj.coords:
+        for pt in self.get_points(obj):
             self.rti.insert(len(self.points2obj), (pt[0], pt[1], pt[0], pt[1]), obj=objid)
             self.obj2points[objid].append(len(self.points2obj))
             self.points2obj.append(objid)
 
     def remove_obj(self, objid, obj):
         # Use all ptids to delete from index
-        for i in range(len(self.obj2points[objid])):
-            pt = obj.coords[i]
+        #for i in range(len(self.obj2points[objid])):
+        for i, pt in enumerate(self.get_points(obj)):
+            #pt = obj.coords[i]
+            #pt = self.get_points(obj)[i]
             self.rti.delete(self.obj2points[objid][i], (pt[0], pt[1], pt[0], pt[1]))
 
     def nearest(self, pt):
@@ -3241,8 +3288,18 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
         return (o for o in self.objects if o is not None)
 
     def nearest(self, pt):
+        """
+        Returns the nearest matching points and the object
+        it belongs to.
+
+        :param pt: Query point.
+        :return: (match_x, match_y), Object owner of
+          matching point.
+        :rtype: tuple
+        """
         tidx = super(FlatCAMRTreeStorage, self).nearest(pt)
         return (tidx.bbox[0], tidx.bbox[1]), self.objects[tidx.object]
+
 
 class myO:
     def __init__(self, coords):

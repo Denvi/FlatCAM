@@ -21,11 +21,51 @@ from rtree import index as rtindex
 
 class DrawToolShape(object):
 
+    @staticmethod
+    def get_pts(o):
+        """
+        Returns a list of all points in the object, where
+        the object can be a Polygon, Not a polygon, or a list
+        of such. Search is done recursively.
+
+        :param: geometric object
+        :return: List of points
+        :rtype: list
+        """
+        pts = []
+
+        ## Iterable: descend into each item.
+        try:
+            for subo in o:
+                pts += DrawToolShape.get_pts(subo)
+
+        ## Non-iterable
+        except TypeError:
+
+            ## DrawToolShape: descend into .geo.
+            if isinstance(o, DrawToolShape):
+                pts += DrawToolShape.get_pts(o.geo)
+
+            ## Descend into .exerior and .interiors
+            elif type(o) == Polygon:
+                pts += DrawToolShape.get_pts(o.exterior)
+                for i in o.interiors:
+                    pts += DrawToolShape.get_pts(i)
+
+            ## Has .coords: list them.
+            else:
+                pts += list(o.coords)
+
+        return pts
+
     def __init__(self, geo=[]):
 
         # Shapely type or list of such
         self.geo = geo
         self.utility = False
+
+    def get_all_points(self):
+        return DrawToolShape.get_pts(self)
 
 
 class DrawToolUtilityShape(DrawToolShape):
@@ -383,39 +423,26 @@ class FCPath(FCPolygon):
 class FCSelect(DrawTool):
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
-        self.shape_buffer = self.draw_app.shape_buffer
+        self.storage = self.draw_app.storage
+        #self.shape_buffer = self.draw_app.shape_buffer
         self.selected = self.draw_app.selected
         self.start_msg = "Click on geometry to select"
 
     def click(self, point):
-        min_distance = Inf
-        closest_shape = None
+        _, closest_shape = self.storage.nearest(point)
 
-        for shape in self.shape_buffer:
+        if self.draw_app.key != 'control':
+            self.draw_app.selected = []
 
-            # Remove all if 'control' is not help
-            if self.draw_app.key != 'control':
-                #shape["selected"] = False
-                self.draw_app.set_unselected(shape)
+        self.draw_app.set_selected(closest_shape)
 
-            # TODO: Do this with rtree?
-            dist = Point(point).distance(cascaded_union(shape.geo))
-            if dist < min_distance:
-                closest_shape = shape
-                min_distance = dist
-
-        if closest_shape is not None:
-            #closest_shape["selected"] = True
-            self.draw_app.set_selected(closest_shape)
-            return "Shape selected."
-
-        return "Nothing selected."
+        return ""
 
 
 class FCMove(FCShapeTool):
     def __init__(self, draw_app):
         FCShapeTool.__init__(self, draw_app)
-        self.shape_buffer = self.draw_app.shape_buffer
+        #self.shape_buffer = self.draw_app.shape_buffer
         self.origin = None
         self.destination = None
         self.start_msg = "Click on reference point."
@@ -565,12 +592,8 @@ class FlatCAMDraw(QtCore.QObject):
         ### Data
         self.active_tool = None
 
-        ## List of shapes, None for removed ones. List
-        ## never decreases size.
-        self.main_index = []
-
-        ## List of shapes.
-        self.shape_buffer = []
+        self.storage = FlatCAMDraw.make_storage()
+        self.utility = []
 
         ## List of selected shapes.
         self.selected = []
@@ -580,9 +603,9 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.key = None  # Currently pressed key
 
-        def make_callback(tool):
+        def make_callback(thetool):
             def f():
-                self.on_tool_select(tool)
+                self.on_tool_select(thetool)
             return f
 
         for tool in self.tools:
@@ -624,10 +647,41 @@ class FlatCAMDraw(QtCore.QObject):
     def activate(self):
         pass
 
+    def add_shape(self, shape):
+        """
+        Adds a shape to the shape storage.
+
+        :param shape: Shape to be added.
+        :type shape: DrawToolShape
+        :return: None
+        """
+
+        # List of DrawToolShape?
+        if isinstance(shape, list):
+            for subshape in shape:
+                self.add_shape(subshape)
+            return
+
+        assert isinstance(shape, DrawToolShape)
+        assert shape.geo is not None
+        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
+
+        if isinstance(shape, DrawToolUtilityShape):
+            self.utility.append(shape)
+        else:
+            self.storage.insert(shape)
+
     def deactivate(self):
         self.clear()
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
+
+    def delete_utility_geometry(self):
+        #for_deletion = [shape for shape in self.shape_buffer if shape.utility]
+        #for_deletion = [shape for shape in self.storage.get_objects() if shape.utility]
+        for_deletion = [shape for shape in self.utility]
+        for shape in for_deletion:
+            self.delete_shape(shape)
 
     def cutpath(self):
         selected = self.get_selected()
@@ -653,7 +707,9 @@ class FlatCAMDraw(QtCore.QObject):
 
     def clear(self):
         self.active_tool = None
-        self.shape_buffer = []
+        #self.shape_buffer = []
+        self.selected = []
+        self.storage = FlatCAMDraw.make_storage()
         self.replot()
 
     def edit_fcgeometry(self, fcgeometry):
@@ -675,14 +731,13 @@ class FlatCAMDraw(QtCore.QObject):
                 geometry = [fcgeometry.solid_geometry]
 
         # Delete contents of editor.
-        self.shape_buffer = []
+        #self.shape_buffer = []
+        self.clear()
 
         # Link shapes into editor.
         for shape in geometry:
-            # self.shape_buffer.append({'geometry': shape,
-            #                           # 'selected': False,
-            #                           'utility': False})
-            self.shape_buffer.append(DrawToolShape(geometry))
+            #self.shape_buffer.append(DrawToolShape(geometry))
+            self.add_shape(DrawToolShape(shape.flatten()))
 
         self.replot()
         self.drawing_toolbar.setDisabled(False)
@@ -795,9 +850,7 @@ class FlatCAMDraw(QtCore.QObject):
         if isinstance(geo, DrawToolShape) and geo.geo is not None:
 
             # Remove any previous utility shape
-            for shape in self.shape_buffer:
-                if shape.utility:
-                    self.shape_buffer.remove(shape)
+            self.delete_utility_geometry()
 
             # Add the new utility shape
             self.add_shape(geo)
@@ -841,9 +894,8 @@ class FlatCAMDraw(QtCore.QObject):
             # TODO: ...?
             self.on_tool_select("select")
             self.app.info("Cancelled.")
-            for_deletion = [shape for shape in self.shape_buffer if shape.utility]
-            for shape in for_deletion:
-                self.shape_buffer.remove(shape)
+
+            self.delete_utility_geometry()
 
             self.replot()
             self.select_btn.setChecked(True)
@@ -961,41 +1013,12 @@ class FlatCAMDraw(QtCore.QObject):
         return plot_elements
         # self.canvas.auto_adjust_axes()
 
-    def add_shape(self, shape):
-        """
-        Adds a shape to the shape buffer and the rtree index.
-
-        :param shape: Shape to be added.
-        :type shape: DrawToolShape
-        :return: None
-        """
-
-        # List of DrawToolShape?
-        if isinstance(shape, list):
-            for subshape in shape:
-                self.add_shape(subshape)
-            return
-
-        assert isinstance(shape, DrawToolShape)
-        assert shape.geo is not None
-        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
-
-        self.shape_buffer.append(shape)
-
-        # Do not add utility shapes to the index.
-        if not isinstance(shape, DrawToolUtilityShape):
-            self.main_index.append(shape)
-            self.add2index(len(self.main_index) - 1, shape)
-
     def plot_all(self):
         self.app.log.debug("plot_all()")
         self.axes.cla()
-        for shape in self.shape_buffer:
+        #for shape in self.shape_buffer:
+        for shape in self.storage.get_objects():
             if shape.geo is None:  # TODO: This shouldn't have happened
-                continue
-
-            if shape.utility:
-                self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)
                 continue
 
             if shape in self.selected:
@@ -1003,6 +1026,10 @@ class FlatCAMDraw(QtCore.QObject):
                 continue
 
             self.plot_shape(geometry=shape.geo)
+
+        for shape in self.utility:
+            self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)
+            continue
 
         self.canvas.auto_adjust_axes()
 
@@ -1076,26 +1103,29 @@ class FlatCAMDraw(QtCore.QObject):
         self.add_shape(self.active_tool.geometry)
 
         # Remove any utility shapes
-        for shape in self.shape_buffer:
-            if shape.utility:
-                self.shape_buffer.remove(shape)
+        self.delete_utility_geometry()
 
         self.replot()
         self.active_tool = type(self.active_tool)(self)
 
     def delete_shape(self, shape):
-        try:
-            # Remove from index list
-            shp_idx = self.main_index.index(shape)
-            self.main_index[shp_idx] = None
+        # try:
+        #     # Remove from index list
+        #     shp_idx = self.main_index.index(shape)
+        #     self.main_index[shp_idx] = None
+        #
+        #     # Remove from rtree index
+        #     self.remove_from_index(shp_idx, shape)
+        # except ValueError:
+        #     pass
+        #
+        # if shape in self.shape_buffer:
+        #     self.shape_buffer.remove(shape)
+        if shape in self.utility:
+            self.utility.remove(shape)
+            return
 
-            # Remove from rtree index
-            self.remove_from_index(shp_idx, shape)
-        except ValueError:
-            pass
-
-        if shape in self.shape_buffer:
-            self.shape_buffer.remove(shape)
+        self.storage.remove(shape)
 
         if shape in self.selected:
             self.selected.remove(shape)
@@ -1104,6 +1134,15 @@ class FlatCAMDraw(QtCore.QObject):
         #self.canvas.clear()
         self.axes = self.canvas.new_axes("draw")
         self.plot_all()
+
+    @staticmethod
+    def make_storage():
+
+        ## Shape storage.
+        storage = FlatCAMRTreeStorage()
+        storage.get_points = DrawToolShape.get_pts
+
+        return storage
 
     def set_selected(self, shape):
 
@@ -1134,14 +1173,13 @@ class FlatCAMDraw(QtCore.QObject):
         ### in the index.
         if self.options["corner_snap"]:
             try:
-                bbox = self.rtree_index.nearest((x, y), objects=True).next().bbox
-                nearest_pt = (bbox[0], bbox[1])
+                nearest_pt, shape = self.storage.nearest((x, y))
 
                 nearest_pt_distance = distance((x, y), nearest_pt)
                 if nearest_pt_distance <= self.options["snap_max"]:
                     snap_distance = nearest_pt_distance
                     snap_x, snap_y = nearest_pt
-            except StopIteration:
+            except (StopIteration, AssertionError):
                 pass
 
         ### Grid snap
@@ -1170,7 +1208,8 @@ class FlatCAMDraw(QtCore.QObject):
         :return: None
         """
         fcgeometry.solid_geometry = []
-        for shape in self.shape_buffer:
+        #for shape in self.shape_buffer:
+        for shape in self.storage.get_objects():
             fcgeometry.solid_geometry.append(shape.geo)
 
     def union(self):
@@ -1185,7 +1224,8 @@ class FlatCAMDraw(QtCore.QObject):
 
         # Delete originals.
         for shape in self.get_selected():
-            self.shape_buffer.remove(shape)
+            #self.shape_buffer.remove(shape)
+            self.delete_shape(shape)  # TODO: This will crash
 
         # Selected geometry is now gone!
         self.selected = []
