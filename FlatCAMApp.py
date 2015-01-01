@@ -1,6 +1,7 @@
 import traceback
 import sys
 import urllib
+import getopt
 from copy import copy
 import random
 import logging
@@ -33,6 +34,22 @@ class App(QtCore.QObject):
     """
     The main application class. The constructor starts the GUI.
     """
+
+    ## Get Cmd Line Options
+
+    cmd_line_shellfile=''
+    cmd_line_help="FlatCam.py --shellfile=<cmd_line_shellfile>"
+    try:
+        cmd_line_options, args = getopt.getopt(sys.argv[1:],"h:","shellfile=")
+    except getopt.GetoptError:
+        print cmd_line_help
+        sys.exit(2)
+    for opt, arg in cmd_line_options:
+        if opt == '-h':
+            print cmd_line_help
+            sys.exit()
+        elif opt == '--shellfile':
+            cmd_line_shellfile = arg
 
     ## Logging ##
     log = logging.getLogger('base')
@@ -428,6 +445,8 @@ class App(QtCore.QObject):
         ### Shell ###
         #############
         # TODO: Move this to its own class
+
+
         self.shell = FCShell(self)
         self.shell.setWindowIcon(self.ui.app_icon)
         self.shell.setWindowTitle("FlatCAM Shell")
@@ -438,6 +457,15 @@ class App(QtCore.QObject):
         self.shell.append_output("Type help to get started.\n\n")
         self.tcl = Tkinter.Tcl()
         self.setup_shell()
+
+	if self.cmd_line_shellfile:
+            try:
+                with open (self.cmd_line_shellfile, "r") as myfile:
+	            cmd_line_shellfile_text=myfile.read()
+	            self.shell._sysShell.exec_command(cmd_line_shellfile_text)
+            except Exception as ext:
+		print "ERROR: ",ext
+                sys.exit(2)
 
         App.log.debug("END of constructor. Releasing control.")
 
