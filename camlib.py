@@ -2370,19 +2370,14 @@ class CNCjob(Geometry):
         try:
             while True:
                 path_count += 1
-                print "Current: ", "(%.3f, %.3f)" % current_pt
-
-                # TODO: There shoudn't be any None in geometry.flatten()
-                # if geo is None:
-                #     storage.remove(geo)
-                #     continue
+                #print "Current: ", "(%.3f, %.3f)" % current_pt
 
                 # Remove before modifying, otherwise
                 # deletion will fail.
                 storage.remove(geo)
 
                 if list(pt) == list(geo.coords[-1]):
-                    print "Reversing"
+                    #print "Reversing"
                     geo.coords = list(geo.coords)[::-1]
 
                 # G-code

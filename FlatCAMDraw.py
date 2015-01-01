@@ -526,7 +526,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.drawing_toolbar = QtGui.QToolBar()
         self.drawing_toolbar.setDisabled(disabled)
         self.app.ui.addToolBar(self.drawing_toolbar)
-        self.select_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/pointer32.png'), 'Select')
+        self.select_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/pointer32.png'), "Select 'Esc'")
         self.add_circle_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/circle32.png'), 'Add Circle')
         self.add_arc_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/arc32.png'), 'Add Arc')
         self.add_rectangle_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/rectangle32.png'), 'Add Rectangle')
@@ -535,8 +535,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
         self.subtract_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/subtract32.png'), 'Polygon Subtraction')
         self.cutpath_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/cutpath32.png'), 'Cut Path')
-        self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), 'Move Objects')
-        self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), 'Copy Objects')
+        self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), "Move Objects 'm'")
+        self.copy_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/copy32.png'), "Copy Objects 'c'")
+        self.delete_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/deleteshape32.png'), "Delete Shape '-'")
 
         ### Snap Toolbar ###
         self.snap_toolbar = QtGui.QToolBar()
@@ -569,6 +570,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.union_btn.triggered.connect(self.union)
         self.subtract_btn.triggered.connect(self.subtract)
         self.cutpath_btn.triggered.connect(self.cutpath)
+        self.delete_btn.triggered.connect(self.on_delete_btn)
 
         ## Toolbar events and properties
         self.tools = {
@@ -925,6 +927,10 @@ class FlatCAMDraw(QtCore.QObject):
 
     def on_canvas_key_release(self, event):
         self.key = None
+
+    def on_delete_btn(self):
+        self.delete_selected()
+        self.replot()
 
     def get_selected(self):
         """
