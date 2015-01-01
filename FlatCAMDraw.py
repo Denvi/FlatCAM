@@ -704,7 +704,6 @@ class FlatCAMDraw(QtCore.QObject):
 
     def toolbar_tool_toggle(self, key):
         self.options[key] = self.sender().isChecked()
-        print "grid_snap", self.options["grid_snap"]
 
     def clear(self):
         self.active_tool = None
@@ -721,24 +720,14 @@ class FlatCAMDraw(QtCore.QObject):
         :param fcgeometry: FlatCAMGeometry
         :return: None
         """
+        assert isinstance(fcgeometry, Geometry)
 
-        if fcgeometry.solid_geometry is None:
-            geometry = []
-        else:
-            try:
-                _ = iter(fcgeometry.solid_geometry)
-                geometry = fcgeometry.solid_geometry
-            except TypeError:
-                geometry = [fcgeometry.solid_geometry]
-
-        # Delete contents of editor.
-        #self.shape_buffer = []
         self.clear()
 
         # Link shapes into editor.
-        for shape in geometry:
-            #self.shape_buffer.append(DrawToolShape(geometry))
-            self.add_shape(DrawToolShape(shape.flatten()))
+        for shape in fcgeometry.flatten():
+            if shape is not None:  # TODO: Make flatten never create a None
+                self.add_shape(DrawToolShape(shape))
 
         self.replot()
         self.drawing_toolbar.setDisabled(False)
@@ -849,8 +838,6 @@ class FlatCAMDraw(QtCore.QObject):
         geo = self.active_tool.utility_geometry(data=(x, y))
 
         if isinstance(geo, DrawToolShape) and geo.geo is not None:
-
-            print geo.geo
 
             # Remove any previous utility shape
             self.delete_utility_geometry()
@@ -1255,9 +1242,9 @@ class FlatCAMDraw(QtCore.QObject):
         results = cascaded_union([t.geo for t in self.get_selected()])
 
         # Delete originals.
-        for shape in self.get_selected():
-            #self.shape_buffer.remove(shape)
-            self.delete_shape(shape)  # TODO: This will crash
+        for_deletion = [s for s in self.get_selected()]
+        for shape in for_deletion:
+            self.delete_shape(shape)
 
         # Selected geometry is now gone!
         self.selected = []
