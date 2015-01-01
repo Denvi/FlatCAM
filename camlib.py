@@ -138,16 +138,7 @@ class Geometry(object):
         else:
             return self.solid_geometry.bounds
 
-    def flatten_to_paths(self, geometry=None, reset=True):
-        """
-        Creates a list of non-iterable linear geometry elements and
-        indexes them in rtree.
-
-        :param geometry: Iterable geometry
-        :param reset: Wether to clear (True) or append (False) to self.flat_geometry
-        :return: self.flat_geometry, self.flat_geometry_rtree
-        """
-
+    def flatten(self, geometry=None, reset=True, pathonly=False):
         if geometry is None:
             geometry = self.solid_geometry
 
@@ -157,30 +148,88 @@ class Geometry(object):
         ## If iterable, expand recursively.
         try:
             for geo in geometry:
-                self.flatten_to_paths(geometry=geo, reset=False)
+                self.flatten(geometry=geo,
+                             reset=False,
+                             pathonly=pathonly)
 
         ## Not iterable, do the actual indexing and add.
         except TypeError:
-            if type(geometry) == Polygon:
-                g = geometry.exterior
-                self.flat_geometry.append(g)
-
-                ## Add first and last points of the path to the index.
-                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
-                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
-
-                for interior in geometry.interiors:
-                    g = interior
-                    self.flat_geometry.append(g)
-                    self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
-                    self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
+            if pathonly and type(geometry) == Polygon:
+                self.flat_geometry.append(geometry.exterior)
+                self.flatten(geometry=geometry.interiors,
+                             reset=False,
+                             pathonly=True)
             else:
-                g = geometry
-                self.flat_geometry.append(g)
-                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
-                self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
+                self.flat_geometry.append(geometry)
+            # if type(geometry) == Polygon:
+            #     self.flat_geometry.append(geometry)
 
-        return self.flat_geometry, self.flat_geometry_rtree
+        return self.flat_geometry
+
+    def make2Dindex(self):
+
+        self.flatten()
+
+        def get_pts(o):
+            pts = []
+            if type(o) == Polygon:
+                g = o.exterior
+                pts += list(g.coords)
+                for i in o.interiors:
+                    pts += list(i.coords)
+            else:
+                pts += list(o.coords)
+            return pts
+
+        idx = FlatCAMRTreeStorage()
+        idx.get_points = get_pts
+        for shape in self.flat_geometry:
+            idx.insert(shape)
+        return idx
+
+    # def flatten_to_paths(self, geometry=None, reset=True):
+    #     """
+    #     Creates a list of non-iterable linear geometry elements and
+    #     indexes them in rtree.
+    #
+    #     :param geometry: Iterable geometry
+    #     :param reset: Wether to clear (True) or append (False) to self.flat_geometry
+    #     :return: self.flat_geometry, self.flat_geometry_rtree
+    #     """
+    #
+    #     if geometry is None:
+    #         geometry = self.solid_geometry
+    #
+    #     if reset:
+    #         self.flat_geometry = []
+    #
+    #     ## If iterable, expand recursively.
+    #     try:
+    #         for geo in geometry:
+    #             self.flatten_to_paths(geometry=geo, reset=False)
+    #
+    #     ## Not iterable, do the actual indexing and add.
+    #     except TypeError:
+    #         if type(geometry) == Polygon:
+    #             g = geometry.exterior
+    #             self.flat_geometry.append(g)
+    #
+    #             ## Add first and last points of the path to the index.
+    #             self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+    #             self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
+    #
+    #             for interior in geometry.interiors:
+    #                 g = interior
+    #                 self.flat_geometry.append(g)
+    #                 self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+    #                 self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
+    #         else:
+    #             g = geometry
+    #             self.flat_geometry.append(g)
+    #             self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[0])
+    #             self.flat_geometry_rtree.insert(len(self.flat_geometry) - 1, g.coords[-1])
+    #
+    #     return self.flat_geometry, self.flat_geometry_rtree
 
     def isolation_geometry(self, offset):
         """
@@ -2282,9 +2331,20 @@ class CNCjob(Geometry):
         """
         assert isinstance(geometry, Geometry)
 
-        ## Flatten the geometry and get rtree index
-        flat_geometry, rti = geometry.flatten_to_paths()
+        ## Flatten the geometry
+        flat_geometry = geometry.flatten(pathonly=True)
         log.debug("%d paths" % len(flat_geometry))
+
+        ## Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+
+        storage = FlatCAMRTreeStorage()
+        storage.get_points = get_pts
+
+        for shape in flat_geometry:
+            if shape is not None:  # TODO: This shouldn't have happened.
+                storage.insert(shape)
 
         if tooldia is not None:
             self.tooldia = tooldia
@@ -2306,37 +2366,39 @@ class CNCjob(Geometry):
         ## Iterate over geometry paths getting the nearest each time.
         path_count = 0
         current_pt = (0, 0)
-        hits = list(rti.nearest(current_pt, 1))
-        while len(hits) > 0:
-            path_count += 1
-            print "Current: ", "(%.3f, %.3f)" % current_pt
-            geo = flat_geometry[hits[0]]
+        pt, geo = storage.nearest(current_pt)
+        try:
+            while True:
+                path_count += 1
+                #print "Current: ", "(%.3f, %.3f)" % current_pt
 
-            # Determine which end of the path is closest.
-            distance2start = distance(current_pt, geo.coords[0])
-            distance2stop = distance(current_pt, geo.coords[-1])
-            print "  Path index =", hits[0]
-            print "  Start: ", "(%.3f, %.3f)" % geo.coords[0], "  D(Start): %.3f" % distance2start
-            print "  Stop : ", "(%.3f, %.3f)" % geo.coords[-1], "  D(Stop): %.3f" % distance2stop
+                # Remove before modifying, otherwise
+                # deletion will fail.
+                storage.remove(geo)
 
-            # Reverse if end is closest.
-            if distance2start > distance2stop:
-                print "  Reversing!"
-                geo.coords = list(geo.coords)[::-1]
+                if list(pt) == list(geo.coords[-1]):
+                    #print "Reversing"
+                    geo.coords = list(geo.coords)[::-1]
 
-            # G-code
-            if type(geo) == LineString or type(geo) == LinearRing:
-                self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-            elif type(geo) == Point:
-                self.gcode += self.point2gcode(geo)
-            else:
-                log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+                # G-code
+                if type(geo) == LineString or type(geo) == LinearRing:
+                    self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+                elif type(geo) == Point:
+                    self.gcode += self.point2gcode(geo)
+                else:
+                    log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
-            # Delete from index, update current location and continue.
-            rti.delete(hits[0], geo.coords[0])
-            rti.delete(hits[0], geo.coords[-1])
-            current_pt = geo.coords[-1]
-            hits = list(rti.nearest(current_pt, 1))
+                # Delete from index, update current location and continue.
+                #rti.delete(hits[0], geo.coords[0])
+                #rti.delete(hits[0], geo.coords[-1])
+
+                current_pt = geo.coords[-1]
+
+                # Next
+                pt, geo = storage.nearest(current_pt)
+
+        except StopIteration:  # Nothing found in storage.
+            pass
 
         log.debug("%s paths traced." % path_count)
 
@@ -3188,10 +3250,20 @@ def distance(pt1, pt2):
 
 
 class FlatCAMRTree(object):
+
     def __init__(self):
+        # Python RTree Index
         self.rti = rtindex.Index()
+
+        ## Track object-point relationship
+        # Each is list of points in object.
         self.obj2points = []
+
+        # Index is index in rtree, value is index of
+        # object in obj2points.
         self.points2obj = []
+
+        self.get_points = lambda go: go.coords
 
     def grow_obj2points(self, idx):
         if len(self.obj2points) > idx:
@@ -3207,15 +3279,14 @@ class FlatCAMRTree(object):
         self.grow_obj2points(objid)
         self.obj2points[objid] = []
 
-        for pt in obj.coords:
+        for pt in self.get_points(obj):
             self.rti.insert(len(self.points2obj), (pt[0], pt[1], pt[0], pt[1]), obj=objid)
             self.obj2points[objid].append(len(self.points2obj))
             self.points2obj.append(objid)
 
     def remove_obj(self, objid, obj):
         # Use all ptids to delete from index
-        for i in range(len(self.obj2points[objid])):
-            pt = obj.coords[i]
+        for i, pt in enumerate(self.get_points(obj)):
             self.rti.delete(self.obj2points[objid][i], (pt[0], pt[1], pt[0], pt[1]))
 
     def nearest(self, pt):
@@ -3233,16 +3304,31 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
         super(FlatCAMRTreeStorage, self).insert(len(self.objects) - 1, obj)
 
     def remove(self, obj):
+        # Get index in list
         objidx = self.objects.index(obj)
+
+        # Remove from list
         self.objects[objidx] = None
+
+        # Remove from index
         self.remove_obj(objidx, obj)
 
     def get_objects(self):
         return (o for o in self.objects if o is not None)
 
     def nearest(self, pt):
+        """
+        Returns the nearest matching points and the object
+        it belongs to.
+
+        :param pt: Query point.
+        :return: (match_x, match_y), Object owner of
+          matching point.
+        :rtype: tuple
+        """
         tidx = super(FlatCAMRTreeStorage, self).nearest(pt)
         return (tidx.bbox[0], tidx.bbox[1]), self.objects[tidx.object]
+
 
 class myO:
     def __init__(self, coords):

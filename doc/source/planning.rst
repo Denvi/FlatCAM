@@ -12,15 +12,17 @@ Drawing
 * Force perpendicular
 * Un-group (Union creates group)
 * Group (But not union)
-* Remove from index (rebuild index or make deleted instances
+* [DONE] Remove from index (rebuild index or make deleted instances
   equal to None in the list).
 * Better handling/abstraction of geometry types and lists of such.
+  * Plotting and extraction of point is now done in a quite
+    efficient recursive way.
 
 
 Algorithms
 ----------
 
-* Reverse path if end is nearer.
+* [DONE] Reverse path if end is nearer.
 * Seed paint: Specify seed.
 
 
@@ -48,4 +50,11 @@ Bugs
 ----
 
 * Unit conversion on opening.
-* `cascaded_union([])` bug requires more testing.
+* [DONE] `cascaded_union([])` bug requires more testing.
+  * Old version of GEOS
+
+
+Other
+-----
+
+* Unit testing
