@@ -1001,11 +1001,17 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         # Which polygon.
         poly = find_polygon(self.solid_geometry, inside_pt)
 
+        # No polygon?
+        if poly is None:
+            self.app.log.warning('No polygon found.')
+            self.app.inform('[warning] No polygon found.')
+            return
+
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
             #assert isinstance(app_obj, App)
-            #cp = clear_poly(poly.buffer(-self.options["paintmargin"]), tooldia, overlap)
+
             cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)

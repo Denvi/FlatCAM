@@ -20,6 +20,9 @@ from rtree import index as rtindex
 
 
 class DrawToolShape(object):
+    """
+    Encapsulates "shapes" under a common class.
+    """
 
     @staticmethod
     def get_pts(o):
@@ -69,6 +72,13 @@ class DrawToolShape(object):
 
 
 class DrawToolUtilityShape(DrawToolShape):
+    """
+    Utility shapes are temporary geometry in the editor
+    to assist in the creation of shapes. For example it
+    will show the outline of a rectangle from the first
+    point to the current mouse pointer before the second
+    point is clicked and the final geometry is created.
+    """
 
     def __init__(self, geo=[]):
         super(DrawToolUtilityShape, self).__init__(geo=geo)
@@ -103,6 +113,9 @@ class DrawTool(object):
 
 
 class FCShapeTool(DrawTool):
+    """
+    Abstarct class for tools that create a shape.
+    """
     def __init__(self, draw_app):
         DrawTool.__init__(self, draw_app)
 
@@ -942,12 +955,8 @@ class FlatCAMDraw(QtCore.QObject):
         return self.selected
 
     def delete_selected(self):
-        # for shape in self.get_selected():
-        #     self.shape_buffer.remove(shape)
-        #     self.app.info("Shape deleted.")
         tempref = [s for s in self.selected]
         for shape in tempref:
-            #self.shape_buffer.remove(shape)
             self.delete_shape(shape)
 
         self.selected = []
@@ -968,13 +977,6 @@ class FlatCAMDraw(QtCore.QObject):
         if geometry is None:
             geometry = self.active_tool.geometry
 
-        # try:
-        #     _ = iter(geometry)
-        #     iterable_geometry = geometry
-        # except TypeError:
-        #     iterable_geometry = [geometry]
-
-        ## Iterable: Descend into each element.
         try:
             for geo in geometry:
                 plot_elements += self.plot_shape(geometry=geo,
@@ -1003,45 +1005,29 @@ class FlatCAMDraw(QtCore.QObject):
                                                  linewidth=linewidth,
                                                  animated=animated)
 
-                # x, y = geo.exterior.coords.xy
-                # element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                # plot_elements.append(element)
-                # for ints in geo.interiors:
-                #     x, y = ints.coords.xy
-                #     element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                #     plot_elements.append(element)
-                # continue
-
             if type(geometry) == LineString or type(geometry) == LinearRing:
                 x, y = geometry.coords.xy
                 element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
                 plot_elements.append(element)
-                # continue
-
-            # if type(geo) == MultiPolygon:
-            #     for poly in geo:
-            #         x, y = poly.exterior.coords.xy
-            #         element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-            #         plot_elements.append(element)
-            #         for ints in poly.interiors:
-            #             x, y = ints.coords.xy
-            #             element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-            #             plot_elements.append(element)
-            #     continue
 
             if type(geometry) == Point:
                 x, y = geometry.coords.xy
                 element, = self.axes.plot(x, y, 'bo', linewidth=linewidth, animated=animated)
                 plot_elements.append(element)
-                # continue
 
         return plot_elements
-        # self.canvas.auto_adjust_axes()
 
     def plot_all(self):
+        """
+        Plots all shapes in the editor.
+        Clears the axes, plots, and call self.canvas.auto_adjust_axes.
+
+        :return: None
+        :rtype: None
+        """
         self.app.log.debug("plot_all()")
         self.axes.cla()
-        #for shape in self.shape_buffer:
+
         for shape in self.storage.get_objects():
             if shape.geo is None:  # TODO: This shouldn't have happened
                 continue
@@ -1058,94 +1044,21 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.canvas.auto_adjust_axes()
 
-    def add2index(self, id, geo):
-        """
-        Adds every coordinate of geo to the rtree index
-        under the given id.
-
-        :param id: Index of data in list being indexed.
-        :param geo: Some Shapely.geom kind
-        :return: None
-        """
-
-        if isinstance(geo, DrawToolShape):
-            self.add2index(id, geo.geo)
-        else:
-            # List or Iterable Shapely type
-            try:
-                for subgeo in geo:
-                    self.add2index(id, subgeo)
-
-            # Not iteable...
-            except TypeError:
-
-                try:
-                    for pt in geo.coords:
-                        self.rtree_index.add(id, pt)
-                except NotImplementedError:
-                    # It's a polygon?
-                    for pt in geo.exterior.coords:
-                        self.rtree_index.add(id, pt)
-
-    def remove_from_index(self, id, geo):
-        """
-
-        :param id: Index id
-        :param geo: Geometry to remove from index.
-        :return: None
-        """
-
-        # DrawToolShape
-        if isinstance(geo, DrawToolShape):
-            self.remove_from_index(id, geo.geo)
-
-        else:
-            # List or Iterable Shapely type
-            try:
-                for subgeo in geo:
-                    self.remove_from_index(id, subgeo)
-
-            # Not iteable...
-            except TypeError:
-
-                try:
-                    for pt in geo.coords:
-                        self.rtree_index.delete(id, pt)
-                except NotImplementedError:
-                    # It's a polygon?
-                    for pt in geo.exterior.coords:
-                        self.rtree_index.delete(id, pt)
-
     def on_shape_complete(self):
         self.app.log.debug("on_shape_complete()")
 
-        # For some reason plotting just the last created figure does not
-        # work. The figure is not shown. Calling replot does the trick
-        # which generates a new axes object.
-        #self.plot_shape()
-        #self.canvas.auto_adjust_axes()
-
+        # Add shape
         self.add_shape(self.active_tool.geometry)
 
         # Remove any utility shapes
         self.delete_utility_geometry()
 
+        # Replot and reset tool.
         self.replot()
         self.active_tool = type(self.active_tool)(self)
 
     def delete_shape(self, shape):
-        # try:
-        #     # Remove from index list
-        #     shp_idx = self.main_index.index(shape)
-        #     self.main_index[shp_idx] = None
-        #
-        #     # Remove from rtree index
-        #     self.remove_from_index(shp_idx, shape)
-        # except ValueError:
-        #     pass
-        #
-        # if shape in self.shape_buffer:
-        #     self.shape_buffer.remove(shape)
+
         if shape in self.utility:
             self.utility.remove(shape)
             return
@@ -1156,7 +1069,6 @@ class FlatCAMDraw(QtCore.QObject):
             self.selected.remove(shape)
 
     def replot(self):
-        #self.canvas.clear()
         self.axes = self.canvas.new_axes("draw")
         self.plot_all()
 
@@ -1269,7 +1181,6 @@ class FlatCAMDraw(QtCore.QObject):
         self.add_shape(DrawToolShape(result))
 
         self.replot()
-
 
 
 def distance(pt1, pt2):
