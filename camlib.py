@@ -17,8 +17,8 @@ import re
 import collections
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
-from scipy.spatial import Delaunay, KDTree
+#import matplotlib.pyplot as plt
+#from scipy.spatial import Delaunay, KDTree
 
 from rtree import index as rtindex
 
@@ -2982,206 +2982,206 @@ def parse_gerber_number(strnumber, frac_digits):
     return int(strnumber)*(10**(-frac_digits))
 
 
-def voronoi(P):
-    """
-    Returns a list of all edges of the voronoi diagram for the given input points.
-    """
-    delauny = Delaunay(P)
-    triangles = delauny.points[delauny.vertices]
-
-    circum_centers = np.array([triangle_csc(tri) for tri in triangles])
-    long_lines_endpoints = []
-
-    lineIndices = []
-    for i, triangle in enumerate(triangles):
-        circum_center = circum_centers[i]
-        for j, neighbor in enumerate(delauny.neighbors[i]):
-            if neighbor != -1:
-                lineIndices.append((i, neighbor))
-            else:
-                ps = triangle[(j+1)%3] - triangle[(j-1)%3]
-                ps = np.array((ps[1], -ps[0]))
-
-                middle = (triangle[(j+1)%3] + triangle[(j-1)%3]) * 0.5
-                di = middle - triangle[j]
-
-                ps /= np.linalg.norm(ps)
-                di /= np.linalg.norm(di)
-
-                if np.dot(di, ps) < 0.0:
-                    ps *= -1000.0
-                else:
-                    ps *= 1000.0
-
-                long_lines_endpoints.append(circum_center + ps)
-                lineIndices.append((i, len(circum_centers) + len(long_lines_endpoints)-1))
-
-    vertices = np.vstack((circum_centers, long_lines_endpoints))
-
-    # filter out any duplicate lines
-    lineIndicesSorted = np.sort(lineIndices) # make (1,2) and (2,1) both (1,2)
-    lineIndicesTupled = [tuple(row) for row in lineIndicesSorted]
-    lineIndicesUnique = np.unique(lineIndicesTupled)
-
-    return vertices, lineIndicesUnique
-
-
-def triangle_csc(pts):
-    rows, cols = pts.shape
-
-    A = np.bmat([[2 * np.dot(pts, pts.T), np.ones((rows, 1))],
-                 [np.ones((1, rows)), np.zeros((1, 1))]])
-
-    b = np.hstack((np.sum(pts * pts, axis=1), np.ones((1))))
-    x = np.linalg.solve(A,b)
-    bary_coords = x[:-1]
-    return np.sum(pts * np.tile(bary_coords.reshape((pts.shape[0], 1)), (1, pts.shape[1])), axis=0)
-
-
-def voronoi_cell_lines(points, vertices, lineIndices):
-    """
-    Returns a mapping from a voronoi cell to its edges.
-
-    :param points: shape (m,2)
-    :param vertices: shape (n,2)
-    :param lineIndices: shape (o,2)
-    :rtype: dict point index -> list of shape (n,2) with vertex indices
-    """
-    kd = KDTree(points)
-
-    cells = collections.defaultdict(list)
-    for i1, i2 in lineIndices:
-        v1, v2 = vertices[i1], vertices[i2]
-        mid = (v1+v2)/2
-        _, (p1Idx, p2Idx) = kd.query(mid, 2)
-        cells[p1Idx].append((i1, i2))
-        cells[p2Idx].append((i1, i2))
-
-    return cells
-
-
-def voronoi_edges2polygons(cells):
-    """
-    Transforms cell edges into polygons.
-
-    :param cells: as returned from voronoi_cell_lines
-    :rtype: dict point index -> list of vertex indices which form a polygon
-    """
-
-    # first, close the outer cells
-    for pIdx, lineIndices_ in cells.items():
-        dangling_lines = []
-        for i1, i2 in lineIndices_:
-            connections = filter(lambda (i1_, i2_): (i1, i2) != (i1_, i2_) and (i1 == i1_ or i1 == i2_ or i2 == i1_ or i2 == i2_), lineIndices_)
-            assert 1 <= len(connections) <= 2
-            if len(connections) == 1:
-                dangling_lines.append((i1, i2))
-        assert len(dangling_lines) in [0, 2]
-        if len(dangling_lines) == 2:
-            (i11, i12), (i21, i22) = dangling_lines
-
-            # determine which line ends are unconnected
-            connected = filter(lambda (i1,i2): (i1,i2) != (i11,i12) and (i1 == i11 or i2 == i11), lineIndices_)
-            i11Unconnected = len(connected) == 0
-
-            connected = filter(lambda (i1,i2): (i1,i2) != (i21,i22) and (i1 == i21 or i2 == i21), lineIndices_)
-            i21Unconnected = len(connected) == 0
-
-            startIdx = i11 if i11Unconnected else i12
-            endIdx = i21 if i21Unconnected else i22
-
-            cells[pIdx].append((startIdx, endIdx))
-
-    # then, form polygons by storing vertex indices in (counter-)clockwise order
-    polys = dict()
-    for pIdx, lineIndices_ in cells.items():
-        # get a directed graph which contains both directions and arbitrarily follow one of both
-        directedGraph = lineIndices_ + [(i2, i1) for (i1, i2) in lineIndices_]
-        directedGraphMap = collections.defaultdict(list)
-        for (i1, i2) in directedGraph:
-            directedGraphMap[i1].append(i2)
-        orderedEdges = []
-        currentEdge = directedGraph[0]
-        while len(orderedEdges) < len(lineIndices_):
-            i1 = currentEdge[1]
-            i2 = directedGraphMap[i1][0] if directedGraphMap[i1][0] != currentEdge[0] else directedGraphMap[i1][1]
-            nextEdge = (i1, i2)
-            orderedEdges.append(nextEdge)
-            currentEdge = nextEdge
-
-        polys[pIdx] = [i1 for (i1, i2) in orderedEdges]
-
-    return polys
-
-
-def voronoi_polygons(points):
-    """
-    Returns the voronoi polygon for each input point.
-
-    :param points: shape (n,2)
-    :rtype: list of n polygons where each polygon is an array of vertices
-    """
-    vertices, lineIndices = voronoi(points)
-    cells = voronoi_cell_lines(points, vertices, lineIndices)
-    polys = voronoi_edges2polygons(cells)
-    polylist = []
-    for i in xrange(len(points)):
-        poly = vertices[np.asarray(polys[i])]
-        polylist.append(poly)
-    return polylist
-
-
-class Zprofile:
-    def __init__(self):
-
-        # data contains lists of [x, y, z]
-        self.data = []
-
-        # Computed voronoi polygons (shapely)
-        self.polygons = []
-        pass
-
-    def plot_polygons(self):
-        axes = plt.subplot(1, 1, 1)
-
-        plt.axis([-0.05, 1.05, -0.05, 1.05])
-
-        for poly in self.polygons:
-            p = PolygonPatch(poly, facecolor=np.random.rand(3, 1), alpha=0.3)
-            axes.add_patch(p)
-
-    def init_from_csv(self, filename):
-        pass
-
-    def init_from_string(self, zpstring):
-        pass
-
-    def init_from_list(self, zplist):
-        self.data = zplist
-
-    def generate_polygons(self):
-        self.polygons = [Polygon(p) for p in voronoi_polygons(array([[x[0], x[1]] for x in self.data]))]
-
-    def normalize(self, origin):
-        pass
-
-    def paste(self, path):
-        """
-        Return a list of dictionaries containing the parts of the original
-        path and their z-axis offset.
-        """
-
-        # At most one region/polygon will contain the path
-        containing = [i for i in range(len(self.polygons)) if self.polygons[i].contains(path)]
-
-        if len(containing) > 0:
-            return [{"path": path, "z": self.data[containing[0]][2]}]
-
-        # All region indexes that intersect with the path
-        crossing = [i for i in range(len(self.polygons)) if self.polygons[i].intersects(path)]
-
-        return [{"path": path.intersection(self.polygons[i]),
-                 "z": self.data[i][2]} for i in crossing]
+# def voronoi(P):
+#     """
+#     Returns a list of all edges of the voronoi diagram for the given input points.
+#     """
+#     delauny = Delaunay(P)
+#     triangles = delauny.points[delauny.vertices]
+#
+#     circum_centers = np.array([triangle_csc(tri) for tri in triangles])
+#     long_lines_endpoints = []
+#
+#     lineIndices = []
+#     for i, triangle in enumerate(triangles):
+#         circum_center = circum_centers[i]
+#         for j, neighbor in enumerate(delauny.neighbors[i]):
+#             if neighbor != -1:
+#                 lineIndices.append((i, neighbor))
+#             else:
+#                 ps = triangle[(j+1)%3] - triangle[(j-1)%3]
+#                 ps = np.array((ps[1], -ps[0]))
+#
+#                 middle = (triangle[(j+1)%3] + triangle[(j-1)%3]) * 0.5
+#                 di = middle - triangle[j]
+#
+#                 ps /= np.linalg.norm(ps)
+#                 di /= np.linalg.norm(di)
+#
+#                 if np.dot(di, ps) < 0.0:
+#                     ps *= -1000.0
+#                 else:
+#                     ps *= 1000.0
+#
+#                 long_lines_endpoints.append(circum_center + ps)
+#                 lineIndices.append((i, len(circum_centers) + len(long_lines_endpoints)-1))
+#
+#     vertices = np.vstack((circum_centers, long_lines_endpoints))
+#
+#     # filter out any duplicate lines
+#     lineIndicesSorted = np.sort(lineIndices) # make (1,2) and (2,1) both (1,2)
+#     lineIndicesTupled = [tuple(row) for row in lineIndicesSorted]
+#     lineIndicesUnique = np.unique(lineIndicesTupled)
+#
+#     return vertices, lineIndicesUnique
+#
+#
+# def triangle_csc(pts):
+#     rows, cols = pts.shape
+#
+#     A = np.bmat([[2 * np.dot(pts, pts.T), np.ones((rows, 1))],
+#                  [np.ones((1, rows)), np.zeros((1, 1))]])
+#
+#     b = np.hstack((np.sum(pts * pts, axis=1), np.ones((1))))
+#     x = np.linalg.solve(A,b)
+#     bary_coords = x[:-1]
+#     return np.sum(pts * np.tile(bary_coords.reshape((pts.shape[0], 1)), (1, pts.shape[1])), axis=0)
+#
+#
+# def voronoi_cell_lines(points, vertices, lineIndices):
+#     """
+#     Returns a mapping from a voronoi cell to its edges.
+#
+#     :param points: shape (m,2)
+#     :param vertices: shape (n,2)
+#     :param lineIndices: shape (o,2)
+#     :rtype: dict point index -> list of shape (n,2) with vertex indices
+#     """
+#     kd = KDTree(points)
+#
+#     cells = collections.defaultdict(list)
+#     for i1, i2 in lineIndices:
+#         v1, v2 = vertices[i1], vertices[i2]
+#         mid = (v1+v2)/2
+#         _, (p1Idx, p2Idx) = kd.query(mid, 2)
+#         cells[p1Idx].append((i1, i2))
+#         cells[p2Idx].append((i1, i2))
+#
+#     return cells
+#
+#
+# def voronoi_edges2polygons(cells):
+#     """
+#     Transforms cell edges into polygons.
+#
+#     :param cells: as returned from voronoi_cell_lines
+#     :rtype: dict point index -> list of vertex indices which form a polygon
+#     """
+#
+#     # first, close the outer cells
+#     for pIdx, lineIndices_ in cells.items():
+#         dangling_lines = []
+#         for i1, i2 in lineIndices_:
+#             connections = filter(lambda (i1_, i2_): (i1, i2) != (i1_, i2_) and (i1 == i1_ or i1 == i2_ or i2 == i1_ or i2 == i2_), lineIndices_)
+#             assert 1 <= len(connections) <= 2
+#             if len(connections) == 1:
+#                 dangling_lines.append((i1, i2))
+#         assert len(dangling_lines) in [0, 2]
+#         if len(dangling_lines) == 2:
+#             (i11, i12), (i21, i22) = dangling_lines
+#
+#             # determine which line ends are unconnected
+#             connected = filter(lambda (i1,i2): (i1,i2) != (i11,i12) and (i1 == i11 or i2 == i11), lineIndices_)
+#             i11Unconnected = len(connected) == 0
+#
+#             connected = filter(lambda (i1,i2): (i1,i2) != (i21,i22) and (i1 == i21 or i2 == i21), lineIndices_)
+#             i21Unconnected = len(connected) == 0
+#
+#             startIdx = i11 if i11Unconnected else i12
+#             endIdx = i21 if i21Unconnected else i22
+#
+#             cells[pIdx].append((startIdx, endIdx))
+#
+#     # then, form polygons by storing vertex indices in (counter-)clockwise order
+#     polys = dict()
+#     for pIdx, lineIndices_ in cells.items():
+#         # get a directed graph which contains both directions and arbitrarily follow one of both
+#         directedGraph = lineIndices_ + [(i2, i1) for (i1, i2) in lineIndices_]
+#         directedGraphMap = collections.defaultdict(list)
+#         for (i1, i2) in directedGraph:
+#             directedGraphMap[i1].append(i2)
+#         orderedEdges = []
+#         currentEdge = directedGraph[0]
+#         while len(orderedEdges) < len(lineIndices_):
+#             i1 = currentEdge[1]
+#             i2 = directedGraphMap[i1][0] if directedGraphMap[i1][0] != currentEdge[0] else directedGraphMap[i1][1]
+#             nextEdge = (i1, i2)
+#             orderedEdges.append(nextEdge)
+#             currentEdge = nextEdge
+#
+#         polys[pIdx] = [i1 for (i1, i2) in orderedEdges]
+#
+#     return polys
+#
+#
+# def voronoi_polygons(points):
+#     """
+#     Returns the voronoi polygon for each input point.
+#
+#     :param points: shape (n,2)
+#     :rtype: list of n polygons where each polygon is an array of vertices
+#     """
+#     vertices, lineIndices = voronoi(points)
+#     cells = voronoi_cell_lines(points, vertices, lineIndices)
+#     polys = voronoi_edges2polygons(cells)
+#     polylist = []
+#     for i in xrange(len(points)):
+#         poly = vertices[np.asarray(polys[i])]
+#         polylist.append(poly)
+#     return polylist
+#
+#
+# class Zprofile:
+#     def __init__(self):
+#
+#         # data contains lists of [x, y, z]
+#         self.data = []
+#
+#         # Computed voronoi polygons (shapely)
+#         self.polygons = []
+#         pass
+#
+#     def plot_polygons(self):
+#         axes = plt.subplot(1, 1, 1)
+#
+#         plt.axis([-0.05, 1.05, -0.05, 1.05])
+#
+#         for poly in self.polygons:
+#             p = PolygonPatch(poly, facecolor=np.random.rand(3, 1), alpha=0.3)
+#             axes.add_patch(p)
+#
+#     def init_from_csv(self, filename):
+#         pass
+#
+#     def init_from_string(self, zpstring):
+#         pass
+#
+#     def init_from_list(self, zplist):
+#         self.data = zplist
+#
+#     def generate_polygons(self):
+#         self.polygons = [Polygon(p) for p in voronoi_polygons(array([[x[0], x[1]] for x in self.data]))]
+#
+#     def normalize(self, origin):
+#         pass
+#
+#     def paste(self, path):
+#         """
+#         Return a list of dictionaries containing the parts of the original
+#         path and their z-axis offset.
+#         """
+#
+#         # At most one region/polygon will contain the path
+#         containing = [i for i in range(len(self.polygons)) if self.polygons[i].contains(path)]
+#
+#         if len(containing) > 0:
+#             return [{"path": path, "z": self.data[containing[0]][2]}]
+#
+#         # All region indexes that intersect with the path
+#         crossing = [i for i in range(len(self.polygons)) if self.polygons[i].intersects(path)]
+#
+#         return [{"path": path.intersection(self.polygons[i]),
+#                  "z": self.data[i][2]} for i in crossing]
 
 
 def autolist(obj):
