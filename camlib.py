@@ -2862,37 +2862,14 @@ def arc_angle(start, stop, direction):
     return angle
 
 
-# def clear_poly(poly, tooldia, overlap=0.1):
-#     """
-#     Creates a list of Shapely geometry objects covering the inside
-#     of a Shapely.Polygon. Use for removing all the copper in a region
-#     or bed flattening.
-#
-#     :param poly: Target polygon
-#     :type poly: Shapely.Polygon
-#     :param tooldia: Diameter of the tool
-#     :type tooldia: float
-#     :param overlap: Fraction of the tool diameter to overlap
-#         in each pass.
-#     :type overlap: float
-#     :return: list of Shapely.Polygon
-#     :rtype: list
-#     """
-#     poly_cuts = [poly.buffer(-tooldia/2.0)]
-#     while True:
-#         poly = poly_cuts[-1].buffer(-tooldia*(1-overlap))
-#         if poly.area > 0:
-#             poly_cuts.append(poly)
-#         else:
-#             break
-#     return poly_cuts
-
-
 def find_polygon(poly_set, point):
     """
     Return the first polygon in the list of polygons poly_set
     that contains the given point.
     """
+    if poly_set is None:
+        return None
+
     p = Point(point)
     for poly in poly_set:
         if poly.contains(p):

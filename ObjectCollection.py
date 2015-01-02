@@ -1,4 +1,4 @@
-from PyQt4.QtCore import QModelIndex
+#from PyQt4.QtCore import QModelIndex
 from FlatCAMObj import *
 import inspect  # TODO: Remove
 import FlatCAMApp
@@ -55,13 +55,16 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.view.selectionModel().selectionChanged.connect(self.on_list_selection_change)
         self.view.activated.connect(self.on_item_activated)
         self.view.keyPressed.connect(self.on_key)
+        self.view.clicked.connect(self.on_mouse_down)
 
     def on_key(self, key):
+
+        # Delete
         if key == QtCore.Qt.Key_Delete:
             self.delete_active()
 
     def on_mouse_down(self, event):
-        print "Mouse button pressed on list"
+        FlatCAMApp.App.log.debug("Mouse button pressed on list")
 
     def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
         return len(self.object_list)
