@@ -36,11 +36,10 @@ class App(QtCore.QObject):
     """
 
     ## Get Cmd Line Options
-
-    cmd_line_shellfile=''
-    cmd_line_help="FlatCam.py --shellfile=<cmd_line_shellfile>"
+    cmd_line_shellfile = ''
+    cmd_line_help = "FlatCam.py --shellfile=<cmd_line_shellfile>"
     try:
-        cmd_line_options, args = getopt.getopt(sys.argv[1:],"h:","shellfile=")
+        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", "shellfile=")
     except getopt.GetoptError:
         print cmd_line_help
         sys.exit(2)
@@ -53,8 +52,8 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    log.setLevel(logging.DEBUG)
-    #log.setLevel(logging.WARNING)
+    #log.setLevel(logging.DEBUG)
+    log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -62,7 +61,7 @@ class App(QtCore.QObject):
 
     ## Version
     version = 8
-    version_date = "2014/10"
+    version_date = "2015/01"
 
     ## URL for update checks and statistics
     version_url = "http://flatcam.org/version"
@@ -132,10 +131,6 @@ class App(QtCore.QObject):
             f = open(self.data_path + '/recent.json', 'w')
             json.dump([], f)
             f.close()
-
-        #self.path = os.path.dirname(sys.argv[0])
-        #App.log.debug("Running in " + os.path.realpath(__file__))
-        #App.log.debug("Running in " + self.path)
 
         QtCore.QObject.__init__(self)
 
@@ -446,25 +441,24 @@ class App(QtCore.QObject):
         #############
         # TODO: Move this to its own class
 
-
         self.shell = FCShell(self)
         self.shell.setWindowIcon(self.ui.app_icon)
         self.shell.setWindowTitle("FlatCAM Shell")
         if self.defaults["shell_at_startup"]:
             self.shell.show()
         self.shell.resize(*self.defaults["shell_shape"])
-        self.shell.append_output("FlatCAM %s\n(c) 2014 Juan Pablo Caram\n\n" % self.version)
+        self.shell.append_output("FlatCAM %s\n(c) 2014-2015 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
         self.tcl = Tkinter.Tcl()
         self.setup_shell()
 
-	if self.cmd_line_shellfile:
+        if self.cmd_line_shellfile:
             try:
-                with open (self.cmd_line_shellfile, "r") as myfile:
-	            cmd_line_shellfile_text=myfile.read()
-	            self.shell._sysShell.exec_command(cmd_line_shellfile_text)
+                with open(self.cmd_line_shellfile, "r") as myfile:
+                    cmd_line_shellfile_text = myfile.read()
+                    self.shell._sysShell.exec_command(cmd_line_shellfile_text)
             except Exception as ext:
-		print "ERROR: ",ext
+                print "ERROR: ", ext
                 sys.exit(2)
 
         App.log.debug("END of constructor. Releasing control.")
@@ -804,7 +798,9 @@ class App(QtCore.QObject):
             def __init__(self, parent=None):
                 QtGui.QDialog.__init__(self, parent)
 
+                # Icon and title
                 self.setWindowIcon(parent.app_icon)
+                self.setWindowTitle("FlatCAM")
 
                 layout1 = QtGui.QVBoxLayout()
                 self.setLayout(layout1)
@@ -820,10 +816,10 @@ class App(QtCore.QObject):
                     "<font size=8><B>FlatCAM</B></font><BR>"
                     "Version %s (%s)<BR>"
                     "<BR>"
-                    "2D Post-processing for Manufacturing specialized in<BR>"
-                    "Printed Circuit Boards<BR>"
+                    "2D Computer-Aided Printed Circuit Board<BR>"
+                    "Manufacturing.<BR>"
                     "<BR>"
-                    "(c) 2014 Juan Pablo Caram" % (version, version_date)
+                    "(c) 2014-2015 Juan Pablo Caram" % (version, version_date)
                 )
                 layout2.addWidget(title, stretch=1)
 
@@ -1876,7 +1872,6 @@ class App(QtCore.QObject):
 
             self.open_gcode(str(filename), **kwa)
 
-
         def cutout(name, *args):
             a, kwa = h(*args)
             types = {'dia': float,
@@ -1889,13 +1884,10 @@ class App(QtCore.QObject):
                     return 'Unknown parameter: %s' % key
                 kwa[key] = types[key](kwa[key])
 
-
-
             try:
                 obj = self.collection.get_by_name(str(name))
             except:
                 return "Could not retrieve object: %s" % name
-
 
             def geo_init_me(geo_obj, app_obj):
                 margin = kwa['margin']+kwa['dia']/2
