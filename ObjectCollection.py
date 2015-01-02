@@ -4,6 +4,15 @@ import inspect  # TODO: Remove
 import FlatCAMApp
 from PyQt4 import Qt, QtGui, QtCore
 
+
+class KeySensitiveListView(QtGui.QListView):
+    keyPressed = QtCore.pyqtSignal(int)
+
+    def keyPressEvent(self, event):
+        super(KeySensitiveListView, self).keyPressEvent(event)
+        self.keyPressed.emit(event.key())
+
+
 class ObjectCollection(QtCore.QAbstractListModel):
     """
     Object storage and management.
@@ -35,7 +44,8 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.checked_indexes = []
 
         ### View
-        self.view = QtGui.QListView()
+        #self.view = QtGui.QListView()
+        self.view = KeySensitiveListView()
         self.view.setSelectionMode(Qt.QAbstractItemView.ExtendedSelection)
         self.view.setModel(self)
 
@@ -44,9 +54,11 @@ class ObjectCollection(QtCore.QAbstractListModel):
         ## GUI Events
         self.view.selectionModel().selectionChanged.connect(self.on_list_selection_change)
         self.view.activated.connect(self.on_item_activated)
+        self.view.keyPressed.connect(self.on_key)
 
-    def on_key(self, event):
-        print event
+    def on_key(self, key):
+        if key == QtCore.Qt.Key_Delete:
+            self.delete_active()
 
     def on_mouse_down(self, event):
         print "Mouse button pressed on list"

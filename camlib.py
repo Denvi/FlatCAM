@@ -436,7 +436,6 @@ class Geometry(object):
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
 
 
-
 class ApertureMacro:
     """
     Syntax of aperture macros.
@@ -547,7 +546,7 @@ class ApertureMacro:
             if match:
                 ## Replace all variables
                 for v in self.locvars:
-                    part = re.sub(r'\$'+str(v)+r'(?![0-9a-zA-Z])', str(self.locvars[v]), part)
+                    part = re.sub(r'\$' + str(v) + r'(?![0-9a-zA-Z])', str(self.locvars[v]), part)
 
                 # Make all others 0
                 part = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", part)
@@ -585,7 +584,7 @@ class ApertureMacro:
         :return: Zero-padded list.
         :rtype: list
         """
-        x = [0.0]*n
+        x = [0.0] * n
         na = len(mods)
         x[0:na] = mods
         return x

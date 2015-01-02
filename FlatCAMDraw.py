@@ -481,7 +481,7 @@ class FCMove(FCShapeTool):
         dx = self.destination[0] - self.origin[0]
         dy = self.destination[1] - self.origin[1]
         self.geometry = [DrawToolShape(affinity.translate(geom.geo, xoff=dx, yoff=dy))
-                                       for geom in self.draw_app.get_selected()]
+                         for geom in self.draw_app.get_selected()]
 
         # Delete old
         self.draw_app.delete_selected()
