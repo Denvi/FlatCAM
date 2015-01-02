@@ -96,7 +96,8 @@ class Geometry(object):
         try:
             self.solid_geometry = self.solid_geometry.union(Point(origin).buffer(radius))
         except:
-            print "Failed to run union on polygons."
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polygons.")
             raise
 
     def add_polygon(self, points):
@@ -116,7 +117,8 @@ class Geometry(object):
         try:
             self.solid_geometry = self.solid_geometry.union(Polygon(points))
         except:
-            print "Failed to run union on polygons."
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polygons.")
             raise
 
     def bounds(self):
@@ -3210,7 +3212,6 @@ def three_point_circle(p1, p2, p3):
 
     # Params
     T = solve(transpose(array([-b1, b2])), a1 - a2)
-    print T
 
     # Center
     center = a1 + b1 * T[0]
