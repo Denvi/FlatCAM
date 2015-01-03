@@ -1,0 +1,277 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation &mdash; FlatCAM 7 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'7',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="FlatCAM 7 documentation" href="index.html"/>
+        <link rel="next" title="Basics" href="basics.html"/>
+        <link rel="prev" title="Introduction" href="introduction.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-55008703-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search" style="background-color: #3d3d3d;">
+        <!--<a href="index.html" class="icon icon-home"> FlatCAM</a>-->
+        <!--<a href="http://flatcam.org" class="icon icon-home"> FlatCAM</a>-->
+        <a href="http://flatcam.org">
+            <img src="http://flatcam.org/static/images/fcweblogo1.png"
+                    style="height: auto;
+                    width: auto;
+                    border-radius: 0px;
+                    background-color: #3d3d3d;
+                    margin: auto">
+        </a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#windows-installer">Windows Installer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#manual-installation">Manual Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#source-files">Source Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#objects-and-tasks">Objects and Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#creating-saving-and-loading-projects">Creating, Saving and Loading Projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="basics.html#navigating-plots">Navigating Plots</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="procedures.html">Common Procedures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#isolation-routing">Isolation Routing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#wide-isolation-routing">Wide Isolation Routing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#cnc-jobs-for-drill-files">CNC Jobs for Drill Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#side-pcb">2-side PCB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#copper-area-clear">Copper Area Clear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#board-cutout">Board Cutout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#bed-flattening">Bed Flattening</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="editor.html">Geometry Editor</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#creating-new-geometry-objects">Creating New Geometry Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#editing-existing-geometry-objects">Editing Existing Geometry Objects</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamshell.html">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#the-shell-window">The Shell Window</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#shell-language">Shell Language</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cmdreference.html">Shell Command Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-circle">add_circle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-poly">add_poly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-rect">add_rect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#follow">follow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#geo-union">geo_union</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#get-names">get_names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#help">help</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#isolate">isolate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#make-docs">make_docs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new">new</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new-geometry">new_geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#offset">offset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-excellon">open_excellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-gcode">open_gcode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-gerber">open_gerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-project">open_project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#options">options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#paint-poly">paint_poly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#plot">plot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#save-project">save_project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#scale">scale</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#set-active">set_active</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#write-gcode">write_gcode</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+        <a href="index.html">FlatCAM</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Installation</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/installation.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="windows-installer">
+<h2>Windows Installer<a class="headerlink" href="#windows-installer" title="Permalink to this headline">¶</a></h2>
+<p>Download the installer from the <a class="reference external" href="https://bitbucket.org/jpcgt/flatcam/downloads">repository</a> and run it in your machine. It includes everything you need.</p>
+</div>
+<div class="section" id="ubuntu">
+<h2>Ubuntu<a class="headerlink" href="#ubuntu" title="Permalink to this headline">¶</a></h2>
+<p>FlatCAM should work on most Linux distributions but Ubuntu has been chosen as the test platform.</p>
+<p>There are several dependencies required to run FlatCAM. These are listed in the following section. Before attempting a manual installation, try running the provided setup script <tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> that will download and install required packages.</p>
+</div>
+<div class="section" id="manual-installation">
+<h2>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h3>
+<ul class="simple">
+<li>Python 2.7 32-bit</li>
+<li>PyQt 4</li>
+<li>Matplotlib 1.3.1</li>
+<li>Numpy 1.8</li>
+<li><a class="reference external" href="https://pypi.python.org/pypi/Shapely">Shapely 1.3</a></li>
+</ul>
+<p>These packages might have their own dependencies.</p>
+</div>
+<div class="section" id="linux">
+<h3>Linux<a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h3>
+<p>Under Linux, most modern package installers like <strong>yum</strong> or <strong>apt-get</strong> will attempt to locate and install the whole tree of dependencies for a specified package automatically. Refer to the provided setup script <tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> for the names and installation order.</p>
+<p>Once the dependencies are installed, download the latest .zip release (or the latest source, although it is not garanteed to work), unpack it, change into the created folder and run:</p>
+<div class="highlight-python"><pre>Python FlatCAM.py</pre>
+</div>
+</div>
+<div class="section" id="windows">
+<h3>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h3>
+<p>An easy way to get the requirements in your system is to install <a class="reference external" href="http://winpython.sourceforge.net/">WinPython</a>. This is a standalone distribution of Python which includes all of FlatCAM&#8217;s dependencies, except for Shapely.</p>
+<p>Once the dependencies are installed, download the latest .zip release (or the latest source, although it is not garanteed to work), unpack it, change into the created folder and run:</p>
+<div class="highlight-python"><pre>Python FlatCAM.py</pre>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="basics.html" class="btn btn-neutral float-right" title="Basics"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="introduction.html" class="btn btn-neutral" title="Introduction"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Juan Pablo Caram.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>

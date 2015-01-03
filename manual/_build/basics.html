@@ -1,0 +1,272 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Basics &mdash; FlatCAM 7 documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  
+  
+
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:'./',
+        VERSION:'7',
+        COLLAPSE_INDEX:false,
+        FILE_SUFFIX:'.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+      <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+    <script type="text/javascript">
+        jQuery(function () {
+            SphinxRtdTheme.StickyNav.enable();
+        });
+    </script>
+  
+
+  
+    <link rel="top" title="FlatCAM 7 documentation" href="index.html"/>
+        <link rel="next" title="Common Procedures" href="procedures.html"/>
+        <link rel="prev" title="Installation" href="installation.html"/> 
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-55008703-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search" style="background-color: #3d3d3d;">
+        <!--<a href="index.html" class="icon icon-home"> FlatCAM</a>-->
+        <!--<a href="http://flatcam.org" class="icon icon-home"> FlatCAM</a>-->
+        <a href="http://flatcam.org">
+            <img src="http://flatcam.org/static/images/fcweblogo1.png"
+                    style="height: auto;
+                    width: auto;
+                    border-radius: 0px;
+                    background-color: #3d3d3d;
+                    margin: auto">
+        </a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+        
+            <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#windows-installer">Windows Installer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#manual-installation">Manual Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Basics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#source-files">Source Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#objects-and-tasks">Objects and Tasks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#creating-saving-and-loading-projects">Creating, Saving and Loading Projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#navigating-plots">Navigating Plots</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="procedures.html">Common Procedures</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#isolation-routing">Isolation Routing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#wide-isolation-routing">Wide Isolation Routing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#cnc-jobs-for-drill-files">CNC Jobs for Drill Files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#side-pcb">2-side PCB</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#copper-area-clear">Copper Area Clear</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#board-cutout">Board Cutout</a></li>
+<li class="toctree-l2"><a class="reference internal" href="procedures.html#bed-flattening">Bed Flattening</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="editor.html">Geometry Editor</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#creating-new-geometry-objects">Creating New Geometry Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="editor.html#editing-existing-geometry-objects">Editing Existing Geometry Objects</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flatcamshell.html">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#the-shell-window">The Shell Window</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#shell-language">Shell Language</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cmdreference.html">Shell Command Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-circle">add_circle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-poly">add_poly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-rect">add_rect</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#follow">follow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#geo-union">geo_union</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#get-names">get_names</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#help">help</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#isolate">isolate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#make-docs">make_docs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new">new</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new-geometry">new_geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#offset">offset</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-excellon">open_excellon</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-gcode">open_gcode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-gerber">open_gerber</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-project">open_project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#options">options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#paint-poly">paint_poly</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#plot">plot</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#save-project">save_project</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#scale">scale</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#set-active">set_active</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#write-gcode">write_gcode</a></li>
+</ul>
+</li>
+</ul>
+
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="icon icon-reorder"></i>
+        <a href="index.html">FlatCAM</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>Basics</li>
+      <li class="wy-breadcrumbs-aside">
+        
+          <a href="_sources/basics.txt" rel="nofollow"> View page source</a>
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            
+  <div class="section" id="basics">
+<h1>Basics<a class="headerlink" href="#basics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="source-files">
+<h2>Source Files<a class="headerlink" href="#source-files" title="Permalink to this headline">¶</a></h2>
+<p>Supported source files are:</p>
+<ul class="simple">
+<li><strong>Gerber</strong>: Typically define copper layers in a circuit board.</li>
+<li><strong>Excellon</strong>: (drill file): Contain drill specifications, size and coordinates.</li>
+<li><strong>G-Code</strong>: CNC machine instructions for cutting and/or drilling.</li>
+</ul>
+<p>These source files can be loaded by selecting File→Open Gerber…, File→Open Excellon… or File→Open G-Code… respectively. The objects created from source files are automatically added to the current project when loaded.</p>
+</div>
+<div class="section" id="objects-and-tasks">
+<h2>Objects and Tasks<a class="headerlink" href="#objects-and-tasks" title="Permalink to this headline">¶</a></h2>
+<p>Data in FlatCAM is in the form of 4 different kinds of objects: Gerber, Excellon, Geometry and CNC Job. Gerber, Excellon and CNC Jos objects are directly created by reading files in Gerber, Excellon and G-Code formats. Geometry objects are an intermediate step available to manipulate data. The diagram bellow illustrates the relationship between files and objects. The arrows connecting objects represent a sub-set of the tasks that can be performed in FlatCAM.</p>
+<img alt="_images/objects_flow.png" class="align-center" src="_images/objects_flow.png" />
+</div>
+<div class="section" id="creating-saving-and-loading-projects">
+<h2>Creating, Saving and Loading Projects<a class="headerlink" href="#creating-saving-and-loading-projects" title="Permalink to this headline">¶</a></h2>
+<p>A project is everything that you have loaded, created and set inside the program. A new project is created every time you load the program or run File→New.</p>
+<p>By running File→Save Project, File→Save Project As… or File→Save a Project Copy… you are saving everything currently in the environment including project options. File→Open Project… lets you load a saved project.</p>
+</div>
+<div class="section" id="navigating-plots">
+<h2>Navigating Plots<a class="headerlink" href="#navigating-plots" title="Permalink to this headline">¶</a></h2>
+<p>Plots for open objects (Gerber, drills, g-code, etc…) are automatically shown on screen. A plot for a given can be updated by clicking “Update Plot” in the “Selected” tab, in case any parameters that would have changed the plot have been modified.</p>
+<p>Zooming plots in and out is accomplished by clicking on the plot and using the mouse <strong>scroll wheel</strong> or hitting one of the following keys:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">1</span></tt>: Fits all graphics to the available plotting area.</li>
+<li><tt class="docutils literal"><span class="pre">2</span></tt>: Zooms out</li>
+<li><tt class="docutils literal"><span class="pre">3</span></tt>: Zooms in</li>
+</ul>
+<p>When zooming in or out, the point under the cursor stays at the same location.</p>
+<p>To scroll left-right or up-down, hold the <tt class="docutils literal"><span class="pre">shift</span></tt> or <tt class="docutils literal"><span class="pre">control</span></tt> key respectively while turning the mouse <strong>scroll wheel</strong>.</p>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="procedures.html" class="btn btn-neutral float-right" title="Common Procedures"/>Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral" title="Installation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2014, Juan Pablo Caram.
+    </p>
+  </div>
+
+  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+</body>
+</html>
