@@ -1956,14 +1956,13 @@ class App(QtCore.QObject):
             if box is None:
                 return "Object box not found: %s" % kwa['box']
 
-
             if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
                 return "ERROR: Only Gerber and Excellon objects can be mirrored."
 
             try:
                 xmin, ymin, xmax, ymax = box.bounds()
-                px = 0.5*(xmin+xmax)
-                py = 0.5*(ymin+ymax)
+                px = 0.5 * (xmin + xmax)
+                py = 0.5 * (ymin + ymax)
             
                 obj.mirror(kwa['axis'], [px, py])
                 obj.plot()
@@ -1972,7 +1971,6 @@ class App(QtCore.QObject):
                 return "Operation failed: %s" % str(e)
 
             return 'Ok'
-
 
         def drillcncjob(name, *args):
             a, kwa = h(*args)
@@ -2255,27 +2253,37 @@ class App(QtCore.QObject):
             },
             'open_project': {
                 'fcn': self.open_project,
-                "help": "Opens a FlatCAM project.\n> open_project <filename>\n   filename: Path to file to open."
+                "help": "Opens a FlatCAM project.\n" +
+                        "> open_project <filename>\n" +
+                        "   filename: Path to file to open."
             },
             'save_project': {
                 'fcn': self.save_project,
-                'help': "Saves the FlatCAM project to file.\n> save_project <filename>\n   filename: Path to file to save."
+                'help': "Saves the FlatCAM project to file.\n" +
+                        "> save_project <filename>\n" +
+                        "   filename: Path to file to save."
             },
             'set_active': {
                 'fcn': set_active,
-                'help': "Sets a FlatCAM object as active.\n > set_active <name>\n   name: Name of the object."
+                'help': "Sets a FlatCAM object as active.\n" +
+                        "> set_active <name>\n" +
+                        "   name: Name of the object."
             },
             'get_names': {
                 'fcn': lambda: '\n'.join(self.collection.get_names()),
-                'help': "Lists the names of objects in the project.\n > get_names"
+                'help': "Lists the names of objects in the project.\n" +
+                        "> get_names"
             },
             'new': {
                 'fcn': self.on_file_new,
-                'help': "Starts a new project. Clears objects from memory.\n > new"
+                'help': "Starts a new project. Clears objects from memory.\n" +
+                        "> new"
             },
             'options': {
                 'fcn': options,
-                'help': "Shows the settings for an object.\n > options <name>\n   name: Object name."
+                'help': "Shows the settings for an object.\n" +
+                        "> options <name>\n" +
+                        "   name: Object name."
             },
             'isolate': {
                 'fcn': isolate,
@@ -2290,27 +2298,29 @@ class App(QtCore.QObject):
                 'help': "Creates cutout board.\n" +
                         "> cutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
                         "   name: Name of the object\n" +
-                        "   dia: Tool diameter\n   margin: # margin over bounds\n" +
-                        "   gapsize: size of gap\n   gaps: type of gaps"
+                        "   dia: Tool diameter\n" +
+                        "   margin: Margin over bounds\n" +
+                        "   gapsize: size of gap\n" +
+                        "   gaps: type of gaps"
             },
             'mirror': {
                 'fcn': mirror,
                 'help': "Mirror board.\n" +
-                        "> mirror <nameMirroredObject> -box <nameOfBox> [-axis <3.0 (X X|Y)>]\n" +
-                        "   name: Name of the object to mirror\n" +
-                        "   box: Name of   object which act as box (cutout for example)\n" +
-                        "   axis: axis mirror over x o y"
+                        "> mirror <nameMirroredObject> -box <nameOfBox> [-axis <X|Y>]\n" +
+                        "   name: Name of the object (Gerber or Excellon) to mirror\n" +
+                        "   box: Name of object which act as box (cutout for example)\n" +
+                        "   axis: Axis mirror over X or Y"
             },
             'drillcncjob': {
                 'fcn': drillcncjob,
                 'help': "Drill CNC job.\n" +
                         "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> \n" +
                         "   name: Name of the object\n" +
-                        "   tools: coma separated indexes of tools (example: 1,3 or 2)\n" +
-                        "   drillz: drill into material (example: -2)\n" +
-                        "   travelz: travel above  material (example: 2)\n" +
-                        "   feedrate: drilling feed rate\n" +
-                        "   outname: name of object to create\n" 
+                        "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
+                        "   drillz: Drill depth into material (example: -2.0)\n" +
+                        "   travelz: Travel distance above material (example: 2.0)\n" +
+                        "   feedrate: Drilling feed rate\n" +
+                        "   outname: Name of object to create\n"
             },
             'scale': {
                 'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
