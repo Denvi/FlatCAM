@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -21,7 +22,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'./',
+        URL_ROOT:'',
         VERSION:'7',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -107,6 +108,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#windows-installer">Windows Installer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#os-x">OS-X</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#manual-installation">Manual Installation</a></li>
 </ul>
 </li>
@@ -134,6 +136,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="flatcamshell.html">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#calling-a-shell-script-on-startup">Calling a Shell script on startup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#the-shell-window">The Shell Window</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#shell-language">Shell Language</a></li>
 </ul>
@@ -143,7 +146,9 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-poly">add_poly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-rect">add_rect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cutout">cutout</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#drillcncjob">drillcncjob</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#follow">follow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#geo-union">geo_union</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#get-names">get_names</a></li>
@@ -151,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#isolate">isolate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#make-docs">make_docs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new">new</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#mirror">mirror</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new-geometry">new_geometry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#offset">offset</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-excellon">open_excellon</a></li>
@@ -204,12 +210,21 @@
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="windows-installer">
 <h2>Windows Installer<a class="headerlink" href="#windows-installer" title="Permalink to this headline">¶</a></h2>
-<p>Download the installer from the <a class="reference external" href="https://bitbucket.org/jpcgt/flatcam/downloads">repository</a> and run it in your machine. It includes everything you need.</p>
+<p>Download the installer from the <a class="reference external" href="https://bitbucket.org/jpcgt/flatcam/downloads">repository</a> and run it in your machine.
+It includes everything you need.</p>
 </div>
 <div class="section" id="ubuntu">
 <h2>Ubuntu<a class="headerlink" href="#ubuntu" title="Permalink to this headline">¶</a></h2>
-<p>FlatCAM should work on most Linux distributions but Ubuntu has been chosen as the test platform.</p>
-<p>There are several dependencies required to run FlatCAM. These are listed in the following section. Before attempting a manual installation, try running the provided setup script <tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> that will download and install required packages.</p>
+<p>FlatCAM should work on most Linux distributions but Ubuntu has been
+chosen as the test platform.</p>
+<p>There are several dependencies required to run FlatCAM. These are
+listed in the following section. Before attempting a manual installation,
+try running the provided setup script <tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> that will
+download and install required packages.</p>
+</div>
+<div class="section" id="os-x">
+<h2>OS-X<a class="headerlink" href="#os-x" title="Permalink to this headline">¶</a></h2>
+<p>See manual instructions below.</p>
 </div>
 <div class="section" id="manual-installation">
 <h2>Manual Installation<a class="headerlink" href="#manual-installation" title="Permalink to this headline">¶</a></h2>
@@ -220,22 +235,54 @@
 <li>PyQt 4</li>
 <li>Matplotlib 1.3.1</li>
 <li>Numpy 1.8</li>
-<li><a class="reference external" href="https://pypi.python.org/pypi/Shapely">Shapely 1.3</a></li>
+<li><a class="reference external" href="https://pypi.python.org/pypi/Shapely">Shapely 1.3</a><ul>
+<li>GEOS</li>
+</ul>
+</li>
+<li>RTree<ul>
+<li>SpatialIndex</li>
+</ul>
+</li>
 </ul>
 <p>These packages might have their own dependencies.</p>
 </div>
 <div class="section" id="linux">
 <h3>Linux<a class="headerlink" href="#linux" title="Permalink to this headline">¶</a></h3>
-<p>Under Linux, most modern package installers like <strong>yum</strong> or <strong>apt-get</strong> will attempt to locate and install the whole tree of dependencies for a specified package automatically. Refer to the provided setup script <tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> for the names and installation order.</p>
-<p>Once the dependencies are installed, download the latest .zip release (or the latest source, although it is not garanteed to work), unpack it, change into the created folder and run:</p>
+<p>Under Linux, most modern package installers like <strong>yum</strong> or <strong>apt-get</strong>
+will attempt to locate and install the whole tree of dependencies for a
+specified package automatically. Refer to the provided setup script
+<tt class="docutils literal"><span class="pre">setup_ubuntu.sh</span></tt> for the names and installation order.</p>
+<p>Once the dependencies are installed, download the latest .zip release
+(or the latest source, although it is not garanteed to work), unpack it,
+change into the created folder and run:</p>
 <div class="highlight-python"><pre>Python FlatCAM.py</pre>
 </div>
 </div>
 <div class="section" id="windows">
 <h3>Windows<a class="headerlink" href="#windows" title="Permalink to this headline">¶</a></h3>
-<p>An easy way to get the requirements in your system is to install <a class="reference external" href="http://winpython.sourceforge.net/">WinPython</a>. This is a standalone distribution of Python which includes all of FlatCAM&#8217;s dependencies, except for Shapely.</p>
-<p>Once the dependencies are installed, download the latest .zip release (or the latest source, although it is not garanteed to work), unpack it, change into the created folder and run:</p>
-<div class="highlight-python"><pre>Python FlatCAM.py</pre>
+<p>An easy way to get the requirements in your system is to install <a class="reference external" href="http://winpython.sourceforge.net/">WinPython</a>.
+This is a standalone distribution of Python which includes all of FlatCAM&#8217;s
+dependencies, except for Shapely and RTree. These can be found here:
+<a class="reference external" href="http://www.lfd.uci.edu/~gohlke/pythonlibs/">Unofficial Windows Binaries for Python Extension Packages</a>.</p>
+<p>Once the dependencies are installed, download the latest .zip
+release (or the latest source, although it is not garanteed to work),
+unpack it, change into the created folder and run:</p>
+<div class="highlight-python"><pre>python FlatCAM.py</pre>
+</div>
+</div>
+<div class="section" id="id1">
+<h3>OS-X<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<p>Start by installing binary packages: pyqt, geos, spatialindex.
+One way to do this is using <a class="reference external" href="http://brew.sh">Homebrew</a>:</p>
+<div class="highlight-python"><pre>brew install name_of_package</pre>
+</div>
+<p>Now you can install all Python packages (numpy, matplotlib, rtree, scipy,
+shapely, simplejson) using pip:</p>
+<div class="highlight-python"><pre>pip install name_of_package</pre>
+</div>
+<p>Finally, download the latest FlatCAM .zip package or source code. Change into
+its directory and launch it by running:</p>
+<div class="highlight-python"><pre>python FlatCAM.py</pre>
 </div>
 </div>
 </div>

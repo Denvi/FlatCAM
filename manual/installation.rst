@@ -37,8 +37,11 @@ Requirements
 * Matplotlib 1.3.1
 * Numpy 1.8
 * `Shapely 1.3`_
+
   * GEOS
+
 * RTree
+
   * SpatialIndex
 
 .. _Shapely 1.3: https://pypi.python.org/pypi/Shapely

@@ -60,12 +60,44 @@ Generates a CNC Job from a Geometry Object.
 
        outname: Name of the output object
 
+cutout
+~~~~~~
+Creates cutout board.
+
+    > cutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]
+       name: Name of the object
+
+       dia: Tool diameter
+
+       margin: # margin over bounds
+
+       gapsize: size of gap
+
+       gaps: type of gaps
+
 delete
 ~~~~~~
 Deletes the give object.
 
     > delete <name>
        name: Name of the object to delete.
+
+drillcncjob
+~~~~~~~~~~~
+Drill CNC job.
+
+    > drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str>
+       name: Name of the object
+
+       tools: Comma separated indexes of tools (example: 1,3 or 2)
+
+       drillz: Drill depth into material (example: -2.0)
+
+       travelz: Travel distance above material (example: 2.0)
+
+       feedrate: Drilling feed rate
+
+       outname: Name of object to create
 
 follow
 ~~~~~~
@@ -113,6 +145,17 @@ Creates isolation routing geometry for the given Gerber.
 make_docs
 ~~~~~~~~~
 Prints command rererence in reStructuredText format.
+
+mirror
+~~~~~~
+Mirror board.
+
+    > mirror <nameMirroredObject> -box <nameOfBox> [-axis <X|Y>]
+       name: Name of the object (Gerber or Excellon) to mirror
+
+       box: Name of object which acts as box (cutout for example)
+
+       axis: Axis mirror over X or Y
 
 new
 ~~~

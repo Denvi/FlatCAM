@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -21,7 +22,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'./',
+        URL_ROOT:'',
         VERSION:'7',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -107,6 +108,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#windows-installer">Windows Installer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#os-x">OS-X</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#manual-installation">Manual Installation</a></li>
 </ul>
 </li>
@@ -134,6 +136,7 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#calling-a-shell-script-on-startup">Calling a Shell script on startup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#the-shell-window">The Shell Window</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#shell-language">Shell Language</a></li>
 </ul>
@@ -143,7 +146,9 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-poly">add_poly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-rect">add_rect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cutout">cutout</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#drillcncjob">drillcncjob</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#follow">follow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#geo-union">geo_union</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#get-names">get_names</a></li>
@@ -151,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#isolate">isolate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#make-docs">make_docs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new">new</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#mirror">mirror</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new-geometry">new_geometry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#offset">offset</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-excellon">open_excellon</a></li>
@@ -204,41 +210,71 @@
 <h1>Shell Command Line Interface<a class="headerlink" href="#shell-command-line-interface" title="Permalink to this headline">¶</a></h1>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last">The FlatCAM Shell is under development and its behavior might change in the future. This includes available commands and their syntax.</p>
+<p class="last">The FlatCAM Shell is under development and its behavior might change in the future.
+This includes available commands and their syntax.</p>
 </div>
-<p>The FlatCAM Shell provides a command line interface to FlatCAM&#8217;s functionalies and to the TCL language. It serves the following purposes:</p>
+<p>The FlatCAM Shell provides a command line interface to FlatCAM&#8217;s functionalies
+and to the TCL language. It serves the following purposes:</p>
 <ul class="simple">
-<li>An alternative the GUI for issuing commands and visualizing data output.</li>
+<li>An alternative to the GUI for issuing commands and visualizing data output.</li>
 <li>Scripting interface for automating large sequences of commands.</li>
 <li>A mechanism for the user to implement new functionality.</li>
 <li>A mechanism to provide detailed information to the user.</li>
 <li>Keep a record of commands and responses.</li>
 </ul>
+<div class="section" id="calling-a-shell-script-on-startup">
+<h2>Calling a Shell script on startup<a class="headerlink" href="#calling-a-shell-script-on-startup" title="Permalink to this headline">¶</a></h2>
+<p>A file containing Shell commands (<a class="reference internal" href="cmdreference.html#cmdreference"><em>Shell Command Reference</em></a>) can be executed
+when starting FlatCAM from the command line:</p>
+<div class="highlight-python"><pre>python FlatCAM.py --shellfile=/path/to/file</pre>
+</div>
+</div>
 <div class="section" id="the-shell-window">
 <h2>The Shell Window<a class="headerlink" href="#the-shell-window" title="Permalink to this headline">¶</a></h2>
 <img alt="_images/shell.png" class="align-center" src="_images/shell.png" />
-<p>The FlatCAM Shell window is shown at startup when FlatCAM loads. It can be closed and re-opened at any time without loss of data by clicking on the close button on the top right edge of the window and selecting <strong>Tool→Command Line</strong> from the main menu respectively.</p>
-<p>It is divided into 2 sections, an output section on the top and an input section on the bottom. A record of previously issued commands is shown in the output section along with their results and other information that FlatCAM might provide. Distinction between types of data in the output section is done by color coding.</p>
-<p>To issue a command, type it in the input section and hit <tt class="docutils literal"><span class="pre">Enter</span></tt>. If the command consists of multiple lines, use <tt class="docutils literal"><span class="pre">Shift-Enter</span></tt> to insert a new line without issuing the command.</p>
+<p>The FlatCAM Shell window is shown at startup when FlatCAM loads. It can be
+closed and re-opened at any time without loss of data by clicking on the
+close button on the top right edge of the window and selecting
+<strong>Tool→Command Line</strong> from the main menu respectively.</p>
+<p>It is divided into 2 sections, an output section on the top and an input
+section on the bottom. A record of previously issued commands is shown in
+the output section along with their results and other information that
+FlatCAM might provide. Distinction between types of data in the output
+section is done by color coding.</p>
+<p>To issue a command, type it in the input section and hit <tt class="docutils literal"><span class="pre">Enter</span></tt>. If the
+command consists of multiple lines, use <tt class="docutils literal"><span class="pre">Shift-Enter</span></tt> to insert a new
+line without issuing the command.</p>
 </div>
 <div class="section" id="shell-language">
 <h2>Shell Language<a class="headerlink" href="#shell-language" title="Permalink to this headline">¶</a></h2>
-<p>The Shell uses the <a class="reference external" href="https://www.tcl.tk/man/tcl8.5/tutorial/tcltutorial.html">TCL</a> language. TCL provides the simples posible syntax and requires no learning at all for isuing the basic FlatCAM commands. Nonetheless, TCL is a powerfull language that enables the users to create their own complex functionality if desired.</p>
-<p>Issuing a command is as simple as typing its name and hitting the <tt class="docutils literal"><span class="pre">Enter</span></tt> key. For example:</p>
+<p>The Shell uses the <a class="reference external" href="https://www.tcl.tk/man/tcl8.5/tutorial/tcltutorial.html">TCL</a> language. TCL provides the simples posible syntax
+and requires no learning at all for isuing the basic FlatCAM commands.
+Nonetheless, TCL is a powerfull language that enables the users to create
+their own complex functionality if desired.</p>
+<p>Issuing a command is as simple as typing its name and hitting the
+<tt class="docutils literal"><span class="pre">Enter</span></tt> key. For example:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="n">new</span>
 </pre></div>
 </div>
 <p>This the same as clicking on <strong>File→New</strong> in the main window menu.</p>
-<p>If a command requires additional information, it is given immediately after the command name and a space. For example, to open the gerber file <tt class="docutils literal"><span class="pre">mygerber.gbr</span></tt>:</p>
+<p>If a command requires additional information, it is given immediately
+after the command name and a space. For example, to open the gerber
+file <tt class="docutils literal"><span class="pre">mygerber.gbr</span></tt>:</p>
 <div class="highlight-python"><pre>open_gerber mygerber.gbr</pre>
 </div>
-<p>Sometimes a command will have optional parameters, this is, if you provide it it will use it, otherwise it will use some default value. For example:</p>
+<p>Sometimes a command will have optional parameters, this is, if you
+provide it it will use it, otherwise it will use some default value.
+For example:</p>
 <div class="highlight-python"><pre>isolate mygerber.gbr -tooldia 0.04</pre>
 </div>
-<p>This would create isolation routing geometry for the <tt class="docutils literal"><span class="pre">mygerber.gbr</span></tt> gerber object with a tool diameter of 0.04 inches (or mm, depending on the project settings). Otherwise, if you run:</p>
+<p>This would create isolation routing geometry for the <tt class="docutils literal"><span class="pre">mygerber.gbr</span></tt>
+gerber object with a tool diameter of 0.04 inches (or mm, depending on
+the project settings). Otherwise, if you run:</p>
 <div class="highlight-python"><pre>isolate mygerber.gbr</pre>
 </div>
-<p>The same action will be performed but the tool diameter will be taken from the default value set for that object (If it is a new object, its default values will be set from the project options.)</p>
+<p>The same action will be performed but the tool diameter will be taken
+from the default value set for that object (If it is a new object, its
+default values will be set from the project options.)</p>
 <p>For complete reference of FlatCAM Shell commands, see <a class="reference internal" href="cmdreference.html#cmdreference"><em>Shell Command Reference</em></a>.</p>
 </div>
 </div>

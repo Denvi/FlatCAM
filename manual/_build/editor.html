@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -21,7 +22,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'./',
+        URL_ROOT:'',
         VERSION:'7',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -107,6 +108,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#windows-installer">Windows Installer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#os-x">OS-X</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#manual-installation">Manual Installation</a></li>
 </ul>
 </li>
@@ -134,6 +136,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="flatcamshell.html">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#calling-a-shell-script-on-startup">Calling a Shell script on startup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#the-shell-window">The Shell Window</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#shell-language">Shell Language</a></li>
 </ul>
@@ -143,7 +146,9 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-poly">add_poly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#add-rect">add_rect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#cutout">cutout</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#drillcncjob">drillcncjob</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#follow">follow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#geo-union">geo_union</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#get-names">get_names</a></li>
@@ -151,6 +156,7 @@
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#isolate">isolate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#make-docs">make_docs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new">new</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmdreference.html#mirror">mirror</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#new-geometry">new_geometry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#offset">offset</a></li>
 <li class="toctree-l2"><a class="reference internal" href="cmdreference.html#open-excellon">open_excellon</a></li>
@@ -216,7 +222,7 @@ and arbitrarily what you want your CNC router to do.</p>
 the toolbar. A Geometry object with the name &#8220;New Geometry&#8221; will
 be added to your project list.</p>
 <img alt="_images/editor1.png" class="align-center" src="_images/editor1.png" />
-<div class="admonition seealso">
+<div class="admonition-see-also admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last">FlatCAM Shell command <a class="reference internal" href="cmdreference.html#new-geometry"><em>new_geometry</em></a></p>
 </div>
@@ -248,6 +254,7 @@ to the set of selected objects.</p>
 <p>The shape creation tools in the editor are:</p>
 <ul class="simple">
 <li>Circle</li>
+<li>Arc</li>
 <li>Rectangle</li>
 <li>Polygon</li>
 <li>Path</li>
@@ -257,7 +264,9 @@ to the set of selected objects.</p>
 on the status bar.</p>
 <p>Shapes that do not require a fixed number of clicks to complete, like
 polygons and paths, are complete by hitting the <tt class="docutils literal"><span class="pre">Space</span></tt> key.</p>
-<div class="admonition seealso">
+<p>Certain shape tools can have different options or modes. By hitting
+<cite>o</cite> and/or <cite>p</cite> the tool will cycle through its options and/or modes.</p>
+<div class="admonition-see-also admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last">The FlatCAM Shell commands <a class="reference internal" href="cmdreference.html#add-circle"><em>add_circle</em></a>, <a class="reference internal" href="cmdreference.html#add-poly"><em>add_poly</em></a> and <a class="reference internal" href="cmdreference.html#add-rect"><em>add_rect</em></a>,
 create shapes directly on a given Geometry Object.</p>
@@ -270,7 +279,7 @@ will create a union. For closed shapes, their union is a polygon covering
 the area that all the selected shapes encompassed. Unions of disjoint shapes
 can still be created and is equivalent to grouping shapes.</p>
 <img alt="_images/editor_union.png" class="align-center" src="_images/editor_union.png" />
-<div class="admonition seealso">
+<div class="admonition-see-also admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last">The FlatCAM Shell command <a class="reference internal" href="cmdreference.html#geo-union"><em>geo_union</em></a> executes a union of
 all geometry in a Geometry object.</p>
@@ -283,7 +292,7 @@ is selected (On the toolbar or the <tt class="docutils literal"><span class="pre
 is set at the mouse pointer location. Clicking on the plot sets the target
 location and finalizes the operation. An outline of the shapes is shown
 while moving the mouse.</p>
-<div class="admonition seealso">
+<div class="admonition-see-also admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last">The FlatCAM Shell command <a class="reference internal" href="cmdreference.html#offset"><em>offset</em></a> will move (offset) all
 the geometry in a Geometry Object. This can also be done in
@@ -301,7 +310,7 @@ selects the <strong>Selection Tool</strong>.</p>
 </div>
 <div class="section" id="other">
 <h3>Other<a class="headerlink" href="#other" title="Permalink to this headline">¶</a></h3>
-<div class="admonition seealso">
+<div class="admonition-see-also admonition seealso">
 <p class="first admonition-title">See also</p>
 <p class="last">The FlatCAM Shell command <a class="reference internal" href="cmdreference.html#scale"><em>scale</em></a> changes the size of the
 geometry in a Geometry Object.</p>

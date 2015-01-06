@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
@@ -21,7 +22,7 @@
 
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:'./',
+        URL_ROOT:'',
         VERSION:'7',
         COLLAPSE_INDEX:false,
         FILE_SUFFIX:'.html',
@@ -106,6 +107,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#windows-installer">Windows Installer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#ubuntu">Ubuntu</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#os-x">OS-X</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#manual-installation">Manual Installation</a></li>
 </ul>
 </li>
@@ -133,6 +135,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="flatcamshell.html">Shell Command Line Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#calling-a-shell-script-on-startup">Calling a Shell script on startup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#the-shell-window">The Shell Window</a></li>
 <li class="toctree-l2"><a class="reference internal" href="flatcamshell.html#shell-language">Shell Language</a></li>
 </ul>
@@ -142,13 +145,16 @@
 <li class="toctree-l2"><a class="reference internal" href="#add-poly">add_poly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#add-rect">add_rect</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cncjob">cncjob</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cutout">cutout</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#delete">delete</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#drillcncjob">drillcncjob</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#follow">follow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#geo-union">geo_union</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#get-names">get_names</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#help">help</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#isolate">isolate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#make-docs">make_docs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mirror">mirror</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#new">new</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#new-geometry">new_geometry</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#offset">offset</a></li>
@@ -259,6 +265,21 @@
 </dl>
 </div></blockquote>
 </div>
+<div class="section" id="cutout">
+<h2>cutout<a class="headerlink" href="#cutout" title="Permalink to this headline">¶</a></h2>
+<p>Creates cutout board.</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&gt; cutout &lt;name&gt; [-dia &lt;3.0 (float)&gt;] [-margin &lt;0.0 (float)&gt;] [-gapsize &lt;0.5 (float)&gt;] [-gaps &lt;lr (4|tb|lr)&gt;]</dt>
+<dd><p class="first">name: Name of the object</p>
+<p>dia: Tool diameter</p>
+<p>margin: # margin over bounds</p>
+<p>gapsize: size of gap</p>
+<p class="last">gaps: type of gaps</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
 <div class="section" id="delete">
 <h2>delete<a class="headerlink" href="#delete" title="Permalink to this headline">¶</a></h2>
 <p>Deletes the give object.</p>
@@ -266,6 +287,22 @@
 <div><dl class="docutils">
 <dt>&gt; delete &lt;name&gt;</dt>
 <dd>name: Name of the object to delete.</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="drillcncjob">
+<h2>drillcncjob<a class="headerlink" href="#drillcncjob" title="Permalink to this headline">¶</a></h2>
+<p>Drill CNC job.</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&gt; drillcncjob &lt;name&gt; -tools &lt;str&gt; -drillz &lt;float&gt; -travelz &lt;float&gt; -feedrate &lt;float&gt; -outname &lt;str&gt;</dt>
+<dd><p class="first">name: Name of the object</p>
+<p>tools: Comma separated indexes of tools (example: 1,3 or 2)</p>
+<p>drillz: Drill depth into material (example: -2.0)</p>
+<p>travelz: Travel distance above material (example: 2.0)</p>
+<p>feedrate: Drilling feed rate</p>
+<p class="last">outname: Name of object to create</p>
+</dd>
 </dl>
 </div></blockquote>
 </div>
@@ -322,6 +359,19 @@
 <div class="section" id="make-docs">
 <h2>make_docs<a class="headerlink" href="#make-docs" title="Permalink to this headline">¶</a></h2>
 <p>Prints command rererence in reStructuredText format.</p>
+</div>
+<div class="section" id="mirror">
+<h2>mirror<a class="headerlink" href="#mirror" title="Permalink to this headline">¶</a></h2>
+<p>Mirror board.</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>&gt; mirror &lt;nameMirroredObject&gt; -box &lt;nameOfBox&gt; [-axis &lt;X|Y&gt;]</dt>
+<dd><p class="first">name: Name of the object (Gerber or Excellon) to mirror</p>
+<p>box: Name of object which acts as box (cutout for example)</p>
+<p class="last">axis: Axis mirror over X or Y</p>
+</dd>
+</dl>
+</div></blockquote>
 </div>
 <div class="section" id="new">
 <h2>new<a class="headerlink" href="#new" title="Permalink to this headline">¶</a></h2>
