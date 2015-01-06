@@ -12,6 +12,7 @@ import os
 import Tkinter
 import re
 from PyQt4 import QtCore
+import time
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -52,8 +53,8 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    #log.setLevel(logging.DEBUG)
-    log.setLevel(logging.WARNING)
+    log.setLevel(logging.DEBUG)
+    #log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -717,6 +718,8 @@ class App(QtCore.QObject):
 
         App.log.debug("new_object()")
 
+        t0 = time.time()  # Debug
+
         ### Check for existing name
         while name in self.collection.get_names():
             ## Create a new name
@@ -745,19 +748,25 @@ class App(QtCore.QObject):
         # Set default options from self.options
         for option in self.options:
             if option.find(kind + "_") == 0:
-                oname = option[len(kind)+1:]
+                oname = option[len(kind) + 1:]
                 obj.options[oname] = self.options[option]
 
         # Initialize as per user request
         # User must take care to implement initialize
         # in a thread-safe way as is is likely that we
         # have been invoked in a separate thread.
+        t1 = time.time()
+        self.log.debug("%f seconds before initialize()." % (t1 - t0))
         initialize(obj, self)
+        t2 = time.time()
+        self.log.debug("%f seconds executing initialize()." % (t2 - t1))
 
         # Check units and convert if necessary
         if self.options["units"].upper() != obj.units.upper():
             self.inform.emit("Converting units to " + self.options["units"] + ".")
             obj.convert_units(self.options["units"])
+        t3 = time.time()
+        self.log.debug("%f seconds converting units." % (t3 - t2))
 
         FlatCAMApp.App.log.debug("Moving new object back to main thread.")
 
@@ -1206,11 +1215,14 @@ class App(QtCore.QObject):
         :param obj: The newly created FlatCAM object.
         :return: None
         """
+        t0 = time.time()  # DEBUG
         self.log.debug("on_object_created()")
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.collection.append(obj)
         obj.plot()
         self.on_zoom_fit(None)
+        t1 = time.time()  # DEBUG
+        self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
     def on_zoom_fit(self, event):
         """

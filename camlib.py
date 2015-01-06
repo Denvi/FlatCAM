@@ -42,8 +42,8 @@ import simplejson as json
 import logging
 
 log = logging.getLogger('base2')
-#log.setLevel(logging.DEBUG)
-log.setLevel(logging.WARNING)
+log.setLevel(logging.DEBUG)
+#log.setLevel(logging.WARNING)
 #log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
@@ -1194,6 +1194,8 @@ class Gerber (Geometry):
                 ### Cleanup
                 gline = gline.strip(' \r\n')
 
+                #log.debug("%3s %s" % (line_num, gline))
+
                 ### Aperture Macros
                 # Having this at the beggining will slow things down
                 # but macros can have complicated statements than could
@@ -1268,7 +1270,7 @@ class Gerber (Geometry):
                                 if follow:
                                     geo = LineString(path)
                                 else:
-                                    geo = LineString(path).buffer(width/2)
+                                    geo = LineString(path).buffer(width / 2)
                             poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path
@@ -1332,7 +1334,7 @@ class Gerber (Geometry):
 
                             # --- BUFFERED ---
                             width = self.apertures[last_path_aperture]["size"]
-                            buffered = LineString(path).buffer(width/2)
+                            buffered = LineString(path).buffer(width / 2)
                             poly_buffer.append(buffered)
 
                         current_x = x
@@ -1384,11 +1386,11 @@ class Gerber (Geometry):
                         valid = False
                         log.debug("I: %f  J: %f" % (i, j))
                         for center in center_candidates:
-                            radius = sqrt(i**2 + j**2)
+                            radius = sqrt(i ** 2 + j ** 2)
 
                             # Make sure radius to start is the same as radius to end.
-                            radius2 = sqrt((center[0] - x)**2 + (center[1] - y)**2)
-                            if radius2 < radius*0.95 or radius2 > radius*1.05:
+                            radius2 = sqrt((center[0] - x) ** 2 + (center[1] - y) ** 2)
+                            if radius2 < radius * 0.95 or radius2 > radius * 1.05:
                                 continue  # Not a valid center.
 
                             # Correct i and j and continue as with multi-quadrant.
@@ -1401,10 +1403,10 @@ class Gerber (Geometry):
                             log.debug("ARC START: %f, %f  CENTER: %f, %f  STOP: %f, %f" %
                                       (current_x, current_y, center[0], center[1], x, y))
                             log.debug("START Ang: %f, STOP Ang: %f, DIR: %s, ABS: %.12f <= %.12f: %s" %
-                                      (start*180/pi, stop*180/pi, arcdir[current_interpolation_mode],
-                                       angle*180/pi, pi/2*180/pi, angle <= (pi+1e-6)/2))
+                                      (start * 180 / pi, stop * 180 / pi, arcdir[current_interpolation_mode],
+                                       angle * 180 / pi, pi / 2 * 180 / pi, angle <= (pi + 1e-6) / 2))
 
-                            if angle <= (pi+1e-6)/2:
+                            if angle <= (pi + 1e-6) / 2:
                                 log.debug("########## ACCEPTING ARC ############")
                                 this_arc = arc(center, radius, start, stop,
                                                arcdir[current_interpolation_mode],
@@ -1431,7 +1433,10 @@ class Gerber (Geometry):
 
                         ## --- Buffered ---
                         try:
-                            flash = Gerber.create_flash_geometry(Point(path[-1]),
+                            log.debug("Bare op-code %d." % current_operation_code)
+                            # flash = Gerber.create_flash_geometry(Point(path[-1]),
+                            #                                      self.apertures[current_aperture])
+                            flash = Gerber.create_flash_geometry(Point(current_x, current_y),
                                                                  self.apertures[current_aperture])
                             poly_buffer.append(flash)
                         except IndexError:
@@ -1511,14 +1516,15 @@ class Gerber (Geometry):
                 # Example: D12*
                 match = self.tool_re.search(gline)
                 if match:
-                    log.debug("Line %d: Aperture change to (%s)" % (line_num, match.group(1)))
                     current_aperture = match.group(1)
+                    log.debug("Line %d: Aperture change to (%s)" % (line_num, match.group(1)))
+                    log.debug(self.apertures[current_aperture])
 
                     # Take care of the current path with the previous tool
                     if len(path) > 1:
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width/2)
+                        geo = LineString(path).buffer(width / 2)
                         poly_buffer.append(geo)
                         path = [path[-1]]
 
@@ -1617,11 +1623,13 @@ class Gerber (Geometry):
     @staticmethod
     def create_flash_geometry(location, aperture):
 
+        log.debug('Flashing @%s, Aperture: %s' % (location, aperture))
+
         if type(location) == list:
             location = Point(location)
 
         if aperture['type'] == 'C':  # Circles
-            return location.buffer(aperture['size']/2)
+            return location.buffer(aperture['size'] / 2)
 
         if aperture['type'] == 'R':  # Rectangles
             loc = location.coords[0]
