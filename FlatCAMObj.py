@@ -25,8 +25,6 @@ class FlatCAMObj(QtCore.QObject):
         """
 
         :param name: Name of the object given by the user.
-        :param ui: User interface to interact with the object.
-        :type ui: ObjectUI
         :return: FlatCAMObj
         """
         QtCore.QObject.__init__(self)
@@ -219,7 +217,6 @@ class FlatCAMObj(QtCore.QObject):
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
-        # GLib.idle_add(self.axes.cla)
         return True
 
     def serialize(self):
@@ -441,9 +438,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
         for i in range(passes):
 
-            offset = (2*i + 1)/2.0 * dia - i*overlap
+            offset = (2 * i + 1) / 2.0 * dia - i * overlap
             if passes > 1:
-                iso_name = base_name + str(i+1)
+                iso_name = base_name + str(i + 1)
             else:
                 iso_name = base_name
 
@@ -613,14 +610,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "drillz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.feedrate_entry,
-            # "toolselection": self.ui.tools_entry
             "tooldia": self.ui.tooldia_entry
         })
 
         assert isinstance(self.ui, ExcellonObjectUI)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
-        # self.ui.choose_tools_button.clicked.connect(self.show_tool_chooser)
         self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
         self.ui.generate_milling_button.clicked.connect(self.on_generate_milling_button_click)
 
@@ -668,7 +663,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             app_obj.progress.emit(100)
 
         # Send to worker
-        # self.app.worker.add_task(job_thread, [self.app])
         self.app.worker_task.emit({'fcn': geo_thread, 'params': [self.app]})
 
     def on_create_cncjob_button_click(self, *args):
@@ -688,7 +682,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         def job_init(job_obj, app_obj):
             assert isinstance(job_obj, FlatCAMCNCjob)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             app_obj.progress.emit(20)
             job_obj.z_cut = self.options["drillz"]
             job_obj.z_move = self.options["travelz"]
@@ -698,26 +691,20 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             # job_obj.options["tooldia"] =
 
             tools_csv = ','.join(tools)
-            # job_obj.generate_from_excellon_by_tool(self, self.options["toolselection"])
             job_obj.generate_from_excellon_by_tool(self, tools_csv)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             app_obj.progress.emit(50)
             job_obj.gcode_parse()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
             app_obj.progress.emit(60)
             job_obj.create_geometry()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
             app_obj.progress.emit(80)
 
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             app_obj.progress.emit(100)
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
 
         # Send to worker
         # self.app.worker.add_task(job_thread, [self.app])
@@ -772,33 +759,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                     self.axes.plot(x, y, 'g-')
 
         self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)
-
-    def show_tool_chooser(self):
-        # win = Gtk.Window()
-        # box = Gtk.Box(spacing=2)
-        # box.set_orientation(Gtk.Orientation(1))
-        # win.add(box)
-        # for tool in self.tools:
-        #     self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + str(self.tools[tool]))
-        #     box.pack_start(self.tool_cbs[tool], False, False, 1)
-        # button = Gtk.Button(label="Accept")
-        # box.pack_start(button, False, False, 1)
-        # win.show_all()
-        #
-        # def on_accept(widget):
-        #     win.destroy()
-        #     tool_list = []
-        #     for toolx in self.tool_cbs:
-        #         if self.tool_cbs[toolx].get_active():
-        #             tool_list.append(toolx)
-        #     self.options["toolselection"] = ", ".join(tool_list)
-        #     self.to_form()
-        #
-        # button.connect("activate", on_accept)
-        # button.connect("clicked", on_accept)
-        return
 
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
@@ -918,10 +878,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         geo_final.solid_geometry = []
 
         for geo in geo_list:
-            try:
+
+            try:  # Iterable
                 for shape in geo.solid_geometry:
                     geo_final.solid_geometry.append(shape)
-            except:
+
+            except TypeError:  # Non-iterable
                 geo_final.solid_geometry.append(geo)
 
     def __init__(self, name):
@@ -932,8 +894,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         self.options.update({
             "plot": True,
-            # "solid": False,
-            # "multicolored": False,
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0,
@@ -961,8 +921,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
-            # "solid": self.ui.sol,
-            # "multicolored": self.ui.,
             "cutz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.cncfeedrate_entry,
@@ -1042,35 +1000,23 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             # Propagate options
             job_obj.options["tooldia"] = tooldia
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             app_obj.progress.emit(20)
             job_obj.z_cut = z_cut
             job_obj.z_move = z_move
             job_obj.feedrate = feedrate
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
             app_obj.progress.emit(40)
             # TODO: The tolerance should not be hard coded. Just for testing.
-            #job_obj.generate_from_geometry(self, tolerance=0.0005)
             job_obj.generate_from_geometry_2(self, tolerance=0.0005)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             app_obj.progress.emit(50)
             job_obj.gcode_parse()
 
-            # TODO: job_obj.create_geometry creates stuff that is not used.
-            #GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-            #job_obj.create_geometry()
-
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
             app_obj.progress.emit(80)
 
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", outname, job_init)
-            # GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, "Idle"))
             app_obj.inform.emit("CNCjob created: %s" % outname)
             app_obj.progress.emit(100)
 
@@ -1204,5 +1150,3 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.plot_element(self.solid_geometry)
 
         self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)
