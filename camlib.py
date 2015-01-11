@@ -1880,13 +1880,25 @@ class Excellon(Geometry):
                 ### Cleanup lines
                 eline = eline.strip(' \r\n')
 
-                ## Header Begin (M48) / End (M95) ##
+                ## Header Begin (M48) ##
                 if self.hbegin_re.search(eline):
                     in_header = True
                     continue
 
+                ## Header End ##
                 if self.hend_re.search(eline):
                     in_header = False
+                    continue
+
+                ## Alternative units format M71/M72
+                # Supposed to be just in the body (yes, the body)
+                # but some put it in the header (PADS for example).
+                # Will detect anywhere. Occurrence will change the
+                # object's units.
+                match = self.meas_re.match(eline)
+                if match:
+                    self.units = {"1": "MM", "2": "IN"}[match.group(1)]
+                    log.debug("  Units: %s" % self.units)
                     continue
 
                 #### Body ####
