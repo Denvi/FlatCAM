@@ -51,6 +51,10 @@ handler.setFormatter(formatter)
 log.addHandler(handler)
 
 
+class ParseError(Exception):
+    pass
+
+
 class Geometry(object):
     """
     Base geometry class.
@@ -1781,7 +1785,8 @@ class Excellon(Geometry):
         self.hend_re = re.compile(r'^(?:M95|%)$')
 
         # FMAT Excellon format
-        self.fmat_re = re.compile(r'^FMAT,([12])$')
+        # Ignored in the parser
+        #self.fmat_re = re.compile(r'^FMAT,([12])$')
 
         # Number format and units
         # INCH uses 6 digits
@@ -1866,104 +1871,115 @@ class Excellon(Geometry):
 
         #### Parsing starts here ####
         line_num = 0  # Line number
-        for eline in elines:
-            line_num += 1
+        eline = ""
+        try:
+            for eline in elines:
+                line_num += 1
+                log.debug("%3d %s" % (line_num, str(eline)))
 
-            ### Cleanup lines
-            eline = eline.strip(' \r\n')
+                ### Cleanup lines
+                eline = eline.strip(' \r\n')
 
-            ## Header Begin/End ##
-            if self.hbegin_re.search(eline):
-                in_header = True
-                continue
-
-            if self.hend_re.search(eline):
-                in_header = False
-                continue
-
-            #### Body ####
-            if not in_header:
-
-                ## Tool change ##
-                match = self.toolsel_re.search(eline)
-                if match:
-                    current_tool = str(int(match.group(1)))
+                ## Header Begin (M48) / End (M95) ##
+                if self.hbegin_re.search(eline):
+                    in_header = True
                     continue
 
-                ## Coordinates without period ##
-                match = self.coordsnoperiod_re.search(eline)
-                if match:
-                    try:
-                        #x = float(match.group(1))/10000
-                        x = self.parse_number(match.group(1))
-                        current_x = x
-                    except TypeError:
-                        x = current_x
+                if self.hend_re.search(eline):
+                    in_header = False
+                    continue
 
-                    try:
-                        #y = float(match.group(2))/10000
-                        y = self.parse_number(match.group(2))
-                        current_y = y
-                    except TypeError:
-                        y = current_y
+                #### Body ####
+                if not in_header:
 
-                    if x is None or y is None:
-                        log.error("Missing coordinates")
+                    ## Tool change ##
+                    match = self.toolsel_re.search(eline)
+                    if match:
+                        current_tool = str(int(match.group(1)))
+                        log.debug("Tool change: %s" % current_tool)
                         continue
 
-                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
-                    continue
+                    ## Coordinates without period ##
+                    match = self.coordsnoperiod_re.search(eline)
+                    if match:
+                        try:
+                            #x = float(match.group(1))/10000
+                            x = self.parse_number(match.group(1))
+                            current_x = x
+                        except TypeError:
+                            x = current_x
 
-                ## Coordinates with period: Use literally. ##
-                match = self.coordsperiod_re.search(eline)
-                if match:
-                    try:
-                        x = float(match.group(1))
-                        current_x = x
-                    except TypeError:
-                        x = current_x
+                        try:
+                            #y = float(match.group(2))/10000
+                            y = self.parse_number(match.group(2))
+                            current_y = y
+                        except TypeError:
+                            y = current_y
 
-                    try:
-                        y = float(match.group(2))
-                        current_y = y
-                    except TypeError:
-                        y = current_y
+                        if x is None or y is None:
+                            log.error("Missing coordinates")
+                            continue
 
-                    if x is None or y is None:
-                        log.error("Missing coordinates")
+                        self.drills.append({'point': Point((x, y)), 'tool': current_tool})
                         continue
 
-                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
-                    continue
+                    ## Coordinates with period: Use literally. ##
+                    match = self.coordsperiod_re.search(eline)
+                    if match:
+                        try:
+                            x = float(match.group(1))
+                            current_x = x
+                        except TypeError:
+                            x = current_x
 
-            #### Header ####
-            if in_header:
+                        try:
+                            y = float(match.group(2))
+                            current_y = y
+                        except TypeError:
+                            y = current_y
 
-                ## Tool definitions ##
-                match = self.toolset_re.search(eline)
-                if match:
-                    name = str(int(match.group(1)))
-                    spec = {
-                        "C": float(match.group(2)),
-                        # "F": float(match.group(3)),
-                        # "S": float(match.group(4)),
-                        # "B": float(match.group(5)),
-                        # "H": float(match.group(6)),
-                        # "Z": float(match.group(7))
-                    }
-                    self.tools[name] = spec
-                    continue
+                        if x is None or y is None:
+                            log.error("Missing coordinates")
+                            continue
 
-                ## Units and number format ##
-                match = self.units_re.match(eline)
-                if match:
-                    self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
-                    self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
-                    continue
+                        self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                        continue
 
-            log.warning("Line ignored: %s" % eline)
+                #### Header ####
+                if in_header:
 
-        log.info("Zeros: %s, Units %s." % (self.zeros, self.units))
+                    ## Tool definitions ##
+                    match = self.toolset_re.search(eline)
+                    if match:
+
+                        name = str(int(match.group(1)))
+                        spec = {
+                            "C": float(match.group(2)),
+                            # "F": float(match.group(3)),
+                            # "S": float(match.group(4)),
+                            # "B": float(match.group(5)),
+                            # "H": float(match.group(6)),
+                            # "Z": float(match.group(7))
+                        }
+                        self.tools[name] = spec
+                        log.debug("  Tool definition: %s %s" % (name, spec))
+                        continue
+
+                    ## Units and number format ##
+                    match = self.units_re.match(eline)
+                    if match:
+                        self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
+                        self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+                        log.debug("  Units/Format: %s %s" % (self.units, self.zeros))
+                        continue
+
+                log.warning("Line ignored: %s" % eline)
+
+            log.info("Zeros: %s, Units %s." % (self.zeros, self.units))
+
+        except Exception as e:
+            log.error("PARSING FAILED. Line %d: %s" % (line_num, eline))
+            raise
         
     def parse_number(self, number_str):
         """
@@ -1983,16 +1999,16 @@ class Excellon(Geometry):
             # If less than size digits, they are automatically added,
             # 5 digits then are divided by 10^3 and so on.
             match = self.leadingzeros_re.search(number_str)
-            return float(number_str)/(10**(len(match.group(1)) + len(match.group(2)) - 2))
+            return float(number_str) / (10 ** (len(match.group(1)) + len(match.group(2)) - 2))
 
         else:  # Trailing
             # You must show all zeros to the right of the number and can omit
             # all zeros to the left of the number. The CNC-7 will count the number
             # of digits you typed and automatically fill in the missing zeros.
             if self.units.lower() == "in":  # Inches is 00.0000
-                return float(number_str)/10000
+                return float(number_str) / 10000
 
-            return float(number_str)/1000  # Metric is 000.000
+            return float(number_str) / 1000  # Metric is 000.000
 
     def create_geometry(self):
         """
@@ -2006,7 +2022,7 @@ class Excellon(Geometry):
         for drill in self.drills:
             #poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
             tooldia = self.tools[drill['tool']]['C']
-            poly = drill['point'].buffer(tooldia/2.0)
+            poly = drill['point'].buffer(tooldia / 2.0)
             self.solid_geometry.append(poly)
 
     def scale(self, factor):

@@ -1610,7 +1610,13 @@ class App(QtCore.QObject):
                 self.progress.emit(0)  # TODO: self and app_bjj mixed
                 raise IOError("Cannot open file: " + filename)
 
-            excellon_obj.create_geometry()
+            try:
+                excellon_obj.create_geometry()
+            except Exception as e:
+                app_obj.inform.emit("[error] Failed to create geometry after parsing: " + filename)
+                self.progress.emit(0)
+                raise e
+
             self.progress.emit(70)
 
         # Object name
