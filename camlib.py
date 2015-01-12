@@ -1762,6 +1762,9 @@ class Excellon(Geometry):
         
         self.drills = []
 
+        ## IN|MM -> Units are inherited from Geometry
+        #self.units = units
+
         # Trailing "T" or leading "L" (default)
         #self.zeros = "T"
         self.zeros = zeros
@@ -2011,7 +2014,12 @@ class Excellon(Geometry):
             # If less than size digits, they are automatically added,
             # 5 digits then are divided by 10^3 and so on.
             match = self.leadingzeros_re.search(number_str)
-            return float(number_str) / (10 ** (len(match.group(1)) + len(match.group(2)) - 2))
+            if self.units.lower() == "in":
+                return float(number_str) / \
+                    (10 ** (len(match.group(1)) + len(match.group(2)) - 2))
+            else:
+                return float(number_str) / \
+                    (10 ** (len(match.group(1)) + len(match.group(2)) - 3))
 
         else:  # Trailing
             # You must show all zeros to the right of the number and can omit
@@ -2019,8 +2027,8 @@ class Excellon(Geometry):
             # of digits you typed and automatically fill in the missing zeros.
             if self.units.lower() == "in":  # Inches is 00.0000
                 return float(number_str) / 10000
-
-            return float(number_str) / 1000  # Metric is 000.000
+            else:
+                return float(number_str) / 1000  # Metric is 000.000
 
     def create_geometry(self):
         """
