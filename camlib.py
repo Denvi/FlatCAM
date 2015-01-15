@@ -172,7 +172,7 @@ class Geometry(object):
 
         return self.flat_geometry
 
-    def make2Dindex(self):
+    def make2Dstorage(self):
 
         self.flatten()
 
@@ -187,11 +187,11 @@ class Geometry(object):
                 pts += list(o.coords)
             return pts
 
-        idx = FlatCAMRTreeStorage()
-        idx.get_points = get_pts
+        storage = FlatCAMRTreeStorage()
+        storage.get_points = get_pts
         for shape in self.flat_geometry:
-            idx.insert(shape)
-        return idx
+            storage.insert(shape)
+        return storage
 
     # def flatten_to_paths(self, geometry=None, reset=True):
     #     """
@@ -440,6 +440,36 @@ class Geometry(object):
         :return: None
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
+
+    def find_polygon(self, point, geoset=None):
+        """
+        Find an object that object.contains(Point(point)) in
+        poly, which can can be iterable, contain iterable of, or
+        be itself an implementer of .contains().
+
+        :param poly: See description
+        :return: Polygon containing point or None.
+        """
+
+        if geoset is None:
+            geoset = self.solid_geometry
+
+        try:  # Iterable
+            for sub_geo in geoset:
+                p = self.find_polygon(point, geoset=sub_geo)
+                if p is not None:
+                    return p
+
+        except TypeError:  # Non-iterable
+
+            try:  # Implements .contains()
+                if geoset.contains(Point(point)):
+                    return geoset
+
+            except AttributeError:  # Does not implement .contains()
+                return None
+
+        return None
 
 
 class ApertureMacro:
@@ -2908,19 +2938,32 @@ def arc_angle(start, stop, direction):
     return angle
 
 
-def find_polygon(poly_set, point):
-    """
-    Return the first polygon in the list of polygons poly_set
-    that contains the given point.
-    """
-    if poly_set is None:
-        return None
-
-    p = Point(point)
-    for poly in poly_set:
-        if poly.contains(p):
-            return poly
-    return None
+# def find_polygon(poly, point):
+#     """
+#     Find an object that object.contains(Point(point)) in
+#     poly, which can can be iterable, contain iterable of, or
+#     be itself an implementer of .contains().
+#
+#     :param poly: See description
+#     :return: Polygon containing point or None.
+#     """
+#
+#     if poly is None:
+#         return None
+#
+#     try:
+#         for sub_poly in poly:
+#             p = find_polygon(sub_poly, point)
+#             if p is not None:
+#                 return p
+#     except TypeError:
+#         try:
+#             if poly.contains(Point(point)):
+#                 return poly
+#         except AttributeError:
+#             return None
+#
+#     return None
 
 
 def to_dict(obj):

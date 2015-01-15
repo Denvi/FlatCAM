@@ -957,12 +957,13 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     def paint_poly(self, inside_pt, tooldia, overlap):
 
         # Which polygon.
-        poly = find_polygon(self.solid_geometry, inside_pt)
+        #poly = find_polygon(self.solid_geometry, inside_pt)
+        poly = self.find_polygon(inside_pt)
 
         # No polygon?
         if poly is None:
             self.app.log.warning('No polygon found.')
-            self.app.inform('[warning] No polygon found.')
+            self.app.inform.emit('[warning] No polygon found.')
             return
 
         # Initializes the new geometry object
