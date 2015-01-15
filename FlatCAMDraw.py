@@ -934,7 +934,9 @@ class FlatCAMDraw(QtCore.QObject):
             self.corner_snap_btn.trigger()
 
         ### Propagate to tool
-        response = self.active_tool.on_key(event.key)
+        response = None
+        if self.active_tool is not None:
+            response = self.active_tool.on_key(event.key)
         if response is not None:
             self.app.info(response)
 

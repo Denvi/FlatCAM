@@ -45,6 +45,9 @@ class PlotCanvas:
 
         # The canvas is the top level container (Gtk.DrawingArea)
         self.canvas = FigureCanvas(self.figure)
+        # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
+        # self.canvas.setFocus()
+
         #self.canvas.set_hexpand(1)
         #self.canvas.set_vexpand(1)
         #self.canvas.set_can_focus(True)  # For key press
