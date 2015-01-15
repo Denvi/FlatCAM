@@ -53,15 +53,15 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    log.setLevel(logging.DEBUG)
-    #log.setLevel(logging.WARNING)
+    #log.setLevel(logging.DEBUG)
+    log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
     ## Version
-    version = 8
+    version = 8.1
     version_date = "2015/01"
 
     ## URL for update checks and statistics
