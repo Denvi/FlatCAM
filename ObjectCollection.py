@@ -61,7 +61,9 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
         # Delete
         if key == QtCore.Qt.Key_Delete:
-            self.delete_active()
+            # Delete via the application to
+            # ensure cleanup of the GUI
+            self.get_active().app.on_delete()
 
     def on_mouse_down(self, event):
         FlatCAMApp.App.log.debug("Mouse button pressed on list")

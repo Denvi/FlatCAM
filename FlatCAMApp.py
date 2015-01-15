@@ -1156,6 +1156,7 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        self.log.debug("on_delete()")
         self.report_usage("on_delete")
 
         # Keep this for later
