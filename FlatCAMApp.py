@@ -133,9 +133,11 @@ class App(QtCore.QObject):
             json.dump([], f)
             f.close()
 
+        # Application directory. Chdir to it.
         self.app_home = os.path.dirname(os.path.realpath(__file__))
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
+        os.chdir(self.app_home)
 
         QtCore.QObject.__init__(self)
 
