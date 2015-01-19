@@ -770,9 +770,12 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
     def __init__(self, name, units="in", kind="generic", z_move=0.1,
                  feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+
         FlatCAMApp.App.log.debug("Creating CNCJob object...")
+
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
                         feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
+
         FlatCAMObj.__init__(self, name)
 
         self.kind = "cncjob"

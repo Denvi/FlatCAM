@@ -39,19 +39,23 @@ class ObjectUI(QtGui.QWidget):
         self.name_box.addWidget(self.name_entry)
 
         ## Box box for custom widgets
+        # This gets populated in offspring implementations.
         self.custom_box = QtGui.QVBoxLayout()
         layout.addLayout(self.custom_box)
 
-        ## Common to all objects
-        ## Scale
+        ###########################
+        ## Common to all objects ##
+        ###########################
+
+        #### Scale ####
         self.scale_label = QtGui.QLabel('<b>Scale:</b>')
         self.scale_label.setToolTip(
             "Change the size of the object."
         )
         layout.addWidget(self.scale_label)
 
-        grid1 = QtGui.QGridLayout()
-        layout.addLayout(grid1)
+        self.scale_grid = QtGui.QGridLayout()
+        layout.addLayout(self.scale_grid)
 
         # Factor
         faclabel = QtGui.QLabel('Factor:')
@@ -59,10 +63,10 @@ class ObjectUI(QtGui.QWidget):
             "Factor by which to multiply\n"
             "geometric features of this object."
         )
-        grid1.addWidget(faclabel, 0, 0)
+        self.scale_grid.addWidget(faclabel, 0, 0)
         self.scale_entry = FloatEntry()
         self.scale_entry.set_value(1.0)
-        grid1.addWidget(self.scale_entry, 0, 1)
+        self.scale_grid.addWidget(self.scale_entry, 0, 1)
 
         # GO Button
         self.scale_button = QtGui.QPushButton('Scale')
@@ -71,25 +75,25 @@ class ObjectUI(QtGui.QWidget):
         )
         layout.addWidget(self.scale_button)
 
-        ## Offset
+        #### Offset ####
         self.offset_label = QtGui.QLabel('<b>Offset:</b>')
         self.offset_label.setToolTip(
             "Change the position of this object."
         )
         layout.addWidget(self.offset_label)
 
-        grid2 = QtGui.QGridLayout()
-        layout.addLayout(grid2)
+        self.offset_grid = QtGui.QGridLayout()
+        layout.addLayout(self.offset_grid)
 
-        self.offset_label = QtGui.QLabel('Vector:')
-        self.offset_label.setToolTip(
+        self.offset_vectorlabel = QtGui.QLabel('Vector:')
+        self.offset_vectorlabel.setToolTip(
             "Amount by which to move the object\n"
             "in the x and y axes in (x, y) format."
         )
-        grid2.addWidget(self.offset_label, 0, 0)
+        self.offset_grid.addWidget(self.offset_vectorlabel, 0, 0)
         self.offsetvector_entry = EvalEntry()
         self.offsetvector_entry.setText("(0.0, 0.0)")
-        grid2.addWidget(self.offsetvector_entry, 0, 1)
+        self.offset_grid.addWidget(self.offsetvector_entry, 0, 1)
 
         self.offset_button = QtGui.QPushButton('Offset')
         self.offset_button.setToolTip(
@@ -106,7 +110,24 @@ class CNCObjectUI(ObjectUI):
     """
 
     def __init__(self, parent=None):
+        """
+        Creates the user interface for CNCJob objects. GUI elements should
+        be placed in ``self.custom_box`` to preserve the layout.
+        """
+
         ObjectUI.__init__(self, title='CNC Job Object', icon_file='share/cnc32.png', parent=parent)
+
+        # Scale and offset are not available for CNCJob objects.
+        # Hiding from the GUI.
+        for i in range(0, self.scale_grid.count()):
+            self.scale_grid.itemAt(i).widget().hide()
+        self.scale_label.hide()
+        self.scale_button.hide()
+
+        for i in range(0, self.offset_grid.count()):
+            self.offset_grid.itemAt(i).widget().hide()
+        self.offset_label.hide()
+        self.offset_button.hide()
 
         ## Plot options
         self.plot_options_label = QtGui.QLabel("<b>Plot Options:</b>")
