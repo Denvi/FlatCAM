@@ -1778,7 +1778,11 @@ class Excellon(Geometry):
     ================  ====================================
     """
 
-    def __init__(self, zeros="L"):
+    defaults = {
+        "zeros": "L"
+    }
+
+    def __init__(self, zeros=None):
         """
         The constructor takes no parameters.
 
@@ -1797,7 +1801,7 @@ class Excellon(Geometry):
 
         # Trailing "T" or leading "L" (default)
         #self.zeros = "T"
-        self.zeros = zeros
+        self.zeros = zeros or self.defaults["zeros"]
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents

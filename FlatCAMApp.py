@@ -242,7 +242,8 @@ class App(QtCore.QObject):
             "zoom_in_key": '3',
             "zoom_ratio": 1.5,
             "point_clipboard_format": "(%.4f, %.4f)",
-            "zdownrate": None                   #
+            "zdownrate": None,
+            "excellon_zeros": "L"
         })
 
         ###############################
@@ -1765,13 +1766,26 @@ class App(QtCore.QObject):
 
     def propagate_defaults(self):
 
+        self.log.debug("propagate_defaults()")
+
         # Which objects to update the given parameters.
         routes = {
-            "zdownrate": CNCjob
+            "zdownrate": CNCjob,
+            "excellon_zeros": Excellon
         }
 
         for param in routes:
-            routes[param].defaults[param] = self.defaults[param]
+            if param in routes[param].defaults:
+                routes[param].defaults[param] = self.defaults[param]
+                self.log.debug("  " + param + " OK")
+            else:
+                # Try extracting the name:
+                # classname_param here is param in the object
+                if param.find(routes[param].__name__.lower() + "_") == 0:
+                    p = param[len(routes[param].__name__) + 1:]
+                    if p in routes[param].defaults:
+                        routes[param].defaults[p] = self.defaults[param]
+                        self.log.debug("  " + param + " OK!")
 
     def plot_all(self):
         """
@@ -2239,7 +2253,7 @@ class App(QtCore.QObject):
             if param in self.defaults:
                 self.defaults[param] = value
                 self.propagate_defaults()
-                return
+                return "Ok"
 
             return "ERROR: No such system parameter."
 
