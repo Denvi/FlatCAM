@@ -145,6 +145,17 @@ class Geometry(object):
             return self.solid_geometry.bounds
 
     def flatten(self, geometry=None, reset=True, pathonly=False):
+        """
+        Creates a list of non-iterable linear geometry objects.
+        Polygons are expanded into its exterior and interiors if specified.
+
+        Results are placed in self.flat_geoemtry
+
+        :param geometry: Shapely type or list or list of list of such.
+        :param reset: Clears the contents of self.flat_geometry.
+        :param pathonly: Expands polygons into linear elements.
+        """
+
         if geometry is None:
             geometry = self.solid_geometry
 
@@ -2166,7 +2177,8 @@ class CNCjob(Geometry):
     """
 
     defaults = {
-        "zdownrate": None
+        "zdownrate": None,
+        "coordinate_format": "X%.4fY%.4f"
     }
 
     def __init__(self, units="in", kind="generic", z_move=0.1,
@@ -2240,43 +2252,44 @@ class CNCjob(Geometry):
 
         return factor
 
-    def generate_from_excellon(self, exobj):
-        """
-        Generates G-code for drilling from Excellon object.
-        self.gcode becomes a list, each element is a
-        different job for each tool in the excellon code.
-        """
-        self.kind = "drill"
-        self.gcode = []
-        
-        t = "G00 X%.4fY%.4f\n"
-        down = "G01 Z%.4f\n" % self.z_cut
-        up = "G01 Z%.4f\n" % self.z_move
-
-        for tool in exobj.tools:
-            
-            points = []
-            
-            for drill in exobj.drill:
-                if drill['tool'] == tool:
-                    points.append(drill['point'])
-            
-            gcode = self.unitcode[self.units.upper()] + "\n"
-            gcode += self.absolutecode + "\n"
-            gcode += self.feedminutecode + "\n"
-            gcode += "F%.2f\n" % self.feedrate
-            gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
-            gcode += "M03\n"  # Spindle start
-            gcode += self.pausecode + "\n"
-            
-            for point in points:
-                gcode += t % point
-                gcode += down + up
-            
-            gcode += t % (0, 0)
-            gcode += "M05\n"  # Spindle stop
-            
-            self.gcode.append(gcode)
+    # def generate_from_excellon(self, exobj):
+    #     """
+    #     Generates G-code for drilling from Excellon object.
+    #     self.gcode becomes a list, each element is a
+    #     different job for each tool in the excellon code.
+    #     """
+    #     self.kind = "drill"
+    #     self.gcode = []
+    #
+    #     #t = "G00 X%.4fY%.4f\n"
+    #     t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
+    #     down = "G01 Z%.4f\n" % self.z_cut
+    #     up = "G01 Z%.4f\n" % self.z_move
+    #
+    #     for tool in exobj.tools:
+    #
+    #         points = []
+    #
+    #         for drill in exobj.drill:
+    #             if drill['tool'] == tool:
+    #                 points.append(drill['point'])
+    #
+    #         gcode = self.unitcode[self.units.upper()] + "\n"
+    #         gcode += self.absolutecode + "\n"
+    #         gcode += self.feedminutecode + "\n"
+    #         gcode += "F%.2f\n" % self.feedrate
+    #         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
+    #         gcode += "M03\n"  # Spindle start
+    #         gcode += self.pausecode + "\n"
+    #
+    #         for point in points:
+    #             gcode += t % point
+    #             gcode += down + up
+    #
+    #         gcode += t % (0, 0)
+    #         gcode += "M05\n"  # Spindle stop
+    #
+    #         self.gcode.append(gcode)
 
     def generate_from_excellon_by_tool(self, exobj, tools="all"):
         """
@@ -2290,7 +2303,9 @@ class CNCjob(Geometry):
         :return: None
         :rtype: None
         """
+
         log.debug("Creating CNC Job from Excellon...")
+
         if tools == "all":
             tools = [tool for tool in exobj.tools]
         else:
@@ -2304,10 +2319,9 @@ class CNCjob(Geometry):
                 points.append(drill['point'])
 
         log.debug("Found %d drills." % len(points))
-        #self.kind = "drill"
         self.gcode = []
 
-        t = "G00 X%.4fY%.4f\n"
+        t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
         up = "G01 Z%.4f\n" % self.z_move
 
@@ -2329,71 +2343,71 @@ class CNCjob(Geometry):
 
         self.gcode = gcode
 
-    def generate_from_geometry(self, geometry, append=True, tooldia=None, tolerance=0):
-        """
-        Generates G-Code from a Geometry object. Stores in ``self.gcode``.
-
-        Algorithm description:
-        ----------------------
-        Follow geometry paths in the order they are being read. No attempt
-        to optimize.
-
-        :param geometry: Geometry defining the toolpath
-        :type geometry: Geometry
-        :param append: Wether to append to self.gcode or re-write it.
-        :type append: bool
-        :param tooldia: If given, sets the tooldia property but does
-            not affect the process in any other way.
-        :type tooldia: bool
-        :param tolerance: All points in the simplified object will be within the
-            tolerance distance of the original geometry.
-        :return: None
-        :rtype: None
-        """
-        if tooldia is not None:
-            self.tooldia = tooldia
-            
-        self.input_geometry_bounds = geometry.bounds()
-        
-        if not append:
-            self.gcode = ""
-
-        # Initial G-Code
-        self.gcode = self.unitcode[self.units.upper()] + "\n"
-        self.gcode += self.absolutecode + "\n"
-        self.gcode += self.feedminutecode + "\n"
-        self.gcode += "F%.2f\n" % self.feedrate
-        self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
-        self.gcode += "M03\n"  # Spindle start
-        self.gcode += self.pausecode + "\n"
-
-        # Iterate over geometry and run individual methods
-        # depending on type
-        for geo in geometry.solid_geometry:
-            
-            if type(geo) == Polygon:
-                self.gcode += self.polygon2gcode(geo, tolerance=tolerance)
-                continue
-            
-            if type(geo) == LineString or type(geo) == LinearRing:
-                self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-                continue
-            
-            if type(geo) == Point:
-                self.gcode += self.point2gcode(geo)
-                continue
-
-            if type(geo) == MultiPolygon:
-                for poly in geo:
-                    self.gcode += self.polygon2gcode(poly, tolerance=tolerance)
-                continue
-
-            log.warning("G-code generation not implemented for %s" % (str(type(geo))))
-
-        # Finish
-        self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        self.gcode += "G00 X0Y0\n"
-        self.gcode += "M05\n"  # Spindle stop
+    # def generate_from_geometry(self, geometry, append=True, tooldia=None, tolerance=0):
+    #     """
+    #     Generates G-Code from a Geometry object. Stores in ``self.gcode``.
+    #
+    #     Algorithm description:
+    #     ----------------------
+    #     Follow geometry paths in the order they are being read. No attempt
+    #     to optimize.
+    #
+    #     :param geometry: Geometry defining the toolpath
+    #     :type geometry: Geometry
+    #     :param append: Wether to append to self.gcode or re-write it.
+    #     :type append: bool
+    #     :param tooldia: If given, sets the tooldia property but does
+    #         not affect the process in any other way.
+    #     :type tooldia: bool
+    #     :param tolerance: All points in the simplified object will be within the
+    #         tolerance distance of the original geometry.
+    #     :return: None
+    #     :rtype: None
+    #     """
+    #     if tooldia is not None:
+    #         self.tooldia = tooldia
+    #
+    #     self.input_geometry_bounds = geometry.bounds()
+    #
+    #     if not append:
+    #         self.gcode = ""
+    #
+    #     # Initial G-Code
+    #     self.gcode = self.unitcode[self.units.upper()] + "\n"
+    #     self.gcode += self.absolutecode + "\n"
+    #     self.gcode += self.feedminutecode + "\n"
+    #     self.gcode += "F%.2f\n" % self.feedrate
+    #     self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
+    #     self.gcode += "M03\n"  # Spindle start
+    #     self.gcode += self.pausecode + "\n"
+    #
+    #     # Iterate over geometry and run individual methods
+    #     # depending on type
+    #     for geo in geometry.solid_geometry:
+    #
+    #         if type(geo) == Polygon:
+    #             self.gcode += self.polygon2gcode(geo, tolerance=tolerance)
+    #             continue
+    #
+    #         if type(geo) == LineString or type(geo) == LinearRing:
+    #             self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+    #             continue
+    #
+    #         if type(geo) == Point:
+    #             self.gcode += self.point2gcode(geo)
+    #             continue
+    #
+    #         if type(geo) == MultiPolygon:
+    #             for poly in geo:
+    #                 self.gcode += self.polygon2gcode(poly, tolerance=tolerance)
+    #             continue
+    #
+    #         log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+    #
+    #     # Finish
+    #     self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+    #     self.gcode += "G00 X0Y0\n"
+    #     self.gcode += "M05\n"  # Spindle stop
 
     def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0):
         """
@@ -2412,6 +2426,7 @@ class CNCjob(Geometry):
         assert isinstance(geometry, Geometry)
 
         ## Flatten the geometry
+        # Only linear elements (no polygons) remain.
         flat_geometry = geometry.flatten(pathonly=True)
         log.debug("%d paths" % len(flat_geometry))
 
@@ -2456,11 +2471,14 @@ class CNCjob(Geometry):
                 # deletion will fail.
                 storage.remove(geo)
 
+                # If last point in geometry is the nearest
+                # then reverse coordinates.
                 if list(pt) == list(geo.coords[-1]):
-                    #print "Reversing"
                     geo.coords = list(geo.coords)[::-1]
 
                 # G-code
+                # Note: self.linear2gcode() and self.point2gcode() will
+                # lower and raise the tool every time.
                 if type(geo) == LineString or type(geo) == LinearRing:
                     self.gcode += self.linear2gcode(geo, tolerance=tolerance)
                 elif type(geo) == Point:
@@ -2536,7 +2554,7 @@ class CNCjob(Geometry):
 
             # Separate codes in line
             parts = []
-            for p in range(n_codes-1):
+            for p in range(n_codes - 1):
                 parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
             parts.append(line[codes_idx[-1]:].strip())
 
@@ -2712,55 +2730,55 @@ class CNCjob(Geometry):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-    def polygon2gcode(self, polygon, tolerance=0):
-        """
-        Creates G-Code for the exterior and all interior paths
-        of a polygon.
-
-        :param polygon: A Shapely.Polygon
-        :type polygon: Shapely.Polygon
-        :param tolerance: All points in the simplified object will be within the
-            tolerance distance of the original geometry.
-        :type tolerance: float
-        :return: G-code to cut along polygon.
-        :rtype: str
-        """
-
-        if tolerance > 0:
-            target_polygon = polygon.simplify(tolerance)
-        else:
-            target_polygon = polygon
-
-        gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
-        path = list(target_polygon.exterior.coords)             # Polygon exterior
-        gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-
-        if self.zdownrate is not None:
-            gcode += "F%.2f\n" % self.zdownrate
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-            gcode += "F%.2f\n" % self.feedrate
-        else:
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-
-        for pt in path[1:]:
-            gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-        gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        for ints in target_polygon.interiors:               # Polygon interiors
-            path = list(ints.coords)
-            gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-
-            if self.zdownrate is not None:
-                gcode += "F%.2f\n" % self.zdownrate
-                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-                gcode += "F%.2f\n" % self.feedrate
-            else:
-                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-
-            for pt in path[1:]:
-                gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-            gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        return gcode
+    # def polygon2gcode(self, polygon, tolerance=0):
+    #     """
+    #     Creates G-Code for the exterior and all interior paths
+    #     of a polygon.
+    #
+    #     :param polygon: A Shapely.Polygon
+    #     :type polygon: Shapely.Polygon
+    #     :param tolerance: All points in the simplified object will be within the
+    #         tolerance distance of the original geometry.
+    #     :type tolerance: float
+    #     :return: G-code to cut along polygon.
+    #     :rtype: str
+    #     """
+    #
+    #     if tolerance > 0:
+    #         target_polygon = polygon.simplify(tolerance)
+    #     else:
+    #         target_polygon = polygon
+    #
+    #     gcode = ""
+    #     t = "G0%d X%.4fY%.4f\n"
+    #     path = list(target_polygon.exterior.coords)             # Polygon exterior
+    #     gcode += t % (0, path[0][0], path[0][1])  # Move to first point
+    #
+    #     if self.zdownrate is not None:
+    #         gcode += "F%.2f\n" % self.zdownrate
+    #         gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+    #         gcode += "F%.2f\n" % self.feedrate
+    #     else:
+    #         gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+    #
+    #     for pt in path[1:]:
+    #         gcode += t % (1, pt[0], pt[1])    # Linear motion to point
+    #     gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+    #     for ints in target_polygon.interiors:               # Polygon interiors
+    #         path = list(ints.coords)
+    #         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
+    #
+    #         if self.zdownrate is not None:
+    #             gcode += "F%.2f\n" % self.zdownrate
+    #             gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+    #             gcode += "F%.2f\n" % self.feedrate
+    #         else:
+    #             gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+    #
+    #         for pt in path[1:]:
+    #             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
+    #         gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+    #     return gcode
 
     def linear2gcode(self, linear, tolerance=0):
         """
@@ -2781,7 +2799,8 @@ class CNCjob(Geometry):
             target_linear = linear
 
         gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
+        #t = "G0%d X%.4fY%.4f\n"
+        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
         path = list(target_linear.coords)
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
@@ -2799,7 +2818,8 @@ class CNCjob(Geometry):
 
     def point2gcode(self, point):
         gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
+        #t = "G0%d X%.4fY%.4f\n"
+        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
         path = list(point.coords)
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
@@ -2906,7 +2926,7 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
     :return: The desired arc, as list of tuples
     :rtype: list
     """
-    # TODO: Resolution should be established by fraction of total length, not angle.
+    # TODO: Resolution should be established by maximum error from the exact arc.
 
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []

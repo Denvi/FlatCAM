@@ -133,6 +133,10 @@ class App(QtCore.QObject):
             json.dump([], f)
             f.close()
 
+        self.app_home = os.path.dirname(os.path.realpath(__file__))
+        App.log.debug("Application path is " + self.app_home)
+        App.log.debug("Started in " + os.getcwd())
+
         QtCore.QObject.__init__(self)
 
         self.ui = FlatCAMGUI(self.version)
@@ -243,7 +247,8 @@ class App(QtCore.QObject):
             "zoom_ratio": 1.5,
             "point_clipboard_format": "(%.4f, %.4f)",
             "zdownrate": None,
-            "excellon_zeros": "L"
+            "excellon_zeros": "L",
+            "cncjob_coordinate_format": "X%.4fY%.4f"
         })
 
         ###############################
@@ -1771,7 +1776,8 @@ class App(QtCore.QObject):
         # Which objects to update the given parameters.
         routes = {
             "zdownrate": CNCjob,
-            "excellon_zeros": Excellon
+            "excellon_zeros": Excellon,
+            "cncjob_coordinate_format": CNCjob
         }
 
         for param in routes:
@@ -2187,7 +2193,7 @@ class App(QtCore.QObject):
             od = collections.OrderedDict(sorted(commands.items()))
             for cmd, val in od.iteritems():
                 #print cmd, '\n', ''.join(['~']*len(cmd))
-                output += cmd + ' \n' + ''.join(['~']*len(cmd)) + '\n'
+                output += cmd + ' \n' + ''.join(['~'] * len(cmd)) + '\n'
 
                 t = val['help']
                 usage_i = t.find('>')
@@ -2197,7 +2203,7 @@ class App(QtCore.QObject):
                     output += expl + '\n\n'
                     continue
 
-                expl = t[:usage_i-1]
+                expl = t[:usage_i - 1]
                 #print expl + '\n'
                 output += expl + '\n\n'
 
@@ -2250,8 +2256,25 @@ class App(QtCore.QObject):
             return "ERROR: No such system parameter."
 
         def set_sys(param, value):
+            # tcl string to python keywords:
+            tcl2py = {
+                "None": None,
+                "none": None,
+                "false": False,
+                "False": False,
+                "true": True,
+                "True": True
+            }
+
             if param in self.defaults:
+
+                try:
+                    value = tcl2py[value]
+                except KeyError:
+                    pass
+
                 self.defaults[param] = value
+
                 self.propagate_defaults()
                 return "Ok"
 
