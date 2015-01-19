@@ -2,6 +2,7 @@
 apt-get install libpng-dev
 apt-get install libfreetype6 libfreetype6-dev
 apt-get install python-dev
+apt-get install python-simplejson
 apt-get install python-qt4
 apt-get install python-numpy python-scipy python-matplotlib
 apt-get install libgeos-dev

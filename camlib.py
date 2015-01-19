@@ -2194,7 +2194,6 @@ class CNCjob(Geometry):
         else:
             self.zdownrate = None
 
-
         # Attributes to be included in serialization
         # Always append to it because it carries contents
         # from Geometry.
