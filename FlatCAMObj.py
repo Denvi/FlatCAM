@@ -875,16 +875,28 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         :param geo_final: Destination FlatCAMGeometry object.
         :return: None
         """
-        geo_final.solid_geometry = []
+
+        if geo_final.solid_geometry is None:
+            geo_final.solid_geometry = []
+        if type(geo_final.solid_geometry) is not list:
+            geo_final.solid_geometry = [geo_final.solid_geometry]
 
         for geo in geo_list:
 
-            try:  # Iterable
-                for shape in geo.solid_geometry:
-                    geo_final.solid_geometry.append(shape)
+            # Expand lists
+            if type(geo) is list:
+                FlatCAMGeometry.merge(geo, geo_final)
 
-            except TypeError:  # Non-iterable
-                geo_final.solid_geometry.append(geo)
+            # If not list, just append
+            else:
+                geo_final.solid_geometry.append(geo.solid_geometry)
+
+            # try:  # Iterable
+            #     for shape in geo.solid_geometry:
+            #         geo_final.solid_geometry.append(shape)
+            #
+            # except TypeError:  # Non-iterable
+            #     geo_final.solid_geometry.append(geo.solid_geometry)
 
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)

@@ -42,8 +42,8 @@ import simplejson as json
 import logging
 
 log = logging.getLogger('base2')
-#log.setLevel(logging.DEBUG)
-log.setLevel(logging.WARNING)
+log.setLevel(logging.DEBUG)
+#log.setLevel(logging.WARNING)
 #log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
@@ -1908,7 +1908,7 @@ class Excellon(Geometry):
         try:
             for eline in elines:
                 line_num += 1
-                log.debug("%3d %s" % (line_num, str(eline)))
+                #log.debug("%3d %s" % (line_num, str(eline)))
 
                 ### Cleanup lines
                 eline = eline.strip(' \r\n')
@@ -1966,6 +1966,7 @@ class Excellon(Geometry):
                             continue
 
                         self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                        log.debug("{:15} {:8} {:8}".format(eline, x, y))
                         continue
 
                     ## Coordinates with period: Use literally. ##
@@ -1988,6 +1989,7 @@ class Excellon(Geometry):
                             continue
 
                         self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                        log.debug("{:15} {:8} {:8}".format(eline, x, y))
                         continue
 
                 #### Header ####
