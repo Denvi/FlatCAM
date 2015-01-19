@@ -139,6 +139,10 @@ class App(QtCore.QObject):
         App.log.debug("Started in " + os.getcwd())
         os.chdir(self.app_home)
 
+        ####################
+        ## Initialize GUI ##
+        ####################
+
         QtCore.QObject.__init__(self)
 
         self.ui = FlatCAMGUI(self.version)
@@ -586,7 +590,6 @@ class App(QtCore.QObject):
             self.shell.append_output(result + '\n')
         except Tkinter.TclError, e:
             self.shell.append_error('ERROR: ' + str(e) + '\n')
-            raise
         return
 
         """
