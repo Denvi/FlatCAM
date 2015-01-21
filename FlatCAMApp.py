@@ -1,8 +1,6 @@
-import traceback
 import sys
 import urllib
 import getopt
-from copy import copy
 import random
 import logging
 import simplejson as json
@@ -10,9 +8,8 @@ import re
 import webbrowser
 import os
 import Tkinter
-import re
 from PyQt4 import QtCore
-import time
+import time  # Just used for debugging. Double check before removing.
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -61,7 +58,7 @@ class App(QtCore.QObject):
     log.addHandler(handler)
 
     ## Version
-    version = 8.1
+    version = 8.11
     version_date = "2015/01"
 
     ## URL for update checks and statistics
@@ -616,17 +613,18 @@ class App(QtCore.QObject):
 
             cmdfcn = commands[parts[0]]["fcn"]
             cmdconv = commands[parts[0]]["converters"]
-            if len(parts)-1 > 0:
-                retval = cmdfcn(*[cmdconv[i](parts[i+1]) for i in range(len(parts)-1)])
+            if len(parts) - 1 > 0:
+                retval = cmdfcn(*[cmdconv[i](parts[i + 1]) for i in range(len(parts)-1)])
             else:
                 retval = cmdfcn()
             retfcn = commands[parts[0]]["retfcn"]
             if retval and retfcn(retval):
                 self.shell.append_output(retfcn(retval) + "\n")
 
-        except:
-            self.shell.append_error(''.join(traceback.format_exc()))
+        except Exception, e:
+            #self.shell.append_error(''.join(traceback.format_exc()))
             #self.shell.append_error("?\n")
+            self.shell.append_error(str(e) + "\n")
 
     def info(self, msg):
         """
@@ -1172,7 +1170,9 @@ class App(QtCore.QObject):
 
         # Keep this for later
         try:
-            name = copy(self.collection.get_active().options["name"])
+            #name = copy(self.collection.get_active().options["name"])
+            # Shouldn't need to copy. String are immutable.
+            name = self.collection.get_active().options["name"]
         except AttributeError:
             self.log.debug("Nothing selected for deletion")
             return

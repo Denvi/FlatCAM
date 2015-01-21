@@ -329,10 +329,6 @@ class Geometry(object):
         :return:
         """
 
-        # Estimate good seedpoint if not provided.
-        if seedpoint is None:
-            seedpoint = polygon.representative_point()
-
         # Current buffer radius
         radius = tooldia / 2 * (1 - overlap)
 
@@ -341,6 +337,10 @@ class Geometry(object):
 
         # Path margin
         path_margin = polygon.buffer(-tooldia / 2)
+
+        # Estimate good seedpoint if not provided.
+        if seedpoint is None:
+            seedpoint = path_margin.representative_point()
 
         # Grow from seed until outside the box.
         while 1:
@@ -3091,7 +3091,7 @@ def parse_gerber_number(strnumber, frac_digits):
     :return: The number in floating point.
     :rtype: float
     """
-    return int(strnumber)*(10**(-frac_digits))
+    return int(strnumber) * (10 ** (-frac_digits))
 
 
 # def voronoi(P):
