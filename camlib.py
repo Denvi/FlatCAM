@@ -390,8 +390,12 @@ class Geometry(object):
 
     def path_connect(self):
         """
+        Simplifies a list of paths by joining those whose ends touch.
+        The list of paths of generated from the geometry.flatten()
+        method which writes to geometry.flat_geometry. This list
+        if overwritten by this method with the optimized result.
 
-        :return:
+        :return: None
         """
 
         flat_geometry = self.flatten(pathonly=True)
@@ -420,35 +424,43 @@ class Geometry(object):
                     log.debug('path_connect(), geo not in storage:')
                     log.debug(str(e))
 
-                left = storage.nearest(geo.coords[0])
+                _, left = storage.nearest(geo.coords[0])
 
-                if left.coords[0] == geo.coords[0]:
+                if type(left) == LineString:
+                    if left.coords[0] == geo.coords[0]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords)[::-1] + list(left.coords)
+                        continue
+
+                    if left.coords[-1] == geo.coords[0]:
+                        storage.remove(left)
+                        geo.coords = list(left.coords) + list(geo.coords)
+                        continue
+                else:
                     storage.remove(left)
-                    geo = geo.union(left)
-                    continue
+                    optimized_geometry.append(left)
 
-                if left.coords[-1] == geo.coords[0]:
-                    storage.remove(left)
-                    geo.union(left)
-                    continue
+                _, right = storage.nearest(geo.coords[-1])
 
-                right = storage.nearest(geo.coords[-1])
+                if type(right) == LineString:
+                    if right.coords[0] == geo.coords[-1]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords) + list(right.coords)
+                        continue
 
-                if right.coords[0] == geo.coords[-1]:
+                    if right.coords[-1] == geo.coords[-1]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords) + list(right.coords)[::-1]
+                        continue
+                else:
                     storage.remove(right)
-                    geo = geo.union(right)
-                    continue
-
-                if right.coords[-1] == geo.coords[-1]:
-                    storage.remove(right)
-                    geo.union(right)
-                    continue
+                    optimized_geometry.append(right)
 
                 # No matches on either end
-                optimized_geometry.append[geo]
+                optimized_geometry.append(geo)
 
                 # Next
-                geo = storage.nearest(geo.coords[0])
+                _, geo = storage.nearest(geo.coords[0])
 
         except StopIteration:  # Nothing found in storage.
             pass
