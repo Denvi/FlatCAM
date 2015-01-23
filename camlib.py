@@ -141,6 +141,36 @@ class Geometry(object):
         else:
             return self.solid_geometry.bounds
 
+    def find_polygon(self, point, geoset=None):
+        """
+        Find an object that object.contains(Point(point)) in
+        poly, which can can be iterable, contain iterable of, or
+        be itself an implementer of .contains().
+
+        :param poly: See description
+        :return: Polygon containing point or None.
+        """
+
+        if geoset is None:
+            geoset = self.solid_geometry
+
+        try:  # Iterable
+            for sub_geo in geoset:
+                p = self.find_polygon(point, geoset=sub_geo)
+                if p is not None:
+                    return p
+
+        except TypeError:  # Non-iterable
+
+            try:  # Implements .contains()
+                if geoset.contains(Point(point)):
+                    return geoset
+
+            except AttributeError:  # Does not implement .contains()
+                return None
+
+        return None
+
     def flatten(self, geometry=None, reset=True, pathonly=False):
         """
         Creates a list of non-iterable linear geometry objects.
@@ -178,26 +208,26 @@ class Geometry(object):
 
         return self.flat_geometry
 
-    def make2Dstorage(self):
-
-        self.flatten()
-
-        def get_pts(o):
-            pts = []
-            if type(o) == Polygon:
-                g = o.exterior
-                pts += list(g.coords)
-                for i in o.interiors:
-                    pts += list(i.coords)
-            else:
-                pts += list(o.coords)
-            return pts
-
-        storage = FlatCAMRTreeStorage()
-        storage.get_points = get_pts
-        for shape in self.flat_geometry:
-            storage.insert(shape)
-        return storage
+    # def make2Dstorage(self):
+    #
+    #     self.flatten()
+    #
+    #     def get_pts(o):
+    #         pts = []
+    #         if type(o) == Polygon:
+    #             g = o.exterior
+    #             pts += list(g.coords)
+    #             for i in o.interiors:
+    #                 pts += list(i.coords)
+    #         else:
+    #             pts += list(o.coords)
+    #         return pts
+    #
+    #     storage = FlatCAMRTreeStorage()
+    #     storage.get_points = get_pts
+    #     for shape in self.flat_geometry:
+    #         storage.insert(shape)
+    #     return storage
 
     # def flatten_to_paths(self, geometry=None, reset=True):
     #     """
@@ -298,9 +328,9 @@ class Geometry(object):
         :param overlap: Overlap of toolpasses.
         :return:
         """
-        poly_cuts = [polygon.buffer(-tooldia/2.0)]
+        poly_cuts = [polygon.buffer(-tooldia / 2.0)]
         while True:
-            polygon = poly_cuts[-1].buffer(-tooldia*(1-overlap))
+            polygon = poly_cuts[-1].buffer(-tooldia * (1 - overlap))
             if polygon.area > 0:
                 poly_cuts.append(polygon)
             else:
@@ -387,6 +417,69 @@ class Geometry(object):
         :return: None
         """
         return
+
+    def paint_connect(self, geolist, boundary, tooldia):
+        """
+        Connects paths that results in a connection segment that is
+        within the paint area. This avoids unnecessary tool lifting.
+
+        :return:
+        """
+
+        # Assuming geolist is a flat list of flat elements
+
+        ## Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+
+        storage = FlatCAMRTreeStorage()
+        storage.get_points = get_pts
+
+        for shape in geolist:
+            if shape is not None:  # TODO: This shouldn't have happened.
+                storage.insert(shape)
+
+        ## Iterate over geometry paths getting the nearest each time.
+        optimized_paths = []
+        temp_path = None
+        path_count = 0
+        current_pt = (0, 0)
+        pt, geo = storage.nearest(current_pt)
+        try:
+            while True:
+                path_count += 1
+
+                # Remove before modifying, otherwise
+                # deletion will fail.
+                storage.remove(geo)
+
+                # If last point in geometry is the nearest
+                # then reverse coordinates.
+                if list(pt) == list(geo.coords[-1]):
+                    geo.coords = list(geo.coords)[::-1]
+
+                # Straight line from current_pt to pt.
+                # Is the toolpath inside the geometry?
+                jump = LineString([current_pt, pt]).buffer(tooldia / 2)
+                if jump.within(boundary):
+                    # Completely inside. Append...
+                    if temp_path is None:
+                        temp_path = geo
+                    else:
+                        temp_path.coords = list(temp_path.coords) + list(geo.coords)
+                else:
+                    # Have to lift tool. End path.
+                    optimized_paths.append(temp_path)
+                    temp_path = geo
+
+                current_pt = geo.coords[-1]
+
+                # Next
+                pt, geo = storage.nearest(current_pt)
+
+        except StopIteration:  # Nothing found in storage.
+            if not temp_path.equals(optimized_paths[-1]):
+                optimized_paths.append(temp_path)
 
     def path_connect(self):
         """
@@ -532,36 +625,6 @@ class Geometry(object):
         :return: None
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
-
-    def find_polygon(self, point, geoset=None):
-        """
-        Find an object that object.contains(Point(point)) in
-        poly, which can can be iterable, contain iterable of, or
-        be itself an implementer of .contains().
-
-        :param poly: See description
-        :return: Polygon containing point or None.
-        """
-
-        if geoset is None:
-            geoset = self.solid_geometry
-
-        try:  # Iterable
-            for sub_geo in geoset:
-                p = self.find_polygon(point, geoset=sub_geo)
-                if p is not None:
-                    return p
-
-        except TypeError:  # Non-iterable
-
-            try:  # Implements .contains()
-                if geoset.contains(Point(point)):
-                    return geoset
-
-            except AttributeError:  # Does not implement .contains()
-                return None
-
-        return None
 
 
 class ApertureMacro:
