@@ -37,7 +37,7 @@ from descartes.patch import PolygonPatch
 
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
-#from matplotlib.pyplot import plot
+from matplotlib.pyplot import plot, subplot
 
 import logging
 
@@ -388,12 +388,21 @@ class Geometry(object):
                 inner_edges.append(y)
         geoms += outer_edges + inner_edges
 
-        # Optimization
+        # Optimization: Join paths
         # TODO: Re-architecture?
+        # log.debug("Simplifying paths...")
         g = Geometry()
         g.solid_geometry = geoms
-        g.path_connect()
-        return g.flat_geometry
+        # g.path_connect()
+        #return g.flat_geometry
+
+        g.flatten(pathonly=True)
+
+        # Optimization: Reduce lifts
+        log.debug("Reducing tool lifts...")
+        p = self.paint_connect(g.flat_geometry, polygon, tooldia)
+
+        return p
 
         #return geoms
 
@@ -418,7 +427,8 @@ class Geometry(object):
         """
         return
 
-    def paint_connect(self, geolist, boundary, tooldia):
+    @staticmethod
+    def paint_connect(geolist, boundary, tooldia):
         """
         Connects paths that results in a connection segment that is
         within the paint area. This avoids unnecessary tool lifting.
@@ -437,17 +447,20 @@ class Geometry(object):
 
         for shape in geolist:
             if shape is not None:  # TODO: This shouldn't have happened.
-                storage.insert(shape)
+                # Make LlinearRings into linestrings otherwise
+                # When chaining the coordinates path is messed up.
+                storage.insert(LineString(shape))
+                #storage.insert(shape)
 
         ## Iterate over geometry paths getting the nearest each time.
         optimized_paths = []
-        temp_path = None
         path_count = 0
         current_pt = (0, 0)
         pt, geo = storage.nearest(current_pt)
         try:
             while True:
                 path_count += 1
+                log.debug("Path %d" % path_count)
 
                 # Remove before modifying, otherwise
                 # deletion will fail.
@@ -461,27 +474,35 @@ class Geometry(object):
                 # Straight line from current_pt to pt.
                 # Is the toolpath inside the geometry?
                 jump = LineString([current_pt, pt]).buffer(tooldia / 2)
+
                 if jump.within(boundary):
+                    log.debug("Jump to path #%d is inside. Joining." % path_count)
+
                     # Completely inside. Append...
-                    if temp_path is None:
-                        temp_path = geo
-                    else:
-                        temp_path.coords = list(temp_path.coords) + list(geo.coords)
+                    try:
+                        last = optimized_paths[-1]
+                        last.coords = list(last.coords) + list(geo.coords)
+                    except IndexError:
+                        optimized_paths.append(geo)
+
                 else:
+
                     # Have to lift tool. End path.
-                    optimized_paths.append(temp_path)
-                    temp_path = geo
+                    log.debug("Path #%d not within boundary. Next." % path_count)
+                    optimized_paths.append(geo)
 
                 current_pt = geo.coords[-1]
 
                 # Next
                 pt, geo = storage.nearest(current_pt)
 
-        except StopIteration:  # Nothing found in storage.
-            if not temp_path.equals(optimized_paths[-1]):
-                optimized_paths.append(temp_path)
+        except StopIteration:  # Nothing left in storage.
+            pass
 
-    def path_connect(self):
+        return optimized_paths
+
+    @staticmethod
+    def path_connect(pathlist):
         """
         Simplifies a list of paths by joining those whose ends touch.
         The list of paths of generated from the geometry.flatten()
@@ -491,7 +512,7 @@ class Geometry(object):
         :return: None
         """
 
-        flat_geometry = self.flatten(pathonly=True)
+        # flat_geometry = self.flatten(pathonly=True)
 
         ## Index first and last points in paths
         def get_pts(o):
@@ -500,7 +521,7 @@ class Geometry(object):
         storage = FlatCAMRTreeStorage()
         storage.get_points = get_pts
 
-        for shape in flat_geometry:
+        for shape in pathlist:
             if shape is not None:  # TODO: This shouldn't have happened.
                 storage.insert(shape)
 
@@ -558,7 +579,8 @@ class Geometry(object):
         except StopIteration:  # Nothing found in storage.
             pass
 
-        self.flat_geometry = optimized_geometry
+        #self.flat_geometry = optimized_geometry
+        return optimized_geometry
 
     def convert_units(self, units):
         """
@@ -2435,6 +2457,7 @@ class CNCjob(Geometry):
         :return: None
         """
         assert isinstance(geometry, Geometry)
+        log.debug("generate_from_geometry_2()")
 
         ## Flatten the geometry
         # Only linear elements (no polygons) remain.
@@ -2442,12 +2465,16 @@ class CNCjob(Geometry):
         log.debug("%d paths" % len(flat_geometry))
 
         ## Index first and last points in paths
+        # What points to index.
         def get_pts(o):
             return [o.coords[0], o.coords[-1]]
 
+        # Create the indexed storage.
         storage = FlatCAMRTreeStorage()
         storage.get_points = get_pts
 
+        # Store the geometry
+        log.debug("Indexing geometry before generating G-Code...")
         for shape in flat_geometry:
             if shape is not None:  # TODO: This shouldn't have happened.
                 storage.insert(shape)
@@ -2455,7 +2482,7 @@ class CNCjob(Geometry):
         if tooldia is not None:
             self.tooldia = tooldia
 
-        self.input_geometry_bounds = geometry.bounds()
+        # self.input_geometry_bounds = geometry.bounds()
 
         if not append:
             self.gcode = ""
@@ -2470,6 +2497,7 @@ class CNCjob(Geometry):
         self.gcode += self.pausecode + "\n"
 
         ## Iterate over geometry paths getting the nearest each time.
+        log.debug("Starting G-Code...")
         path_count = 0
         current_pt = (0, 0)
         pt, geo = storage.nearest(current_pt)
@@ -2997,7 +3025,7 @@ def dict2obj(d):
         return d
 
 
-def plotg(geo, solid_poly=False):
+def plotg(geo, solid_poly=False, color="black"):
     try:
         _ = iter(geo)
     except:
@@ -3015,15 +3043,15 @@ def plotg(geo, solid_poly=False):
                 ax.add_patch(patch)
             else:
                 x, y = g.exterior.coords.xy
-                plot(x, y)
+                plot(x, y, color=color)
                 for ints in g.interiors:
                     x, y = ints.coords.xy
-                    plot(x, y)
+                    plot(x, y, color=color)
                 continue
 
         if type(g) == LineString or type(g) == LinearRing:
             x, y = g.coords.xy
-            plot(x, y)
+            plot(x, y, color=color)
             continue
 
         if type(g) == Point:
@@ -3033,7 +3061,7 @@ def plotg(geo, solid_poly=False):
 
         try:
             _ = iter(g)
-            plotg(g)
+            plotg(g, color=color)
         except:
             log.error("Cannot plot: " + str(type(g)))
             continue
@@ -3380,58 +3408,58 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
         return (tidx.bbox[0], tidx.bbox[1]), self.objects[tidx.object]
 
 
-class myO:
-    def __init__(self, coords):
-        self.coords = coords
-
-
-def test_rti():
-
-    o1 = myO([(0, 0), (0, 1), (1, 1)])
-    o2 = myO([(2, 0), (2, 1), (2, 1)])
-    o3 = myO([(2, 0), (2, 1), (3, 1)])
-
-    os = [o1, o2]
-
-    idx = FlatCAMRTree()
-
-    for o in range(len(os)):
-        idx.insert(o, os[o])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove_obj(0, o1)
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove_obj(1, o2)
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-
-def test_rtis():
-
-    o1 = myO([(0, 0), (0, 1), (1, 1)])
-    o2 = myO([(2, 0), (2, 1), (2, 1)])
-    o3 = myO([(2, 0), (2, 1), (3, 1)])
-
-    os = [o1, o2]
-
-    idx = FlatCAMRTreeStorage()
-
-    for o in range(len(os)):
-        idx.insert(os[o])
-
-    #os = None
-    #o1 = None
-    #o2 = None
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove(idx.nearest((2,0))[1])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove(idx.nearest((0,0))[1])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+# class myO:
+#     def __init__(self, coords):
+#         self.coords = coords
+#
+#
+# def test_rti():
+#
+#     o1 = myO([(0, 0), (0, 1), (1, 1)])
+#     o2 = myO([(2, 0), (2, 1), (2, 1)])
+#     o3 = myO([(2, 0), (2, 1), (3, 1)])
+#
+#     os = [o1, o2]
+#
+#     idx = FlatCAMRTree()
+#
+#     for o in range(len(os)):
+#         idx.insert(o, os[o])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove_obj(0, o1)
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove_obj(1, o2)
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#
+# def test_rtis():
+#
+#     o1 = myO([(0, 0), (0, 1), (1, 1)])
+#     o2 = myO([(2, 0), (2, 1), (2, 1)])
+#     o3 = myO([(2, 0), (2, 1), (3, 1)])
+#
+#     os = [o1, o2]
+#
+#     idx = FlatCAMRTreeStorage()
+#
+#     for o in range(len(os)):
+#         idx.insert(os[o])
+#
+#     #os = None
+#     #o1 = None
+#     #o2 = None
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove(idx.nearest((2,0))[1])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove(idx.nearest((0,0))[1])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]

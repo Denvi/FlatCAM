@@ -963,6 +963,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         # To be called after clicking on the plot.
         def doit(event):
+            self.app.info("Painting polygon...")
             self.app.plotcanvas.mpl_disconnect(subscription)
             point = [event.xdata, event.ydata]
             self.paint_poly(point, tooldia, overlap)
@@ -991,6 +992,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             geo_obj.solid_geometry = cp
             geo_obj.options["cnctooldia"] = tooldia
+            self.app.inform.emit("Done.")
 
         name = self.options["name"] + "_paint"
         self.app.new_object("geometry", name, gen_paintarea)
