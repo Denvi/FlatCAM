@@ -502,7 +502,7 @@ class Geometry(object):
         return optimized_paths
 
     @staticmethod
-    def path_connect(pathlist):
+    def path_connect(pathlist, origin=(0, 0)):
         """
         Simplifies a list of paths by joining those whose ends touch.
         The list of paths of generated from the geometry.flatten()
@@ -511,8 +511,6 @@ class Geometry(object):
 
         :return: None
         """
-
-        # flat_geometry = self.flatten(pathonly=True)
 
         ## Index first and last points in paths
         def get_pts(o):
@@ -525,20 +523,18 @@ class Geometry(object):
             if shape is not None:  # TODO: This shouldn't have happened.
                 storage.insert(shape)
 
-        optimized_geometry = []
         path_count = 0
-        current_pt = (0, 0)
-        pt, geo = storage.nearest(current_pt)
+        pt, geo = storage.nearest(origin)
+        storage.remove(geo)
+        optimized_geometry = [geo]
         try:
             while True:
                 path_count += 1
-                try:
-                    storage.remove(geo)
-                except Exception, e:
-                    log.debug('path_connect(), geo not in storage:')
-                    log.debug(str(e))
+
+                print "geo is", geo
 
                 _, left = storage.nearest(geo.coords[0])
+                print "left is", left
 
                 if type(left) == LineString:
                     if left.coords[0] == geo.coords[0]:
@@ -550,11 +546,19 @@ class Geometry(object):
                         storage.remove(left)
                         geo.coords = list(left.coords) + list(geo.coords)
                         continue
-                else:
-                    storage.remove(left)
-                    optimized_geometry.append(left)
+
+                    if left.coords[0] == geo.coords[-1]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords) + list(left.coords)
+                        continue
+
+                    if left.coords[-1] == geo.coords[-1]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords) + list(left.coords)[::-1]
+                        continue
 
                 _, right = storage.nearest(geo.coords[-1])
+                print "right is", right
 
                 if type(right) == LineString:
                     if right.coords[0] == geo.coords[-1]:
@@ -566,18 +570,32 @@ class Geometry(object):
                         storage.remove(right)
                         geo.coords = list(geo.coords) + list(right.coords)[::-1]
                         continue
-                else:
-                    storage.remove(right)
-                    optimized_geometry.append(right)
+
+                    if right.coords[0] == geo.coords[0]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords)[::-1] + list(right.coords)
+                        continue
+
+                    if right.coords[-1] == geo.coords[0]:
+                        storage.remove(right)
+                        geo.coords = list(left.coords) + list(geo.coords)
+                        continue
 
                 # No matches on either end
-                optimized_geometry.append(geo)
+                #optimized_geometry.append(geo)
+                optimized_geometry.append(right)
+                storage.remove(right)
+                geo = right
+                print "stored right, now geo<-right"
 
                 # Next
-                _, geo = storage.nearest(geo.coords[0])
+                #_, geo = storage.nearest(geo.coords[0])
+                #optimized_geometry.append(geo)
 
         except StopIteration:  # Nothing found in storage.
             pass
+
+        print path_count
 
         #self.flat_geometry = optimized_geometry
         return optimized_geometry
