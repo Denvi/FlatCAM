@@ -53,5 +53,21 @@ class PathConnectTest1(unittest.TestCase):
                                                          [1 + offset_x, 1 + offset_y],
                                                          [2 + offset_x, 1 + offset_y]])))
 
+    def test_ring_interfere_connect(self):
+        print
+        print "TEST STARTING ..."
+
+        paths = [
+            LineString([[0, 0], [1, 1]]),
+            LineString([[1, 1], [2, 1]]),
+            LinearRing([[1, 1], [2, 2], [1, 3], [0, 2]])
+        ]
+
+        result = Geometry.path_connect(paths)
+
+        self.assertEqual(len(result), 2)
+        matches = [p for p in result if p.equals(LineString([[0, 0], [1, 1], [2, 1]]))]
+        self.assertEqual(len(matches), 1)
+
 if __name__ == "__main__":
     unittest.main()

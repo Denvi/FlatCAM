@@ -583,21 +583,24 @@ class Geometry(object):
 
                 # No matches on either end
                 #optimized_geometry.append(geo)
-                optimized_geometry.append(right)
-                storage.remove(right)
-                geo = right
-                print "stored right, now geo<-right"
 
-                # Next
-                #_, geo = storage.nearest(geo.coords[0])
-                #optimized_geometry.append(geo)
+                storage.remove(right)
+                if type(right) == LinearRing:
+                    # Put the linearring at the beginning so it does
+                    # not iterfere.
+                    optimized_geometry = [right] + optimized_geometry
+                    geo = optimized_geometry[-1]
+                    print "right was LinearRing, getting previous"
+                else:
+                    optimized_geometry.append(right)
+                    geo = right
+                    print "stored right, now geo<-right"
 
         except StopIteration:  # Nothing found in storage.
             pass
 
         print path_count
 
-        #self.flat_geometry = optimized_geometry
         return optimized_geometry
 
     def convert_units(self, units):
