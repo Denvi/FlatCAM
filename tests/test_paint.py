@@ -4,6 +4,16 @@ from shapely.geometry import LineString, Polygon
 from shapely.ops import cascaded_union, unary_union
 from matplotlib.pyplot import plot, subplot, show, cla, clf, xlim, ylim, title
 from camlib import *
+from copy import deepcopy
+
+def mkstorage(paths):
+    def get_pts(o):
+        return [o.coords[0], o.coords[-1]]
+    storage = FlatCAMRTreeStorage()
+    storage.get_points = get_pts
+    for p in paths:
+        storage.insert(p)
+    return storage
 
 
 def plotg2(geo, solid_poly=False, color="black", linestyle='solid'):
@@ -75,18 +85,13 @@ class PaintConnectTest(PaintTestCase):
         tooldia = 1.0
 
         print "--"
-        result = Geometry.paint_connect(paths, self.boundary, tooldia)
+        result = Geometry.paint_connect(mkstorage(deepcopy(paths)), self.boundary, tooldia)
+
+        result = list(result.get_objects())
         for r in result:
             print r
 
         self.assertEqual(len(result), 1)
-
-        # plotg(self.boundary, solid_poly=True)
-        # plotg(paths, color="red")
-        # plotg([r.buffer(tooldia / 2) for r in result], solid_poly=True)
-        # show()
-        # #cla()
-        # clf()
 
         self.plot_summary_A(paths, tooldia, result, "WALK expected.")
 
@@ -102,7 +107,9 @@ class PaintConnectTest(PaintTestCase):
         tooldia = 1.0
 
         print "--"
-        result = Geometry.paint_connect(paths, self.boundary, tooldia)
+        result = Geometry.paint_connect(mkstorage(deepcopy(paths)), self.boundary, tooldia)
+
+        result = list(result.get_objects())
         for r in result:
             print r
 
@@ -122,7 +129,9 @@ class PaintConnectTest(PaintTestCase):
         tooldia = 1.1
 
         print "--"
-        result = Geometry.paint_connect(paths, self.boundary, tooldia)
+        result = Geometry.paint_connect(mkstorage(deepcopy(paths)), self.boundary, tooldia)
+
+        result = list(result.get_objects())
         for r in result:
             print r
 
@@ -154,7 +163,9 @@ class PaintConnectTest2(PaintTestCase):
         tooldia = 1.0
 
         print "--"
-        result = Geometry.paint_connect(paths, self.boundary, tooldia)
+        result = Geometry.paint_connect(mkstorage(deepcopy(paths)), self.boundary, tooldia)
+
+        result = list(result.get_objects())
         for r in result:
             print r
 
@@ -170,6 +181,7 @@ class PaintConnectTest3(PaintTestCase):
 
     def setUp(self):
         self.boundary = Polygon([[0, 0], [0, 5], [5, 5], [5, 0]])
+        print "TEST w/ LinearRings"
 
     def test_jump2(self):
         print "Test: WALK Expected"
@@ -184,7 +196,9 @@ class PaintConnectTest3(PaintTestCase):
         tooldia = 1.0
 
         print "--"
-        result = Geometry.paint_connect(paths, self.boundary, tooldia)
+        result = Geometry.paint_connect(mkstorage(deepcopy(paths)), self.boundary, tooldia)
+
+        result = list(result.get_objects())
         for r in result:
             print r
 

@@ -6,6 +6,7 @@
 # MIT Licence                                              #
 ############################################################
 #from __future__ import division
+from scipy import optimize
 import traceback
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
@@ -337,7 +338,8 @@ class Geometry(object):
                 break
         return poly_cuts
 
-    def clear_polygon2(self, polygon, tooldia, seedpoint=None, overlap=0.15):
+    @staticmethod
+    def clear_polygon2(polygon, tooldia, seedpoint=None, overlap=0.15):
         """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
@@ -357,8 +359,12 @@ class Geometry(object):
         # Current buffer radius
         radius = tooldia / 2 * (1 - overlap)
 
-        # The toolpaths
-        geoms = []
+        ## The toolpaths
+        # Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+        geoms = FlatCAMRTreeStorage()
+        geoms.get_points = get_pts
 
         # Path margin
         path_margin = polygon.buffer(-tooldia / 2)
@@ -367,7 +373,8 @@ class Geometry(object):
         if seedpoint is None:
             seedpoint = path_margin.representative_point()
 
-        # Grow from seed until outside the box.
+        # Grow from seed until outside the box. The polygons will
+        # never have an interior, so take the exterior LinearRing.
         while 1:
             path = Point(seedpoint).buffer(radius).exterior
             path = path.intersection(path_margin)
@@ -376,35 +383,29 @@ class Geometry(object):
             if path.is_empty:
                 break
             else:
-                geoms.append(path)
+                #geoms.append(path)
+                geoms.insert(path)
 
             radius += tooldia * (1 - overlap)
 
-        # Clean edges
+        # Clean inside edges of the original polygon
         outer_edges = [x.exterior for x in autolist(polygon.buffer(-tooldia / 2))]
         inner_edges = []
         for x in autolist(polygon.buffer(-tooldia / 2)):  # Over resulting polygons
             for y in x.interiors:  # Over interiors of each polygon
                 inner_edges.append(y)
-        geoms += outer_edges + inner_edges
+        #geoms += outer_edges + inner_edges
+        for g in outer_edges + inner_edges:
+            geoms.insert(g)
 
-        # Optimization: Join paths
-        # TODO: Re-architecture?
-        # log.debug("Simplifying paths...")
-        g = Geometry()
-        g.solid_geometry = geoms
-        # g.path_connect()
-        #return g.flat_geometry
+        # Optimization connect touching paths
 
-        g.flatten(pathonly=True)
 
         # Optimization: Reduce lifts
         log.debug("Reducing tool lifts...")
-        p = self.paint_connect(g.flat_geometry, polygon, tooldia)
+        p = Geometry.paint_connect(g.flat_geometry, polygon, tooldia)
 
         return p
-
-        #return geoms
 
     def scale(self, factor):
         """
@@ -428,7 +429,7 @@ class Geometry(object):
         return
 
     @staticmethod
-    def paint_connect(geolist, boundary, tooldia):
+    def paint_connect(storage, boundary, tooldia):
         """
         Connects paths that results in a connection segment that is
         within the paint area. This avoids unnecessary tool lifting.
@@ -442,34 +443,39 @@ class Geometry(object):
         def get_pts(o):
             return [o.coords[0], o.coords[-1]]
 
-        storage = FlatCAMRTreeStorage()
-        storage.get_points = get_pts
-
-        for shape in geolist:
-            if shape is not None:  # TODO: This shouldn't have happened.
-                # Make LlinearRings into linestrings otherwise
-                # When chaining the coordinates path is messed up.
-                storage.insert(LineString(shape))
-                #storage.insert(shape)
+        # storage = FlatCAMRTreeStorage()
+        # storage.get_points = get_pts
+        #
+        # for shape in geolist:
+        #     if shape is not None:  # TODO: This shouldn't have happened.
+        #         # Make LlinearRings into linestrings otherwise
+        #         # When chaining the coordinates path is messed up.
+        #         storage.insert(LineString(shape))
+        #         #storage.insert(shape)
 
         ## Iterate over geometry paths getting the nearest each time.
-        optimized_paths = []
+        #optimized_paths = []
+        optimized_paths = FlatCAMRTreeStorage()
+        optimized_paths.get_points = get_pts
         path_count = 0
         current_pt = (0, 0)
         pt, geo = storage.nearest(current_pt)
+        storage.remove(geo)
+        geo = LineString(geo)
+        current_pt = geo.coords[-1]
         try:
             while True:
                 path_count += 1
                 log.debug("Path %d" % path_count)
 
-                # Remove before modifying, otherwise
-                # deletion will fail.
-                storage.remove(geo)
+                pt, candidate = storage.nearest(current_pt)
+                storage.remove(candidate)
+                candidate = LineString(candidate)
 
                 # If last point in geometry is the nearest
                 # then reverse coordinates.
-                if list(pt) == list(geo.coords[-1]):
-                    geo.coords = list(geo.coords)[::-1]
+                if list(pt) == list(candidate.coords[-1]):
+                    candidate.coords = list(candidate.coords)[::-1]
 
                 # Straight line from current_pt to pt.
                 # Is the toolpath inside the geometry?
@@ -479,35 +485,35 @@ class Geometry(object):
                     log.debug("Jump to path #%d is inside. Joining." % path_count)
 
                     # Completely inside. Append...
-                    try:
-                        last = optimized_paths[-1]
-                        last.coords = list(last.coords) + list(geo.coords)
-                    except IndexError:
-                        optimized_paths.append(geo)
+                    geo.coords = list(geo.coords) + list(candidate.coords)
+                    # try:
+                    #     last = optimized_paths[-1]
+                    #     last.coords = list(last.coords) + list(geo.coords)
+                    # except IndexError:
+                    #     optimized_paths.append(geo)
 
                 else:
 
                     # Have to lift tool. End path.
                     log.debug("Path #%d not within boundary. Next." % path_count)
-                    optimized_paths.append(geo)
+                    #optimized_paths.append(geo)
+                    optimized_paths.insert(geo)
+                    geo = candidate
 
                 current_pt = geo.coords[-1]
 
                 # Next
-                pt, geo = storage.nearest(current_pt)
+                #pt, geo = storage.nearest(current_pt)
 
         except StopIteration:  # Nothing left in storage.
-            pass
+            #pass
+            optimized_paths.insert(geo)
 
         return optimized_paths
 
     @staticmethod
-    def path_connect(pathlist, origin=(0, 0)):
+    def path_connect(storage, origin=(0, 0)):
         """
-        Simplifies a list of paths by joining those whose ends touch.
-        The list of paths of generated from the geometry.flatten()
-        method which writes to geometry.flat_geometry. This list
-        if overwritten by this method with the optimized result.
 
         :return: None
         """
@@ -515,18 +521,21 @@ class Geometry(object):
         ## Index first and last points in paths
         def get_pts(o):
             return [o.coords[0], o.coords[-1]]
-
-        storage = FlatCAMRTreeStorage()
-        storage.get_points = get_pts
-
-        for shape in pathlist:
-            if shape is not None:  # TODO: This shouldn't have happened.
-                storage.insert(shape)
+        #
+        # storage = FlatCAMRTreeStorage()
+        # storage.get_points = get_pts
+        #
+        # for shape in pathlist:
+        #     if shape is not None:  # TODO: This shouldn't have happened.
+        #         storage.insert(shape)
 
         path_count = 0
         pt, geo = storage.nearest(origin)
         storage.remove(geo)
-        optimized_geometry = [geo]
+        #optimized_geometry = [geo]
+        optimized_geometry = FlatCAMRTreeStorage()
+        optimized_geometry.get_points = get_pts
+        #optimized_geometry.insert(geo)
         try:
             while True:
                 path_count += 1
@@ -536,6 +545,8 @@ class Geometry(object):
                 _, left = storage.nearest(geo.coords[0])
                 print "left is", left
 
+                # If left touches geo, remove left from original
+                # storage and append to geo.
                 if type(left) == LineString:
                     if left.coords[0] == geo.coords[0]:
                         storage.remove(left)
@@ -560,6 +571,8 @@ class Geometry(object):
                 _, right = storage.nearest(geo.coords[-1])
                 print "right is", right
 
+                # If right touches geo, remove left from original
+                # storage and append to geo.
                 if type(right) == LineString:
                     if right.coords[0] == geo.coords[-1]:
                         storage.remove(right)
@@ -581,23 +594,22 @@ class Geometry(object):
                         geo.coords = list(left.coords) + list(geo.coords)
                         continue
 
-                # No matches on either end
-                #optimized_geometry.append(geo)
-
+                # right is either a LinearRing or it does not connect
+                # to geo (nothing left to connect to geo), so we continue
+                # with right as geo.
                 storage.remove(right)
+
                 if type(right) == LinearRing:
-                    # Put the linearring at the beginning so it does
-                    # not iterfere.
-                    optimized_geometry = [right] + optimized_geometry
-                    geo = optimized_geometry[-1]
-                    print "right was LinearRing, getting previous"
+                    optimized_geometry.insert(right)
                 else:
-                    optimized_geometry.append(right)
+                    # Cannot exteng geo any further. Put it away.
+                    optimized_geometry.insert(geo)
+
+                    # Continue with right.
                     geo = right
-                    print "stored right, now geo<-right"
 
         except StopIteration:  # Nothing found in storage.
-            pass
+            optimized_geometry.insert(geo)
 
         print path_count
 
@@ -1838,7 +1850,7 @@ class Gerber (Geometry):
 
                 ## --- Buffered ---
                 width = self.apertures[last_path_aperture]["size"]
-                geo = LineString(path).buffer(width/2)
+                geo = LineString(path).buffer(width / 2)
                 poly_buffer.append(geo)
 
             # --- Apply buffer ---
@@ -1850,7 +1862,7 @@ class Gerber (Geometry):
         except Exception, err:
             #print traceback.format_exc()
             log.error("PARSING FAILED. Line %d: %s" % (line_num, gline))
-            raise
+            raise ParseError("%s\nLine %d: %s" % (repr(err), line_num, gline))
 
     @staticmethod
     def create_flash_geometry(location, aperture):
