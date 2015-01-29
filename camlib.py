@@ -384,7 +384,13 @@ class Geometry(object):
                 break
             else:
                 #geoms.append(path)
-                geoms.insert(path)
+                #geoms.insert(path)
+                # path can be a collection of paths.
+                try:
+                    for p in path:
+                        geoms.insert(p)
+                except TypeError:
+                    geoms.insert(path)
 
             radius += tooldia * (1 - overlap)
 
@@ -399,13 +405,14 @@ class Geometry(object):
             geoms.insert(g)
 
         # Optimization connect touching paths
-
+        log.debug("Connecting paths...")
+        geoms = Geometry.path_connect(geoms)
 
         # Optimization: Reduce lifts
         log.debug("Reducing tool lifts...")
-        p = Geometry.paint_connect(g.flat_geometry, polygon, tooldia)
+        geoms = Geometry.paint_connect(geoms, polygon, tooldia)
 
-        return p
+        return geoms
 
     def scale(self, factor):
         """
@@ -429,13 +436,17 @@ class Geometry(object):
         return
 
     @staticmethod
-    def paint_connect(storage, boundary, tooldia):
+    def paint_connect(storage, boundary, tooldia, max_walk=None):
         """
         Connects paths that results in a connection segment that is
         within the paint area. This avoids unnecessary tool lifting.
 
         :return:
         """
+
+        # If max_walk is not specified, the maximum allowed is
+        # 10 times the tool diameter
+        max_walk = max_walk or 10 * tooldia
 
         # Assuming geolist is a flat list of flat elements
 
@@ -466,7 +477,7 @@ class Geometry(object):
         try:
             while True:
                 path_count += 1
-                log.debug("Path %d" % path_count)
+                #log.debug("Path %d" % path_count)
 
                 pt, candidate = storage.nearest(current_pt)
                 storage.remove(candidate)
@@ -479,10 +490,11 @@ class Geometry(object):
 
                 # Straight line from current_pt to pt.
                 # Is the toolpath inside the geometry?
-                jump = LineString([current_pt, pt]).buffer(tooldia / 2)
+                walk_path = LineString([current_pt, pt])
+                walk_cut = walk_path.buffer(tooldia / 2)
 
-                if jump.within(boundary):
-                    log.debug("Jump to path #%d is inside. Joining." % path_count)
+                if walk_cut.within(boundary) and walk_path.length < max_walk:
+                    #log.debug("Walk to path #%d is inside. Joining." % path_count)
 
                     # Completely inside. Append...
                     geo.coords = list(geo.coords) + list(candidate.coords)
@@ -495,7 +507,7 @@ class Geometry(object):
                 else:
 
                     # Have to lift tool. End path.
-                    log.debug("Path #%d not within boundary. Next." % path_count)
+                    #log.debug("Path #%d not within boundary. Next." % path_count)
                     #optimized_paths.append(geo)
                     optimized_paths.insert(geo)
                     geo = candidate
@@ -517,6 +529,8 @@ class Geometry(object):
 
         :return: None
         """
+
+        log.debug("path_connect()")
 
         ## Index first and last points in paths
         def get_pts(o):
@@ -540,10 +554,10 @@ class Geometry(object):
             while True:
                 path_count += 1
 
-                print "geo is", geo
+                #print "geo is", geo
 
                 _, left = storage.nearest(geo.coords[0])
-                print "left is", left
+                #print "left is", left
 
                 # If left touches geo, remove left from original
                 # storage and append to geo.
@@ -569,7 +583,7 @@ class Geometry(object):
                         continue
 
                 _, right = storage.nearest(geo.coords[-1])
-                print "right is", right
+                #print "right is", right
 
                 # If right touches geo, remove left from original
                 # storage and append to geo.
@@ -611,7 +625,8 @@ class Geometry(object):
         except StopIteration:  # Nothing found in storage.
             optimized_geometry.insert(geo)
 
-        print path_count
+        #print path_count
+        log.debug("path_count = %d" % path_count)
 
         return optimized_geometry
 

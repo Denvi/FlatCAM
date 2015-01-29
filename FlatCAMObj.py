@@ -990,12 +990,16 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
-            geo_obj.solid_geometry = cp
+            geo_obj.solid_geometry = list(cp.get_objects())
             geo_obj.options["cnctooldia"] = tooldia
             self.app.inform.emit("Done.")
 
-        name = self.options["name"] + "_paint"
-        self.app.new_object("geometry", name, gen_paintarea)
+        def job_thread(app_obj):
+            name = self.options["name"] + "_paint"
+            app_obj.new_object("geometry", name, gen_paintarea)
+
+        self.app.inform.emit("Polygon Paint started ...")
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def on_generatecnc_button_click(self, *args):
         self.app.report_usage("geometry_on_generatecnc_button")
