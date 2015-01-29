@@ -405,8 +405,8 @@ class Geometry(object):
             geoms.insert(g)
 
         # Optimization connect touching paths
-        log.debug("Connecting paths...")
-        geoms = Geometry.path_connect(geoms)
+        # log.debug("Connecting paths...")
+        # geoms = Geometry.path_connect(geoms)
 
         # Optimization: Reduce lifts
         log.debug("Reducing tool lifts...")
