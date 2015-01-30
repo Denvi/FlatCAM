@@ -987,9 +987,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             assert isinstance(geo_obj, FlatCAMGeometry)
             #assert isinstance(app_obj, App)
 
-            cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
+
+            else:
+                cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
+
             geo_obj.solid_geometry = list(cp.get_objects())
             geo_obj.options["cnctooldia"] = tooldia
             self.app.inform.emit("Done.")

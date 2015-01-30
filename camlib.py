@@ -331,6 +331,8 @@ class Geometry(object):
         :return:
         """
 
+        assert type(polygon) == Polygon
+
         ## The toolpaths
         # Index first and last points in paths
         def get_pts(o):
@@ -347,9 +349,19 @@ class Geometry(object):
         while True:
             current = current.buffer(-tooldia * (1 - overlap))
             if current.area > 0:
-                geoms.insert(current.exterior)
-                for i in current.interiors:
-                    geoms.insert(i)
+
+                # current can be a MultiPolygon
+                try:
+                    for p in current:
+                        geoms.insert(p.exterior)
+                        for i in p.interiors:
+                            geoms.insert(i)
+
+                # Not a Multipolygon.
+                except TypeError:
+                    geoms.insert(current.exterior)
+                    for i in current.interiors:
+                        geoms.insert(i)
             else:
                 break
         return geoms
