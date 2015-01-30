@@ -665,7 +665,7 @@ class Geometry(object):
         if units.upper() == "MM":
             factor = 25.4
         elif units.upper() == "IN":
-            factor = 1/25.4
+            factor = 1 / 25.4
         else:
             log.error("Unsupported units: %s" % str(units))
             return 1.0
@@ -1847,13 +1847,19 @@ class Gerber (Geometry):
                 # Example: %MOIN*%
                 match = self.mode_re.search(gline)
                 if match:
-                    self.units = match.group(1)
+                    #self.units = match.group(1)
+
+                    # Changed for issue #80
+                    self.convert_units(match.group(1))
                     continue
 
                 ### Units (G70/1) OBSOLETE
                 match = self.units_re.search(gline)
                 if match:
-                    self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+                    #self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+
+                    # Changed for issue #80
+                    self.convert_units({'0': 'IN', '1': 'MM'}[match.group(1)])
                     continue
 
                 ### Absolute/relative coordinates G90/1 OBSOLETE
@@ -2175,7 +2181,10 @@ class Excellon(Geometry):
                 # object's units.
                 match = self.meas_re.match(eline)
                 if match:
-                    self.units = {"1": "MM", "2": "IN"}[match.group(1)]
+                    #self.units = {"1": "MM", "2": "IN"}[match.group(1)]
+
+                    # Modified for issue #80
+                    self.convert_units({"1": "MM", "2": "IN"}[match.group(1)])
                     log.debug("  Units: %s" % self.units)
                     continue
 
@@ -2261,7 +2270,11 @@ class Excellon(Geometry):
                     match = self.units_re.match(eline)
                     if match:
                         self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
-                        self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+
+                        #self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+
+                        # Modified for issue #80
+                        self.convert_units({"INCH": "IN", "METRIC": "MM"}[match.group(1)])
                         log.debug("  Units/Format: %s %s" % (self.units, self.zeros))
                         continue
 
