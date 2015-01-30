@@ -218,6 +218,9 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.progress_bar.setMaximum(100)
         infobar.addWidget(self.progress_bar)
 
+        self.activity_view = FlatCAMActivityView()
+        infobar.addWidget(self.activity_view)
+
         #############
         ### Icons ###
         #############
@@ -237,6 +240,35 @@ class FlatCAMGUI(QtGui.QMainWindow):
     def closeEvent(self, event):
         QtGui.qApp.quit()
 
+
+class FlatCAMActivityView(QtGui.QWidget):
+
+    def __init__(self, parent=None):
+        super(FlatCAMActivityView, self).__init__(parent=parent)
+
+        self.icon = QtGui.QLabel(self)
+        self.icon.setGeometry(0, 0, 12, 12)
+        self.movie = QtGui.QMovie("share/717.GIF")
+        self.icon.setMovie(self.movie)
+        #self.movie.start()
+
+        layout = QtGui.QHBoxLayout()
+        layout.setContentsMargins(5, 0, 5, 0)
+        self.setLayout(layout)
+
+        layout.addWidget(self.icon)
+        self.text = QtGui.QLabel(self)
+        self.text.setText("Idle.")
+
+        layout.addWidget(self.text)
+
+    def set_idle(self):
+        self.movie.stop()
+        self.text.setText("Idle.")
+
+    def set_busy(self, msg):
+        self.movie.start()
+        self.text.setText(msg)
 
 class FlatCAMInfoBar(QtGui.QWidget):
 

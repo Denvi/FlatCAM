@@ -340,13 +340,25 @@ class Geometry(object):
         geoms = FlatCAMRTreeStorage()
         geoms.get_points = get_pts
 
+        # Can only result in a Polygon or MultiPolygon
         current = polygon.buffer(-tooldia / 2.0)
 
-        geoms.insert(current.exterior)
-        for i in current.interiors:
-            geoms.insert(i)
+        # current can be a MultiPolygon
+        try:
+            for p in current:
+                geoms.insert(p.exterior)
+                for i in p.interiors:
+                    geoms.insert(i)
+
+        # Not a Multipolygon. Must be a Polygon
+        except TypeError:
+            geoms.insert(current.exterior)
+            for i in current.interiors:
+                geoms.insert(i)
 
         while True:
+
+            # Can only result in a Polygon or MultiPolygon
             current = current.buffer(-tooldia * (1 - overlap))
             if current.area > 0:
 
@@ -357,7 +369,7 @@ class Geometry(object):
                         for i in p.interiors:
                             geoms.insert(i)
 
-                # Not a Multipolygon.
+                # Not a Multipolygon. Must be a Polygon
                 except TypeError:
                     geoms.insert(current.exterior)
                     for i in current.interiors:
