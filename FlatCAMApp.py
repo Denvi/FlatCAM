@@ -742,7 +742,7 @@ class App(QtCore.QObject):
             else:  # No: add a number!
                 name += "_1"
 
-        # Create object
+        ## Create object
         classdict = {
             "gerber": FlatCAMGerber,
             "excellon": FlatCAMExcellon,
@@ -771,11 +771,12 @@ class App(QtCore.QObject):
         self.log.debug("%f seconds executing initialize()." % (t2 - t1))
 
         # Check units and convert if necessary
+        # This condition CAN be true because initialize() can change obj.units
         if self.options["units"].upper() != obj.units.upper():
             self.inform.emit("Converting units to " + self.options["units"] + ".")
             obj.convert_units(self.options["units"])
-        t3 = time.time()
-        self.log.debug("%f seconds converting units." % (t3 - t2))
+            t3 = time.time()
+            self.log.debug("%f seconds converting units." % (t3 - t2))
 
         FlatCAMApp.App.log.debug("Moving new object back to main thread.")
 

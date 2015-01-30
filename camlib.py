@@ -316,7 +316,8 @@ class Geometry(object):
             boundary = self.solid_geometry.envelope
         return boundary.difference(self.solid_geometry)
         
-    def clear_polygon(self, polygon, tooldia, overlap=0.15):
+    @staticmethod
+    def clear_polygon(polygon, tooldia, overlap=0.15):
         """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
@@ -329,14 +330,29 @@ class Geometry(object):
         :param overlap: Overlap of toolpasses.
         :return:
         """
-        poly_cuts = [polygon.buffer(-tooldia / 2.0)]
+
+        ## The toolpaths
+        # Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+        geoms = FlatCAMRTreeStorage()
+        geoms.get_points = get_pts
+
+        current = polygon.buffer(-tooldia / 2.0)
+
+        geoms.insert(current.exterior)
+        for i in current.interiors:
+            geoms.insert(i)
+
         while True:
-            polygon = poly_cuts[-1].buffer(-tooldia * (1 - overlap))
-            if polygon.area > 0:
-                poly_cuts.append(polygon)
+            current = current.buffer(-tooldia * (1 - overlap))
+            if current.area > 0:
+                geoms.insert(current.exterior)
+                for i in current.interiors:
+                    geoms.insert(i)
             else:
                 break
-        return poly_cuts
+        return geoms
 
     @staticmethod
     def clear_polygon2(polygon, tooldia, seedpoint=None, overlap=0.15):
