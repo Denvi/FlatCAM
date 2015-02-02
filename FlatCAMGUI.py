@@ -248,7 +248,7 @@ class FlatCAMActivityView(QtGui.QWidget):
 
         self.icon = QtGui.QLabel(self)
         self.icon.setGeometry(0, 0, 12, 12)
-        self.movie = QtGui.QMovie("share/717.GIF")
+        self.movie = QtGui.QMovie("share/active.gif")
         self.icon.setMovie(self.movie)
         #self.movie.start()
 
@@ -269,6 +269,7 @@ class FlatCAMActivityView(QtGui.QWidget):
     def set_busy(self, msg):
         self.movie.start()
         self.text.setText(msg)
+
 
 class FlatCAMInfoBar(QtGui.QWidget):
 

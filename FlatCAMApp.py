@@ -23,6 +23,7 @@ from FlatCAMCommon import LoudDict
 from FlatCAMTool import *
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
+from FlatCAMProcess import *
 
 
 ########################################
@@ -159,6 +160,8 @@ class App(QtCore.QObject):
         self.recent = []
 
         self.clipboard = QtGui.QApplication.clipboard()
+
+        self.proc_container = FCVisibleProcessContainer(self.ui.activity_view)
 
         self.project_filename = None
 
@@ -1552,6 +1555,7 @@ class App(QtCore.QObject):
 
         App.log.debug("open_gerber()")
 
+        proc = self.proc_container.new("Opening Gerber")
         self.progress.emit(10)
 
         # How the object should be initialized
@@ -1600,6 +1604,7 @@ class App(QtCore.QObject):
         self.file_opened.emit("gerber", filename)
 
         self.progress.emit(100)
+        proc.done()
 
         # GUI feedback
         self.inform.emit("Opened: " + filename)

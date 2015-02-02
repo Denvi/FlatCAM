@@ -982,6 +982,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.app.inform.emit('[warning] No polygon found.')
             return
 
+        proc = self.app.proc_container.new("Painting polygon.")
+
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
@@ -1000,6 +1002,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         def job_thread(app_obj):
             name = self.options["name"] + "_paint"
             app_obj.new_object("geometry", name, gen_paintarea)
+            proc.done()
 
         self.app.inform.emit("Polygon Paint started ...")
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
