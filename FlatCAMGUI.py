@@ -191,7 +191,6 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # self.right_layout.setContentsMargins(0, 0, 0, 0)
         right_widget.setLayout(self.right_layout)
 
-
         ################
         ### Info bar ###
         ################
