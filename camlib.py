@@ -1428,6 +1428,7 @@ class Gerber (Geometry):
         gfile.close()
         self.parse_lines(gstr, follow=follow)
 
+    #@profile
     def parse_lines(self, glines, follow=False):
         """
         Main Gerber parser. Reads Gerber and populates ``self.paths``, ``self.apertures``,
@@ -1915,6 +1916,7 @@ class Gerber (Geometry):
                 poly_buffer.append(geo)
 
             # --- Apply buffer ---
+            log.warn("Joining %d polygons." % len(poly_buffer))
             if current_polarity == 'D':
                 self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
             else:

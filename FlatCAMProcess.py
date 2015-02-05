@@ -34,6 +34,14 @@ class FCProcess(object):
 
 
 class FCProcessContainer(object):
+    """
+    This is the process container, or controller (as in MVC)
+    of the Process/Activity tracking.
+
+    FCProcessContainer keeps weak references to the FCProcess'es
+    such that their __del__ method is called when the user
+    looses track of their reference.
+    """
 
     def __init__(self):
 
@@ -48,8 +56,6 @@ class FCProcessContainer(object):
 
         proc.connect(self.on_done, event="done")
 
-        # if proc not in self.procs:
-        #     self.procs.append(proc)
         self.add(proc)
 
         self.on_change(proc)
@@ -80,7 +86,6 @@ class FCVisibleProcessContainer(QtCore.QObject, FCProcessContainer):
     def __init__(self, view):
         assert isinstance(view, FlatCAMActivityView)
 
-        #super(FCVisibleProcessContainer, self).__init__()
         FCProcessContainer.__init__(self)
         QtCore.QObject.__init__(self)
 

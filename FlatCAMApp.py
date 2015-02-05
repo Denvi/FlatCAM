@@ -417,7 +417,7 @@ class App(QtCore.QObject):
         # Toolbar
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1/1.5))
+        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.clear_plot_btn.triggered.connect(self.plotcanvas.clear)
         self.ui.replot_btn.triggered.connect(self.on_toolbar_replot)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
@@ -539,6 +539,8 @@ class App(QtCore.QObject):
             self.info("Select a Geometry Object to edit.")
             return
 
+        self.ui.updategeo_btn.setEnabled(True)
+
         self.draw.edit_fcgeometry(self.collection.get_active())
 
     def editor2geometry(self):
@@ -554,6 +556,8 @@ class App(QtCore.QObject):
 
         self.draw.update_fcgeometry(geo)
         self.draw.deactivate()
+
+        self.ui.updategeo_btn.setEnabled(False)
 
         geo.plot()
 

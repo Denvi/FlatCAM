@@ -738,6 +738,7 @@ class FlatCAMDraw(QtCore.QObject):
         assert isinstance(fcgeometry, Geometry)
 
         self.clear()
+        self.select_tool("select")
 
         # Link shapes into editor.
         for shape in fcgeometry.flatten():
@@ -900,14 +901,15 @@ class FlatCAMDraw(QtCore.QObject):
         ### Abort the current action
         if event.key == 'escape':
             # TODO: ...?
-            self.on_tool_select("select")
+            #self.on_tool_select("select")
             self.app.info("Cancelled.")
 
             self.delete_utility_geometry()
 
             self.replot()
-            self.select_btn.setChecked(True)
-            self.on_tool_select('select')
+            # self.select_btn.setChecked(True)
+            # self.on_tool_select('select')
+            self.select_tool('select')
             return
 
         ### Delete selected object
@@ -1082,6 +1084,16 @@ class FlatCAMDraw(QtCore.QObject):
         storage.get_points = DrawToolShape.get_pts
 
         return storage
+
+    def select_tool(self, toolname):
+        """
+        Selects a drawing tool. Impacts the object and GUI.
+
+        :param toolname: Name of the tool.
+        :return: None
+        """
+        self.tools[toolname]["button"].setChecked(True)
+        self.on_tool_select(toolname)
 
     def set_selected(self, shape):
 

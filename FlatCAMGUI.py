@@ -70,6 +70,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menueditnew = self.menuedit.addAction(QtGui.QIcon('share/new_geo16.png'), 'New Geometry')
         self.menueditedit = self.menuedit.addAction(QtGui.QIcon('share/edit16.png'), 'Edit Geometry')
         self.menueditok = self.menuedit.addAction(QtGui.QIcon('share/edit_ok16.png'), 'Update Geometry')
+        #self.menueditok.
         #self.menueditcancel = self.menuedit.addAction(QtGui.QIcon('share/cancel_edit16.png'), "Cancel Edit")
         self.menueditjoin = self.menuedit.addAction(QtGui.QIcon('share/join16.png'), 'Join Geometry')
         self.menueditdelete = self.menuedit.addAction(QtGui.QIcon('share/trash16.png'), 'Delete')
@@ -115,6 +116,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.newgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/new_geo32.png'), "New Blank Geometry")
         self.editgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit32.png'), "Edit Geometry")
         self.updategeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit_ok32.png'), "Update Geometry")
+        self.updategeo_btn.setEnabled(False)
         #self.canceledit_btn = self.toolbar.addAction(QtGui.QIcon('share/cancel_edit32.png'), "Cancel Edit")
         self.delete_btn = self.toolbar.addAction(QtGui.QIcon('share/delete32.png'), "&Delete")
         self.shell_btn = self.toolbar.addAction(QtGui.QIcon('share/shell32.png'), "&Command Line")
@@ -215,7 +217,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.progress_bar = QtGui.QProgressBar()
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
-        infobar.addWidget(self.progress_bar)
+        #infobar.addWidget(self.progress_bar)
 
         self.activity_view = FlatCAMActivityView()
         infobar.addWidget(self.activity_view)
@@ -245,6 +247,8 @@ class FlatCAMActivityView(QtGui.QWidget):
     def __init__(self, parent=None):
         super(FlatCAMActivityView, self).__init__(parent=parent)
 
+        self.setMinimumWidth(200)
+
         self.icon = QtGui.QLabel(self)
         self.icon.setGeometry(0, 0, 12, 12)
         self.movie = QtGui.QMovie("share/active.gif")
@@ -253,6 +257,7 @@ class FlatCAMActivityView(QtGui.QWidget):
 
         layout = QtGui.QHBoxLayout()
         layout.setContentsMargins(5, 0, 5, 0)
+        layout.setAlignment(QtCore.Qt.AlignLeft)
         self.setLayout(layout)
 
         layout.addWidget(self.icon)
