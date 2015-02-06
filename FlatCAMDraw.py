@@ -546,6 +546,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.add_polygon_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/polygon32.png'), 'Add Polygon')
         self.add_path_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/path32.png'), 'Add Path')
         self.union_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/union32.png'), 'Polygon Union')
+        self.intersection_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/intersection32.png'), 'Polygon Intersection')
         self.subtract_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/subtract32.png'), 'Polygon Subtraction')
         self.cutpath_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/cutpath32.png'), 'Cut Path')
         self.move_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/move32.png'), "Move Objects 'm'")
@@ -581,6 +582,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
 
         self.union_btn.triggered.connect(self.union)
+        self.intersection_btn.triggered.connect(self.intersection)
         self.subtract_btn.triggered.connect(self.subtract)
         self.cutpath_btn.triggered.connect(self.cutpath)
         self.delete_btn.triggered.connect(self.on_delete_btn)
@@ -1172,6 +1174,32 @@ class FlatCAMDraw(QtCore.QObject):
         """
 
         results = cascaded_union([t.geo for t in self.get_selected()])
+
+        # Delete originals.
+        for_deletion = [s for s in self.get_selected()]
+        for shape in for_deletion:
+            self.delete_shape(shape)
+
+        # Selected geometry is now gone!
+        self.selected = []
+
+        self.add_shape(DrawToolShape(results))
+
+        self.replot()
+
+    def intersection(self):
+        """
+        Makes intersectino of selected polygons. Original polygons are deleted.
+
+        :return: None
+        """
+
+        shapes = self.get_selected()
+
+        results = shapes[0].geo
+
+        for shape in shapes[1:]:
+            results = results.intersection(shape.geo)
 
         # Delete originals.
         for_deletion = [s for s in self.get_selected()]

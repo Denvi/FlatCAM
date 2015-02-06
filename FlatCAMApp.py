@@ -1579,7 +1579,7 @@ class App(QtCore.QObject):
                 app_obj.progress.emit(0)
                 self.log.error(str(e))
                 raise
-                return
+                #return
 
             # Further parsing
             self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here

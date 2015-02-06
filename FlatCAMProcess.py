@@ -12,10 +12,13 @@ class FCProcess(object):
         self.descr = descr
 
     def __del__(self):
+        # print "#######################"
+        # print "# FCProcess.__del__() #"
+        # print "#######################"
         self.done()
 
     def done(self):
-        print "FCProcess.done()"
+        # print "FCProcess.done()"
         for fcn in self.callbacks["done"]:
             fcn(self)
 
@@ -108,7 +111,7 @@ class FCVisibleProcessContainer(QtCore.QObject, FCProcessContainer):
         self.something_changed.emit()
 
     def update_view(self):
-        print "FCVisibleProcessContainer.update_view()"
+        # print "FCVisibleProcessContainer.update_view()"
         if len(self.procs) == 0:
             self.view.set_idle()
 
