@@ -389,11 +389,11 @@ class Geometry(object):
         valid cuts. Finalizes by cutting around the inside edge of
         the polygon.
 
-        :param polygon:
-        :param tooldia:
-        :param seedpoint:
-        :param overlap:
-        :return:
+        :param polygon: Shapely.geometry.Polygon
+        :param tooldia: Diameter of the tool
+        :param seedpoint: Shapely.geometry.Point or None
+        :param overlap: Tool fraction overlap bewteen passes
+        :return: List of toolpaths covering polygon.
         """
 
         # Current buffer radius
@@ -3480,13 +3480,21 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
 
         self.objects = []
 
+        # Optimization attempt!
+        self.indexes = {}
+
     def insert(self, obj):
         self.objects.append(obj)
-        super(FlatCAMRTreeStorage, self).insert(len(self.objects) - 1, obj)
+        idx = len(self.objects) - 1
+        self.indexes[obj] = idx
+        super(FlatCAMRTreeStorage, self).insert(idx, obj)
 
+    #@profile
     def remove(self, obj):
         # Get index in list
-        objidx = self.objects.index(obj)
+        # TODO: This is extremely expensive
+        #objidx = self.objects.index(obj)
+        objidx = self.indexes[obj]
 
         # Remove from list
         self.objects[objidx] = None
