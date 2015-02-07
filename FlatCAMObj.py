@@ -602,6 +602,14 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ui.tools_table.setSortingEnabled(True)
 
     def set_ui(self, ui):
+        """
+        Configures the user interface for this object.
+        Connects options to form fields.
+
+        :param ui: User interface object.
+        :type ui: ExcellonObjectUI
+        :return: None
+        """
         FlatCAMObj.set_ui(self, ui)
 
         FlatCAMApp.App.log.debug("FlatCAMExcellon.set_ui()")

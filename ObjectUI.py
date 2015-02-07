@@ -435,7 +435,6 @@ class ExcellonObjectUI(ObjectUI):
         grid1.addWidget(self.toolchangez_entry, 4, 1)
         self.ois_tcz = OptionalInputSection(self.toolchange_cb, [self.toolchangez_entry])
 
-
         choose_tools_label = QtGui.QLabel(
             "Select from the tools section above\n"
             "the tools you want to include."

@@ -376,6 +376,11 @@ class Geometry(object):
                         geoms.insert(i)
             else:
                 break
+
+        # Optimization: Reduce lifts
+        log.debug("Reducing tool lifts...")
+        geoms = Geometry.paint_connect(geoms, polygon, tooldia)
+
         return geoms
 
     @staticmethod
@@ -481,7 +486,14 @@ class Geometry(object):
         Connects paths that results in a connection segment that is
         within the paint area. This avoids unnecessary tool lifting.
 
-        :return:
+        :param storage: Geometry to be optimized.
+        :type storage: FlatCAMRTreeStorage
+        :param boundary: Polygon defining the limits of the paintable area.
+        :type boundary: Polygon
+        :param max_walk: Maximum allowable distance without lifting tool.
+        :type max_walk: float or None
+        :return: Optimized geometry.
+        :rtype: FlatCAMRTreeStorage
         """
 
         # If max_walk is not specified, the maximum allowed is
