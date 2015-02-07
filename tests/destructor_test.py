@@ -8,7 +8,7 @@ class MyObj():
         pass
 
     def __del__(self):
-        print "##### Distroyed ######"
+        print "##### Destroyed ######"
 
 
 def parse():

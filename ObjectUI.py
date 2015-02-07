@@ -346,7 +346,8 @@ class ExcellonObjectUI(ObjectUI):
     def __init__(self, parent=None):
         ObjectUI.__init__(self, title='Excellon Object', icon_file='share/drill32.png', parent=parent)
 
-        ## Plot options
+        #### Plot options ####
+
         self.plot_options_label = QtGui.QLabel("<b>Plot Options:</b>")
         self.custom_box.addWidget(self.plot_options_label)
 
@@ -363,7 +364,8 @@ class ExcellonObjectUI(ObjectUI):
         )
         grid0.addWidget(self.solid_cb, 0, 1)
 
-        ## Tools
+        #### Tools ####
+
         self.tools_table_label = QtGui.QLabel('<b>Tools</b>')
         self.tools_table_label.setToolTip(
             "Tools in this Excellon object."
@@ -373,7 +375,8 @@ class ExcellonObjectUI(ObjectUI):
         self.tools_table.setFixedHeight(100)
         self.custom_box.addWidget(self.tools_table)
 
-        ## Create CNC Job
+        #### Create CNC Job ####
+
         self.cncjob_label = QtGui.QLabel('<b>Create CNC Job</b>')
         self.cncjob_label.setToolTip(
             "Create a CNC Job object\n"
@@ -411,6 +414,28 @@ class ExcellonObjectUI(ObjectUI):
         self.feedrate_entry = LengthEntry()
         grid1.addWidget(self.feedrate_entry, 2, 1)
 
+        # Tool change:
+        toolchlabel = QtGui.QLabel("Tool change:")
+        toolchlabel.setToolTip(
+            "Include tool-change sequence\n"
+            "in G-Code (Pause for tool change)."
+        )
+        self.toolchange_cb = FCCheckBox()
+        grid1.addWidget(toolchlabel, 3, 0)
+        grid1.addWidget(self.toolchange_cb, 3, 1)
+
+        # Tool change Z:
+        toolchzlabel = QtGui.QLabel("Tool change Z:")
+        toolchzlabel.setToolTip(
+            "Z-axis position (height) for\n"
+            "tool change."
+        )
+        grid1.addWidget(toolchzlabel, 4, 0)
+        self.toolchangez_entry = LengthEntry()
+        grid1.addWidget(self.toolchangez_entry, 4, 1)
+        self.ois_tcz = OptionalInputSection(self.toolchange_cb, [self.toolchangez_entry])
+
+
         choose_tools_label = QtGui.QLabel(
             "Select from the tools section above\n"
             "the tools you want to include."
@@ -423,7 +448,7 @@ class ExcellonObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.generate_cnc_button)
 
-        ## Milling Holes
+        #### Milling Holes ####
         self.mill_hole_label = QtGui.QLabel('<b>Mill Holes</b>')
         self.mill_hole_label.setToolTip(
             "Create Geometry for milling holes."
@@ -452,6 +477,7 @@ class ExcellonObjectUI(ObjectUI):
             "for milling toolpaths."
         )
         self.custom_box.addWidget(self.generate_milling_button)
+
 
 class GerberObjectUI(ObjectUI):
     """

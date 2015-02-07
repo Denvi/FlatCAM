@@ -228,3 +228,28 @@ class VerticalScrollArea(QtGui.QScrollArea):
             #     FlatCAMApp.App.log.debug(" Scroll bar hidden")
             #     self.setMinimumWidth(self.widget().minimumSizeHint().width())
         return QtGui.QWidget.eventFilter(self, source, event)
+
+
+class OptionalInputSection():
+
+    def __init__(self, cb, optinputs):
+        assert isinstance(cb, FCCheckBox)
+
+        self.cb = cb
+        self.optinputs = optinputs
+
+        self.on_cb_change()
+        self.cb.stateChanged.connect(self.on_cb_change)
+
+    def on_cb_change(self):
+
+        if self.cb.checkState():
+
+            for widget in self.optinputs:
+                widget.setEnabled(True)
+
+        else:
+
+            for widget in self.optinputs:
+                widget.setEnabled(False)
+

@@ -564,7 +564,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "travelz": 0.1,
             "feedrate": 5.0,
             # "toolselection": ""
-            "tooldia": 0.1
+            "tooldia": 0.1,
+            "toolchange": False,
+            "toolchangez": 1.0
         })
 
         # TODO: Document this.
@@ -691,7 +693,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             # job_obj.options["tooldia"] =
 
             tools_csv = ','.join(tools)
-            job_obj.generate_from_excellon_by_tool(self, tools_csv)
+            job_obj.generate_from_excellon_by_tool(self, tools_csv,
+                                                   toolchange=self.options["toolchange"],
+                                                   toolchangez=self.options["toolchangez"])
 
             app_obj.progress.emit(50)
             job_obj.gcode_parse()

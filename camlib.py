@@ -2493,7 +2493,8 @@ class CNCjob(Geometry):
 
         return factor
 
-    def generate_from_excellon_by_tool(self, exobj, tools="all"):
+    def generate_from_excellon_by_tool(self, exobj, tools="all",
+                                       toolchange=False, toolchangez=0.1):
         """
         Creates gcode for this object from an Excellon object
         for the specified tools.
@@ -2508,6 +2509,7 @@ class CNCjob(Geometry):
 
         log.debug("Creating CNC Job from Excellon...")
 
+        # Tools
         if tools == "all":
             tools = [tool for tool in exobj.tools]
         else:
@@ -2515,18 +2517,24 @@ class CNCjob(Geometry):
             tools = filter(lambda i: i in exobj.tools, tools)
         log.debug("Tools are: %s" % str(tools))
 
-        points = []
+        # Points (Group by tool)
+        points = {}
         for drill in exobj.drills:
             if drill['tool'] in tools:
-                points.append(drill['point'])
+                try:
+                    points[drill['tool']].append(drill['point'])
+                except KeyError:
+                    points[drill['tool']] = [drill['point']]
 
-        log.debug("Found %d drills." % len(points))
+        #log.debug("Found %d drills." % len(points))
         self.gcode = []
 
+        # Basic G-Code macros
         t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
         up = "G01 Z%.4f\n" % self.z_move
 
+        # Initialization
         gcode = self.unitcode[self.units.upper()] + "\n"
         gcode += self.absolutecode + "\n"
         gcode += self.feedminutecode + "\n"
@@ -2535,10 +2543,17 @@ class CNCjob(Geometry):
         gcode += "M03\n"  # Spindle start
         gcode += self.pausecode + "\n"
 
-        for point in points:
-            x, y = point.coords.xy
-            gcode += t % (x[0], y[0])
-            gcode += down + up
+        for tool in points:
+            if toolchange:
+                gcode += "G00 Z%.4f\n" % toolchangez
+                gcode += "M5\n"  # Spindle Stop
+                gcode += "M6\n"  # Tool change
+                gcode += "M0\n"  # Temporary machine stop
+                gcode += "M3\n"  # Spindle on clockwise
+            for point in points[tool]:
+                x, y = point.coords.xy
+                gcode += t % (x[0], y[0])
+                gcode += down + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
