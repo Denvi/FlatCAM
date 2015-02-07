@@ -612,7 +612,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "drillz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.feedrate_entry,
-            "tooldia": self.ui.tooldia_entry
+            "tooldia": self.ui.tooldia_entry,
+            "toolchange": self.ui.toolchange_cb,
+            "toolchangez": self.ui.toolchangez_entry
         })
 
         assert isinstance(self.ui, ExcellonObjectUI)
