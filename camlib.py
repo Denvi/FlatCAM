@@ -2558,8 +2558,10 @@ class CNCjob(Geometry):
         for tool in points:
             if toolchange:
                 gcode += "G00 Z%.4f\n" % toolchangez
+                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
                 gcode += "M5\n"  # Spindle Stop
                 gcode += "M6\n"  # Tool change
+                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
                 gcode += "M0\n"  # Temporary machine stop
                 gcode += "M3\n"  # Spindle on clockwise
             for point in points[tool]:
