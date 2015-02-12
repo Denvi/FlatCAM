@@ -1,6 +1,6 @@
-from time import sleep
-from PyQt4 import QtCore
-from FlatCAMWorker import Worker
+import sys
+from PyQt4 import QtCore, QtGui
+
 
 class MyObj():
 
@@ -16,19 +16,19 @@ def parse():
     raise Exception("Intentional Exception")
 
 
-if __name__ == "__main__":
-    qo = QtCore.QObject
-    worker = Worker(qo)
-    thr1 = QtCore.QThread()
-    worker.moveToThread(thr1)
-    qo.connect(thr1, QtCore.SIGNAL("started()"), worker.run)
-    thr1.start()
+class Example(QtGui.QWidget):
 
-    while True:
-        try:
-            parse()
-            print "Parse returned."
-        except Exception:
-            pass
-        sleep(5)
-        print "Competed successfully."
+    def __init__(self):
+        super(Example, self).__init__()
+
+        qbtn = QtGui.QPushButton('Raise', self)
+        qbtn.clicked.connect(parse)
+
+        self.setWindowTitle('Quit button')
+        self.show()
+
+
+if __name__ == '__main__':
+    app = QtGui.QApplication(sys.argv)
+    ex = Example()
+    sys.exit(app.exec_())

@@ -1393,11 +1393,13 @@ class App(QtCore.QObject):
         # TODO: Improve the serialization methods and remove this fix.
         filename = str(filename)
 
-        if str(filename) == "":
-            self.inform.emit("Open cancelled.")
-        else:
-            self.worker_task.emit({'fcn': self.open_gerber,
-                                   'params': [filename]})
+        self.open_gerber(filename)
+
+        # if str(filename) == "":
+        #     self.inform.emit("Open cancelled.")
+        # else:
+        #     self.worker_task.emit({'fcn': self.open_gerber,
+        #                            'params': [filename]})
 
     def on_fileopenexcellon(self):
         """
@@ -1557,14 +1559,10 @@ class App(QtCore.QObject):
         :return: None
         """
 
-        App.log.debug("open_gerber()")
-
-        proc = self.proc_container.new("Opening Gerber")
-        self.progress.emit(10)
-
         # How the object should be initialized
         def obj_init(gerber_obj, app_obj):
             assert isinstance(gerber_obj, FlatCAMGerber)
+            #log.debug("sys.getrefcount(proc) == %d" % sys.getrefcount(proc))
 
             # Opening the file happens here
             self.progress.emit(30)
@@ -1583,6 +1581,14 @@ class App(QtCore.QObject):
 
             # Further parsing
             self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here
+
+        App.log.debug("open_gerber()")
+
+        proc = self.proc_container.new("Opening Gerber")
+        log.debug("sys.getrefcount(proc) == %d" % sys.getrefcount(proc))
+        self.progress.emit(10)
+
+
 
         # Object name
         name = outname or filename.split('/')[-1].split('\\')[-1]
@@ -1608,7 +1614,7 @@ class App(QtCore.QObject):
         self.file_opened.emit("gerber", filename)
 
         self.progress.emit(100)
-        proc.done()
+        #proc.done()
 
         # GUI feedback
         self.inform.emit("Opened: " + filename)

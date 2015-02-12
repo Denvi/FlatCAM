@@ -2462,8 +2462,14 @@ class CNCjob(Geometry):
         "coordinate_format": "X%.4fY%.4f"
     }
 
-    def __init__(self, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0, zdownrate=None):
+    def __init__(self,
+                 units="in",
+                 kind="generic",
+                 z_move=0.1,
+                 feedrate=3.0,
+                 z_cut=-0.002,
+                 tooldia=0.0,
+                 zdownrate=None):
 
         Geometry.__init__(self)
         self.kind = kind
@@ -2556,6 +2562,8 @@ class CNCjob(Geometry):
         gcode += self.pausecode + "\n"
 
         for tool in points:
+
+            # Tool change sequence (optional)
             if toolchange:
                 gcode += "G00 Z%.4f\n" % toolchangez
                 gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
@@ -2564,6 +2572,8 @@ class CNCjob(Geometry):
                 gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
                 gcode += "M0\n"  # Temporary machine stop
                 gcode += "M3\n"  # Spindle on clockwise
+
+            # Drillling!
             for point in points[tool]:
                 x, y = point.coords.xy
                 gcode += t % (x[0], y[0])
@@ -3500,6 +3510,12 @@ class FlatCAMRTree(object):
             self.rti.delete(self.obj2points[objid][i], (pt[0], pt[1], pt[0], pt[1]))
 
     def nearest(self, pt):
+        """
+        Will raise StopIteration if no items are found.
+
+        :param pt:
+        :return:
+        """
         return self.rti.nearest(pt, objects=True).next()
 
 

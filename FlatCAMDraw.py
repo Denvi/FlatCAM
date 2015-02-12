@@ -442,7 +442,10 @@ class FCSelect(DrawTool):
         self.start_msg = "Click on geometry to select"
 
     def click(self, point):
-        _, closest_shape = self.storage.nearest(point)
+        try:
+            _, closest_shape = self.storage.nearest(point)
+        except StopIteration:
+            return ""
 
         if self.draw_app.key != 'control':
             self.draw_app.selected = []
@@ -575,11 +578,14 @@ class FlatCAMDraw(QtCore.QObject):
         self.app.ui.addToolBar(self.snap_toolbar)
 
         ### Event handlers ###
-        ## Canvas events
-        self.canvas.mpl_connect('button_press_event', self.on_canvas_click)
-        self.canvas.mpl_connect('motion_notify_event', self.on_canvas_move)
-        self.canvas.mpl_connect('key_press_event', self.on_canvas_key)
-        self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
+        # Connection ids for Matplotlib
+        self.cid_canvas_click = None
+        self.cid_canvas_move = None
+        self.cid_canvas_key = None
+        self.cid_canvas_key_release = None
+
+        # Connect the canvas
+        #self.connect_canvas_event_handlers()
 
         self.union_btn.triggered.connect(self.union)
         self.intersection_btn.triggered.connect(self.intersection)
@@ -665,6 +671,19 @@ class FlatCAMDraw(QtCore.QObject):
     def activate(self):
         pass
 
+    def connect_canvas_event_handlers(self):
+        ## Canvas events
+        self.cid_canvas_click = self.canvas.mpl_connect('button_press_event', self.on_canvas_click)
+        self.cid_canvas_move = self.canvas.mpl_connect('motion_notify_event', self.on_canvas_move)
+        self.cid_canvas_key = self.canvas.mpl_connect('key_press_event', self.on_canvas_key)
+        self.cid_canvas_key_release = self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
+
+    def disconnect_canvas_event_handlers(self):
+        self.canvas.mpl_disconnect(self.cid_canvas_click)
+        self.canvas.mpl_disconnect(self.cid_canvas_move)
+        self.canvas.mpl_disconnect(self.cid_canvas_key)
+        self.canvas.mpl_disconnect(self.cid_canvas_key_release)
+
     def add_shape(self, shape):
         """
         Adds a shape to the shape storage.
@@ -690,6 +709,7 @@ class FlatCAMDraw(QtCore.QObject):
             self.storage.insert(shape)
 
     def deactivate(self):
+        self.disconnect_canvas_event_handlers()
         self.clear()
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
@@ -740,6 +760,7 @@ class FlatCAMDraw(QtCore.QObject):
         assert isinstance(fcgeometry, Geometry)
 
         self.clear()
+        self.connect_canvas_event_handlers()
         self.select_tool("select")
 
         # Link shapes into editor.

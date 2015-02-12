@@ -10,11 +10,24 @@ class FCProcess(object):
             "done": []
         }
         self.descr = descr
+        self.status = "Active"
 
     def __del__(self):
         # print "#######################"
         # print "# FCProcess.__del__() #"
         # print "#######################"
+        self.done()
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            print "Abnormal termination of process!"
+            print exc_type
+            print exc_val
+            print exc_tb
+
         self.done()
 
     def done(self):
@@ -31,6 +44,9 @@ class FCProcess(object):
             self.callbacks[event].remove(callback)
         except ValueError:
             pass
+
+    def set_status(self, status_string):
+        self.status = status_string
 
     def status_msg(self):
         return self.descr
