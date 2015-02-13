@@ -38,7 +38,7 @@ from descartes.patch import PolygonPatch
 
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
-from matplotlib.pyplot import plot, subplot
+#from matplotlib.pyplot import plot, subplot
 
 import logging
 
