@@ -1014,8 +1014,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.app.inform.emit("Done.")
 
         def job_thread(app_obj):
-            name = self.options["name"] + "_paint"
-            app_obj.new_object("geometry", name, gen_paintarea)
+            try:
+                name = self.options["name"] + "_paint"
+                app_obj.new_object("geometry", name, gen_paintarea)
+            except Exception as e:
+                proc.done()
+                raise e
             proc.done()
 
         self.app.inform.emit("Polygon Paint started ...")
@@ -1058,9 +1062,10 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         # To be run in separate thread
         def job_thread(app_obj):
-            app_obj.new_object("cncjob", outname, job_init)
-            app_obj.inform.emit("CNCjob created: %s" % outname)
-            app_obj.progress.emit(100)
+            with self.app.proc_container.new("Generating CNC Job."):
+                app_obj.new_object("cncjob", outname, job_init)
+                app_obj.inform.emit("CNCjob created: %s" % outname)
+                app_obj.progress.emit(100)
 
         # Send to worker
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})

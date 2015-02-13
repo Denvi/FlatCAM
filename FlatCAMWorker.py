@@ -31,3 +31,5 @@ class Worker(QtCore.QObject):
         if 'worker_name' not in task and self.name is None:
             task['fcn'](*task['params'])
             return
+
+        FlatCAMApp.App.log.debug("Task ignored.")

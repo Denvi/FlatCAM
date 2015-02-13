@@ -331,6 +331,7 @@ class Geometry(object):
         :return:
         """
 
+        log.debug("camlib.clear_polygon()")
         assert type(polygon) == Polygon
 
         ## The toolpaths
@@ -400,6 +401,8 @@ class Geometry(object):
         :param overlap: Tool fraction overlap bewteen passes
         :return: List of toolpaths covering polygon.
         """
+
+        log.debug("camlib.clear_polygon2()")
 
         # Current buffer radius
         radius = tooldia / 2 * (1 - overlap)
