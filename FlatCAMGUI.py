@@ -93,7 +93,9 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menuviewenable = self.menuview.addAction(QtGui.QIcon('share/replot16.png'), 'Enable all plots')
 
         ### Tool ###
-        self.menutool = self.menu.addMenu('&Tool')
+        #self.menutool = self.menu.addMenu('&Tool')
+        self.menutool = QtGui.QMenu('&Tool')
+        self.menutoolaction = self.menu.addMenu(self.menutool)
         self.menutoolshell = self.menutool.addAction(QtGui.QIcon('share/shell16.png'), '&Command Line')
 
         ### Help ###

@@ -577,6 +577,24 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_toolbar.setDisabled(disabled)
         self.app.ui.addToolBar(self.snap_toolbar)
 
+        ### Application menu ###
+        # self.menu = QtGui.QMenu("Drawing")
+        # self.app.ui.menu.insertMenu(self.app.ui.menutoolaction, self.menu)
+        # self.select_menuitem = self.menu.addAction(QtGui.QIcon('share/pointer16.png'), "Select 'Esc'")
+        # self.add_circle_menuitem = self.menu.addAction(QtGui.QIcon('share/circle16.png'), 'Add Circle')
+        # self.add_arc_menuitem = self.menu.addAction(QtGui.QIcon('share/arc16.png'), 'Add Arc')
+        # self.add_rectangle_menuitem = self.menu.addAction(QtGui.QIcon('share/rectangle16.png'), 'Add Rectangle')
+        # self.add_polygon_menuitem = self.menu.addAction(QtGui.QIcon('share/polygon16.png'), 'Add Polygon')
+        # self.add_path_menuitem = self.menu.addAction(QtGui.QIcon('share/path16.png'), 'Add Path')
+        # self.union_menuitem = self.menu.addAction(QtGui.QIcon('share/union16.png'), 'Polygon Union')
+        # self.intersection_menuitem = self.menu.addAction(QtGui.QIcon('share/intersection16.png'), 'Polygon Intersection')
+        # self.subtract_menuitem = self.menu.addAction(QtGui.QIcon('share/subtract16.png'), 'Polygon Subtraction')
+        # self.cutpath_menuitem = self.menu.addAction(QtGui.QIcon('share/cutpath16.png'), 'Cut Path')
+        # self.move_menuitem = self.menu.addAction(QtGui.QIcon('share/move16.png'), "Move Objects 'm'")
+        # self.copy_menuitem = self.menu.addAction(QtGui.QIcon('share/copy16.png'), "Copy Objects 'c'")
+        # self.delete_menuitem = self.menu.addAction(QtGui.QIcon('share/deleteshape16.png'), "Delete Shape '-'")
+        # self.menu.addSeparator()
+
         ### Event handlers ###
         # Connection ids for Matplotlib
         self.cid_canvas_click = None
