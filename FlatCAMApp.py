@@ -134,10 +134,10 @@ class App(QtCore.QObject):
         # Application directory. Chdir to it. Otherwise, trying to load
         # GUI icons will fail as thir path is relative.
         # This will fail under cx_freeze ...
-        # self.app_home = os.path.dirname(os.path.realpath(__file__))
-        # App.log.debug("Application path is " + self.app_home)
-        # App.log.debug("Started in " + os.getcwd())
-        # os.chdir(self.app_home)
+        self.app_home = os.path.dirname(os.path.realpath(__file__))
+        App.log.debug("Application path is " + self.app_home)
+        App.log.debug("Started in " + os.getcwd())
+        os.chdir(self.app_home)
 
         ####################
         ## Initialize GUI ##
