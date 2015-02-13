@@ -6,8 +6,8 @@
 # MIT Licence                                              #
 ############################################################
 #from __future__ import division
-from scipy import optimize
-import traceback
+#from scipy import optimize
+#import traceback
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
@@ -43,8 +43,8 @@ from matplotlib.pyplot import plot, subplot
 import logging
 
 log = logging.getLogger('base2')
-log.setLevel(logging.DEBUG)
-#log.setLevel(logging.WARNING)
+#log.setLevel(logging.DEBUG)
+log.setLevel(logging.WARNING)
 #log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()

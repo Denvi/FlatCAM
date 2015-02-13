@@ -51,16 +51,16 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    log.setLevel(logging.DEBUG)
-    #log.setLevel(logging.WARNING)
+    #log.setLevel(logging.DEBUG)
+    log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
     log.addHandler(handler)
 
     ## Version
-    version = 8.11
-    version_date = "2015/01"
+    version = 8.2
+    version_date = "2015/02"
 
     ## URL for update checks and statistics
     version_url = "http://flatcam.org/version"
