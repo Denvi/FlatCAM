@@ -797,7 +797,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.options.update({
             "plot": True,
             "tooldia": 0.4 / 25.4,  # 0.4mm in inches
-            "append": ""
+            "append": "",
+            "prepend": ""
         })
 
         # Attributes to be included in serialization
@@ -815,7 +816,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.form_fields.update({
             "plot": self.ui.plot_cb,
             "tooldia": self.ui.tooldia_entry,
-            "append": self.ui.append_text
+            "append": self.ui.append_text,
+            "prepend": self.ui.prepend_text
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -839,9 +841,10 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...")
 
+        preamble = str(self.ui.prepend_text.get_value())
         postamble = str(self.ui.append_text.get_value())
 
-        self.export_gcode(filename, preamble='', postamble=postamble)
+        self.export_gcode(filename, preamble=preamble, postamble=postamble)
 
     def export_gcode(self, filename, preamble='', postamble=''):
         f = open(filename, 'w')

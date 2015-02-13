@@ -169,6 +169,17 @@ class CNCObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.export_gcode_label)
 
+        # Prepend text to Gerber
+        prependlabel = QtGui.QLabel('Prepend to G-Code:')
+        prependlabel.setToolTip(
+            "Type here any G-Code commands you would\n"
+            "like to add to the beginning of the generated file."
+        )
+        self.custom_box.addWidget(prependlabel)
+
+        self.prepend_text = FCTextArea()
+        self.custom_box.addWidget(self.prepend_text)
+
         # Append text to Gerber
         appendlabel = QtGui.QLabel('Append to G-Code:')
         appendlabel.setToolTip(
