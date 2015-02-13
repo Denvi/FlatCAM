@@ -737,17 +737,17 @@ class App(QtCore.QObject):
         t0 = time.time()  # Debug
 
         ### Check for existing name
-        while name in self.collection.get_names():
-            ## Create a new name
-            # Ends with number?
-            App.log.debug("new_object(): Object name (%s) exists, changing." % name)
-            match = re.search(r'(.*[^\d])?(\d+)$', name)
-            if match:  # Yes: Increment the number!
-                base = match.group(1) or ''
-                num = int(match.group(2))
-                name = base + str(num + 1)
-            else:  # No: add a number!
-                name += "_1"
+        # while name in self.collection.get_names():
+        #     ## Create a new name
+        #     # Ends with number?
+        #     App.log.debug("new_object(): Object name (%s) exists, changing." % name)
+        #     match = re.search(r'(.*[^\d])?(\d+)$', name)
+        #     if match:  # Yes: Increment the number!
+        #         base = match.group(1) or ''
+        #         num = int(match.group(2))
+        #         name = base + str(num + 1)
+        #     else:  # No: add a number!
+        #         name += "_1"
 
         ## Create object
         classdict = {
@@ -1237,8 +1237,11 @@ class App(QtCore.QObject):
         """
         t0 = time.time()  # DEBUG
         self.log.debug("on_object_created()")
-        self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
+
+        # The Collection might change the name if there is a collision
         self.collection.append(obj)
+
+        self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         obj.plot()
         self.on_zoom_fit(None)
         t1 = time.time()  # DEBUG

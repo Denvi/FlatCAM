@@ -95,15 +95,30 @@ class ObjectCollection(QtCore.QAbstractListModel):
     def append(self, obj, active=False):
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> OC.append()")
 
+        # Prevent same name
+        name = obj.options["name"]
+        while name in self.get_names():
+            ## Create a new name
+            # Ends with number?
+            FlatCAMApp.App.log.debug("new_object(): Object name (%s) exists, changing." % name)
+            match = re.search(r'(.*[^\d])?(\d+)$', name)
+            if match:  # Yes: Increment the number!
+                base = match.group(1) or ''
+                num = int(match.group(2))
+                name = base + str(num + 1)
+            else:  # No: add a number!
+                name += "_1"
+        obj.options["name"] = name
+
         obj.set_ui(obj.ui_type())
 
-        # Required before appending
+        # Required before appending (Qt MVC)
         self.beginInsertRows(QtCore.QModelIndex(), len(self.object_list), len(self.object_list))
 
         # Simply append to the python list
         self.object_list.append(obj)
 
-        # Required after appending
+        # Required after appending (Qt MVC)
         self.endInsertRows()
 
     def get_names(self):
