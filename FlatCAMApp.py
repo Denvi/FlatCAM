@@ -1393,13 +1393,11 @@ class App(QtCore.QObject):
         # TODO: Improve the serialization methods and remove this fix.
         filename = str(filename)
 
-        self.open_gerber(filename)
-
-        # if str(filename) == "":
-        #     self.inform.emit("Open cancelled.")
-        # else:
-        #     self.worker_task.emit({'fcn': self.open_gerber,
-        #                            'params': [filename]})
+        if str(filename) == "":
+            self.inform.emit("Open cancelled.")
+        else:
+            self.worker_task.emit({'fcn': self.open_gerber,
+                                   'params': [filename]})
 
     def on_fileopenexcellon(self):
         """
@@ -1584,40 +1582,24 @@ class App(QtCore.QObject):
 
         App.log.debug("open_gerber()")
 
-        proc = self.proc_container.new("Opening Gerber")
-        log.debug("sys.getrefcount(proc) == %d" % sys.getrefcount(proc))
-        self.progress.emit(10)
+        with self.proc_container.new("Opening Gerber") as proc:
 
+            self.progress.emit(10)
 
+            # Object name
+            name = outname or filename.split('/')[-1].split('\\')[-1]
 
-        # Object name
-        name = outname or filename.split('/')[-1].split('\\')[-1]
+            ### Object creation ###
+            self.new_object("gerber", name, obj_init)
 
-        self.new_object("gerber", name, obj_init)
+            # Register recent file
+            self.file_opened.emit("gerber", filename)
 
-        # New object creation and file processing
-        # try:
-        #     self.new_object("gerber", name, obj_init)
-        # except:
-        #     e = sys.exc_info()
-        #     print "ERROR:", e[0]
-        #     traceback.print_exc()
-        #     self.message_dialog("Failed to create Gerber Object",
-        #                         "Attempting to create a FlatCAM Gerber Object from " +
-        #                         "Gerber file failed during processing:\n" +
-        #                         str(e[0]) + " " + str(e[1]), kind="error")
-        #     GLib.timeout_add_seconds(1, lambda: self.set_progress_bar(0.0, "Idle"))
-        #     self.collection.delete_active()
-        #     return
+            self.progress.emit(100)
+            #proc.done()
 
-        # Register recent file
-        self.file_opened.emit("gerber", filename)
-
-        self.progress.emit(100)
-        #proc.done()
-
-        # GUI feedback
-        self.inform.emit("Opened: " + filename)
+            # GUI feedback
+            self.inform.emit("Opened: " + filename)
 
     def open_excellon(self, filename, outname=None):
         """
@@ -1631,11 +1613,11 @@ class App(QtCore.QObject):
 
         App.log.debug("open_excellon()")
 
-        self.progress.emit(10)
+        #self.progress.emit(10)
 
         # How the object should be initialized
         def obj_init(excellon_obj, app_obj):
-            self.progress.emit(20)
+            #self.progress.emit(20)
 
             try:
                 excellon_obj.parse_file(filename)
@@ -1651,32 +1633,21 @@ class App(QtCore.QObject):
                 self.progress.emit(0)
                 raise e
 
-            self.progress.emit(70)
+            #self.progress.emit(70)
 
-        # Object name
-        name = outname or filename.split('/')[-1].split('\\')[-1]
+        with self.proc_container.new("Opening Excellon."):
 
-        self.new_object("excellon", name, obj_init)
-        # New object creation and file processing
-        # try:
-        #     self.new_object("excellon", name, obj_init)
-        # except:
-        #     e = sys.exc_info()
-        #     App.log.error(str(e))
-        #     self.message_dialog("Failed to create Excellon Object",
-        #                         "Attempting to create a FlatCAM Excellon Object from " +
-        #                         "Excellon file failed during processing:\n" +
-        #                         str(e[0]) + " " + str(e[1]), kind="error")
-        #     self.progress.emit(0)
-        #     self.collection.delete_active()
-        #     return
+            # Object name
+            name = outname or filename.split('/')[-1].split('\\')[-1]
 
-        # Register recent file
-        self.file_opened.emit("excellon", filename)
+            self.new_object("excellon", name, obj_init)
 
-        # GUI feedback
-        self.inform.emit("Opened: " + filename)
-        self.progress.emit(100)
+            # Register recent file
+            self.file_opened.emit("excellon", filename)
+
+            # GUI feedback
+            self.inform.emit("Opened: " + filename)
+            #self.progress.emit(100)
 
     def open_gcode(self, filename, outname=None):
         """
@@ -1715,29 +1686,31 @@ class App(QtCore.QObject):
             self.progress.emit(60)
             job_obj.create_geometry()
 
-        # Object name
-        name = outname or filename.split('/')[-1].split('\\')[-1]
+        with self.proc_container.new("Opening G-Code."):
 
-        # New object creation and file processing
-        try:
-            self.new_object("cncjob", name, obj_init)
-        except:
-            e = sys.exc_info()
-            App.log.error(str(e))
-            self.message_dialog("Failed to create CNCJob Object",
-                                "Attempting to create a FlatCAM CNCJob Object from " +
-                                "G-Code file failed during processing:\n" +
-                                str(e[0]) + " " + str(e[1]), kind="error")
-            self.progress.emit(0)
-            self.collection.delete_active()
-            return
+            # Object name
+            name = outname or filename.split('/')[-1].split('\\')[-1]
 
-        # Register recent file
-        self.file_opened.emit("cncjob", filename)
+            # New object creation and file processing
+            try:
+                self.new_object("cncjob", name, obj_init)
+            except Exception as e:
+                # e = sys.exc_info()
+                App.log.error(str(e))
+                self.message_dialog("Failed to create CNCJob Object",
+                                    "Attempting to create a FlatCAM CNCJob Object from " +
+                                    "G-Code file failed during processing:\n" +
+                                    str(e[0]) + " " + str(e[1]), kind="error")
+                self.progress.emit(0)
+                self.collection.delete_active()
+                raise e
 
-        # GUI feedback
-        self.inform.emit("Opened: " + filename)
-        self.progress.emit(100)
+            # Register recent file
+            self.file_opened.emit("cncjob", filename)
+
+            # GUI feedback
+            self.inform.emit("Opened: " + filename)
+            self.progress.emit(100)
 
     def open_project(self, filename):
         """

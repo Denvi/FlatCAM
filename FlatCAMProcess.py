@@ -2,6 +2,17 @@ from FlatCAMGUI import FlatCAMActivityView
 from PyQt4 import QtCore
 import weakref
 
+import logging
+
+log = logging.getLogger('base2')
+log.setLevel(logging.DEBUG)
+#log.setLevel(logging.WARNING)
+#log.setLevel(logging.INFO)
+formatter = logging.Formatter('[%(levelname)s] %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+log.addHandler(handler)
+
 
 class FCProcess(object):
 
@@ -13,9 +24,6 @@ class FCProcess(object):
         self.status = "Active"
 
     def __del__(self):
-        # print "#######################"
-        # print "# FCProcess.__del__() #"
-        # print "#######################"
         self.done()
 
     def __enter__(self):
@@ -23,15 +31,14 @@ class FCProcess(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            print "Abnormal termination of process!"
-            print exc_type
-            print exc_val
-            print exc_tb
+            log.error("Abnormal termination of process!")
+            log.error(exc_type)
+            log.error(exc_val)
+            log.error(exc_tb)
 
         self.done()
 
     def done(self):
-        # print "FCProcess.done()"
         for fcn in self.callbacks["done"]:
             fcn(self)
 
@@ -113,21 +120,18 @@ class FCVisibleProcessContainer(QtCore.QObject, FCProcessContainer):
         self.something_changed.connect(self.update_view)
 
     def on_done(self, proc):
-        print "FCVisibleProcessContainer.on_done()"
+        log.debug("FCVisibleProcessContainer.on_done()")
         super(FCVisibleProcessContainer, self).on_done(proc)
 
-        #self.update_view()
         self.something_changed.emit()
 
     def on_change(self, proc):
-        print "FCVisibleProcessContainer.on_change()"
+        log.debug("FCVisibleProcessContainer.on_change()")
         super(FCVisibleProcessContainer, self).on_change(proc)
 
-        #self.update_view()
         self.something_changed.emit()
 
     def update_view(self):
-        # print "FCVisibleProcessContainer.update_view()"
         if len(self.procs) == 0:
             self.view.set_idle()
 

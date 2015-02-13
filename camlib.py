@@ -1929,10 +1929,12 @@ class Gerber (Geometry):
 
             # --- Apply buffer ---
             log.warn("Joining %d polygons." % len(poly_buffer))
+            new_poly = cascaded_union(poly_buffer)
+            new_poly = new_poly.buffer(0)
             if current_polarity == 'D':
-                self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
+                self.solid_geometry = self.solid_geometry.union(new_poly)
             else:
-                self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
+                self.solid_geometry = self.solid_geometry.difference(new_poly)
 
         except Exception, err:
             #print traceback.format_exc()
