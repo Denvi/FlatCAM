@@ -43,8 +43,8 @@ import simplejson as json
 import logging
 
 log = logging.getLogger('base2')
-#log.setLevel(logging.DEBUG)
-log.setLevel(logging.WARNING)
+log.setLevel(logging.DEBUG)
+#log.setLevel(logging.WARNING)
 #log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
@@ -1597,6 +1597,8 @@ class Gerber (Geometry):
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
                         poly_buffer.append(flash)
+
+                        path = [[current_x, current_y]]  # Reset path starting point
 
                     continue
 
