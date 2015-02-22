@@ -59,7 +59,7 @@ class App(QtCore.QObject):
     log.addHandler(handler)
 
     ## Version
-    version = 8.2
+    version = 8.3
     version_date = "2015/02"
 
     ## URL for update checks and statistics
@@ -436,7 +436,9 @@ class App(QtCore.QObject):
         ####################
         ### Other setups ###
         ####################
+        # Sets up FlatCAMObj, FCProcess and FCProcessContainer.
         self.setup_obj_classes()
+
         self.setup_recent_items()
         self.setup_component_editor()
 
@@ -2588,6 +2590,9 @@ class App(QtCore.QObject):
         :return: None
         """
         FlatCAMObj.app = self
+
+        FCProcess.app = self
+        FCProcessContainer.app = self
 
     def version_check(self):
         """

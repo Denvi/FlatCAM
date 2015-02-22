@@ -2,19 +2,22 @@ from FlatCAMGUI import FlatCAMActivityView
 from PyQt4 import QtCore
 import weakref
 
-import logging
 
-log = logging.getLogger('base2')
-#log.setLevel(logging.DEBUG)
-log.setLevel(logging.WARNING)
-#log.setLevel(logging.INFO)
-formatter = logging.Formatter('[%(levelname)s] %(message)s')
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
-log.addHandler(handler)
+# import logging
+
+# log = logging.getLogger('base2')
+# #log.setLevel(logging.DEBUG)
+# log.setLevel(logging.WARNING)
+# #log.setLevel(logging.INFO)
+# formatter = logging.Formatter('[%(levelname)s] %(message)s')
+# handler = logging.StreamHandler()
+# handler.setFormatter(formatter)
+# log.addHandler(handler)
 
 
 class FCProcess(object):
+
+    app = None
 
     def __init__(self, descr):
         self.callbacks = {
@@ -31,10 +34,10 @@ class FCProcess(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            log.error("Abnormal termination of process!")
-            log.error(exc_type)
-            log.error(exc_val)
-            log.error(exc_tb)
+            self.app.log.error("Abnormal termination of process!")
+            self.app.log.error(exc_type)
+            self.app.log.error(exc_val)
+            self.app.log.error(exc_tb)
 
         self.done()
 
@@ -68,6 +71,8 @@ class FCProcessContainer(object):
     such that their __del__ method is called when the user
     looses track of their reference.
     """
+
+    app = None
 
     def __init__(self):
 
@@ -120,13 +125,13 @@ class FCVisibleProcessContainer(QtCore.QObject, FCProcessContainer):
         self.something_changed.connect(self.update_view)
 
     def on_done(self, proc):
-        log.debug("FCVisibleProcessContainer.on_done()")
+        self.app.log.debug("FCVisibleProcessContainer.on_done()")
         super(FCVisibleProcessContainer, self).on_done(proc)
 
         self.something_changed.emit()
 
     def on_change(self, proc):
-        log.debug("FCVisibleProcessContainer.on_change()")
+        self.app.log.debug("FCVisibleProcessContainer.on_change()")
         super(FCVisibleProcessContainer, self).on_change(proc)
 
         self.something_changed.emit()
