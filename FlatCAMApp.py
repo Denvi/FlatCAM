@@ -146,6 +146,9 @@ class App(QtCore.QObject):
         QtCore.QObject.__init__(self)
 
         self.ui = FlatCAMGUI(self.version)
+        self.connect(self.ui,
+                     QtCore.SIGNAL("geomUpdate(int, int, int, int)"),
+                     self.save_geometry)
 
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
@@ -243,6 +246,11 @@ class App(QtCore.QObject):
 
             # Persistence
             "last_folder": None,
+            # Default window geometry
+            "def_win_x": 100,
+            "def_win_y": 100,
+            "def_win_w": 1024,
+            "def_win_h": 650,
 
             # Constants...
             "defaults_save_period_ms": 20000,   # Time between default saves.
@@ -269,6 +277,7 @@ class App(QtCore.QObject):
             self.save_defaults(silent=True)
 
         self.propagate_defaults()
+        self.restore_main_win_geom()
 
         def auto_save_defaults():
             try:
@@ -674,6 +683,14 @@ class App(QtCore.QObject):
             self.inform.emit("ERROR: Failed to parse defaults file.")
             return
         self.defaults.update(defaults)
+
+    def save_geometry(self, x, y, width, height):
+        self.defaults["def_win_x"] = x
+        self.defaults["def_win_y"] = y
+        self.defaults["def_win_w"] = width
+        self.defaults["def_win_h"] = height
+        self.save_defaults()
+        print self.defaults
 
     def message_dialog(self, title, message, kind="info"):
         icon = {"info": QtGui.QMessageBox.Information,
@@ -1799,6 +1816,12 @@ class App(QtCore.QObject):
                     if p in routes[param].defaults:
                         routes[param].defaults[p] = self.defaults[param]
                         self.log.debug("  " + param + " OK!")
+
+    def restore_main_win_geom(self):
+        self.ui.setGeometry(self.defaults["def_win_x"],
+                            self.defaults["def_win_y"],
+                            self.defaults["def_win_w"],
+                            self.defaults["def_win_h"])
 
     def plot_all(self):
         """
