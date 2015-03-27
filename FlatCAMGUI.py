@@ -4,6 +4,9 @@ from GUIElements import *
 
 class FlatCAMGUI(QtGui.QMainWindow):
 
+    # Emitted when persistent window geometry needs to be retained
+    geom_update = QtCore.pyqtSignal(int, int, int, int, name='geomUpdate')
+
     def __init__(self, version):
         super(FlatCAMGUI, self).__init__()
 
@@ -241,6 +244,8 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.show()
 
     def closeEvent(self, event):
+        grect = self.geometry()
+        self.geom_update.emit(grect.x(), grect.y(), grect.width(), grect.height())
         QtGui.qApp.quit()
 
 
