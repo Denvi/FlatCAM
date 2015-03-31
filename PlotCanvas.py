@@ -7,6 +7,11 @@
 ############################################################
 
 from PyQt4 import QtGui, QtCore
+
+# Prevent conflict with Qt5 and above.
+from matplotlib import use as mpl_use
+mpl_use("Qt4Agg")
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 import FlatCAMApp
@@ -264,8 +269,8 @@ class PlotCanvas:
 
         # Adjust axes
         for ax in self.figure.get_axes():
-            ax.set_xlim((xmin + x*width, xmax + x*width))
-            ax.set_ylim((ymin + y*height, ymax + y*height))
+            ax.set_xlim((xmin + x * width, xmax + x * width))
+            ax.set_ylim((ymin + y * height, ymax + y * height))
 
         # Re-draw
         self.canvas.draw()
@@ -302,7 +307,7 @@ class PlotCanvas:
             if event.button == 'up':
                 self.zoom(1.5, self.mouse)
             else:
-                self.zoom(1/1.5, self.mouse)
+                self.zoom(1 / 1.5, self.mouse)
             return
 
         if self.key == 'shift':

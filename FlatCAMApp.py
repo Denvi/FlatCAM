@@ -51,8 +51,8 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    #log.setLevel(logging.DEBUG)
-    log.setLevel(logging.WARNING)
+    log.setLevel(logging.DEBUG)
+    #log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -690,7 +690,6 @@ class App(QtCore.QObject):
         self.defaults["def_win_w"] = width
         self.defaults["def_win_h"] = height
         self.save_defaults()
-        print self.defaults
 
     def message_dialog(self, title, message, kind="info"):
         icon = {"info": QtGui.QMessageBox.Information,
