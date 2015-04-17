@@ -1429,7 +1429,14 @@ class Gerber (Geometry):
     def parse_file(self, filename, follow=False):
         """
         Calls Gerber.parse_lines() with generator of lines
-        read from the given file.
+        read from the given file. Will split the lines if multiple
+        statements are found in a single original line.
+
+        The following line is split into two::
+
+            G54D11*G36*
+
+        First is ``G54D11*`` and seconds is ``G36*``.
 
         :param filename: Gerber file to parse.
         :type filename: str
@@ -1445,15 +1452,20 @@ class Gerber (Geometry):
                 for line in gfile:
                     line = line.strip(' \r\n')
                     while len(line) > 0:
+
+                        # If ends with '%' leave as is.
                         if line[-1] == '%':
                             yield line
                             break
 
+                        # Split after '*' if any.
                         starpos = line.find('*')
                         if starpos > -1:
                             cleanline = line[:starpos + 1]
                             yield cleanline
                             line = line[starpos + 1:]
+
+                        # Otherwise leave as is.
                         else:
                             yield cleanline
                             break
