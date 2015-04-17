@@ -1428,7 +1428,7 @@ class Gerber (Geometry):
         
     def parse_file(self, filename, follow=False):
         """
-        Calls Gerber.parse_lines() with array of lines
+        Calls Gerber.parse_lines() with generator of lines
         read from the given file.
 
         :param filename: Gerber file to parse.
@@ -1438,10 +1438,27 @@ class Gerber (Geometry):
         :type follow: bool
         :return: None
         """
-        gfile = open(filename, 'r')
-        gstr = gfile.readlines()
-        gfile.close()
-        self.parse_lines(gstr, follow=follow)
+
+        with open(filename, 'r') as gfile:
+
+            def line_generator():
+                for line in gfile:
+                    line = line.strip(' \r\n')
+                    while len(line) > 0:
+                        if line[-1] == '%':
+                            yield line
+                            break
+
+                        starpos = line.find('*')
+                        if starpos > -1:
+                            cleanline = line[:starpos + 1]
+                            yield cleanline
+                            line = line[starpos + 1:]
+                        else:
+                            yield cleanline
+                            break
+
+            self.parse_lines(line_generator(), follow=follow)
 
     #@profile
     def parse_lines(self, glines, follow=False):
