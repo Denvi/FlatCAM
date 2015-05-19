@@ -1186,9 +1186,10 @@ class App(QtCore.QObject):
 
         # self.options2form()
 
+
     def on_delete(self):
         """
-        Delete the currently selected FlatCAMObj.
+        Delete the currently selected FlatCAMObjs.
 
         :return: None
         """
@@ -1196,10 +1197,13 @@ class App(QtCore.QObject):
         self.log.debug("on_delete()")
         self.report_usage("on_delete")
 
+        while (self.collection.get_active()):
+            self.delete_first_selected()
+ 
+
+    def delete_first_selected(self):
         # Keep this for later
         try:
-            #name = copy(self.collection.get_active().options["name"])
-            # Shouldn't need to copy. String are immutable.
             name = self.collection.get_active().options["name"]
         except AttributeError:
             self.log.debug("Nothing selected for deletion")
@@ -2215,6 +2219,23 @@ class App(QtCore.QObject):
                 return "Object not found: %s" % obj_name
 
             obj.union()
+            
+
+
+        def join_geometries (obj_name, *obj_names):
+            objs = []
+            for obj_n in obj_names:
+                obj = self.collection.get_by_name(str(obj_n))
+                if obj is None:
+                    return "Object not found: %s" % obj_n
+                else:
+                    objs.append (obj)
+
+            def initialize(obj, app):
+                FlatCAMGeometry.merge(objs, obj)
+
+            if objs is not None:
+                self.new_object("geometry", obj_name, initialize)
 
         def make_docs():
             output = ''
@@ -2479,6 +2500,14 @@ class App(QtCore.QObject):
                         'a single larger polygon.\n' +
                         '> geo_union <name>\n' +
                         '   name: Name of the geometry object.'
+            },
+            'join_geometries': {
+                'fcn': join_geometries,
+                'help': 'Runs a merge operation (join) on the geometry ' +
+                        'objects.' +
+                        '> join_geometries <out_name> <obj_name_0>....\n' +
+                        '   out_name: Name of the new geometry object.' +
+                        '   obj_name_0... names of the objects to join'
             },
             'add_rect': {
                 'fcn': add_rectangle,
