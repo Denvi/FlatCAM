@@ -405,6 +405,12 @@ class GerberOptionsGroupUI(OptionsGroupUI):
         grid1.addWidget(overlabel, 2, 0)
         self.iso_overlap_entry = FloatEntry()
         grid1.addWidget(self.iso_overlap_entry, 2, 1)
+        
+        self.combine_passes_cb = FCCheckBox(label='Combine Passes')
+        self.combine_passes_cb.setToolTip(
+            "Combine all passes into one object"
+        )
+        grid1.addWidget(self.combine_passes_cb, 3, 0)
 
         ## Board cuttout
         self.board_cutout_label = QtGui.QLabel("<b>Board cutout:</b>")

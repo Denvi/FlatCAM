@@ -181,6 +181,7 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.defaults_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.defaults_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.defaults_form.gerber_group.iso_overlap_entry,
+            "gerber_combine_passes": self.defaults_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.defaults_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.defaults_form.gerber_group.cutout_margin_entry,
             "gerber_cutoutgapsize": self.defaults_form.gerber_group.cutout_gap_entry,
@@ -296,6 +297,7 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.options_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.options_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.options_form.gerber_group.iso_overlap_entry,
+            "gerber_combine_passes": self.options_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.options_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.options_form.gerber_group.cutout_margin_entry,
             "gerber_cutoutgapsize": self.options_form.gerber_group.cutout_gap_entry,
@@ -332,6 +334,7 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_combine_passes": True,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
             "gerber_cutoutgapsize": 0.15,
@@ -2098,7 +2101,8 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'passes': int,
                      'overlap': float,
-                     'outname': str}
+                     'outname': str, 
+                     'combine': int}
 
             for key in kwa:
                 if key not in types:
@@ -2394,10 +2398,11 @@ class App(QtCore.QObject):
             'isolate': {
                 'fcn': isolate,
                 'help': "Creates isolation routing geometry for the given Gerber.\n" +
-                        "> isolate <name> [-dia <d>] [-passes <p>] [-overlap <o>]\n" +
+                        "> isolate <name> [-dia <d>] [-passes <p>] [-overlap <o>] [-combine 0|1]\n" +
                         "   name: Name of the object\n"
                         "   dia: Tool diameter\n   passes: # of tool width\n" +
-                        "   overlap: Fraction of tool diameter to overlap passes"
+                        "   overlap: Fraction of tool diameter to overlap passes" +
+                        "   combine: combine all passes into one geometry"
             },
             'cutout': {
                 'fcn': cutout,
