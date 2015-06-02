@@ -560,6 +560,14 @@ class GerberObjectUI(ObjectUI):
         self.iso_overlap_entry = FloatEntry()
         grid1.addWidget(self.iso_overlap_entry, 2, 1)
 
+        # combine all passes CB
+        self.combine_passes_cb = FCCheckBox(label='Combine Passes')
+        self.combine_passes_cb.setToolTip(
+            "Combine all passes into one object"
+        )
+        grid1.addWidget(self.combine_passes_cb, 3, 0)
+
+
         self.generate_iso_button = QtGui.QPushButton('Generate Geometry')
         self.generate_iso_button.setToolTip(
             "Create the Geometry Object\n"

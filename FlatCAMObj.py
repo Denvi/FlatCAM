@@ -262,6 +262,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
+            "combine_passes": True,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
@@ -298,6 +299,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
+            "combine_passes":self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
             "cutoutgapsize": self.ui.cutout_gap_entry,
@@ -415,7 +417,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # TODO: Do something if this is None. Offer changing name?
         self.app.new_object("geometry", follow_name, follow_init)
 
-    def isolate(self, dia=None, passes=None, overlap=None, outname=None):
+    def isolate(self, dia=None, passes=None, overlap=None, outname=None, combine=None):
         """
         Creates an isolation routing geometry object in the project.
 
@@ -425,35 +427,54 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         :param outname: Base name of the output object
         :return: None
         """
-
         if dia is None:
             dia = self.options["isotooldia"]
         if passes is None:
             passes = int(self.options["isopasses"])
         if overlap is None:
-            overlap = self.options["isooverlap"] * dia
+            overlap = self.options["isooverlap"]
+        if combine is None:
+            combine = self.options["combine_passes"]
+        else:
+            combine = bool(combine)
 
         base_name = self.options["name"] + "_iso"
         base_name = outname or base_name
 
-        for i in range(passes):
-
-            offset = (2 * i + 1) / 2.0 * dia - i * overlap
-            if passes > 1:
-                iso_name = base_name + str(i + 1)
-            else:
-                iso_name = base_name
+        if (combine):
+            iso_name = base_name
 
             # TODO: This is ugly. Create way to pass data into init function.
             def iso_init(geo_obj, app_obj):
                 # Propagate options
                 geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-
-                geo_obj.solid_geometry = self.isolation_geometry(offset)
+                geo_obj.solid_geometry = []
+                for i in range(passes):
+                    offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
+                    geo_obj.solid_geometry.append(self.isolation_geometry(offset))
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
             # TODO: Do something if this is None. Offer changing name?
             self.app.new_object("geometry", iso_name, iso_init)
+
+        else:
+            for i in range(passes):
+
+                offset = (2 * i + 1) / 2.0 * dia - i * overlap  * dia
+                if passes > 1:
+                    iso_name = base_name + str(i + 1)
+                else:
+                    iso_name = base_name
+
+                # TODO: This is ugly. Create way to pass data into init function.
+                def iso_init(geo_obj, app_obj):
+                    # Propagate options
+                    geo_obj.options["cnctooldia"] = self.options["isotooldia"]
+                    geo_obj.solid_geometry = self.isolation_geometry(offset)
+                    app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
+
+                # TODO: Do something if this is None. Offer changing name?
+                self.app.new_object("geometry", iso_name, iso_init)
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
