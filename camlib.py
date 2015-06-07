@@ -2758,7 +2758,7 @@ class CNCjob(Geometry):
             # 0   4       12
             # G01 X-0.007 Y-0.057
             # --> codes_idx = [0, 4, 12]
-            codes = "NMGXYZIJFP"
+            codes = "NMGXYZIJFPST"
             codes_idx = []
             i = 0
             for ch in line:
