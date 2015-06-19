@@ -540,7 +540,8 @@ class Geometry(object):
 
                 # If last point in geometry is the nearest
                 # then reverse coordinates.
-                if list(pt) == list(candidate.coords[-1]):
+                # but prefer the first one if last == first
+                if pt != candidate.coords[0] and pt == candidate.coords[-1]:
                     candidate.coords = list(candidate.coords)[::-1]
 
                 # Straight line from current_pt to pt.
@@ -2689,8 +2690,9 @@ class CNCjob(Geometry):
                 storage.remove(geo)
 
                 # If last point in geometry is the nearest
+                # but prefer the first one if last point == first point
                 # then reverse coordinates.
-                if list(pt) == list(geo.coords[-1]):
+                if pt != geo.coords[0] and pt == geo.coords[-1]:
                     geo.coords = list(geo.coords)[::-1]
 
                 # G-code
