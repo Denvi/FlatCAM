@@ -441,6 +441,26 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         base_name = self.options["name"] + "_iso"
         base_name = outname or base_name
 
+        def generate_envelope (offset, invert):
+            # isolation_geometry produces an envelope that is going on the left of the geometry
+            # (the copper features). To leave the least amount of burrs on the features
+            # the tool needs to travel on the right side of the features (this is called conventional milling)
+            # the first pass is the one cutting all of the features, so it needs to be reversed
+            # the other passes overlap preceding ones and cut the left over copper. It is better for them
+            # to cut on the right side of the left over copper i.e on the left side of the features. 
+            geom = self.isolation_geometry(offset)
+            if invert:
+                if type(geom) is MultiPolygon:
+                    pl = []
+                    for p in geom:
+                        pl.append(Polygon (p.exterior.coords[::-1], p.interiors))
+                    geom = MultiPolygon(pl)
+                elif type(geom) is Polygon:
+                    geom = Polygon (geom.exterior.coords[::-1], geom.interiors);
+                else:
+                    raise "Unexpected Geometry"
+            return geom
+
         if (combine):
             iso_name = base_name
 
@@ -451,7 +471,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 geo_obj.solid_geometry = []
                 for i in range(passes):
                     offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
-                    geo_obj.solid_geometry.append(self.isolation_geometry(offset))
+                    geom = generate_envelope (offset, i == 0)
+                    geo_obj.solid_geometry.append(geom)
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
             # TODO: Do something if this is None. Offer changing name?
@@ -470,7 +491,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 def iso_init(geo_obj, app_obj):
                     # Propagate options
                     geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-                    geo_obj.solid_geometry = self.isolation_geometry(offset)
+                    geo_obj.solid_geometry = generate_envelope (offset, i == 0)
                     app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
                 # TODO: Do something if this is None. Offer changing name?
@@ -1062,7 +1083,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         z_move = z_move if z_move is not None else self.options["travelz"]
         feedrate = feedrate if feedrate is not None else self.options["feedrate"]
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
-
+        
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!
         def job_init(job_obj, app_obj):
