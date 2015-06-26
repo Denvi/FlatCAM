@@ -265,6 +265,7 @@ class App(QtCore.QObject):
             "point_clipboard_format": "(%.4f, %.4f)",
             "zdownrate": None,
             "excellon_zeros": "L",
+            "gerber_use_buffer_for_union": True,
             "cncjob_coordinate_format": "X%.4fY%.4f"
         })
 
@@ -1807,6 +1808,7 @@ class App(QtCore.QObject):
         routes = {
             "zdownrate": CNCjob,
             "excellon_zeros": Excellon,
+            "gerber_use_buffer_for_union": Gerber,
             "cncjob_coordinate_format": CNCjob
         }
 
