@@ -1159,7 +1159,8 @@ class Gerber (Geometry):
     """
 
     defaults = {
-        "steps_per_circle": 40
+        "steps_per_circle": 40,
+        "use_buffer_for_union": True
     }
 
     def __init__(self, steps_per_circle=None):
@@ -1276,6 +1277,8 @@ class Gerber (Geometry):
 
         # How to discretize a circle.
         self.steps_per_circ = steps_per_circle or Gerber.defaults['steps_per_circle']
+
+        self.use_buffer_for_union = self.defaults["use_buffer_for_union"]
 
     def scale(self, factor):
         """
@@ -1964,8 +1967,15 @@ class Gerber (Geometry):
 
             # --- Apply buffer ---
             log.warn("Joining %d polygons." % len(poly_buffer))
-            new_poly = cascaded_union(poly_buffer)
-            new_poly = new_poly.buffer(0)
+            if (self.use_buffer_for_union):
+                new_poly = MultiPolygon(poly_buffer)
+                new_poly = new_poly.buffer(0.00000001)
+                new_poly = new_poly.buffer(-0.00000001)
+                log.warn("Union(buffer) done.")
+            else:
+                new_poly = cascaded_union(poly_buffer)
+                new_poly = new_poly = new_poly.buffer(0)
+                log.warn("Union done.")
             if current_polarity == 'D':
                 self.solid_geometry = self.solid_geometry.union(new_poly)
             else:
