@@ -2055,7 +2055,8 @@ class App(QtCore.QObject):
                      'outname': str,
                      'drillz': float,
                      'travelz': float,
-                     'feedrate': float}
+                     'feedrate': float,
+                     'toolchange': int}
 
             for key in kwa:
                 if key not in types:
@@ -2085,7 +2086,8 @@ class App(QtCore.QObject):
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
-                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"])
+                    toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
+                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
                     
                     job_obj.gcode_parse()
                     
