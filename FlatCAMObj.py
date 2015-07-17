@@ -608,7 +608,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             # "toolselection": ""
             "tooldia": 0.1,
             "toolchange": False,
-            "toolchangez": 1.0
+            "toolchangez": 1.0,
+            "spindlespeed": ""
         })
 
         # TODO: Document this.
@@ -664,7 +665,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "feedrate": self.ui.feedrate_entry,
             "tooldia": self.ui.tooldia_entry,
             "toolchange": self.ui.toolchange_cb,
-            "toolchangez": self.ui.toolchangez_entry
+            "toolchangez": self.ui.toolchangez_entry,
+            "spindlespeed":  self.ui.spindlespeed_entry
         })
 
         assert isinstance(self.ui, ExcellonObjectUI)
@@ -740,6 +742,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             job_obj.z_cut = self.options["drillz"]
             job_obj.z_move = self.options["travelz"]
             job_obj.feedrate = self.options["feedrate"]
+            job_obj.spindlespeed = self.options["spindlespeed"]
             # There could be more than one drill size...
             # job_obj.tooldia =   # TODO: duplicate variable!
             # job_obj.options["tooldia"] =
@@ -825,12 +828,12 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     ui_type = CNCObjectUI
 
     def __init__(self, name, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0,spindlespeed=None):
 
         FlatCAMApp.App.log.debug("Creating CNCJob object...")
 
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
-                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
+                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia, spindlespeed=spindlespeed)
 
         FlatCAMObj.__init__(self, name)
 
@@ -971,6 +974,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0,
+            "spindlespeed": "",
             "cnctooldia": 0.4 / 25.4,
             "painttooldia": 0.0625,
             "paintoverlap": 0.15,
@@ -998,6 +1002,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "cutz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.cncfeedrate_entry,
+            "spindlespeed": self.ui.cncspindlespeed_entry,
             "cnctooldia": self.ui.cnctooldia_entry,
             "painttooldia": self.ui.painttooldia_entry,
             "paintoverlap": self.ui.paintoverlap_entry,
@@ -1076,13 +1081,18 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.generatecncjob()
 
     def generatecncjob(self, z_cut=None, z_move=None,
-                       feedrate=None, tooldia=None, outname=None):
+                       feedrate=None, tooldia=None, outname=None, spindlespeed=None):
 
         outname = outname if outname is not None else self.options["name"] + "_cnc"
         z_cut = z_cut if z_cut is not None else self.options["cutz"]
         z_move = z_move if z_move is not None else self.options["travelz"]
         feedrate = feedrate if feedrate is not None else self.options["feedrate"]
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
+
+        # To allow default value to be "" (optional in gui) and translate to None
+        if(not isinstance(spindlespeed, int)):
+            spindlespeed = self.options["spindlespeed"] if isinstance(self.options["spindlespeed"], int) else None
+
         
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!
@@ -1095,7 +1105,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             job_obj.z_cut = z_cut
             job_obj.z_move = z_move
             job_obj.feedrate = feedrate
-
+            job_obj.spindlespeed = spindlespeed
             app_obj.progress.emit(40)
             # TODO: The tolerance should not be hard coded. Just for testing.
             job_obj.generate_from_geometry_2(self, tolerance=0.0005)

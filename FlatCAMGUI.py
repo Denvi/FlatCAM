@@ -580,6 +580,15 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
         self.feedrate_entry = LengthEntry()
         grid1.addWidget(self.feedrate_entry, 2, 1)
 
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 3, 0)
+        self.spindlespeed_entry = LengthEntry()
+        grid1.addWidget(self.spindlespeed_entry, 3, 1)
+
 
 class GeometryOptionsGroupUI(OptionsGroupUI):
     def __init__(self, parent=None):
@@ -646,6 +655,15 @@ class GeometryOptionsGroupUI(OptionsGroupUI):
         grid1.addWidget(tdlabel, 3, 0)
         self.cnctooldia_entry = LengthEntry()
         grid1.addWidget(self.cnctooldia_entry, 3, 1)
+
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 4, 0)
+        self.cncspindlespeed_entry = LengthEntry()
+        grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
 
         ## Paint area
         self.paint_label = QtGui.QLabel('<b>Paint Area:</b>')

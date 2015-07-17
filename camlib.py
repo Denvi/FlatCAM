@@ -2506,7 +2506,8 @@ class CNCjob(Geometry):
 
     defaults = {
         "zdownrate": None,
-        "coordinate_format": "X%.4fY%.4f"
+        "coordinate_format": "X%.4fY%.4f",
+        "spindlespeed": None
     }
 
     def __init__(self,
@@ -2516,7 +2517,8 @@ class CNCjob(Geometry):
                  feedrate=3.0,
                  z_cut=-0.002,
                  tooldia=0.0,
-                 zdownrate=None):
+                 zdownrate=None,
+                 spindlespeed=None):
 
         Geometry.__init__(self)
         self.kind = kind
@@ -2539,6 +2541,9 @@ class CNCjob(Geometry):
             self.zdownrate = float(CNCjob.defaults["zdownrate"])
         else:
             self.zdownrate = None
+
+        self.spindlespeed = spindlespeed
+
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -2605,7 +2610,10 @@ class CNCjob(Geometry):
         gcode += self.feedminutecode + "\n"
         gcode += "F%.2f\n" % self.feedrate
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
-        gcode += "M03\n"  # Spindle start
+        if(self.spindlespeed != None):
+            gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+        else:
+            gcode += "M03\n"  # Spindle start
         gcode += self.pausecode + "\n"
 
         for tool in points:
@@ -2618,7 +2626,10 @@ class CNCjob(Geometry):
                 gcode += "M6\n"  # Tool change
                 gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
                 gcode += "M0\n"  # Temporary machine stop
-                gcode += "M3\n"  # Spindle on clockwise
+                if(self.spindlespeed != None):
+                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+                else:
+                    gcode += "M03\n"  # Spindle start
 
             # Drillling!
             for point in points[tool]:
@@ -2682,7 +2693,10 @@ class CNCjob(Geometry):
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n" % self.feedrate
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
-        self.gcode += "M03\n"  # Spindle start
+        if(self.spindlespeed != None):
+            self.gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+        else:
+            self.gcode += "M03\n"  # Spindle start
         self.gcode += self.pausecode + "\n"
 
         ## Iterate over geometry paths getting the nearest each time.

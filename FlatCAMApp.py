@@ -266,7 +266,8 @@ class App(QtCore.QObject):
             "zdownrate": None,
             "excellon_zeros": "L",
             "gerber_use_buffer_for_union": True,
-            "cncjob_coordinate_format": "X%.4fY%.4f"
+            "cncjob_coordinate_format": "X%.4fY%.4f",
+            "spindlespeed": None
         })
 
         ###############################
@@ -1809,7 +1810,8 @@ class App(QtCore.QObject):
             "zdownrate": CNCjob,
             "excellon_zeros": Excellon,
             "gerber_use_buffer_for_union": Gerber,
-            "cncjob_coordinate_format": CNCjob
+            "cncjob_coordinate_format": CNCjob,
+            "spindlespeed": CNCjob
         }
 
         for param in routes:
@@ -2055,7 +2057,9 @@ class App(QtCore.QObject):
                      'outname': str,
                      'drillz': float,
                      'travelz': float,
-                     'feedrate': float}
+                     'feedrate': float,
+                     'spindlespeed': int
+                     }
 
             for key in kwa:
                 if key not in types:
@@ -2085,7 +2089,8 @@ class App(QtCore.QObject):
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
-                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"])
+                    job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
+                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], True)
                     
                     job_obj.gcode_parse()
                     
@@ -2133,7 +2138,9 @@ class App(QtCore.QObject):
                      'z_move': float,
                      'feedrate': float,
                      'tooldia': float,
-                     'outname': str}
+                     'outname': str,
+                     'spindlespeed': int
+                     }
 
             for key in kwa:
                 if key not in types:
