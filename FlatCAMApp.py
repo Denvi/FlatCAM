@@ -2434,13 +2434,14 @@ class App(QtCore.QObject):
             'drillcncjob': {
                 'fcn': drillcncjob,
                 'help': "Drill CNC job.\n" +
-                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> \n" +
+                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> [-spindlespeed (int)]\n" +
                         "   name: Name of the object\n" +
                         "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
                         "   drillz: Drill depth into material (example: -2.0)\n" +
                         "   travelz: Travel distance above material (example: 2.0)\n" +
                         "   feedrate: Drilling feed rate\n" +
-                        "   outname: Name of object to create\n"
+                        "   outname: Name of object to create\n" +
+                        "   spindlespeed: Speed of the spindle in rpm (example: 4000)\n"
             },
             'scale': {
                 'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
@@ -2463,12 +2464,13 @@ class App(QtCore.QObject):
             'cncjob': {
                 'fcn': cncjob,
                 'help': 'Generates a CNC Job from a Geometry Object.\n' +
-                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-outname <n>]\n' +
+                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-spindlespeed (int)] [-outname <n>]\n' +
                         '   name: Name of the source object\n' +
                         '   z_cut: Z-axis cutting position\n' +
                         '   z_move: Z-axis moving position\n' +
                         '   feedrate: Moving speed when cutting\n' +
                         '   tooldia: Tool diameter to show on screen\n' +
+                        '   spindlespeed: Speed of the spindle in rpm (example: 4000)\n' +
                         '   outname: Name of the output object'
             },
             'write_gcode': {
