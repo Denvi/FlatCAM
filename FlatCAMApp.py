@@ -2429,13 +2429,14 @@ class App(QtCore.QObject):
             'drillcncjob': {
                 'fcn': drillcncjob,
                 'help': "Drill CNC job.\n" +
-                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> \n" +
+                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> [-toolchange (int)] \n" +
                         "   name: Name of the object\n" +
                         "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
                         "   drillz: Drill depth into material (example: -2.0)\n" +
                         "   travelz: Travel distance above material (example: 2.0)\n" +
                         "   feedrate: Drilling feed rate\n" +
-                        "   outname: Name of object to create\n"
+                        "   outname: Name of object to create\n" +
+                        "   toolchange: Enable tool changes (example: 1)\n"
             },
             'scale': {
                 'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
