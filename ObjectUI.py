@@ -271,6 +271,16 @@ class GeometryObjectUI(ObjectUI):
         self.cnctooldia_entry = LengthEntry()
         grid1.addWidget(self.cnctooldia_entry, 3, 1)
 
+        # Spindlespeed
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 4, 0)
+        self.cncspindlespeed_entry = LengthEntry()
+        grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
+
         self.generate_cnc_button = QtGui.QPushButton('Generate')
         self.generate_cnc_button.setToolTip(
             "Generate the CNC Job object."
@@ -445,6 +455,16 @@ class ExcellonObjectUI(ObjectUI):
         self.toolchangez_entry = LengthEntry()
         grid1.addWidget(self.toolchangez_entry, 4, 1)
         self.ois_tcz = OptionalInputSection(self.toolchange_cb, [self.toolchangez_entry])
+
+        # Spindlespeed
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 5, 0)
+        self.spindlespeed_entry = LengthEntry()
+        grid1.addWidget(self.spindlespeed_entry, 5, 1)
 
         choose_tools_label = QtGui.QLabel(
             "Select from the tools section above\n"

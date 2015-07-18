@@ -266,7 +266,8 @@ class App(QtCore.QObject):
             "zdownrate": None,
             "excellon_zeros": "L",
             "gerber_use_buffer_for_union": True,
-            "cncjob_coordinate_format": "X%.4fY%.4f"
+            "cncjob_coordinate_format": "X%.4fY%.4f",
+            "spindlespeed": None
         })
 
         ###############################
@@ -1809,7 +1810,8 @@ class App(QtCore.QObject):
             "zdownrate": CNCjob,
             "excellon_zeros": Excellon,
             "gerber_use_buffer_for_union": Gerber,
-            "cncjob_coordinate_format": CNCjob
+            "cncjob_coordinate_format": CNCjob,
+            "spindlespeed": CNCjob
         }
 
         for param in routes:
@@ -2056,7 +2058,9 @@ class App(QtCore.QObject):
                      'drillz': float,
                      'travelz': float,
                      'feedrate': float,
-                     'toolchange': int}
+                     'spindlespeed': int,
+                     'toolchange': int
+                     }
 
             for key in kwa:
                 if key not in types:
@@ -2086,6 +2090,7 @@ class App(QtCore.QObject):
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
+                    job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
                     toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
                     job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
                     
@@ -2135,7 +2140,9 @@ class App(QtCore.QObject):
                      'z_move': float,
                      'feedrate': float,
                      'tooldia': float,
-                     'outname': str}
+                     'outname': str,
+                     'spindlespeed': int
+                     }
 
             for key in kwa:
                 if key not in types:
@@ -2429,13 +2436,14 @@ class App(QtCore.QObject):
             'drillcncjob': {
                 'fcn': drillcncjob,
                 'help': "Drill CNC job.\n" +
-                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> [-toolchange (int)] \n" +
+                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> [-spindlespeed (int)] [-toolchange (int)] \n" +
                         "   name: Name of the object\n" +
                         "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
                         "   drillz: Drill depth into material (example: -2.0)\n" +
                         "   travelz: Travel distance above material (example: 2.0)\n" +
                         "   feedrate: Drilling feed rate\n" +
                         "   outname: Name of object to create\n" +
+                        "   spindlespeed: Speed of the spindle in rpm (example: 4000)\n" +
                         "   toolchange: Enable tool changes (example: 1)\n"
             },
             'scale': {
@@ -2459,12 +2467,13 @@ class App(QtCore.QObject):
             'cncjob': {
                 'fcn': cncjob,
                 'help': 'Generates a CNC Job from a Geometry Object.\n' +
-                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-outname <n>]\n' +
+                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-spindlespeed (int)] [-outname <n>]\n' +
                         '   name: Name of the source object\n' +
                         '   z_cut: Z-axis cutting position\n' +
                         '   z_move: Z-axis moving position\n' +
                         '   feedrate: Moving speed when cutting\n' +
                         '   tooldia: Tool diameter to show on screen\n' +
+                        '   spindlespeed: Speed of the spindle in rpm (example: 4000)\n' +
                         '   outname: Name of the output object'
             },
             'write_gcode': {
