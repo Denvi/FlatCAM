@@ -2029,8 +2029,8 @@ class Gerber (Geometry):
             n_vertices = aperture['nVertices']
             points = []
             for i in range(0, n_vertices):
-                x = loc[0] + diam * (cos(2 * pi * i / n_vertices))
-                y = loc[1] + diam * (sin(2 * pi * i / n_vertices))
+                x = loc[0] + 0.5 * diam * (cos(2 * pi * i / n_vertices))
+                y = loc[1] + 0.5 * diam * (sin(2 * pi * i / n_vertices))
                 points.append((x, y))
             ply = Polygon(points)
             if 'rotation' in aperture:
