@@ -2003,7 +2003,7 @@ class App(QtCore.QObject):
                 geo_obj.solid_geometry = cascaded_union([LineString(segment) for segment in cuts])
 
             try:
-                obj.app.new_object("geometry", name+ "_cutout", geo_init_me)
+                obj.app.new_object("geometry", name + "_cutout", geo_init_me)
             except Exception, e:
                 return "Operation failed: %s" % str(e)
 
@@ -2164,6 +2164,14 @@ class App(QtCore.QObject):
             return 'Ok'
 
         def write_gcode(obj_name, filename, preamble='', postamble=''):
+            if self.collection.has_promises():
+                self.log.debug("Collection has promises. write_gcode() queued.")
+                self.worker_task.emit({
+                    'fcn': write_gcode,
+                    'params': [obj_name, filename, preamble, postamble]
+                })
+                return
+
             try:
                 obj = self.collection.get_by_name(str(obj_name))
             except:

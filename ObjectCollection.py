@@ -6,6 +6,10 @@ from PyQt4 import Qt, QtGui, QtCore
 
 
 class KeySensitiveListView(QtGui.QListView):
+    """
+    QtGui.QListView extended to emit a signal on key press.
+    """
+
     keyPressed = QtCore.pyqtSignal(int)
 
     def keyPressEvent(self, event):
@@ -43,6 +47,13 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.object_list = []
         self.checked_indexes = []
 
+        # Names of objects that are expected to become available.
+        # For example, when the creation of a new object will run
+        # in the background and will complete some time in the
+        # future. This is a way to reserve the name and to let other
+        # tasks know that they have to wait until available.
+        self.promises = set()
+
         ### View
         #self.view = QtGui.QListView()
         self.view = KeySensitiveListView()
@@ -56,6 +67,13 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.view.activated.connect(self.on_item_activated)
         self.view.keyPressed.connect(self.on_key)
         self.view.clicked.connect(self.on_mouse_down)
+
+    def promise(self, obj_name):
+        FlatCAMApp.App.log.debug("Object %s has been promised." % obj_name)
+        self.promises.add(obj_name)
+
+    def has_promises(self):
+        return len(self.promises) > 0
 
     def on_key(self, key):
 
@@ -95,8 +113,14 @@ class ObjectCollection(QtCore.QAbstractListModel):
     def append(self, obj, active=False):
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> OC.append()")
 
-        # Prevent same name
         name = obj.options["name"]
+
+        # Check promises and clear if exists
+        if name in self.promises:
+            self.promises.remove(name)
+            FlatCAMApp.App.log.debug("Promised object %s became available." % name)
+
+        # Prevent same name
         while name in self.get_names():
             ## Create a new name
             # Ends with number?

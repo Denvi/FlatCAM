@@ -441,7 +441,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         base_name = self.options["name"] + "_iso"
         base_name = outname or base_name
 
-        def generate_envelope (offset, invert):
+        def generate_envelope(offset, invert):
             # isolation_geometry produces an envelope that is going on the left of the geometry
             # (the copper features). To leave the least amount of burrs on the features
             # the tool needs to travel on the right side of the features (this is called conventional milling)
@@ -453,15 +453,15 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 if type(geom) is MultiPolygon:
                     pl = []
                     for p in geom:
-                        pl.append(Polygon (p.exterior.coords[::-1], p.interiors))
+                        pl.append(Polygon(p.exterior.coords[::-1], p.interiors))
                     geom = MultiPolygon(pl)
                 elif type(geom) is Polygon:
-                    geom = Polygon (geom.exterior.coords[::-1], geom.interiors);
+                    geom = Polygon(geom.exterior.coords[::-1], geom.interiors)
                 else:
                     raise "Unexpected Geometry"
             return geom
 
-        if (combine):
+        if combine:
             iso_name = base_name
 
             # TODO: This is ugly. Create way to pass data into init function.
@@ -718,6 +718,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             app_obj.new_object("geometry", geo_name, geo_init)
             app_obj.progress.emit(100)
 
+        # Create a promise with the new name
+        self.app.collection.promise(geo_name)
+
         # Send to worker
         self.app.worker_task.emit({'fcn': geo_thread, 'params': [self.app]})
 
@@ -764,6 +767,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
             app_obj.progress.emit(100)
+
+        # Create promise for the new name.
+        self.app.collection.promise(job_name)
 
         # Send to worker
         # self.app.worker.add_task(job_thread, [self.app])
@@ -1048,16 +1054,20 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         proc = self.app.proc_container.new("Painting polygon.")
 
+        name = self.options["name"] + "_paint"
+
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
             #assert isinstance(app_obj, App)
 
             if self.options["paintmethod"] == "seed":
-                cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
+                cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]),
+                                         tooldia, overlap=overlap)
 
             else:
-                cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
+                cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]),
+                                        tooldia, overlap=overlap)
 
             geo_obj.solid_geometry = list(cp.get_objects())
             geo_obj.options["cnctooldia"] = tooldia
@@ -1065,7 +1075,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         def job_thread(app_obj):
             try:
-                name = self.options["name"] + "_paint"
                 app_obj.new_object("geometry", name, gen_paintarea)
             except Exception as e:
                 proc.done()
@@ -1073,6 +1082,11 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             proc.done()
 
         self.app.inform.emit("Polygon Paint started ...")
+
+        # Promise object with the new name
+        self.app.collection.promise(name)
+
+        # Background
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def on_generatecnc_button_click(self, *args):
@@ -1082,6 +1096,17 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
     def generatecncjob(self, z_cut=None, z_move=None,
                        feedrate=None, tooldia=None, outname=None, spindlespeed=None):
+        """
+        Creates a CNCJob out of this Geometry object.
+
+        :param z_cut: Cut depth (negative)
+        :param z_move: Hight of the tool when travelling (not cutting)
+        :param feedrate: Feed rate while cutting
+        :param tooldia: Tool diameter
+        :param outname: Name of the new object
+        :param spindlespeed: Spindle speed (RPM)
+        :return: None
+        """
 
         outname = outname if outname is not None else self.options["name"] + "_cnc"
         z_cut = z_cut if z_cut is not None else self.options["cutz"]
@@ -1090,10 +1115,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
 
         # To allow default value to be "" (optional in gui) and translate to None
-        if(not isinstance(spindlespeed, int)):
-            spindlespeed = self.options["spindlespeed"] if isinstance(self.options["spindlespeed"], int) else None
+        if not isinstance(spindlespeed, int):
+            if isinstance(self.options["spindlespeed"], int):
+                spindlespeed = self.options["spindlespeed"]
+            else:
+                spindlespeed = None
 
-        
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!
         def job_init(job_obj, app_obj):
@@ -1121,6 +1148,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 app_obj.new_object("cncjob", outname, job_init)
                 app_obj.inform.emit("CNCjob created: %s" % outname)
                 app_obj.progress.emit(100)
+
+        # Create a promise with the name
+        self.app.collection.promise(outname)
 
         # Send to worker
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
