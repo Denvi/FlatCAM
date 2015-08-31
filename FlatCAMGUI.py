@@ -748,7 +748,18 @@ class CNCJobOptionsGroupUI(OptionsGroupUI):
         )
         self.layout.addWidget(self.export_gcode_label)
 
-        # Append text to Gerber
+        # Prepend to G-Code
+        prependlabel = QtGui.QLabel('Prepend to G-Code:')
+        prependlabel.setToolTip(
+            "Type here any G-Code commands you would\n"
+            "like to add at the beginning of the G-Code file."
+        )
+        self.layout.addWidget(prependlabel)
+
+        self.prepend_text = FCTextArea()
+        self.layout.addWidget(self.prepend_text)
+
+        # Append text to G-Code
         appendlabel = QtGui.QLabel('Append to G-Code:')
         appendlabel.setToolTip(
             "Type here any G-Code commands you would\n"

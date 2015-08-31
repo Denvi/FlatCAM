@@ -205,6 +205,7 @@ class App(QtCore.QObject):
             "geometry_paintmargin": self.defaults_form.geometry_group.paintmargin_entry,
             "cncjob_plot": self.defaults_form.cncjob_group.plot_cb,
             "cncjob_tooldia": self.defaults_form.cncjob_group.tooldia_entry,
+            "cncjob_prepend": self.defaults_form.cncjob_group.prepend_text,
             "cncjob_append": self.defaults_form.cncjob_group.append_text
         }
 
@@ -243,6 +244,7 @@ class App(QtCore.QObject):
             "geometry_paintmargin": 0.0,
             "cncjob_plot": True,
             "cncjob_tooldia": 0.016,
+            "cncjob_prepend": "",
             "cncjob_append": "",
 
             # Persistence
@@ -323,6 +325,7 @@ class App(QtCore.QObject):
             "geometry_paintmargin": self.options_form.geometry_group.paintmargin_entry,
             "cncjob_plot": self.options_form.cncjob_group.plot_cb,
             "cncjob_tooldia": self.options_form.cncjob_group.tooldia_entry,
+            "cncjob_prepend": self.options_form.cncjob_group.prepend_text,
             "cncjob_append": self.options_form.cncjob_group.append_text
         }
 
@@ -360,6 +363,7 @@ class App(QtCore.QObject):
             "geometry_paintmargin": 0.0,
             "cncjob_plot": True,
             "cncjob_tooldia": 0.016,
+            "cncjob_prepend": "",
             "cncjob_append": ""
         })
         self.options.update(self.defaults)  # Copy app defaults to project options
