@@ -1,6 +1,8 @@
 from PyQt4 import QtGui, QtCore, Qt
 import FlatCAMApp
 from camlib import *
+from FlatCAMTool import FlatCAMTool
+from ObjectUI import LengthEntry
 
 from shapely.geometry import Polygon, LineString, Point, LinearRing
 from shapely.geometry import MultiPoint, MultiPolygon
@@ -17,6 +19,47 @@ from numpy.linalg import solve
 #from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
 
 from rtree import index as rtindex
+
+
+class BufferSelectionTool(FlatCAMTool):
+    """
+    Simple input for buffer distance.
+    """
+
+    toolName = "Buffer Selection"
+
+    def __init__(self, app, fcdraw):
+        FlatCAMTool.__init__(self, app)
+
+        self.fcdraw = fcdraw
+
+        ## Title
+        title_label = QtGui.QLabel("<font size=4><b>%s</b></font>" % self.toolName)
+        self.layout.addWidget(title_label)
+
+        ## Form Layout
+        form_layout = QtGui.QFormLayout()
+        self.layout.addLayout(form_layout)
+
+        ## Buffer distance
+        self.buffer_distance_entry = LengthEntry()
+        form_layout.addRow("Buffer distance:", self.buffer_distance_entry)
+
+        ## Buttons
+        hlay = QtGui.QHBoxLayout()
+        self.layout.addLayout(hlay)
+        hlay.addStretch()
+        self.buffer_button = QtGui.QPushButton("Buffer")
+        hlay.addWidget(self.buffer_button)
+
+        self.layout.addStretch()
+
+        ## Signals
+        self.buffer_button.clicked.connect(self.on_buffer)
+
+    def on_buffer(self):
+        buffer_distance = self.buffer_distance_entry.get_value()
+        self.fcdraw.buffer(buffer_distance)
 
 
 class DrawToolShape(object):
@@ -578,22 +621,29 @@ class FlatCAMDraw(QtCore.QObject):
         self.app.ui.addToolBar(self.snap_toolbar)
 
         ### Application menu ###
-        # self.menu = QtGui.QMenu("Drawing")
-        # self.app.ui.menu.insertMenu(self.app.ui.menutoolaction, self.menu)
+        self.menu = QtGui.QMenu("Drawing")
+        self.app.ui.menu.insertMenu(self.app.ui.menutoolaction, self.menu)
         # self.select_menuitem = self.menu.addAction(QtGui.QIcon('share/pointer16.png'), "Select 'Esc'")
         # self.add_circle_menuitem = self.menu.addAction(QtGui.QIcon('share/circle16.png'), 'Add Circle')
         # self.add_arc_menuitem = self.menu.addAction(QtGui.QIcon('share/arc16.png'), 'Add Arc')
         # self.add_rectangle_menuitem = self.menu.addAction(QtGui.QIcon('share/rectangle16.png'), 'Add Rectangle')
         # self.add_polygon_menuitem = self.menu.addAction(QtGui.QIcon('share/polygon16.png'), 'Add Polygon')
         # self.add_path_menuitem = self.menu.addAction(QtGui.QIcon('share/path16.png'), 'Add Path')
-        # self.union_menuitem = self.menu.addAction(QtGui.QIcon('share/union16.png'), 'Polygon Union')
-        # self.intersection_menuitem = self.menu.addAction(QtGui.QIcon('share/intersection16.png'), 'Polygon Intersection')
+        self.union_menuitem = self.menu.addAction(QtGui.QIcon('share/union16.png'), 'Polygon Union')
+        self.intersection_menuitem = self.menu.addAction(QtGui.QIcon('share/intersection16.png'), 'Polygon Intersection')
         # self.subtract_menuitem = self.menu.addAction(QtGui.QIcon('share/subtract16.png'), 'Polygon Subtraction')
-        # self.cutpath_menuitem = self.menu.addAction(QtGui.QIcon('share/cutpath16.png'), 'Cut Path')
+        self.cutpath_menuitem = self.menu.addAction(QtGui.QIcon('share/cutpath16.png'), 'Cut Path')
         # self.move_menuitem = self.menu.addAction(QtGui.QIcon('share/move16.png'), "Move Objects 'm'")
         # self.copy_menuitem = self.menu.addAction(QtGui.QIcon('share/copy16.png'), "Copy Objects 'c'")
-        # self.delete_menuitem = self.menu.addAction(QtGui.QIcon('share/deleteshape16.png'), "Delete Shape '-'")
-        # self.menu.addSeparator()
+        self.delete_menuitem = self.menu.addAction(QtGui.QIcon('share/deleteshape16.png'), "Delete Shape '-'")
+        self.buffer_menuitem = self.menu.addAction(QtGui.QIcon('share/buffer16.png'), "Buffer selection 'b'")
+        self.menu.addSeparator()
+
+        self.buffer_menuitem.triggered.connect(self.on_buffer_tool)
+        self.delete_menuitem.triggered.connect(self.on_delete_btn)
+        self.union_menuitem.triggered.connect(self.union)
+        self.intersection_menuitem.triggered.connect(self.intersection)
+        self.cutpath_menuitem.triggered.connect(self.cutpath)
 
         ### Event handlers ###
         # Connection ids for Matplotlib
@@ -790,6 +840,10 @@ class FlatCAMDraw(QtCore.QObject):
         self.drawing_toolbar.setDisabled(False)
         self.snap_toolbar.setDisabled(False)
 
+    def on_buffer_tool(self):
+        buff_tool = BufferSelectionTool(self.app, self)
+        buff_tool.run()
+
     def on_tool_select(self, tool):
         """
         Behavior of the toolbar. Tool initialization.
@@ -975,6 +1029,10 @@ class FlatCAMDraw(QtCore.QObject):
             self.grid_snap_btn.trigger()
         if event.key == 'k':
             self.corner_snap_btn.trigger()
+
+        ### Buffer
+        if event.key == 'b':
+            self.on_buffer_tool()
 
         ### Propagate to tool
         response = None
@@ -1260,6 +1318,13 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.delete_shape(selected[0])
         self.add_shape(DrawToolShape(result))
+
+        self.replot()
+
+    def buffer(self, buf_distance):
+        pre_buffer = cascaded_union([t.geo for t in self.get_selected()])
+        results = pre_buffer.buffer(buf_distance)
+        self.add_shape(DrawToolShape(results))
 
         self.replot()
 
