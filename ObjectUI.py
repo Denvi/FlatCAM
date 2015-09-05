@@ -278,7 +278,7 @@ class GeometryObjectUI(ObjectUI):
             "in RPM (optional)"
         )
         grid1.addWidget(spdlabel, 4, 0)
-        self.cncspindlespeed_entry = LengthEntry()
+        self.cncspindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
 
         self.generate_cnc_button = QtGui.QPushButton('Generate')
@@ -365,7 +365,9 @@ class ExcellonObjectUI(ObjectUI):
     """
 
     def __init__(self, parent=None):
-        ObjectUI.__init__(self, title='Excellon Object', icon_file='share/drill32.png', parent=parent)
+        ObjectUI.__init__(self, title='Excellon Object',
+                          icon_file='share/drill32.png',
+                          parent=parent)
 
         #### Plot options ####
 
@@ -463,7 +465,7 @@ class ExcellonObjectUI(ObjectUI):
             "in RPM (optional)"
         )
         grid1.addWidget(spdlabel, 5, 0)
-        self.spindlespeed_entry = LengthEntry()
+        self.spindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.spindlespeed_entry, 5, 1)
 
         choose_tools_label = QtGui.QLabel(

@@ -609,7 +609,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "tooldia": 0.1,
             "toolchange": False,
             "toolchangez": 1.0,
-            "spindlespeed": ""
+            "spindlespeed": None
         })
 
         # TODO: Document this.
@@ -834,12 +834,14 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     ui_type = CNCObjectUI
 
     def __init__(self, name, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0,spindlespeed=None):
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0,
+                 spindlespeed=None):
 
         FlatCAMApp.App.log.debug("Creating CNCJob object...")
 
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
-                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia, spindlespeed=spindlespeed)
+                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia,
+                        spindlespeed=spindlespeed)
 
         FlatCAMObj.__init__(self, name)
 
@@ -980,7 +982,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0,
-            "spindlespeed": "",
+            "spindlespeed": None,
             "cnctooldia": 0.4 / 25.4,
             "painttooldia": 0.0625,
             "paintoverlap": 0.15,
@@ -1095,7 +1097,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.generatecncjob()
 
     def generatecncjob(self, z_cut=None, z_move=None,
-                       feedrate=None, tooldia=None, outname=None, spindlespeed=None):
+                       feedrate=None, tooldia=None, outname=None,
+                       spindlespeed=None):
         """
         Creates a CNCJob out of this Geometry object.
 
@@ -1115,11 +1118,16 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
 
         # To allow default value to be "" (optional in gui) and translate to None
-        if not isinstance(spindlespeed, int):
-            if isinstance(self.options["spindlespeed"], int):
-                spindlespeed = self.options["spindlespeed"]
-            else:
-                spindlespeed = None
+        # if not isinstance(spindlespeed, int):
+        #     if isinstance(self.options["spindlespeed"], int) or \
+        #             isinstance(self.options["spindlespeed"], float):
+        #         spindlespeed = int(self.options["spindlespeed"])
+        #     else:
+        #         spindlespeed = None
+
+        if spindlespeed is None:
+            # int or None.
+            spindlespeed = self.options['spindlespeed']
 
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!

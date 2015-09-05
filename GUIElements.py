@@ -121,17 +121,30 @@ class FloatEntry(QtGui.QLineEdit):
         return float(evaled)
 
     def set_value(self, val):
-        self.setText("%.6f"%val)
+        self.setText("%.6f" % val)
 
 
 class IntEntry(QtGui.QLineEdit):
-    def __init__(self, parent=None):
+
+    def __init__(self, parent=None, allow_empty=False, empty_val=None):
         super(IntEntry, self).__init__(parent)
+        self.allow_empty = allow_empty
+        self.empty_val = empty_val
 
     def get_value(self):
+
+        if self.allow_empty:
+            if str(self.text()) == "":
+                return self.empty_val
+
         return int(self.text())
 
     def set_value(self, val):
+
+        if val == self.empty_val and self.allow_empty:
+            self.setText(QtCore.QString(""))
+            return
+
         self.setText(QtCore.QString(str(val)))
 
 

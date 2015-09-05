@@ -586,7 +586,7 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
             "in RPM (optional)"
         )
         grid1.addWidget(spdlabel, 3, 0)
-        self.spindlespeed_entry = LengthEntry()
+        self.spindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.spindlespeed_entry, 3, 1)
 
 
@@ -662,7 +662,7 @@ class GeometryOptionsGroupUI(OptionsGroupUI):
             "in RPM (optional)"
         )
         grid1.addWidget(spdlabel, 4, 0)
-        self.cncspindlespeed_entry = LengthEntry()
+        self.cncspindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
 
         ## Paint area
