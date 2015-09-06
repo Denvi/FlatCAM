@@ -20,10 +20,11 @@ from FlatCAMObj import *
 from PlotCanvas import *
 from FlatCAMGUI import *
 from FlatCAMCommon import LoudDict
-from FlatCAMTool import *
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
+from MeasurementTool import Measurement
+from DblSidedTool import DblSidedTool
 
 
 ########################################
