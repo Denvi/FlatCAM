@@ -3,9 +3,8 @@ from shapely.geometry import Point
 from shapely import affinity
 from math import sqrt
 
-import FlatCAMApp
 from GUIElements import *
-from FlatCAMObj import FlatCAMGerber, FlatCAMExcellon
+from FlatCAMObj import *
 
 
 class FlatCAMTool(QtGui.QWidget):

@@ -334,7 +334,7 @@ class FCArc(FCShapeTool):
             startangle = arctan2(p1[1] - center[1], p1[0] - center[0])
             stopangle = arctan2(p2[1] - center[1], p2[0] - center[0])
             self.geometry = DrawToolShape(LineString(arc(center, radius, startangle, stopangle,
-                                           self.direction, self.steps_per_circ)))
+                                          self.direction, self.steps_per_circ)))
 
         elif self.mode == '132':
             p1 = array(self.points[0])
@@ -348,7 +348,7 @@ class FCArc(FCShapeTool):
             stopangle = arctan2(p3[1] - center[1], p3[0] - center[0])
 
             self.geometry = DrawToolShape(LineString(arc(center, radius, startangle, stopangle,
-                                           direction, self.steps_per_circ)))
+                                          direction, self.steps_per_circ)))
 
         else:  # self.mode == '12c'
             p1 = array(self.points[0])
@@ -1322,7 +1322,17 @@ class FlatCAMDraw(QtCore.QObject):
         self.replot()
 
     def buffer(self, buf_distance):
-        pre_buffer = cascaded_union([t.geo for t in self.get_selected()])
+        selected = self.get_selected()
+
+        if len(selected) == 0:
+            self.app.inform.emit("[warning] Nothing selected for buffering.")
+            return
+
+        if not isinstance(buf_distance, float):
+            self.app.inform.emit("[warning] Invalid distance for buffering.")
+            return
+
+        pre_buffer = cascaded_union([t.geo for t in selected])
         results = pre_buffer.buffer(buf_distance)
         self.add_shape(DrawToolShape(results))
 
