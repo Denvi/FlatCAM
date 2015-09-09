@@ -1828,8 +1828,11 @@ class App(QtCore.QObject):
 
         for param in routes:
             if param in routes[param].defaults:
-                routes[param].defaults[param] = self.defaults[param]
-                self.log.debug("  " + param + " OK")
+                try:
+			routes[param].defaults[param] = self.defaults[param]
+	                self.log.debug("  " + param + " OK")
+		except KeyError:
+			pass
             else:
                 # Try extracting the name:
                 # classname_param here is param in the object
