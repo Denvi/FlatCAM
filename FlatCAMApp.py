@@ -2186,6 +2186,11 @@ class App(QtCore.QObject):
             return 'Ok'
 
         def write_gcode(obj_name, filename, preamble='', postamble=''):
+            """
+            Requires obj_name to be available. It might still be in the
+            making at the time this function is called, so check for
+            promises and send to background if there are promises.
+            """
             if self.collection.has_promises():
                 self.log.debug("Collection has promises. write_gcode() queued.")
                 self.worker_task.emit({

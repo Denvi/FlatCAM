@@ -827,7 +827,8 @@ class FlatCAMDraw(QtCore.QObject):
         """
         assert isinstance(fcgeometry, Geometry)
 
-        self.clear()
+        self.deactivate()
+
         self.connect_canvas_event_handlers()
         self.select_tool("select")
 
