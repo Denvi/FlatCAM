@@ -2415,7 +2415,7 @@ class Excellon(Geometry):
         self.solid_geometry = []
 
         for drill in self.drills:
-            #poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
+            # poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
             tooldia = self.tools[drill['tool']]['C']
             poly = drill['point'].buffer(tooldia / 2.0)
             self.solid_geometry.append(poly)
@@ -2506,8 +2506,7 @@ class CNCjob(Geometry):
 
     defaults = {
         "zdownrate": None,
-        "coordinate_format": "X%.4fY%.4f",
-        "spindlespeed": None
+        "coordinate_format": "X%.4fY%.4f"
     }
 
     def __init__(self,
@@ -2535,6 +2534,7 @@ class CNCjob(Geometry):
         self.input_geometry_bounds = None
         self.gcode_parsed = None
         self.steps_per_circ = 20  # Used when parsing G-code arcs
+
         if zdownrate is not None:
             self.zdownrate = float(zdownrate)
         elif CNCjob.defaults["zdownrate"] is not None:
@@ -2543,7 +2543,6 @@ class CNCjob(Geometry):
             self.zdownrate = None
 
         self.spindlespeed = spindlespeed
-
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -2610,10 +2609,12 @@ class CNCjob(Geometry):
         gcode += self.feedminutecode + "\n"
         gcode += "F%.2f\n" % self.feedrate
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
-        if(self.spindlespeed != None):
+
+        if self.spindlespeed is not None:
             gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
         else:
             gcode += "M03\n"  # Spindle start
+
         gcode += self.pausecode + "\n"
 
         for tool in points:

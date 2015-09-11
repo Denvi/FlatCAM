@@ -1814,6 +1814,13 @@ class App(QtCore.QObject):
         App.log.debug("Project loaded")
 
     def propagate_defaults(self):
+        """
+        This method is used to set default values in classes. It's
+        an alternative to project options but allows the use
+        of values invisible to the user.
+
+        :return: None
+        """
 
         self.log.debug("propagate_defaults()")
 
@@ -1822,17 +1829,17 @@ class App(QtCore.QObject):
             "zdownrate": CNCjob,
             "excellon_zeros": Excellon,
             "gerber_use_buffer_for_union": Gerber,
-            "cncjob_coordinate_format": CNCjob,
-            "spindlespeed": CNCjob
+            "cncjob_coordinate_format": CNCjob
+            # "spindlespeed": CNCjob
         }
 
         for param in routes:
             if param in routes[param].defaults:
                 try:
-			routes[param].defaults[param] = self.defaults[param]
-	                self.log.debug("  " + param + " OK")
-		except KeyError:
-			pass
+                    routes[param].defaults[param] = self.defaults[param]
+                    self.log.debug("  " + param + " OK")
+                except KeyError:
+                    self.log.debug("  ERROR: " + param + " not in defaults.")
             else:
                 # Try extracting the name:
                 # classname_param here is param in the object

@@ -1,6 +1,8 @@
 import sys
 from PyQt4 import QtGui, QtCore
-from GUIElements import *
+#from GUIElements import *
+from GUIElements import FCEntry, FloatEntry, EvalEntry, FCCheckBox, \
+    LengthEntry, FCTextArea, IntEntry, RadioSet, OptionalInputSection
 
 
 class ObjectUI(QtGui.QWidget):

@@ -1,7 +1,8 @@
 from PyQt4 import QtGui
 from GUIElements import RadioSet, EvalEntry, LengthEntry
 from FlatCAMTool import FlatCAMTool
-from FlatCAMObj import FlatCAMGerber, FlatCAMExcellon
+#from FlatCAMObj import FlatCAMGerber, FlatCAMExcellon
+from FlatCAMObj import *
 from shapely.geometry import Point
 from shapely import affinity
 
