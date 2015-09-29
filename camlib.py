@@ -1619,7 +1619,7 @@ class Gerber (Geometry):
                                     geo = LineString(path)
                                 else:
                                     geo = LineString(path).buffer(width / 2)
-                            poly_buffer.append(geo)
+                            if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path
 
@@ -1629,7 +1629,7 @@ class Gerber (Geometry):
                         # --- BUFFERED ---
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
-                        poly_buffer.append(flash)
+                        if not flash.is_empty: poly_buffer.append(flash)
 
                         path = [[current_x, current_y]]  # Reset path starting point
 
@@ -1685,7 +1685,7 @@ class Gerber (Geometry):
                             # --- BUFFERED ---
                             width = self.apertures[last_path_aperture]["size"]
                             buffered = LineString(path).buffer(width / 2)
-                            poly_buffer.append(buffered)
+                            if not buffered.is_empty: poly_buffer.append(buffered)
 
                         current_x = x
                         current_y = y
@@ -1788,7 +1788,7 @@ class Gerber (Geometry):
                             #                                      self.apertures[current_aperture])
                             flash = Gerber.create_flash_geometry(Point(current_x, current_y),
                                                                  self.apertures[current_aperture])
-                            poly_buffer.append(flash)
+                            if not flash.is_empty: poly_buffer.append(flash)
                         except IndexError:
                             log.warning("Line %d: %s -> Nothing there to flash!" % (line_num, gline))
 
@@ -1811,7 +1811,7 @@ class Gerber (Geometry):
                         ## --- Buffered ---
                         width = self.apertures[last_path_aperture]["size"]
                         geo = LineString(path).buffer(width/2)
-                        poly_buffer.append(geo)
+                        if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -1841,7 +1841,7 @@ class Gerber (Geometry):
                     region = Polygon(path)
                     if not region.is_valid:
                         region = region.buffer(0)
-                    poly_buffer.append(region)
+                    if not region.is_empty: poly_buffer.append(region)
 
                     path = [[current_x, current_y]]  # Start new path
                     continue
@@ -1875,7 +1875,7 @@ class Gerber (Geometry):
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
                         geo = LineString(path).buffer(width / 2)
-                        poly_buffer.append(geo)
+                        if not geo.is_empty: poly_buffer.append(geo)
                         path = [path[-1]]
 
                     continue
@@ -1891,7 +1891,7 @@ class Gerber (Geometry):
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
                         geo = LineString(path).buffer(width / 2)
-                        poly_buffer.append(geo)
+                        if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -1963,18 +1963,20 @@ class Gerber (Geometry):
                 ## --- Buffered ---
                 width = self.apertures[last_path_aperture]["size"]
                 geo = LineString(path).buffer(width / 2)
-                poly_buffer.append(geo)
+                if not geo.is_empty: poly_buffer.append(geo)
 
             # --- Apply buffer ---
             log.warn("Joining %d polygons." % len(poly_buffer))
-            if (self.use_buffer_for_union):
+            if self.use_buffer_for_union:
+                log.debug("Union by buffer...")
                 new_poly = MultiPolygon(poly_buffer)
                 new_poly = new_poly.buffer(0.00000001)
                 new_poly = new_poly.buffer(-0.00000001)
                 log.warn("Union(buffer) done.")
             else:
+                log.debug("Union by union()...")
                 new_poly = cascaded_union(poly_buffer)
-                new_poly = new_poly = new_poly.buffer(0)
+                new_poly = new_poly.buffer(0)
                 log.warn("Union done.")
             if current_polarity == 'D':
                 self.solid_geometry = self.solid_geometry.union(new_poly)
