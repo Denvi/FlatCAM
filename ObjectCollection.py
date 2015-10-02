@@ -119,6 +119,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
         if name in self.promises:
             self.promises.remove(name)
             FlatCAMApp.App.log.debug("Promised object %s became available." % name)
+            FlatCAMApp.App.log.debug("%d promised objects remaining." % len(self.promises))
 
         # Prevent same name
         while name in self.get_names():

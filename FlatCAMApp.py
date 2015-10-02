@@ -78,7 +78,15 @@ class App(QtCore.QObject):
     file_opened = QtCore.pyqtSignal(str, str)  # File type and filename
     progress = QtCore.pyqtSignal(int)  # Percentage of progress
     plots_updated = QtCore.pyqtSignal()
+
+    # Emitted by new_object() and passes the new object as argument.
+    # on_object_created() adds the object to the collection,
+    # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object)
+
+    # Emitted when a new object has been added to the collection
+    # and is ready to be used.
+    new_object_available = QtCore.pyqtSignal(object)
     message = QtCore.pyqtSignal(str, str, str)
 
     def __init__(self):
@@ -1283,6 +1291,7 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
+        self.new_object_available.emit(obj)
         obj.plot()
         self.on_zoom_fit(None)
         t1 = time.time()  # DEBUG
@@ -2191,18 +2200,29 @@ class App(QtCore.QObject):
             making at the time this function is called, so check for
             promises and send to background if there are promises.
             """
+
+            # If there are promised objects, wait until all promises have been fulfilled.
             if self.collection.has_promises():
-                self.log.debug("Collection has promises. write_gcode() queued.")
-                self.worker_task.emit({
-                    'fcn': write_gcode,
-                    'params': [obj_name, filename, preamble, postamble]
-                })
+
+                def write_gcode_on_object(new_object):
+                    self.log.debug("write_gcode_on_object(): Disconnecting %s" % write_gcode_on_object)
+                    self.new_object_available.disconnect(write_gcode_on_object)
+                    write_gcode(obj_name, filename, preamble, postamble)
+
+                # Try again when a new object becomes available.
+                self.log.debug("write_gcode(): Collection has promises. Queued for %s." % obj_name)
+                self.log.debug("write_gcode(): Queued function: %s" % write_gcode_on_object)
+                self.new_object_available.connect(write_gcode_on_object)
+
                 return
+
+            self.log.debug("write_gcode(): No promises. Continuing for %s." % obj_name)
 
             try:
                 obj = self.collection.get_by_name(str(obj_name))
             except:
                 return "Could not retrieve object: %s" % obj_name
+
             try:
                 obj.export_gcode(str(filename), str(preamble), str(postamble))
             except Exception, e:
