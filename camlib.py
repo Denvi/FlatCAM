@@ -1624,14 +1624,24 @@ class Gerber (Geometry):
                         path = [[current_x, current_y]]  # Start new path
 
                     # Flash
+                    # Not allowed in region mode.
                     elif current_operation_code == 3:
 
+                        # Create path draw so far.
+                        if len(path) > 1:
+                            # --- Buffered ----
+                            width = self.apertures[last_path_aperture]["size"]
+                            geo = LineString(path).buffer(width / 2)
+                            if not geo.is_empty: poly_buffer.append(geo)
+
+                        # Reset path starting point
+                        path = [[current_x, current_y]]
+
                         # --- BUFFERED ---
+                        # Draw the flash
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
                         if not flash.is_empty: poly_buffer.append(flash)
-
-                        path = [[current_x, current_y]]  # Reset path starting point
 
                     continue
 
