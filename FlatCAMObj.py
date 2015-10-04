@@ -1,4 +1,5 @@
 from PyQt4 import QtCore
+from copy import copy
 from ObjectUI import *
 import FlatCAMApp
 import inspect  # TODO: For debugging only.
@@ -666,7 +667,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "tooldia": self.ui.tooldia_entry,
             "toolchange": self.ui.toolchange_cb,
             "toolchangez": self.ui.toolchangez_entry,
-            "spindlespeed":  self.ui.spindlespeed_entry
+            "spindlespeed": self.ui.spindlespeed_entry
         })
 
         assert isinstance(self.ui, ExcellonObjectUI)
@@ -679,27 +680,42 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         """
         Returns the keys to the self.tools dictionary corresponding
         to the selections on the tool list in the GUI.
+
+        :return: List of tools.
+        :rtype: list
         """
         return [str(x.text()) for x in self.ui.tools_table.selectedItems()]
 
-    def on_generate_milling_button_click(self, *args):
-        self.app.report_usage("excellon_on_create_milling_button")
-        self.read_form()
+    def generate_milling(self, tools=None, outname=None, tooldia=None):
+        """
+        Note: This method is a good template for generic operations as
+        it takes it's options from parameters or otherwise from the
+        object's options and returns a success, msg tuple as feedback
+        for shell operations.
+
+        :return: Success/failure condition tuple (bool, str).
+        :rtype: tuple
+        """
 
         # Get the tools from the list. These are keys
         # to self.tools
-        tools = self.get_selected_tools_list()
+        if tools is None:
+            tools = self.get_selected_tools_list()
+
+        if outname is None:
+            outname = self.options["name"] + "_mill"
+
+        if tooldia is None:
+            tooldia = self.options["tooldia"]
 
         if len(tools) == 0:
             self.app.inform.emit("Please select one or more tools from the list and try again.")
-            return
+            return False, "Error: No tools."
 
         for tool in tools:
-            if self.tools[tool]["C"] < self.options["tooldia"]:
+            if self.tools[tool]["C"] < tooldia:
                 self.app.inform.emit("[warning] Milling tool is larger than hole size. Cancelled.")
-                return
-
-        geo_name = self.options["name"] + "_mill"
+                return False, "Error: Milling tool is larger than hole."
 
         def geo_init(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry)
@@ -711,18 +727,26 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 if hole['tool'] in tools:
                     geo_obj.solid_geometry.append(
                         Point(hole['point']).buffer(self.tools[hole['tool']]["C"] / 2 -
-                                                    self.options["tooldia"] / 2).exterior
+                                                    tooldia / 2).exterior
                     )
 
         def geo_thread(app_obj):
-            app_obj.new_object("geometry", geo_name, geo_init)
+            app_obj.new_object("geometry", outname, geo_init)
             app_obj.progress.emit(100)
 
         # Create a promise with the new name
-        self.app.collection.promise(geo_name)
+        self.app.collection.promise(outname)
 
         # Send to worker
         self.app.worker_task.emit({'fcn': geo_thread, 'params': [self.app]})
+
+        return True, ""
+
+    def on_generate_milling_button_click(self, *args):
+        self.app.report_usage("excellon_on_create_milling_button")
+        self.read_form()
+
+        self.generate_milling()
 
     def on_create_cncjob_button_click(self, *args):
         self.app.report_usage("excellon_on_create_cncjob_button")

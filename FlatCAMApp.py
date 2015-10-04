@@ -2136,6 +2136,43 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+        def drillmillgeometry(name, *args):
+            a, kwa = h(*args)
+            types = {'tooldia': float,
+                     'tools': str,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                if 'tools' in kwa:
+                    kwa['tools'] = [x.strip() for x in kwa['tools'].split(",")]
+            except Exception as e:
+                return "Bad tools: %s" % str(e)
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            assert isinstance(obj, FlatCAMExcellon)
+
+            try:
+                success, msg = obj.generate_milling(**kwa)
+            except Exception as e:
+                return "Operation failed: %s" % str(e)
+
+            if not success:
+                return msg
+
+            return 'Ok'
+
         def isolate(name, *args):
             a, kwa = h(*args)
             types = {'dia': float,
@@ -2156,6 +2193,8 @@ class App(QtCore.QObject):
 
             if obj is None:
                 return "Object not found: %s" % name
+
+            assert isinstance(obj, FlatCAMGerber)
 
             try:
                 obj.isolate(**kwa)
@@ -2289,17 +2328,15 @@ class App(QtCore.QObject):
                 return "Object not found: %s" % obj_name
 
             obj.union()
-            
 
-
-        def join_geometries (obj_name, *obj_names):
+        def join_geometries(obj_name, *obj_names):
             objs = []
             for obj_n in obj_names:
                 obj = self.collection.get_by_name(str(obj_n))
                 if obj is None:
                     return "Object not found: %s" % obj_n
                 else:
-                    objs.append (obj)
+                    objs.append(obj)
 
             def initialize(obj, app):
                 FlatCAMGeometry.merge(objs, obj)
@@ -2500,6 +2537,15 @@ class App(QtCore.QObject):
                         "   outname: Name of object to create\n" +
                         "   spindlespeed: Speed of the spindle in rpm (example: 4000)\n" +
                         "   toolchange: Enable tool changes (example: 1)\n"
+            },
+            'millholes': {
+                'fcn': drillmillgeometry,
+                'help': "Create Geometry Object for milling holes from Excellon.\n" +
+                        "> drillmillgeometry <name> -tools <str> -tooldia <float> -outname <str> \n" +
+                        "   name: Name of the Excellon Object\n" +
+                        "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
+                        "   tooldia: Diameter of the milling tool (example: 0.1)\n" +
+                        "   outname: Name of object to create\n"
             },
             'scale': {
                 'fcn': lambda name, factor: self.collection.get_by_name(str(name)).scale(float(factor)),
