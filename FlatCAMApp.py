@@ -2541,7 +2541,7 @@ class App(QtCore.QObject):
             'millholes': {
                 'fcn': drillmillgeometry,
                 'help': "Create Geometry Object for milling holes from Excellon.\n" +
-                        "> drillmillgeometry <name> -tools <str> -tooldia <float> -outname <str> \n" +
+                        "> millholes <name> -tools <str> -tooldia <float> -outname <str> \n" +
                         "   name: Name of the Excellon Object\n" +
                         "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
                         "   tooldia: Diameter of the milling tool (example: 0.1)\n" +

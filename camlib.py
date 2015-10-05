@@ -172,6 +172,30 @@ class Geometry(object):
 
         return None
 
+    def get_exteriors(self, geometry=None):
+        """
+        Returns all exteriors of polygons in geometry.
+
+        :return:
+        """
+
+        exteriors = []
+
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        ## If iterable, expand recursively.
+        try:
+            for geo in geometry:
+                exteriors.extend(self.get_exteriors(geometry=geo))
+
+        ## Not iterable, get the exterior if polygon.
+        except TypeError:
+            if type(geometry) == Polygon:
+                exteriors.append(geometry.exterior)
+
+        return exteriors
+
     def flatten(self, geometry=None, reset=True, pathonly=False):
         """
         Creates a list of non-iterable linear geometry objects.
