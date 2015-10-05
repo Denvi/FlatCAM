@@ -172,11 +172,34 @@ class Geometry(object):
 
         return None
 
+    def get_interiors(self, geometry=None):
+
+        interiors = []
+
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        ## If iterable, expand recursively.
+        try:
+            for geo in geometry:
+                interiors.extend(self.get_interiors(geometry=geo))
+
+        ## Not iterable, get the exterior if polygon.
+        except TypeError:
+            if type(geometry) == Polygon:
+                interiors.extend(geometry.interiors)
+
+        return interiors
+
+
     def get_exteriors(self, geometry=None):
         """
-        Returns all exteriors of polygons in geometry.
+        Returns all exteriors of polygons in geometry. Uses
+        ``self.solid_geometry`` if geometry is not provided.
 
-        :return:
+        :param geometry: Shapely type or list or list of list of such.
+        :return: List of paths constituting the exteriors
+           of polygons in geometry.
         """
 
         exteriors = []

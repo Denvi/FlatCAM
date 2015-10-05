@@ -2209,6 +2209,42 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+        def interiors(obj_name, *args):
+            a, kwa = h(*args)
+            types = {}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            assert isinstance(obj, Geometry)
+
+            obj_interiors = obj.get_interiors()
+
+            def geo_init(geo_obj, app_obj):
+                geo_obj.solid_geometry = obj_interiors
+
+            if 'outname' in kwa:
+                outname = kwa['outname']
+            else:
+                outname = obj_name + ".interiors"
+
+            try:
+                self.new_object('geometry', outname, geo_init)
+            except Exception as e:
+                return "Failed: %s" % str(e)
+
+            return 'Ok'
+
         def isolate(name, *args):
             a, kwa = h(*args)
             types = {'dia': float,
@@ -2568,10 +2604,19 @@ class App(QtCore.QObject):
                         "   name: Name of the source Geometry object.\n" +
                         "   outname: Name of the resulting Geometry object."
             },
+            'interiors': {
+                'fcn': interiors,
+                'help': "Get interiors of polygons.\n" +
+                        "> interiors <name> [-outname <outname>]\n" +
+                        "   name: Name of the source Geometry object.\n" +
+                        "   outname: Name of the resulting Geometry object."
+            },
             'drillcncjob': {
                 'fcn': drillcncjob,
                 'help': "Drill CNC job.\n" +
-                        "> drillcncjob <name> -tools <str> -drillz <float> -travelz <float> -feedrate <float> -outname <str> [-spindlespeed (int)] [-toolchange (int)] \n" +
+                        "> drillcncjob <name> -tools <str> -drillz <float> " +
+                        "-travelz <float> -feedrate <float> -outname <str> " +
+                        "[-spindlespeed (int)] [-toolchange (int)] \n" +
                         "   name: Name of the object\n" +
                         "   tools: Comma separated indexes of tools (example: 1,3 or 2)\n" +
                         "   drillz: Drill depth into material (example: -2.0)\n" +
