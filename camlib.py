@@ -2686,7 +2686,7 @@ class CNCjob(Geometry):
                 gcode += "M6\n"  # Tool change
                 gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
                 gcode += "M0\n"  # Temporary machine stop
-                if(self.spindlespeed != None):
+                if self.spindlespeed is not None:
                     gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
                 else:
                     gcode += "M03\n"  # Spindle start
@@ -2702,7 +2702,8 @@ class CNCjob(Geometry):
 
         self.gcode = gcode
 
-    def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0):
+    def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0,
+                                 multipass=False, depthpercut=None):
         """
         Second algorithm to generate from Geometry.
 
@@ -2779,15 +2780,32 @@ class CNCjob(Geometry):
                 if pt != geo.coords[0] and pt == geo.coords[-1]:
                     geo.coords = list(geo.coords)[::-1]
 
-                # G-code
-                # Note: self.linear2gcode() and self.point2gcode() will
-                # lower and raise the tool every time.
-                if type(geo) == LineString or type(geo) == LinearRing:
-                    self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-                elif type(geo) == Point:
-                    self.gcode += self.point2gcode(geo)
+                if not multipass:
+                    # G-code
+                    # Note: self.linear2gcode() and self.point2gcode() will
+                    # lower and raise the tool every time.
+                    if type(geo) == LineString or type(geo) == LinearRing:
+                        self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+                    elif type(geo) == Point:
+                        self.gcode += self.point2gcode(geo)
+                    else:
+                        log.warning("G-code generation not implemented for %s" % (str(type(geo))))
                 else:
-                    log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+                    if depthpercut is None:
+                        depthpercut = self.z_cut
+
+                    depth = 0
+                    while depth > self.z_cut:
+                        depth -= depthpercut
+                        # G-code
+                        # Note: self.linear2gcode() and self.point2gcode() will
+                        # lower and raise the tool every time.
+                        # if type(geo) == LineString or type(geo) == LinearRing:
+                        #     self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+                        # elif type(geo) == Point:
+                        #     self.gcode += self.point2gcode(geo)
+                        # else:
+                        #     log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
                 # Delete from index, update current location and continue.
                 #rti.delete(hits[0], geo.coords[0])
@@ -3033,7 +3051,7 @@ class CNCjob(Geometry):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-    def linear2gcode(self, linear, tolerance=0):
+    def linear2gcode(self, linear, tolerance=0, down=True, up=True):
         """
         Generates G-code to cut along the linear feature.
 
@@ -3066,7 +3084,10 @@ class CNCjob(Geometry):
 
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-        gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+
+        if up:
+            gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+
         return gcode
 
     def point2gcode(self, point):
