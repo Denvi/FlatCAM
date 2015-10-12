@@ -2797,6 +2797,7 @@ class CNCjob(Geometry):
                     depth = 0
                     while depth > self.z_cut:
                         depth -= depthpercut
+                        # TODO: Working...
                         # G-code
                         # Note: self.linear2gcode() and self.point2gcode() will
                         # lower and raise the tool every time.
@@ -3051,7 +3052,9 @@ class CNCjob(Geometry):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-    def linear2gcode(self, linear, tolerance=0, down=True, up=True):
+    def linear2gcode(self, linear, tolerance=0, down=True, up=True,
+                     zcut=None, ztravel=None, downrate=None,
+                     feedrate=None, cont=False):
         """
         Generates G-code to cut along the linear feature.
 
@@ -3060,33 +3063,55 @@ class CNCjob(Geometry):
         :param tolerance: All points in the simplified object will be within the
             tolerance distance of the original geometry.
         :type tolerance: float
-        :return: G-code to cut alon the linear feature.
+        :return: G-code to cut along the linear feature.
         :rtype: str
         """
 
+        if zcut is None:
+            zcut = self.z_cut
+
+        if ztravel is None:
+            ztravel = self.z_move
+
+        if downrate is None:
+            downrate = self.zdownrate
+
+        if feedrate is None:
+            feedrate = self.feedrate
+
+        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
+
+        # Simplify paths?
         if tolerance > 0:
             target_linear = linear.simplify(tolerance)
         else:
             target_linear = linear
 
         gcode = ""
-        #t = "G0%d X%.4fY%.4f\n"
-        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
+
         path = list(target_linear.coords)
-        gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
-        if self.zdownrate is not None:
-            gcode += "F%.2f\n" % self.zdownrate
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-            gcode += "F%.2f\n" % self.feedrate
-        else:
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+        # Move fast to 1st point
+        if not cont:
+            gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
+        # Move down to cutting depth
+        if down:
+            # Different feedrate for vertical cut?
+            if self.zdownrate is not None:
+                gcode += "F%.2f\n" % downrate
+                gcode += "G01 Z%.4f\n" % zcut       # Start cutting
+                gcode += "F%.2f\n" % feedrate       # Restore feedrate
+            else:
+                gcode += "G01 Z%.4f\n" % zcut       # Start cutting
+
+        # Cutting...
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
 
+        # Up to travelling height.
         if up:
-            gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+            gcode += "G00 Z%.4f\n" % ztravel  # Stop cutting
 
         return gcode
 
