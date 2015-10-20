@@ -3654,6 +3654,13 @@ class FlatCAMRTree(object):
         self.get_points = lambda go: go.coords
 
     def grow_obj2points(self, idx):
+        """
+        Increases the size of self.obj2points to fit
+        idx + 1 items.
+
+        :param idx: Index to fit into list.
+        :return: None
+        """
         if len(self.obj2points) > idx:
             # len == 2, idx == 1, ok.
             return
@@ -3699,15 +3706,23 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
     def insert(self, obj):
         self.objects.append(obj)
         idx = len(self.objects) - 1
-        self.indexes[obj] = idx
+
+        # Note: Shapely objects are not hashable any more, althought
+        # there seem to be plans to re-introduce the feature in
+        # version 2.0. For now, we will index using the object's id,
+        # but it's important to remember that shapely geometry is
+        # mutable, ie. it can be modified to a totally different shape
+        # and continue to have the same id.
+        # self.indexes[obj] = idx
+        self.indexes[id(obj)] = idx
+
         super(FlatCAMRTreeStorage, self).insert(idx, obj)
 
     #@profile
     def remove(self, obj):
-        # Get index in list
-        # TODO: This is extremely expensive
-        #objidx = self.objects.index(obj)
-        objidx = self.indexes[obj]
+        # See note about self.indexes in insert().
+        # objidx = self.indexes[obj]
+        objidx = self.indexes[id(obj)]
 
         # Remove from list
         self.objects[objidx] = None
