@@ -52,8 +52,8 @@ class App(QtCore.QObject):
 
     ## Logging ##
     log = logging.getLogger('base')
-    #log.setLevel(logging.DEBUG)
-    log.setLevel(logging.WARNING)
+    log.setLevel(logging.DEBUG)
+    # log.setLevel(logging.WARNING)
     formatter = logging.Formatter('[%(levelname)s][%(threadName)s] %(message)s')
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
