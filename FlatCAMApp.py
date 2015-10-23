@@ -2175,7 +2175,7 @@ class App(QtCore.QObject):
 
         def exteriors(obj_name, *args):
             a, kwa = h(*args)
-            types = {}
+            types = {'outname': str}
 
             for key in kwa:
                 if key not in types:
