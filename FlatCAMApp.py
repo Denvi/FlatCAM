@@ -2600,10 +2600,11 @@ class App(QtCore.QObject):
                 'fcn': isolate,
                 'help': "Creates isolation routing geometry for the given Gerber.\n" +
                         "> isolate <name> [-dia <d>] [-passes <p>] [-overlap <o>] [-combine 0|1]\n" +
-                        "   name: Name of the object\n"
-                        "   dia: Tool diameter\n   passes: # of tool width\n" +
-                        "   overlap: Fraction of tool diameter to overlap passes" +
-                        "   combine: combine all passes into one geometry"
+                        "   name: Name of the object.\n"
+                        "   dia: Tool diameter\n   passes: # of tool width.\n" +
+                        "   overlap: Fraction of tool diameter to overlap passes." +
+                        "   combine: combine all passes into one geometry." +
+                        "   outname: Name of the resulting Geometry object."
             },
             'cutout': {
                 'fcn': cutout,
