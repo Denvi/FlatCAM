@@ -25,21 +25,46 @@ class DblSidedTool(FlatCAMTool):
         ## Layer to mirror
         self.object_combo = QtGui.QComboBox()
         self.object_combo.setModel(self.app.collection)
-        form_layout.addRow("Bottom Layer:", self.object_combo)
+        self.botlay_label = QtGui.QLabel("Bottom Layer:")
+        self.botlay_label.setToolTip(
+            "Layer to be mirrorer."
+        )
+        # form_layout.addRow("Bottom Layer:", self.object_combo)
+        form_layout.addRow(self.botlay_label, self.object_combo)
 
         ## Axis
         self.mirror_axis = RadioSet([{'label': 'X', 'value': 'X'},
                                      {'label': 'Y', 'value': 'Y'}])
-        form_layout.addRow("Mirror Axis:", self.mirror_axis)
+        self.mirax_label = QtGui.QLabel("Mirror Axis:")
+        self.mirax_label.setToolTip(
+            "Mirror vertically (X) or horizontally (Y)."
+        )
+        # form_layout.addRow("Mirror Axis:", self.mirror_axis)
+        form_layout.addRow(self.mirax_label, self.mirror_axis)
 
         ## Axis Location
         self.axis_location = RadioSet([{'label': 'Point', 'value': 'point'},
                                        {'label': 'Box', 'value': 'box'}])
-        form_layout.addRow("Axis Location:", self.axis_location)
+        self.axloc_label = QtGui.QLabel("Axis Location:")
+        self.axloc_label.setToolTip(
+            "The axis should pass through a <b>point</b> or cut "
+            "a specified <b>box</b> (in a Geometry object) in "
+            "the middle."
+        )
+        # form_layout.addRow("Axis Location:", self.axis_location)
+        form_layout.addRow(self.axloc_label, self.axis_location)
 
         ## Point/Box
         self.point_box_container = QtGui.QVBoxLayout()
-        form_layout.addRow("Point/Box:", self.point_box_container)
+        self.pb_label = QtGui.QLabel("Point/Box:")
+        self.pb_label.setToolTip(
+            "Specify the point (x, y) through which the mirror axis "
+            "passes or the Geometry object containing a rectangle "
+            "that the mirror axis cuts in half."
+        )
+        # form_layout.addRow("Point/Box:", self.point_box_container)
+        form_layout.addRow(self.pb_label, self.point_box_container)
+
         self.point = EvalEntry()
         self.point_box_container.addWidget(self.point)
         self.box_combo = QtGui.QComboBox()
@@ -49,18 +74,38 @@ class DblSidedTool(FlatCAMTool):
 
         ## Alignment holes
         self.alignment_holes = EvalEntry()
-        form_layout.addRow("Alignment Holes:", self.alignment_holes)
+        self.ah_label = QtGui.QLabel("Alignment Holes:")
+        self.ah_label.setToolTip(
+            "Alignment holes (x1, y1), (x2, y2), ... "
+            "on one side of the mirror axis."
+        )
+        form_layout.addRow(self.ah_label, self.alignment_holes)
 
         ## Drill diameter for alignment holes
         self.drill_dia = LengthEntry()
-        form_layout.addRow("Drill diam.:", self.drill_dia)
+        self.dd_label = QtGui.QLabel("Drill diam.:")
+        self.dd_label.setToolTip(
+            "Diameter of the drill for the "
+            "alignment holes."
+        )
+        form_layout.addRow(self.dd_label, self.drill_dia)
 
         ## Buttons
         hlay = QtGui.QHBoxLayout()
         self.layout.addLayout(hlay)
         hlay.addStretch()
         self.create_alignment_hole_button = QtGui.QPushButton("Create Alignment Drill")
+        self.create_alignment_hole_button.setToolTip(
+            "Creates an Excellon Object containing the "
+            "specified alignment holes and their mirror "
+            "images."
+        )
         self.mirror_object_button = QtGui.QPushButton("Mirror Object")
+        self.mirror_object_button.setToolTip(
+            "Mirrors (flips) the specified object around "
+            "the specified axis. Does not create a new "
+            "object, but modifies it."
+        )
         hlay.addWidget(self.create_alignment_hole_button)
         hlay.addWidget(self.mirror_object_button)
 
