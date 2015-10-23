@@ -2063,6 +2063,14 @@ class App(QtCore.QObject):
             if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
                 return "ERROR: Only Gerber and Excellon objects can be mirrored."
 
+
+            # Axis
+            try:
+                axis = kwa['axis'].upper()
+            except KeyError:
+                return "ERROR: Specify -axis X or -axis Y"
+
+
             # Box
             if 'box' in kwa:
                 try:
@@ -2078,13 +2086,13 @@ class App(QtCore.QObject):
                     px = 0.5 * (xmin + xmax)
                     py = 0.5 * (ymin + ymax)
 
-                    obj.mirror(kwa['axis'], [px, py])
+                    obj.mirror(axis, [px, py])
                     obj.plot()
 
                 except Exception, e:
                     return "Operation failed: %s" % str(e)
 
-            elif 'dist' in kwa:
+            else:
                 try:
                     dist = float(kwa['dist'])
                 except KeyError:
@@ -2093,7 +2101,7 @@ class App(QtCore.QObject):
                     return "Invalid distance: %s" % kwa['dist']
 
                 try:
-                    obj.mirror(kwa['axis'], [dist, dist])
+                    obj.mirror(axis, [dist, dist])
                     obj.plot()
                 except Exception, e:
                     return "Operation failed: %s" % str(e)
@@ -2610,9 +2618,9 @@ class App(QtCore.QObject):
             'mirror': {
                 'fcn': mirror,
                 'help': "Mirror a layer.\n" +
-                        "> mirror <name> { -box <nameOfBox> | -axis <X|Y> [-dist <number>] }\n" +
-                        "   name: Name of the object (Gerber or Excellon) to mirror\n" +
-                        "   box: Name of object which act as box (cutout for example)\n" +
+                        "> mirror <name> -axis <X|Y> [-box <nameOfBox> | -dist <number>]\n" +
+                        "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
+                        "   box: Name of object which act as box (cutout for example.)\n" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
             },
