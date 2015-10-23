@@ -2043,42 +2043,60 @@ class App(QtCore.QObject):
         def mirror(name, *args):
             a, kwa = h(*args)
             types = {'box': str,
-                     'axis': str}
+                     'axis': str,
+                     'dist': float}
 
             for key in kwa:
                 if key not in types:
                     return 'Unknown parameter: %s' % key
                 kwa[key] = types[key](kwa[key])
 
+            # Get source object.
             try:
                 obj = self.collection.get_by_name(str(name))
             except:
                 return "Could not retrieve object: %s" % name
 
-            try:
-                box = self.collection.get_by_name(kwa['box'])
-            except:
-                return "Could not retrieve object box: %s" % kwa['box']
-
             if obj is None:
                 return "Object not found: %s" % name
-
-            if box is None:
-                return "Object box not found: %s" % kwa['box']
 
             if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
                 return "ERROR: Only Gerber and Excellon objects can be mirrored."
 
-            try:
-                xmin, ymin, xmax, ymax = box.bounds()
-                px = 0.5 * (xmin + xmax)
-                py = 0.5 * (ymin + ymax)
-            
-                obj.mirror(kwa['axis'], [px, py])
-                obj.plot()
+            # Box
+            if 'box' in kwa:
+                try:
+                    box = self.collection.get_by_name(kwa['box'])
+                except:
+                    return "Could not retrieve object box: %s" % kwa['box']
 
-            except Exception, e:
-                return "Operation failed: %s" % str(e)
+                if box is None:
+                    return "Object box not found: %s" % kwa['box']
+
+                try:
+                    xmin, ymin, xmax, ymax = box.bounds()
+                    px = 0.5 * (xmin + xmax)
+                    py = 0.5 * (ymin + ymax)
+
+                    obj.mirror(kwa['axis'], [px, py])
+                    obj.plot()
+
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
+
+            elif 'dist' in kwa:
+                try:
+                    dist = float(kwa['dist'])
+                except KeyError:
+                    dist = 0.0
+                except ValueError:
+                    return "Invalid distance: %s" % kwa['dist']
+
+                try:
+                    obj.mirror(kwa['axis'], [dist, dist])
+                    obj.plot()
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
 
             return 'Ok'
 
@@ -2581,7 +2599,7 @@ class App(QtCore.QObject):
             },
             'cutout': {
                 'fcn': cutout,
-                'help': "Creates cutout board.\n" +
+                'help': "Creates board cutout.\n" +
                         "> cutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
                         "   name: Name of the object\n" +
                         "   dia: Tool diameter\n" +
@@ -2591,11 +2609,12 @@ class App(QtCore.QObject):
             },
             'mirror': {
                 'fcn': mirror,
-                'help': "Mirror board.\n" +
-                        "> mirror <nameMirroredObject> -box <nameOfBox> [-axis <X|Y>]\n" +
+                'help': "Mirror a layer.\n" +
+                        "> mirror <name> { -box <nameOfBox> | -axis <X|Y> [-dist <number>] }\n" +
                         "   name: Name of the object (Gerber or Excellon) to mirror\n" +
                         "   box: Name of object which act as box (cutout for example)\n" +
-                        "   axis: Axis mirror over X or Y"
+                        "   axis: Mirror axis parallel to the X or Y axis.\n" +
+                        "   dist: Distance of the mirror axis to the X or Y axis."
             },
             'exteriors': {
                 'fcn': exteriors,
