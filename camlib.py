@@ -379,7 +379,7 @@ class Geometry(object):
         """
 
         log.debug("camlib.clear_polygon()")
-        assert type(polygon) == Polygon
+        assert type(polygon) == Polygon or type(polygon) == MultiPolygon
 
         ## The toolpaths
         # Index first and last points in paths
