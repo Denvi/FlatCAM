@@ -89,7 +89,7 @@ class App(QtCore.QObject):
     new_object_available = QtCore.pyqtSignal(object)
     message = QtCore.pyqtSignal(str, str, str)
 
-    def __init__(self, post_gui=None):
+    def __init__(self, user_defaults=True, post_gui=None):
         """
         Starts the application. Takes no parameters.
 
@@ -286,7 +286,8 @@ class App(QtCore.QObject):
 
         ###############################
         ### Load defaults from file ###
-        self.load_defaults()
+        if user_defaults:
+            self.load_defaults()
 
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
         if self.defaults['serial'] == 0 or len(str(self.defaults['serial'])) < 10:
@@ -302,7 +303,8 @@ class App(QtCore.QObject):
             finally:
                 QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
-        QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
+        if user_defaults:
+            QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
         self.options_form = GlobalOptionsUI()
         self.options_form_fields = {
@@ -1617,23 +1619,25 @@ class App(QtCore.QObject):
 
         # How the object should be initialized
         def obj_init(gerber_obj, app_obj):
-            assert isinstance(gerber_obj, FlatCAMGerber)
-            #log.debug("sys.getrefcount(proc) == %d" % sys.getrefcount(proc))
+
+            assert isinstance(gerber_obj, FlatCAMGerber), \
+                "Expected to initialize a FlatCAMGerber but got %s" % type(gerber_obj)
 
             # Opening the file happens here
             self.progress.emit(30)
             try:
                 gerber_obj.parse_file(filename, follow=follow)
+
             except IOError:
                 app_obj.inform.emit("[error] Failed to open file: " + filename)
                 app_obj.progress.emit(0)
                 raise IOError('Failed to open file: ' + filename)
+
             except ParseError, e:
                 app_obj.inform.emit("[error] Failed to parse file: " + filename)
                 app_obj.progress.emit(0)
                 self.log.error(str(e))
                 raise
-                #return
 
             # Further parsing
             self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here
