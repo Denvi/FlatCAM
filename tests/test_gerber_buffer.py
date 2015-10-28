@@ -1,30 +1,20 @@
 import unittest
 import camlib
-from shapely.geometry import Polygon, LineString, Point, LinearRing
-from shapely.geometry import MultiPoint, MultiPolygon
-from shapely.geometry import box as shply_box
-from shapely.ops import cascaded_union
-import shapely.affinity as affinity
-from shapely.wkt import loads as sloads
-from shapely.wkt import dumps as sdumps
-from shapely.geometry.base import BaseGeometry
 
 class GerberBuffer(unittest.TestCase):
     def setUp(self):
         self.gerber1 = camlib.Gerber()
         self.gerber1.use_buffer_for_union = True
-        self.gerber1.parse_file ("./gerber_files/STM32F4-spindle.cmp")
+        self.gerber1.parse_file("./gerber_files/STM32F4-spindle.cmp")
         geometry1 = self.gerber1.solid_geometry
-        self.geometry1_area = self.compute_area (geometry1)
+        self.geometry1_area = self.compute_area(geometry1)
         self.gerber2 = camlib.Gerber()
         self.gerber2.use_buffer_for_union = False
-        self.gerber2.parse_file ("./gerber_files/STM32F4-spindle.cmp")
+        self.gerber2.parse_file("./gerber_files/STM32F4-spindle.cmp")
         geometry2 = self.gerber2.solid_geometry
         self.geometry2_area = self.compute_area (geometry2)
 
-
-
-    def compute_area (self, geometry):
+    def compute_area(self, geometry):
         area = 0
         try:
             for geo in geometry:
@@ -35,9 +25,8 @@ class GerberBuffer(unittest.TestCase):
             area = geometry.area
         return area
 
-
     def test_buffer(self):
-        self.assertLessEqual (abs(self.geometry2_area - self.geometry1_area), 0.000001)
+        self.assertLessEqual(abs(self.geometry2_area - self.geometry1_area), 0.000001)
 
 
 if __name__ == '__main__':

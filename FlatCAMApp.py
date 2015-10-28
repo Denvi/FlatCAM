@@ -89,7 +89,7 @@ class App(QtCore.QObject):
     new_object_available = QtCore.pyqtSignal(object)
     message = QtCore.pyqtSignal(str, str, str)
 
-    def __init__(self):
+    def __init__(self, post_gui=None):
         """
         Starts the application. Takes no parameters.
 
@@ -511,6 +511,11 @@ class App(QtCore.QObject):
             except Exception as ext:
                 print "ERROR: ", ext
                 sys.exit(2)
+
+        # Post-GUI initialization: Experimental attempt
+        # to perform unit tests on the GUI.
+        if post_gui is not None:
+            post_gui(self)
 
         App.log.debug("END of constructor. Releasing control.")
 

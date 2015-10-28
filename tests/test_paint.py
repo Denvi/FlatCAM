@@ -6,6 +6,7 @@ from matplotlib.pyplot import plot, subplot, show, cla, clf, xlim, ylim, title
 from camlib import *
 from copy import deepcopy
 
+
 def mkstorage(paths):
     def get_pts(o):
         return [o.coords[0], o.coords[-1]]

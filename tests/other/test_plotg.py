@@ -3,6 +3,7 @@ from shapely.ops import cascaded_union, unary_union
 from matplotlib.pyplot import plot, subplot, show
 from camlib import *
 
+
 def plotg2(geo, solid_poly=False, color="black", linestyle='solid'):
 
     try:

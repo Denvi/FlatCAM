@@ -1,6 +1,5 @@
 from rtree import index as rtindex
 
-
 def pt2rect(pt):
     return pt[0], pt[1], pt[0], pt[1]
 
