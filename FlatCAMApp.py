@@ -1728,7 +1728,9 @@ class App(QtCore.QObject):
 
             :type app_obj_: App
             """
-            assert isinstance(app_obj_, App)
+            assert isinstance(app_obj_, App), \
+                "Initializer expected App, got %s" % type(app_obj_)
+
             self.progress.emit(10)
 
             try:
@@ -2151,7 +2153,8 @@ class App(QtCore.QObject):
         
                 # Object initialization function for app.new_object()
                 def job_init(job_obj, app_obj):
-                    assert isinstance(job_obj, FlatCAMCNCjob)
+                    assert isinstance(job_obj, FlatCAMCNCjob), \
+                        "Initializer expected FlatCAMCNCjob, got %s" % type(job_obj)
                     
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
@@ -2196,7 +2199,8 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % name
 
-            assert isinstance(obj, FlatCAMExcellon)
+            assert isinstance(obj, FlatCAMExcellon), \
+                "Expected a FlatCAMExcellon object, got %s" % type(obj)
 
             try:
                 success, msg = obj.generate_milling(**kwa)
@@ -2225,7 +2229,8 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % obj_name
 
-            assert isinstance(obj, Geometry)
+            assert isinstance(obj, Geometry), \
+                "Expected a Geometry, got %s" % type(obj)
 
             obj_exteriors = obj.get_exteriors()
 
@@ -2261,7 +2266,8 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % obj_name
 
-            assert isinstance(obj, Geometry)
+            assert isinstance(obj, Geometry), \
+                "Expected a Geometry, got %s" % type(obj)
 
             obj_interiors = obj.get_interiors()
 
@@ -2301,7 +2307,8 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % name
 
-            assert isinstance(obj, FlatCAMGerber)
+            assert isinstance(obj, FlatCAMGerber), \
+                "Expected a FlatCAMGerber, got %s" % type(obj)
 
             try:
                 obj.isolate(**kwa)

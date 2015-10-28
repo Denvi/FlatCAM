@@ -115,7 +115,8 @@ class FCVisibleProcessContainer(QtCore.QObject, FCProcessContainer):
     something_changed = QtCore.pyqtSignal()
 
     def __init__(self, view):
-        assert isinstance(view, FlatCAMActivityView)
+        assert isinstance(view, FlatCAMActivityView), \
+            "Expected a FlatCAMActivityView, got %s" % type(view)
 
         FCProcessContainer.__init__(self)
         QtCore.QObject.__init__(self)

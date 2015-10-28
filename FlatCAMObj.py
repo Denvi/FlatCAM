@@ -670,7 +670,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "spindlespeed": self.ui.spindlespeed_entry
         })
 
-        assert isinstance(self.ui, ExcellonObjectUI)
+        assert isinstance(self.ui, ExcellonObjectUI), \
+            "Expected a ExcellonObjectUI, got %s" % type(self.ui)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
@@ -718,7 +719,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 return False, "Error: Milling tool is larger than hole."
 
         def geo_init(geo_obj, app_obj):
-            assert isinstance(geo_obj, FlatCAMGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry), \
+                "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
             app_obj.progress.emit(20)
 
             geo_obj.solid_geometry = []
@@ -763,7 +765,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            assert isinstance(job_obj, FlatCAMCNCjob)
+            assert isinstance(job_obj, FlatCAMCNCjob), \
+                "Initializer expected a FlatCAMCNCjob, got %s" % type(job_obj)
 
             app_obj.progress.emit(20)
             job_obj.z_cut = self.options["drillz"]
@@ -888,7 +891,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         FlatCAMApp.App.log.debug("FlatCAMCNCJob.set_ui()")
 
-        assert isinstance(self.ui, CNCObjectUI)
+        assert isinstance(self.ui, CNCObjectUI), \
+            "Expected a CNCObjectUI, got %s" % type(self.ui)
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
@@ -1027,7 +1031,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         FlatCAMApp.App.log.debug("FlatCAMGeometry.set_ui()")
 
-        assert isinstance(self.ui, GeometryObjectUI)
+        assert isinstance(self.ui, GeometryObjectUI), \
+            "Expected a GeometryObjectUI, got %s" % type(self.ui)
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
@@ -1084,7 +1089,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
-            assert isinstance(geo_obj, FlatCAMGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry), \
+                "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
             #assert isinstance(app_obj, App)
 
             if self.options["paintmethod"] == "seed":
@@ -1156,7 +1162,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!
         def job_init(job_obj, app_obj):
-            assert isinstance(job_obj, FlatCAMCNCjob)
+            assert isinstance(job_obj, FlatCAMCNCjob), \
+                "Initializer expected a FlatCAMCNCjob, got %s" % type(job_obj)
+
             # Propagate options
             job_obj.options["tooldia"] = tooldia
 

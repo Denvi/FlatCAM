@@ -574,7 +574,9 @@ class FCCopy(FCMove):
 ########################
 class FlatCAMDraw(QtCore.QObject):
     def __init__(self, app, disabled=False):
-        assert isinstance(app, FlatCAMApp.App)
+        assert isinstance(app, FlatCAMApp.App), \
+            "Expected the app to be a FlatCAMApp.App, got %s" % type(app)
+
         super(FlatCAMDraw, self).__init__()
 
         self.app = app
@@ -767,9 +769,15 @@ class FlatCAMDraw(QtCore.QObject):
                 self.add_shape(subshape)
             return
 
-        assert isinstance(shape, DrawToolShape)
-        assert shape.geo is not None
-        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or not isinstance(shape.geo, list)
+        assert isinstance(shape, DrawToolShape), \
+            "Expected a DrawToolShape, got %s" % type(shape)
+
+        assert shape.geo is not None, \
+            "Shape object has empty geometry (None)"
+
+        assert (isinstance(shape.geo, list) and len(shape.geo) > 0) or \
+               not isinstance(shape.geo, list), \
+            "Shape objects has empty geometry ([])"
 
         if isinstance(shape, DrawToolUtilityShape):
             self.utility.append(shape)
@@ -825,7 +833,8 @@ class FlatCAMDraw(QtCore.QObject):
         :param fcgeometry: FlatCAMGeometry
         :return: None
         """
-        assert isinstance(fcgeometry, Geometry)
+        assert isinstance(fcgeometry, Geometry), \
+            "Expected a Geometry, got %s" % type(fcgeometry)
 
         self.deactivate()
 

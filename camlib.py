@@ -379,7 +379,8 @@ class Geometry(object):
         """
 
         log.debug("camlib.clear_polygon()")
-        assert type(polygon) == Polygon or type(polygon) == MultiPolygon
+        assert type(polygon) == Polygon or type(polygon) == MultiPolygon, \
+            "Expected a Polygon or MultiPolygon, got %s" % type(polygon)
 
         ## The toolpaths
         # Index first and last points in paths
@@ -2717,7 +2718,8 @@ class CNCjob(Geometry):
         :param tolerance:
         :return: None
         """
-        assert isinstance(geometry, Geometry)
+        assert isinstance(geometry, Geometry), \
+            "Expected a Geometry, got %s" % type(geometry)
         log.debug("generate_from_geometry_2()")
 
         ## Flatten the geometry

@@ -249,7 +249,8 @@ class VerticalScrollArea(QtGui.QScrollArea):
 class OptionalInputSection():
 
     def __init__(self, cb, optinputs):
-        assert isinstance(cb, FCCheckBox)
+        assert isinstance(cb, FCCheckBox), \
+            "Expected an FCCheckBox, got %s" % type(cb)
 
         self.cb = cb
         self.optinputs = optinputs
