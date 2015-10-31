@@ -91,7 +91,7 @@ class App(QtCore.QObject):
 
     def __init__(self, user_defaults=True, post_gui=None):
         """
-        Starts the application. Takes no parameters.
+        Starts the application.
 
         :return: app
         :rtype: App
@@ -2918,7 +2918,8 @@ class App(QtCore.QObject):
         try:
             f = urllib.urlopen(full_url)
         except:
-            App.log.warning("Failed checking for latest version. Could not connect.")
+            # App.log.warning("Failed checking for latest version. Could not connect.")
+            self.log.warning("Failed checking for latest version. Could not connect.")
             self.inform.emit("[warning] Failed checking for latest version. Could not connect.")
             return
 
