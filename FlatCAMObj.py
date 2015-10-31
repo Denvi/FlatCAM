@@ -139,7 +139,8 @@ class FlatCAMObj(QtCore.QObject):
 
     def build_ui(self):
         """
-        Sets up the UI/form for this object.
+        Sets up the UI/form for this object. Show the UI
+        in the App.
 
         :return: None
         :rtype: None
@@ -289,6 +290,14 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
 
     def set_ui(self, ui):
+        """
+        Maps options with GUI inputs.
+        Connects GUI events to methods.
+
+        :param ui: GUI object.
+        :type ui: GerberObjectUI
+        :return: None
+        """
         FlatCAMObj.set_ui(self, ui)
 
         FlatCAMApp.App.log.debug("FlatCAMGerber.set_ui()")
@@ -932,7 +941,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         f.write(preamble + '\n' + self.gcode + "\n" + postamble)
         f.close()
 
+        # Just for adding it to the recent files list.
         self.app.file_opened.emit("cncjob", filename)
+
         self.app.inform.emit("Saved to: " + filename)
 
     def on_plot_cb_click(self, *args):
