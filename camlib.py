@@ -1771,9 +1771,15 @@ class Gerber (Geometry):
                                        arcdir[current_interpolation_mode],
                                        self.steps_per_circ)
 
+                        # The last point in the computed arc can have
+                        # numerical errors. The exact final point is the
+                        # specified (x, y). Replace.
+                        this_arc[-1] = (x, y)
+
                         # Last point in path is current point
-                        current_x = this_arc[-1][0]
-                        current_y = this_arc[-1][1]
+                        # current_x = this_arc[-1][0]
+                        # current_y = this_arc[-1][1]
+                        current_x, current_y = x, y
 
                         # Append
                         path += this_arc
@@ -1819,8 +1825,14 @@ class Gerber (Geometry):
                                 this_arc = arc(center, radius, start, stop,
                                                arcdir[current_interpolation_mode],
                                                self.steps_per_circ)
-                                current_x = this_arc[-1][0]
-                                current_y = this_arc[-1][1]
+
+                                # Replace with exact values
+                                this_arc[-1] = (x, y)
+
+                                # current_x = this_arc[-1][0]
+                                # current_y = this_arc[-1][1]
+                                current_x, current_y = x, y
+
                                 path += this_arc
                                 last_path_aperture = current_aperture
                                 valid = True
