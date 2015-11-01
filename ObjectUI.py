@@ -299,7 +299,7 @@ class GeometryObjectUI(ObjectUI):
 
         maxdepthlabel = QtGui.QLabel('Depth/pass:')
         maxdepthlabel.setToolTip(
-            "Depth of each pass."
+            "Depth of each pass (positive)."
         )
         grid1.addWidget(maxdepthlabel, 6, 0)
         self.maxdepth_entry = LengthEntry()

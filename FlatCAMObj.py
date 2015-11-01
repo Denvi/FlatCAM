@@ -1028,7 +1028,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "paintmargin": 0.01,
             "paintmethod": "standard",
             "multidepth": False,
-            "depthperpass": -0.002
+            "depthperpass": 0.002
         })
 
         # Attributes to be included in serialization
