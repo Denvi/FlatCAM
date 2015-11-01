@@ -2715,8 +2715,13 @@ class CNCjob(Geometry):
 
         self.gcode = gcode
 
-    def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0,
-                                 multipass=False, depthpercut=None):
+    def generate_from_geometry_2(self,
+                                 geometry,
+                                 append=True,
+                                 tooldia=None,
+                                 tolerance=0,
+                                 multidepth=False,
+                                 depthpercut=None):
         """
         Second algorithm to generate from Geometry.
 
@@ -2732,6 +2737,7 @@ class CNCjob(Geometry):
         """
         assert isinstance(geometry, Geometry), \
             "Expected a Geometry, got %s" % type(geometry)
+
         log.debug("generate_from_geometry_2()")
 
         ## Flatten the geometry
@@ -2768,7 +2774,7 @@ class CNCjob(Geometry):
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n" % self.feedrate
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
-        if(self.spindlespeed != None):
+        if self.spindlespeed is not None:
             self.gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
         else:
             self.gcode += "M03\n"  # Spindle start
@@ -2794,7 +2800,7 @@ class CNCjob(Geometry):
                 if pt != geo.coords[0] and pt == geo.coords[-1]:
                     geo.coords = list(geo.coords)[::-1]
 
-                if not multipass:
+                if not multidepth:
                     # G-code
                     # Note: self.linear2gcode() and self.point2gcode() will
                     # lower and raise the tool every time.
@@ -2804,24 +2810,52 @@ class CNCjob(Geometry):
                         self.gcode += self.point2gcode(geo)
                     else:
                         log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
+                #--------- Multi-pass ---------
                 else:
                     if depthpercut is None:
                         depthpercut = self.z_cut
 
                     depth = 0
+                    reverse = False
                     while depth > self.z_cut:
                         depth -= depthpercut
+                        log.debug("DEPTH: %f" % depth)
                         # TODO: Working...
                         # G-code
                         # Note: self.linear2gcode() and self.point2gcode() will
                         # lower and raise the tool every time.
-                        # if type(geo) == LineString or type(geo) == LinearRing:
-                        #     self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-                        # elif type(geo) == Point:
-                        #     self.gcode += self.point2gcode(geo)
-                        # else:
-                        #     log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
+                        # Cut at specific depth and do not leave the tool.
+                        if type(geo) == LineString or type(geo) == LinearRing:
+                            self.gcode += self.linear2gcode(geo, tolerance=tolerance,
+                                                            zcut=depth,
+                                                            up=False)
+
+                        # Ignore multi-pass for points.
+                        elif type(geo) == Point:
+                            self.gcode += self.point2gcode(geo)
+                            break  # Ignoring ...
+
+                        else:
+                            log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
+                        # Reverse coordinates if not a loop so we can continue
+                        # cutting without returning to the beginhing.
+                        if type(geo) == LineString:
+                            geo.coords = list(geo.coords)[::-1]
+                            reverse = True
+
+                    # If geometry is reversed, revert.
+                    if reverse:
+                        if type(geo) == LineString:
+                            geo.coords = list(geo.coords)[::-1]
+
+                    # Lift the tool
+                    self.gcode += "G00 Z%.4f\n" % self.z_move
+                    # self.gcode += "( End of path. )\n"
+
+                # Did deletion at the beginning.
                 # Delete from index, update current location and continue.
                 #rti.delete(hits[0], geo.coords[0])
                 #rti.delete(hits[0], geo.coords[-1])

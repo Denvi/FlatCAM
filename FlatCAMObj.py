@@ -1026,7 +1026,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "painttooldia": 0.0625,
             "paintoverlap": 0.15,
             "paintmargin": 0.01,
-            "paintmethod": "standard"
+            "paintmethod": "standard",
+            "multidepth": False,
+            "depthperpass": -0.002
         })
 
         # Attributes to be included in serialization
@@ -1055,7 +1057,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "painttooldia": self.ui.painttooldia_entry,
             "paintoverlap": self.ui.paintoverlap_entry,
             "paintmargin": self.ui.paintmargin_entry,
-            "paintmethod": self.ui.paintmethod_combo
+            "paintmethod": self.ui.paintmethod_combo,
+            "multidepth": self.ui.mpass_cb,
+            "depthperpass": self.ui.maxdepth_entry
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -1137,11 +1141,19 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.read_form()
         self.generatecncjob()
 
-    def generatecncjob(self, z_cut=None, z_move=None,
-                       feedrate=None, tooldia=None, outname=None,
-                       spindlespeed=None):
+    def generatecncjob(self,
+                       z_cut=None,
+                       z_move=None,
+                       feedrate=None,
+                       tooldia=None,
+                       outname=None,
+                       spindlespeed=None,
+                       multidepth=None,
+                       depthperpass=None):
         """
-        Creates a CNCJob out of this Geometry object.
+        Creates a CNCJob out of this Geometry object. The actual
+        work is done by the target FlatCAMCNCjob object's
+        `generate_from_geometry_2()` method.
 
         :param z_cut: Cut depth (negative)
         :param z_move: Hight of the tool when travelling (not cutting)
@@ -1157,6 +1169,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         z_move = z_move if z_move is not None else self.options["travelz"]
         feedrate = feedrate if feedrate is not None else self.options["feedrate"]
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
+        multidepth = multidepth if multidepth is not None else self.options["multidepth"]
+        depthperpass = depthperpass if depthperpass is not None else self.options["depthperpass"]
 
         # To allow default value to be "" (optional in gui) and translate to None
         # if not isinstance(spindlespeed, int):
@@ -1186,7 +1200,10 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             job_obj.spindlespeed = spindlespeed
             app_obj.progress.emit(40)
             # TODO: The tolerance should not be hard coded. Just for testing.
-            job_obj.generate_from_geometry_2(self, tolerance=0.0005)
+            job_obj.generate_from_geometry_2(self,
+                                             multidepth=multidepth,
+                                             depthpercut=depthperpass,
+                                             tolerance=0.0005)
 
             app_obj.progress.emit(50)
             job_obj.gcode_parse()

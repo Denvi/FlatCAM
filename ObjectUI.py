@@ -222,7 +222,9 @@ class GeometryObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.plot_cb)
 
-        ## Create CNC Job
+        #-----------------------------------
+        # Create CNC Job
+        #-----------------------------------
         self.cncjob_label = QtGui.QLabel('<b>Create CNC Job:</b>')
         self.cncjob_label.setToolTip(
             "Create a CNC Job object\n"
@@ -283,15 +285,38 @@ class GeometryObjectUI(ObjectUI):
         self.cncspindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
 
+        # Multi-pass
+        mpasslabel = QtGui.QLabel('Multi-Depth:')
+        mpasslabel.setToolTip(
+            "Use multiple passes to limit\n"
+            "the cut depth in each pass. Will\n"
+            "cut multiple times until Cut Z is\n"
+            "reached."
+        )
+        grid1.addWidget(mpasslabel, 5, 0)
+        self.mpass_cb = FCCheckBox()
+        grid1.addWidget(self.mpass_cb, 5, 1)
+
+        maxdepthlabel = QtGui.QLabel('Depth/pass:')
+        maxdepthlabel.setToolTip(
+            "Depth of each pass."
+        )
+        grid1.addWidget(maxdepthlabel, 6, 0)
+        self.maxdepth_entry = LengthEntry()
+        grid1.addWidget(self.maxdepth_entry, 6, 1)
+
+        self.ois_mpass = OptionalInputSection(self.mpass_cb, [self.maxdepth_entry])
+
+        # Button
         self.generate_cnc_button = QtGui.QPushButton('Generate')
         self.generate_cnc_button.setToolTip(
             "Generate the CNC Job object."
         )
         self.custom_box.addWidget(self.generate_cnc_button)
 
-        ################
-        ## Paint area ##
-        ################
+        #------------------------------
+        # Paint area
+        #------------------------------
         self.paint_label = QtGui.QLabel('<b>Paint Area:</b>')
         self.paint_label.setToolTip(
             "Creates tool paths to cover the\n"

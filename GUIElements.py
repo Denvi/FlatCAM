@@ -246,9 +246,16 @@ class VerticalScrollArea(QtGui.QScrollArea):
         return QtGui.QWidget.eventFilter(self, source, event)
 
 
-class OptionalInputSection():
+class OptionalInputSection:
 
     def __init__(self, cb, optinputs):
+        """
+        Associates the a checkbox with a set of inputs.
+
+        :param cb: Checkbox that enables the optional inputs.
+        :param optinputs: List of widgets that are optional.
+        :return:
+        """
         assert isinstance(cb, FCCheckBox), \
             "Expected an FCCheckBox, got %s" % type(cb)
 
