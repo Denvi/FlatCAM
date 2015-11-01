@@ -94,7 +94,7 @@ class PaintConnectTest(PaintTestCase):
 
         self.assertEqual(len(result), 1)
 
-        self.plot_summary_A(paths, tooldia, result, "WALK expected.")
+        # self.plot_summary_A(paths, tooldia, result, "WALK expected.")
 
     def test_no_jump1(self):
         print "Test: FLY Expected"
@@ -116,7 +116,7 @@ class PaintConnectTest(PaintTestCase):
 
         self.assertEqual(len(result), len(paths))
 
-        self.plot_summary_A(paths, tooldia, result, "FLY Expected")
+        # self.plot_summary_A(paths, tooldia, result, "FLY Expected")
 
     def test_no_jump2(self):
         print "Test: FLY Expected"
@@ -138,7 +138,7 @@ class PaintConnectTest(PaintTestCase):
 
         self.assertEqual(len(result), len(paths))
 
-        self.plot_summary_A(paths, tooldia, result, "FLY Expected")
+        # self.plot_summary_A(paths, tooldia, result, "FLY Expected")
 
 
 class PaintConnectTest2(PaintTestCase):
@@ -172,7 +172,7 @@ class PaintConnectTest2(PaintTestCase):
 
         self.assertEqual(len(result), len(paths))
 
-        self.plot_summary_A(paths, tooldia, result, "FLY Expected")
+        # self.plot_summary_A(paths, tooldia, result, "FLY Expected")
 
 
 class PaintConnectTest3(PaintTestCase):
@@ -205,7 +205,7 @@ class PaintConnectTest3(PaintTestCase):
 
         self.assertEqual(len(result), 1)
 
-        self.plot_summary_A(paths, tooldia, result, "WALK Expected")
+        # self.plot_summary_A(paths, tooldia, result, "WALK Expected")
 
 
 if __name__ == '__main__':
