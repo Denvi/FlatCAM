@@ -2733,6 +2733,9 @@ class CNCjob(Geometry):
         :param append:
         :param tooldia:
         :param tolerance:
+        :param multidepth: If True, use multiple passes to reach
+           the desired depth.
+        :param depthpercut: Maximum depth in each pass.
         :return: None
         """
         assert isinstance(geometry, Geometry), \
@@ -2800,6 +2803,7 @@ class CNCjob(Geometry):
                 if pt != geo.coords[0] and pt == geo.coords[-1]:
                     geo.coords = list(geo.coords)[::-1]
 
+                #---------- Single depth/pass --------
                 if not multidepth:
                     # G-code
                     # Note: self.linear2gcode() and self.point2gcode() will
@@ -2819,14 +2823,17 @@ class CNCjob(Geometry):
                     depth = 0
                     reverse = False
                     while depth > self.z_cut:
-                        depth -= depthpercut
-                        log.debug("DEPTH: %f" % depth)
-                        # TODO: Working...
-                        # G-code
-                        # Note: self.linear2gcode() and self.point2gcode() will
-                        # lower and raise the tool every time.
 
-                        # Cut at specific depth and do not leave the tool.
+                        # Increase depth. Limit to z_cut.
+                        depth -= depthpercut
+                        if depth < self.z_cut:
+                            depth = self.z_cut
+
+                        # Cut at specific depth and do not lift the tool.
+                        # Note: linear2gcode() will use G00 to move to the
+                        # first point in the path, but it should be already
+                        # at the first point if the tool is down (in the material).
+                        # So, an extra G00 should show up but is inconsequential.
                         if type(geo) == LineString or type(geo) == LinearRing:
                             self.gcode += self.linear2gcode(geo, tolerance=tolerance,
                                                             zcut=depth,
