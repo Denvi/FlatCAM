@@ -457,6 +457,11 @@ class FCPolygon(FCShapeTool):
         self.geometry = DrawToolShape(Polygon(self.points))
         self.complete = True
 
+    def on_key(self, key):
+        if key == 'backspace':
+            if len(self.points) > 0:
+                self.points = self.points[0:-1]
+
 
 class FCPath(FCPolygon):
     """
@@ -468,12 +473,17 @@ class FCPath(FCPolygon):
         self.complete = True
 
     def utility_geometry(self, data=None):
-        if len(self.points) > 1:
+        if len(self.points) > 0:
             temp_points = [x for x in self.points]
             temp_points.append(data)
             return DrawToolUtilityShape(LineString(temp_points))
 
         return None
+
+    def on_key(self, key):
+        if key == 'backspace':
+            if len(self.points) > 0:
+                self.points = self.points[0:-1]
 
 
 class FCSelect(DrawTool):
