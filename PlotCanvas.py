@@ -66,6 +66,8 @@ class PlotCanvas:
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         # Events
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_down)
+        self.canvas.mpl_connect('button_release_event', self.on_mouse_up)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         #self.canvas.connect('configure-event', self.auto_adjust_axes)
         self.canvas.mpl_connect('resize_event', self.auto_adjust_axes)
@@ -77,6 +79,9 @@ class PlotCanvas:
 
         self.mouse = [0, 0]
         self.key = None
+
+        self.mouse_press_button = -1
+        self.mouse_press_pos = [0, 0]
 
     def on_key_down(self, event):
         """
@@ -274,6 +279,19 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw()
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)                
+
+    def pan_by_coords(self, x, y):
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+
+        # Adjust axes
+        for ax in self.figure.get_axes():
+            ax.set_xlim((xmin - x, xmax - x))
+            ax.set_ylim((ymin - y, ymax - y))
+
+        # Re-draw
+        self.canvas.draw()
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def new_axes(self, name):
@@ -326,6 +344,16 @@ class PlotCanvas:
                 self.pan(0, -0.3)
             return
 
+    def on_mouse_down(self, event):
+        FlatCAMApp.App.log.debug('on_mouse_down() button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+            event.button, event.x, event.y, event.xdata, event.ydata))
+
+        self.mouse_press_button = event.button
+        self.mouse_press_pos = [event.xdata, event.ydata]
+
+    def on_mouse_up(self, event):
+        self.mouse_press_button = -1
+
     def on_mouse_move(self, event):
         """
         Mouse movement event hadler. Stores the coordinates.
@@ -335,3 +363,5 @@ class PlotCanvas:
         """
         self.mouse = [event.xdata, event.ydata]
 
+        if self.mouse_press_button == 2:
+            self.pan_by_coords(event.xdata - self.mouse_press_pos[0], event.ydata - self.mouse_press_pos[1])

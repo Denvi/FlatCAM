@@ -1300,7 +1300,9 @@ class App(QtCore.QObject):
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
         obj.plot()
-        self.on_zoom_fit(None)
+
+        if obj.kind not in ["geometry", "cncjob"]: self.on_zoom_fit(None)
+
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
