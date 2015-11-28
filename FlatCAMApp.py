@@ -1301,7 +1301,8 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         obj.plot()
 
-        if obj.kind not in ["geometry", "cncjob"]: self.on_zoom_fit(None)
+        # Only fit on first object
+        if len(self.collection.object_list) == 1: self.on_zoom_fit(None)
 
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))

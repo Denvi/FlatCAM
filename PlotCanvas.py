@@ -63,7 +63,7 @@ class PlotCanvas:
 
         # Copy a bitmap of the canvas for quick animation.
         # Update every time the canvas is re-drawn.
-#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         # Events
         self.canvas.mpl_connect('button_press_event', self.on_mouse_down)
@@ -356,4 +356,5 @@ class PlotCanvas:
 
     def on_resize(self, *args):
         self.auto_adjust_axes()
+        self.canvas.draw()
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
