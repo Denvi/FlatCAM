@@ -63,14 +63,14 @@ class PlotCanvas:
 
         # Copy a bitmap of the canvas for quick animation.
         # Update every time the canvas is re-drawn.
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         # Events
         self.canvas.mpl_connect('button_press_event', self.on_mouse_down)
         self.canvas.mpl_connect('button_release_event', self.on_mouse_up)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         #self.canvas.connect('configure-event', self.auto_adjust_axes)
-        self.canvas.mpl_connect('resize_event', self.auto_adjust_axes)
+        self.canvas.mpl_connect('resize_event', self.on_resize)
         #self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
         #self.canvas.connect("scroll-event", self.on_scroll)
         self.canvas.mpl_connect('scroll_event', self.on_scroll)
@@ -81,7 +81,6 @@ class PlotCanvas:
         self.key = None
 
         self.mouse_press_button = -1
-        self.mouse_press_pos = [0, 0]
 
     def on_key_down(self, event):
         """
@@ -153,7 +152,7 @@ class PlotCanvas:
         self.axes.grid(True)
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.draw_idle()
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
@@ -210,8 +209,8 @@ class PlotCanvas:
             ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
 
         # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.canvas.draw_idle()
+#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def auto_adjust_axes(self, *args):
         """
@@ -263,8 +262,8 @@ class PlotCanvas:
             ax.set_ylim((ymin, ymax))
 
         # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.canvas.draw_idle()
+#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -278,21 +277,8 @@ class PlotCanvas:
             ax.set_ylim((ymin + y * height, ymax + y * height))
 
         # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)                
-
-    def pan_by_coords(self, x, y):
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-
-        # Adjust axes
-        for ax in self.figure.get_axes():
-            ax.set_xlim((xmin - x, xmax - x))
-            ax.set_ylim((ymin - y, ymax - y))
-
-        # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.canvas.draw_idle()
+#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def new_axes(self, name):
         """
@@ -349,9 +335,10 @@ class PlotCanvas:
             event.button, event.x, event.y, event.xdata, event.ydata))
 
         self.mouse_press_button = event.button
-        self.mouse_press_pos = [event.xdata, event.ydata]
+        if event.button == 2: self.axes.start_pan(event.x, event.y, 1)
 
     def on_mouse_up(self, event):
+        if self.mouse_press_button == 2: self.axes.end_pan()
         self.mouse_press_button = -1
 
     def on_mouse_move(self, event):
@@ -364,4 +351,9 @@ class PlotCanvas:
         self.mouse = [event.xdata, event.ydata]
 
         if self.mouse_press_button == 2:
-            self.pan_by_coords(event.xdata - self.mouse_press_pos[0], event.ydata - self.mouse_press_pos[1])
+            self.axes.drag_pan(1, event.key, event.x, event.y)
+            self.auto_adjust_axes()
+
+    def on_resize(self, *args):
+        self.auto_adjust_axes()
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)

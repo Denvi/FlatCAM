@@ -37,7 +37,7 @@ buildOptions = dict(
 
 print "INCLUDE_FILES", include_files
 
-execfile('clean.py')
+#execfile('clean.py')
 
 setup(
     name="FlatCAM",
