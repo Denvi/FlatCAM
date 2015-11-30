@@ -1634,7 +1634,7 @@ class App(QtCore.QObject):
                 raise IOError('Failed to open file: ' + filename)
 
             except ParseError, e:
-                app_obj.inform.emit("[error] Failed to parse file: " + filename)
+                app_obj.inform.emit("[error] Failed to parse file: " + filename + ". " + e[0])
                 app_obj.progress.emit(0)
                 self.log.error(str(e))
                 raise

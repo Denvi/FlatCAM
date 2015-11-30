@@ -300,6 +300,7 @@ class FlatCAMInfoBar(QtGui.QWidget):
 
         self.text = QtGui.QLabel(self)
         self.text.setText("Hello!")
+        self.text.setToolTip("Hello!")
 
         layout.addWidget(self.text)
 
@@ -307,6 +308,7 @@ class FlatCAMInfoBar(QtGui.QWidget):
 
     def set_text_(self, text):
         self.text.setText(text)
+        self.text.setToolTip(text)
 
     def set_status(self, text, level="info"):
         level = str(level)

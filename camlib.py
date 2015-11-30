@@ -14,6 +14,8 @@ from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
 from numpy.linalg import solve, norm
 from matplotlib.figure import Figure
 import re
+import sys
+import traceback
 
 import collections
 import numpy as np
@@ -2054,9 +2056,12 @@ class Gerber (Geometry):
                 self.solid_geometry = self.solid_geometry.difference(new_poly)
 
         except Exception, err:
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
             #print traceback.format_exc()
+
             log.error("PARSING FAILED. Line %d: %s" % (line_num, gline))
-            raise ParseError("%s\nLine %d: %s" % (repr(err), line_num, gline))
+            raise ParseError("Line %d: %s" % (line_num, gline), repr(err))
 
     @staticmethod
     def create_flash_geometry(location, aperture):
