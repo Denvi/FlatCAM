@@ -1301,7 +1301,7 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         obj.plot()
 
-        # Only fit on first object
+        # Fit on first added object only
         if len(self.collection.object_list) == 1: self.on_zoom_fit(None)
 
         t1 = time.time()  # DEBUG
