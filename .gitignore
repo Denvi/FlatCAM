@@ -1,4 +1,3 @@
 *.pyc
 .idea/
 tests/tmp/
-build/*
