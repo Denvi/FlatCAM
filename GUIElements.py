@@ -85,15 +85,19 @@ class LengthEntry(QtGui.QLineEdit):
 
     def get_value(self):
         raw = str(self.text()).strip(' ')
-        match = self.format_re.search(raw)
+        # match = self.format_re.search(raw)
 
-        if not match:
-            return None
         try:
-            if match.group(2) is not None and match.group(2).upper() in self.scales:
-                return float(eval(match.group(1)))*float(self.scales[self.output_units][match.group(2).upper()])
-            else:
-                return float(eval(match.group(1)))
+            units = raw[-2:]
+            units = self.scales[self.output_units][units.upper()]
+            value = raw[:-2]
+            return float(eval(value))*units
+        except IndexError:
+            value = raw
+            return float(eval(value))
+        except KeyError:
+            value = raw
+            return float(eval(value))
         except:
             log.warning("Could not parse value in entry: %s" % str(raw))
             return None

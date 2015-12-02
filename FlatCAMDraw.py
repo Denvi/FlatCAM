@@ -457,6 +457,11 @@ class FCPolygon(FCShapeTool):
         self.geometry = DrawToolShape(Polygon(self.points))
         self.complete = True
 
+    def on_key(self, key):
+        if key == 'backspace':
+            if len(self.points) > 0:
+                self.points = self.points[0:-1]
+
 
 class FCPath(FCPolygon):
     """
@@ -468,12 +473,17 @@ class FCPath(FCPolygon):
         self.complete = True
 
     def utility_geometry(self, data=None):
-        if len(self.points) > 1:
+        if len(self.points) > 0:
             temp_points = [x for x in self.points]
             temp_points.append(data)
             return DrawToolUtilityShape(LineString(temp_points))
 
         return None
+
+    def on_key(self, key):
+        if key == 'backspace':
+            if len(self.points) > 0:
+                self.points = self.points[0:-1]
 
 
 class FCSelect(DrawTool):
@@ -1001,6 +1011,7 @@ class FlatCAMDraw(QtCore.QObject):
                 self.active_tool.make()
                 if self.active_tool.complete:
                     self.on_shape_complete()
+                    self.app.info("Done.")
             return
 
         ### Abort the current action
@@ -1027,12 +1038,14 @@ class FlatCAMDraw(QtCore.QObject):
             self.move_btn.setChecked(True)
             self.on_tool_select('move')
             self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
+            self.app.info("Click on target point.")
 
         ### Copy
         if event.key == 'c':
             self.copy_btn.setChecked(True)
             self.on_tool_select('copy')
             self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
+            self.app.info("Click on target point.")
 
         ### Snap
         if event.key == 'g':
