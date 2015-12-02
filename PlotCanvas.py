@@ -210,7 +210,6 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw_idle()
-#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def auto_adjust_axes(self, *args):
         """
@@ -263,7 +262,6 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw_idle()
-#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -278,7 +276,6 @@ class PlotCanvas:
 
         # Re-draw
         self.canvas.draw_idle()
-#        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
     def new_axes(self, name):
         """
@@ -331,9 +328,6 @@ class PlotCanvas:
             return
 
     def on_mouse_down(self, event):
-        FlatCAMApp.App.log.debug('on_mouse_down() button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-            event.button, event.x, event.y, event.xdata, event.ydata))
-
         self.mouse_press_button = event.button
         if event.button == 2: self.axes.start_pan(event.x, event.y, 1)
 
