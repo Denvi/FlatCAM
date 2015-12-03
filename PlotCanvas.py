@@ -76,11 +76,12 @@ class PlotCanvas:
         self.canvas.mpl_connect('scroll_event', self.on_scroll)
         self.canvas.mpl_connect('key_press_event', self.on_key_down)
         self.canvas.mpl_connect('key_release_event', self.on_key_up)
+        self.canvas.mpl_connect('draw_event', self.on_draw)
 
         self.mouse = [0, 0]
         self.key = None
 
-        self.mouse_press_button = -1
+        self.panning = False
 
     def on_key_down(self, event):
         """
@@ -329,11 +330,20 @@ class PlotCanvas:
 
     def on_mouse_down(self, event):
         self.mouse_press_button = event.button
-        if event.button == 2: self.axes.start_pan(event.x, event.y, 1)
+        if event.button == 2:
+            self._xypress = []
+            for a in self.figure.get_axes():
+                if (event.x is not None and event.y is not None and a.in_axes(event) and
+                    a.get_navigate() and a.can_pan()):
+                    a.start_pan(event.x, event.y, 1)
+                    self._xypress.append(a)
+            if len(self._xypress) > 0: self.panning = True;
 
     def on_mouse_up(self, event):
-        if self.mouse_press_button == 2: self.axes.end_pan()
-        self.mouse_press_button = -1
+        if event.button == 2:
+            for a in self._xypress:
+                a.end_pan()
+            self.panning = False
 
     def on_mouse_move(self, event):
         """
@@ -344,11 +354,14 @@ class PlotCanvas:
         """
         self.mouse = [event.xdata, event.ydata]
 
-        if self.mouse_press_button == 2:
-            self.axes.drag_pan(1, event.key, event.x, event.y)
-            self.auto_adjust_axes()
+        if self.panning is True:
+            for a in self._xypress:
+                a.drag_pan(1, event.key, event.x, event.y)
+            self.canvas.draw_idle()
 
     def on_resize(self, *args):
         self.auto_adjust_axes()
-        self.canvas.draw()
+
+    def on_draw(self, renderer):
+        FlatCAMApp.App.log.debug('on_draw()')
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
