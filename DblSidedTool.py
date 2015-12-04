@@ -131,15 +131,16 @@ class DblSidedTool(FlatCAMTool):
             selection_index = self.box_combo.currentIndex()
             bb_obj = self.app.collection.object_list[selection_index]  # TODO: Direct access??
             xmin, ymin, xmax, ymax = bb_obj.bounds()
-            px = 0.5*(xmin+xmax)
-            py = 0.5*(ymin+ymax)
+            px = 0.5 * (xmin + xmax)
+            py = 0.5 * (ymin + ymax)
 
         xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
 
         dia = self.drill_dia.get_value()
         tools = {"1": {"C": dia}}
 
-        holes = self.alignment_holes.get_value()
+        # holes = self.alignment_holes.get_value()
+        holes = eval('[{}]'.format(self.alignment_holes.text()))
         drills = []
 
         for hole in holes:
@@ -174,8 +175,8 @@ class DblSidedTool(FlatCAMTool):
             selection_index = self.box_combo.currentIndex()
             bb_obj = self.app.collection.object_list[selection_index]  # TODO: Direct access??
             xmin, ymin, xmax, ymax = bb_obj.bounds()
-            px = 0.5*(xmin+xmax)
-            py = 0.5*(ymin+ymax)
+            px = 0.5 * (xmin + xmax)
+            py = 0.5 * (ymin + ymax)
 
         fcobj.mirror(axis, [px, py])
         fcobj.plot()
