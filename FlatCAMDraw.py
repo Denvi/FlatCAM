@@ -896,7 +896,8 @@ class FlatCAMDraw(QtCore.QObject):
         :param event: Event object dispatched by Matplotlib
         :return: None
         """
-        if self.active_tool is not None:
+        # Selection with left mouse button
+        if self.active_tool is not None and event.button is 1:
             # Dispatch event to active_tool
             msg = self.active_tool.click(self.snap(event.xdata, event.ydata))
             self.app.info(msg)
