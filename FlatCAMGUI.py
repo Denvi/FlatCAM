@@ -136,11 +136,9 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ### Notebook ###
         ################
         self.notebook = QtGui.QTabWidget()
-        # self.notebook.setMinimumWidth(250)
 
         ### Projet ###
         project_tab = QtGui.QWidget()
-        project_tab.setMinimumWidth(250)  # Hack
         self.project_tab_layout = QtGui.QVBoxLayout(project_tab)
         self.project_tab_layout.setContentsMargins(2, 2, 2, 2)
         self.notebook.addTab(project_tab, "Project")

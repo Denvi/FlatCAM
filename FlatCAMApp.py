@@ -307,6 +307,7 @@ class App(QtCore.QObject):
             QtCore.QTimer.singleShot(self.defaults["defaults_save_period_ms"], auto_save_defaults)
 
         self.options_form = GlobalOptionsUI()
+
         self.options_form_fields = {
             "units": self.options_form.units_radio,
             "gerber_plot": self.options_form.gerber_group.plot_cb,
@@ -391,6 +392,10 @@ class App(QtCore.QObject):
         self.collection = ObjectCollection()
         self.ui.project_tab_layout.addWidget(self.collection.view)
         #### End of Data ####
+
+        #### Adjust tabs width ####
+        self.collection.view.setMinimumWidth(self.ui.options_scroll_area.widget().sizeHint().width() +
+            self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
 
         #### Worker ####
         App.log.info("Starting Worker...")
