@@ -66,11 +66,11 @@ class PlotCanvas:
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         # Events
-        self.canvas.mpl_connect('button_press_event', self.on_mouse_down)
-        self.canvas.mpl_connect('button_release_event', self.on_mouse_up)
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
+        self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         #self.canvas.connect('configure-event', self.auto_adjust_axes)
-        self.canvas.mpl_connect('resize_event', self.on_resize)
+        self.canvas.mpl_connect('resize_event', self.auto_adjust_axes)
         #self.canvas.add_events(Gdk.EventMask.SMOOTH_SCROLL_MASK)
         #self.canvas.connect("scroll-event", self.on_scroll)
         self.canvas.mpl_connect('scroll_event', self.on_scroll)
@@ -81,6 +81,7 @@ class PlotCanvas:
         self.mouse = [0, 0]
         self.key = None
 
+        self.pan_axes = []
         self.panning = False
 
     def on_key_down(self, event):
@@ -209,8 +210,8 @@ class PlotCanvas:
             ax.set_ylim((ymin, ymax))
             ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
 
-        # Re-draw
-        self.canvas.draw_idle()
+        # Sync re-draw to proper paint on form resize
+        self.canvas.draw()
 
     def auto_adjust_axes(self, *args):
         """
@@ -261,7 +262,7 @@ class PlotCanvas:
             ax.set_xlim((xmin, xmax))
             ax.set_ylim((ymin, ymax))
 
-        # Re-draw
+        # Async re-draw
         self.canvas.draw_idle()
 
     def pan(self, x, y):
@@ -328,40 +329,50 @@ class PlotCanvas:
                 self.pan(0, -0.3)
             return
 
-    def on_mouse_down(self, event):
-        self.mouse_press_button = event.button
+    def on_mouse_press(self, event):
+
+        # Check for middle mouse button press
         if event.button == 2:
-            self._xypress = []
+
+            # Prepare axes for pan (using 'matplotlib' pan function)
+            self.pan_axes = []
             for a in self.figure.get_axes():
                 if (event.x is not None and event.y is not None and a.in_axes(event) and
-                    a.get_navigate() and a.can_pan()):
+                        a.get_navigate() and a.can_pan()):
                     a.start_pan(event.x, event.y, 1)
-                    self._xypress.append(a)
-            if len(self._xypress) > 0: self.panning = True;
+                    self.pan_axes.append(a)
 
-    def on_mouse_up(self, event):
+            # Set pan view flag
+            if len(self.pan_axes) > 0: self.panning = True;
+
+    def on_mouse_release(self, event):
+
+        # Check for middle mouse button release to complete pan procedure
         if event.button == 2:
-            for a in self._xypress:
+            for a in self.pan_axes:
                 a.end_pan()
+
+            # Clear pan flag
             self.panning = False
 
     def on_mouse_move(self, event):
         """
-        Mouse movement event hadler. Stores the coordinates.
+        Mouse movement event hadler. Stores the coordinates. Updates view on pan.
 
         :param event: Contains information about the event.
         :return: None
         """
         self.mouse = [event.xdata, event.ydata]
 
+        # Update pan view on mouse move
         if self.panning is True:
-            for a in self._xypress:
+            for a in self.pan_axes:
                 a.drag_pan(1, event.key, event.x, event.y)
+
+            # Async re-draw (redraws only on thread idle state, uses timer on backend)
             self.canvas.draw_idle()
 
-    def on_resize(self, *args):
-        self.auto_adjust_axes()
-
     def on_draw(self, renderer):
-        FlatCAMApp.App.log.debug('on_draw()')
+
+        # Store background on canvas redraw
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
