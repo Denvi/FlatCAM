@@ -5,10 +5,14 @@ import FlatCAMApp
 from PyQt4 import Qt, QtGui, QtCore
 
 
-class KeySensitiveListView(QtGui.QListView):
+class KeySensitiveListView(QtGui.QTreeView):
     """
     QtGui.QListView extended to emit a signal on key press.
     """
+
+    def __init__(self, parent = None):
+        super(KeySensitiveListView, self).__init__(parent)
+        self.setHeaderHidden(True)
 
     keyPressed = QtCore.pyqtSignal(int)
 
@@ -17,7 +21,48 @@ class KeySensitiveListView(QtGui.QListView):
         self.keyPressed.emit(event.key())
 
 
-class ObjectCollection(QtCore.QAbstractListModel):
+class TreeItem(object):
+    """
+    Item of a tree model
+    """
+    def __init__(self, data, parent_item = None):
+
+        self.m_parent_item = parent_item
+        self.m_item_data = data
+        self.m_child_items = []
+
+        if parent_item:
+            parent_item.append_child(self)
+
+    def append_child(self, item):
+        print "append child", self.data(0), item.data(0)
+
+        self.m_child_items.append(item)
+        item.set_parent_item(self)
+
+    def child(self, row):
+        return self.m_child_items[row]
+
+    def child_count(self):
+        return len(self.m_child_items)
+
+    def column_count(self):
+        return len(self.m_item_data)
+
+    def data(self, column):
+        return self.m_item_data[column]
+
+    def row(self):
+        return self.m_parent_item.m_child_items.index(self)
+
+    def set_parent_item(self, parent_item):
+        self.m_parent_item = parent_item
+
+    def parent_item(self):
+        return self.m_parent_item
+
+
+class ObjectCollection(QtCore.QAbstractItemModel):
     """
     Object storage and management.
     """
@@ -36,8 +81,23 @@ class ObjectCollection(QtCore.QAbstractListModel):
         "geometry": "share/geometry16.png"
     }
 
+    root_item = None
+
     def __init__(self, parent=None):
-        QtCore.QAbstractListModel.__init__(self, parent=parent)
+
+        QtCore.QAbstractItemModel.__init__(self, parent=parent)
+
+        # Prepare groups
+        self.root_item = TreeItem(["root"])
+        self.root_item.append_child(TreeItem(["Gerber"]))
+        self.root_item.append_child(TreeItem(["Excellon"]))
+        self.root_item.append_child(TreeItem(["Geometry"]))
+        self.root_item.append_child(TreeItem(["CNC-job"]))
+
+        for i in self.root_item.m_child_items:
+            print i.data(0)
+            i.append_child(TreeItem(["empty"]))
+
         ### Icons for the list view
         self.icons = {}
         for kind in ObjectCollection.icon_files:
@@ -86,25 +146,84 @@ class ObjectCollection(QtCore.QAbstractListModel):
     def on_mouse_down(self, event):
         FlatCAMApp.App.log.debug("Mouse button pressed on list")
 
-    def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
-        return len(self.object_list)
+    def index(self, row, column = 0, parent = None, *args, **kwargs):
+        if not self.hasIndex(row, column, parent):
+            return QtCore.QModelIndex()
 
-    def columnCount(self, *args, **kwargs):
-        return 1
+        if not parent.isValid():
+            parent_item = self.root_item
+        else:
+            parent_item = parent.internalPointer()
 
-    def data(self, index, role=Qt.Qt.DisplayRole):
-        if not index.isValid() or not 0 <= index.row() < self.rowCount():
+        child_item = parent_item.child(row)
+
+        if child_item:
+            return self.createIndex(row, column, child_item)
+        else:
+            return QtCore.QModelIndex()
+
+    def parent(self, index = None):
+        if not index.isValid():
+            return QtCore.QModelIndex()
+
+        parent_item = index.internalPointer().parent_item()
+
+        if parent_item == self.root_item:
+            return QtCore.QModelIndex()
+
+        return self.createIndex(parent_item.row(), 0, parent_item)
+
+    def rowCount(self, index = None, *args, **kwargs):
+        if index.column() > 0:
+            return 0
+
+        if not index.isValid():
+            parent_item = self.root_item
+        else:
+            parent_item = index.internalPointer()
+
+        return parent_item.child_count()
+
+    def columnCount(self, index = None, *args, **kwargs):
+        if index.isValid():
+            return index.internalPointer().column_count()
+        else:
+            return self.root_item.column_count()
+
+    def data(self, index, role = None):
+        if not index.isValid():
             return QtCore.QVariant()
-        row = index.row()
-        if role == Qt.Qt.DisplayRole:
-            return self.object_list[row].options["name"]
-        if role == Qt.Qt.DecorationRole:
-            return self.icons[self.object_list[row].kind]
-        # if role == Qt.Qt.CheckStateRole:
-        #     if row in self.checked_indexes:
-        #         return Qt.Qt.Checked
-        #     else:
-        #         return Qt.Qt.Unchecked
+
+        if role != Qt.Qt.DisplayRole:
+            return QtCore.QVariant()
+
+        return index.internalPointer().data(index.column())
+
+    def flags(self, index):
+        if not index.isValid():
+            return 0
+
+        return QtCore.QAbstractItemModel.flags(self, index)
+
+    # def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
+    #     return len(self.object_list)
+
+    # def columnCount(self, *args, **kwargs):
+    #     return 1
+
+    # def data(self, index, role=Qt.Qt.DisplayRole):
+    #     if not index.isValid() or not 0 <= index.row() < self.rowCount():
+    #         return QtCore.QVariant()
+    #     row = index.row()
+    #     if role == Qt.Qt.DisplayRole:
+    #         return self.object_list[row].options["name"]
+    #     if role == Qt.Qt.DecorationRole:
+    #         return self.icons[self.object_list[row].kind]
+    #     # if role == Qt.Qt.CheckStateRole:
+    #     #     if row in self.checked_indexes:
+    #     #         return Qt.Qt.Checked
+    #     #     else:
+    #     #         return Qt.Qt.Unchecked
 
     def print_list(self):
         for obj in self.object_list:
