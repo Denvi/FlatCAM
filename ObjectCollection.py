@@ -13,6 +13,9 @@ class KeySensitiveListView(QtGui.QTreeView):
     def __init__(self, parent = None):
         super(KeySensitiveListView, self).__init__(parent)
         self.setHeaderHidden(True)
+        self.setEditTriggers(QtGui.QTreeView.SelectedClicked)
+        # self.setRootIsDecorated(False)
+        # self.setExpandsOnDoubleClick(False)
 
     keyPressed = QtCore.pyqtSignal(int)
 
@@ -31,8 +34,6 @@ class TreeItem(object):
         self.item_data = data
         self.icon = icon
         self.obj = obj
-
-        print "new item:", data, obj
 
         self.child_items = []
 
@@ -95,6 +96,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
     }
 
     root_item = None
+    app = None
 
     def __init__(self, parent=None):
 
@@ -121,7 +123,6 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         #     i.append_child(TreeItem(["empty"]))
 
         ### Data ###
-        self.object_list = []
         self.checked_indexes = []
 
         # Names of objects that are expected to become available.
@@ -210,7 +211,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         if not index.isValid():
             return QtCore.QVariant()
 
-        if role == Qt.Qt.DisplayRole:
+        if role in [Qt.Qt.DisplayRole, Qt.Qt.EditRole]:
             return index.internalPointer().data(index.column())
 
         elif role == Qt.Qt.DecorationRole:
@@ -222,9 +223,23 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         else:
             return QtCore.QVariant()
 
+    def setData(self, index, data, role = None):
+        if index.isValid():
+            obj = index.internalPointer().obj
+            if obj:
+                index.internalPointer().item_data = [data]
+                obj.options["name"] = data.toString()
+                obj.build_ui()
+
     def flags(self, index):
         if not index.isValid():
             return 0
+
+        # Prevent groups from selection
+        if not index.internalPointer().obj:
+            return Qt.Qt.ItemIsEnabled
+        else:
+            return Qt.Qt.ItemIsEnabled | Qt.Qt.ItemIsSelectable | Qt.Qt.ItemIsEditable
 
         return QtCore.QAbstractItemModel.flags(self, index)
 
@@ -275,13 +290,18 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         # Required before appending (Qt MVC)
         group = self.group_items[obj.kind]
-        self.beginInsertRows(self.index(group.row(), 0, Qt.QModelIndex()), group.child_count(), group.child_count())
+        group_index = self.index(group.row(), 0, Qt.QModelIndex())
+        self.beginInsertRows(group_index, group.child_count(), group.child_count())
 
         # Append new item
         group.append_child(TreeItem([obj.options["name"]], self.icons[obj.kind], obj))
 
         # Required after appending (Qt MVC)
         self.endInsertRows()
+
+        # Expand group
+        if group.child_count() is 1:
+            self.view.setExpanded(group_index, True)
 
     def get_names(self):
         """
@@ -402,6 +422,13 @@ class ObjectCollection(QtCore.QAbstractItemModel):
             obj = current.indexes()[0].internalPointer().obj
         except IndexError:
             FlatCAMApp.App.log.debug("on_list_selection_change(): Index Error (Nothing selected?)")
+
+            try:
+                self.app.ui.selected_scroll_area.takeWidget()
+            except:
+                FlatCAMApp.App.log.debug("Nothing to remove")
+
+            self.app.setup_component_editor()
             return
 
         if obj:

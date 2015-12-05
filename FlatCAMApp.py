@@ -1309,7 +1309,8 @@ class App(QtCore.QObject):
         obj.plot()
 
         # Fit on first added object only
-        if len(self.collection.object_list) == 1: self.on_zoom_fit(None)
+        if len(self.collection.get_list()) == 1:
+            self.on_zoom_fit(None)
 
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
@@ -2903,6 +2904,7 @@ class App(QtCore.QObject):
         :return: None
         """
         FlatCAMObj.app = self
+        ObjectCollection.app = self
 
         FCProcess.app = self
         FCProcessContainer.app = self
