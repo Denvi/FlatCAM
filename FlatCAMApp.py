@@ -1287,7 +1287,9 @@ class App(QtCore.QObject):
         self.plot_all()
 
     def on_row_activated(self, index):
-        self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
+        if index.isValid():
+            if index.internalPointer().parent_item != self.collection.root_item:
+                self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
     def on_object_created(self, obj):
         """

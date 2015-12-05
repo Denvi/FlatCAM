@@ -25,47 +25,60 @@ class TreeItem(object):
     """
     Item of a tree model
     """
-    def __init__(self, data, parent_item = None):
+    def __init__(self, data, icon = None, obj = None, parent_item = None):
 
-        self.m_parent_item = parent_item
-        self.m_item_data = data
-        self.m_child_items = []
+        self.parent_item = parent_item
+        self.item_data = data
+        self.icon = icon
+        self.obj = obj
+
+        print "new item:", data, obj
+
+        self.child_items = []
 
         if parent_item:
             parent_item.append_child(self)
 
     def append_child(self, item):
-        print "append child", self.data(0), item.data(0)
-
-        self.m_child_items.append(item)
+        self.child_items.append(item)
         item.set_parent_item(self)
 
+    def remove_child(self, item):
+        self.child_items.pop(self.child_items.index(item))
+
+    def remove_children(self):
+        self.child_items = []
+
     def child(self, row):
-        return self.m_child_items[row]
+        return self.child_items[row]
 
     def child_count(self):
-        return len(self.m_child_items)
+        return len(self.child_items)
 
     def column_count(self):
-        return len(self.m_item_data)
+        return len(self.item_data)
 
     def data(self, column):
-        return self.m_item_data[column]
+        return self.item_data[column]
 
     def row(self):
-        return self.m_parent_item.m_child_items.index(self)
+        return self.parent_item.child_items.index(self)
 
     def set_parent_item(self, parent_item):
-        self.m_parent_item = parent_item
-
-    def parent_item(self):
-        return self.m_parent_item
+        self.parent_item = parent_item
 
 
 class ObjectCollection(QtCore.QAbstractItemModel):
     """
     Object storage and management.
     """
+
+    groups = [
+        ("gerber", "Gerber"),
+        ("excellon", "Excellon"),
+        ("geometry", "Geometry"),
+        ("cncjob", "CNC Job")
+    ]
 
     classdict = {
         "gerber": FlatCAMGerber,
@@ -87,21 +100,25 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         QtCore.QAbstractItemModel.__init__(self, parent=parent)
 
-        # Prepare groups
-        self.root_item = TreeItem(["root"])
-        self.root_item.append_child(TreeItem(["Gerber"]))
-        self.root_item.append_child(TreeItem(["Excellon"]))
-        self.root_item.append_child(TreeItem(["Geometry"]))
-        self.root_item.append_child(TreeItem(["CNC-job"]))
-
-        for i in self.root_item.m_child_items:
-            print i.data(0)
-            i.append_child(TreeItem(["empty"]))
-
         ### Icons for the list view
         self.icons = {}
         for kind in ObjectCollection.icon_files:
             self.icons[kind] = QtGui.QPixmap(ObjectCollection.icon_files[kind])
+
+        # Create root tree view item
+        self.root_item = TreeItem(["root"])
+
+        # Create group items
+        self.group_items = {}
+        for kind, title in ObjectCollection.groups:
+            item = TreeItem([title], self.icons[kind])
+            self.group_items[kind] = item
+            self.root_item.append_child(item)
+
+        # Create test sub-items
+        # for i in self.root_item.m_child_items:
+        #     print i.data(0)
+        #     i.append_child(TreeItem(["empty"]))
 
         ### Data ###
         self.object_list = []
@@ -115,7 +132,6 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         self.promises = set()
 
         ### View
-        #self.view = QtGui.QListView()
         self.view = KeySensitiveListView()
         self.view.setSelectionMode(Qt.QAbstractItemView.ExtendedSelection)
         self.view.setModel(self)
@@ -166,7 +182,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         if not index.isValid():
             return QtCore.QModelIndex()
 
-        parent_item = index.internalPointer().parent_item()
+        parent_item = index.internalPointer().parent_item
 
         if parent_item == self.root_item:
             return QtCore.QModelIndex()
@@ -194,22 +210,23 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         if not index.isValid():
             return QtCore.QVariant()
 
-        if role != Qt.Qt.DisplayRole:
-            return QtCore.QVariant()
+        if role == Qt.Qt.DisplayRole:
+            return index.internalPointer().data(index.column())
 
-        return index.internalPointer().data(index.column())
+        elif role == Qt.Qt.DecorationRole:
+            icon = index.internalPointer().icon
+            if icon:
+                return icon
+            else:
+                return Qt.QPixmap()
+        else:
+            return QtCore.QVariant()
 
     def flags(self, index):
         if not index.isValid():
             return 0
 
         return QtCore.QAbstractItemModel.flags(self, index)
-
-    # def rowCount(self, parent=QtCore.QModelIndex(), *args, **kwargs):
-    #     return len(self.object_list)
-
-    # def columnCount(self, *args, **kwargs):
-    #     return 1
 
     # def data(self, index, role=Qt.Qt.DisplayRole):
     #     if not index.isValid() or not 0 <= index.row() < self.rowCount():
@@ -226,7 +243,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
     #     #         return Qt.Qt.Unchecked
 
     def print_list(self):
-        for obj in self.object_list:
+        for obj in self.get_list():
             print obj
 
     def append(self, obj, active=False):
@@ -257,10 +274,11 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         obj.set_ui(obj.ui_type())
 
         # Required before appending (Qt MVC)
-        self.beginInsertRows(QtCore.QModelIndex(), len(self.object_list), len(self.object_list))
+        group = self.group_items[obj.kind]
+        self.beginInsertRows(self.index(group.row(), 0, Qt.QModelIndex()), group.child_count(), group.child_count())
 
-        # Simply append to the python list
-        self.object_list.append(obj)
+        # Append new item
+        group.append_child(TreeItem([obj.options["name"]], self.icons[obj.kind], obj))
 
         # Required after appending (Qt MVC)
         self.endInsertRows()
@@ -274,7 +292,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         """
 
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> OC.get_names()")
-        return [x.options['name'] for x in self.object_list]
+        return [x.options['name'] for x in self.get_list()]
 
     def get_bounds(self):
         """
@@ -292,7 +310,8 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         xmax = -Inf
         ymax = -Inf
 
-        for obj in self.object_list:
+        # for obj in self.object_list:
+        for obj in self.get_list():
             try:
                 gxmin, gymin, gxmax, gymax = obj.bounds()
                 xmin = min([xmin, gxmin])
@@ -303,6 +322,12 @@ class ObjectCollection(QtCore.QAbstractItemModel):
                 FlatCAMApp.App.log.warning("DEV WARNING: Tried to get bounds of empty geometry.")
 
         return [xmin, ymin, xmax, ymax]
+
+    def get_item(self, obj):
+        for item in self.get_items_list():
+            if item.obj == obj:
+                return item
+        return None
 
     def get_by_name(self, name):
         """
@@ -315,7 +340,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.get_by_name()")
 
-        for obj in self.object_list:
+        for obj in self.get_list():
             if obj.options['name'] == name:
                 return obj
         return None
@@ -324,12 +349,12 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         selections = self.view.selectedIndexes()
         if len(selections) == 0:
             return
-        row = selections[0].row()
 
-        self.beginRemoveRows(QtCore.QModelIndex(), row, row)
+        active = selections[0].internalPointer()
+        group = active.parent_item
 
-        self.object_list.pop(row)
-
+        self.beginRemoveRows(self.index(group.row(), 0, Qt.QModelIndex()), active.row(), active.row())
+        group.remove_child(active)
         self.endRemoveRows()
 
     def get_active(self):
@@ -341,8 +366,8 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         selections = self.view.selectedIndexes()
         if len(selections) == 0:
             return None
-        row = selections[0].row()
-        return self.object_list[row]
+
+        return selections[0].internalPointer().obj
 
     def get_selected(self):
         """
@@ -350,7 +375,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         :return: List of objects
         """
-        return [self.object_list[sel.row()] for sel in self.view.selectedIndexes()]
+        return [sel.internalPointer().obj for sel in self.view.selectedIndexes()]
 
     def set_active(self, name):
         """
@@ -360,19 +385,27 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         :param name: Name of the FlatCAM Object
         :return: None
         """
-        iobj = self.createIndex(self.get_names().index(name), 0)  # Column 0
-        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel.Select)
+        obj = self.get_by_name(name)
+        item = self.get_item(obj)
+        group = self.group_items[obj.kind]
+
+        group_index = self.index(group.row(), 0, Qt.QModelIndex())
+        item_index = self.index(item.row(), 0, group_index)
+
+        self.view.selectionModel().select(item_index, QtGui.QItemSelectionModel.Select)
 
     def on_list_selection_change(self, current, previous):
         FlatCAMApp.App.log.debug("on_list_selection_change()")
         FlatCAMApp.App.log.debug("Current: %s, Previous %s" % (str(current), str(previous)))
+
         try:
-            selection_index = current.indexes()[0].row()
+            obj = current.indexes()[0].internalPointer().obj
         except IndexError:
             FlatCAMApp.App.log.debug("on_list_selection_change(): Index Error (Nothing selected?)")
             return
 
-        self.object_list[selection_index].build_ui()
+        if obj:
+            obj.build_ui()
 
     def on_item_activated(self, index):
         """
@@ -381,18 +414,31 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         :param index: Index of the item in the list.
         :return: None
         """
-        self.object_list[index.row()].build_ui()
+        index.internalPointer().obj.build_ui()
 
     def delete_all(self):
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_all()")
 
         self.beginResetModel()
-
-        self.object_list = []
         self.checked_indexes = []
+
+        for group in self.root_item.child_items:
+            group.remove_children()
 
         self.endResetModel()
 
     def get_list(self):
-        return self.object_list
+        obj_list = []
+        for group in self.root_item.child_items:
+            for item in group.child_items:
+                obj_list.append(item.obj)
 
+        return obj_list
+
+    def get_items_list(self):
+        items = []
+        for group in self.root_item.child_items:
+            if group.child_count() > 0:
+                items += group.child_items
+
+        return items
