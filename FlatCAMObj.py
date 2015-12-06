@@ -469,10 +469,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if type(empty) is Polygon:
             empty = MultiPolygon([empty])
 
-        filled = MultiPolygon()
+        # Already cleared area
+        cleared = MultiPolygon()
 
         # Geometry object creating callback
         def geo_init(geo_obj, app_obj):
+            geo_obj.options["cnctooldia"] = tool
             geo_obj.solid_geometry = []
             for p in area.geoms:
                 try:
@@ -484,7 +486,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # Generate toolpaths for each tool
         for tool in tools:
             # Area to clear
-            area = empty.difference(filled.buffer(-tool * 1.1))
+            area = empty.difference(cleared.buffer(-tool * 1.1))
 
             # Transform area to MultiPolygon
             if type(area) is Polygon:
@@ -492,7 +494,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
             # Check if area not empty
             if len(area.geoms) > 0:
-                filled = area.buffer(-tool / 2).buffer(tool / 2)
+                # Overall cleared area
+                cleared = empty.buffer(-tool / 2).buffer(tool / 2)
 
                 # Create geometry object
                 name = self.options["name"] + "_ncc_" + repr(tool)
