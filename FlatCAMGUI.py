@@ -412,6 +412,41 @@ class GerberOptionsGroupUI(OptionsGroupUI):
         )
         grid1.addWidget(self.combine_passes_cb, 3, 0)
 
+        ## Clear non-copper regions
+        self.clearcopper_label = QtGui.QLabel("<b>Clear non-copper:</b>")
+        self.clearcopper_label.setToolTip(
+            "Create a Geometry object with\n"
+            "toolpaths to cut all non-copper regions."
+        )
+        self.layout.addWidget(self.clearcopper_label)
+
+        grid5 = QtGui.QGridLayout()
+        self.layout.addLayout(grid5)
+        ncctdlabel = QtGui.QLabel('Tools dia:')
+        ncctdlabel.setToolTip(
+            "Diameters of the cutting tools, separated by ','"
+        )
+        grid5.addWidget(ncctdlabel, 0, 0)
+        self.ncc_tool_dia_entry = FCEntry()
+        grid5.addWidget(self.ncc_tool_dia_entry, 0, 1)
+
+        nccoverlabel = QtGui.QLabel('Overlap:')
+        nccoverlabel.setToolTip(
+            "How much (fraction of tool width)\n"
+            "to overlap each pass."
+        )
+        grid5.addWidget(nccoverlabel, 1, 0)
+        self.ncc_overlap_entry = FloatEntry()
+        grid5.addWidget(self.ncc_overlap_entry, 1, 1)
+
+        nccmarginlabel = QtGui.QLabel('Margin:')
+        nccmarginlabel.setToolTip(
+            "Bounding box margin."
+        )
+        grid5.addWidget(nccmarginlabel, 2, 0)
+        self.ncc_margin_entry = FloatEntry()
+        grid5.addWidget(self.ncc_margin_entry, 2, 1)
+
         ## Board cuttout
         self.board_cutout_label = QtGui.QLabel("<b>Board cutout:</b>")
         self.board_cutout_label.setToolTip(

@@ -267,6 +267,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
+            "ncctools": "1.0, 0.5",
+            "nccoverlap": 0.4,
+            "nccmargin": 1,
             "combine_passes": True,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
@@ -312,6 +315,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
+            "ncctools": self.ui.ncc_tool_dia_entry,
+            "nccoverlap": self.ui.ncc_overlap_entry,
+            "nccmargin": self.ui.ncc_margin_entry,
             "combine_passes": self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
@@ -334,35 +340,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
 
     def on_generatenoncopper_button_click(self, *args):
-
-        #        bounding_box = self.solid_geometry.envelope.buffer(0.05)
-
-        #        empty = self.get_empty_area(bounding_box)
-
-        #        if type(empty) is Polygon:
-        #            polygons = []
-        #            polygons.append(empty)
-        #            polygons = MultiPolygon(polygons)
-        #        else:
-        #            polygons = empty
-
-        #        FlatCAMApp.App.log.debug("get_empty_area count: %d", len(polygons))
-
-        #        name = self.options["name"] + "_clear"
-
-        #        def noncop_init(geo_obj, app_obj):
-
-        #            assert isinstance(geo_obj, FlatCAMGeometry), \
-        #            "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
-
-        #            geo_obj.solid_geometry = []
-        #            for p in polygons:
-        #                FlatCAMApp.App.log.debug(type(p))
-        #                cp = self.clear_polygon(p, 0.01, 0.15)
-        #                geo_obj.solid_geometry.append(list(cp.get_objects()))
-
-        #        self.app.new_object("geometry", name, noncop_init)
-
         self.app.report_usage("gerber_on_generatenoncopper_button")
 
         self.read_form()
