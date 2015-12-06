@@ -312,7 +312,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
-            "combine_passes":self.ui.combine_passes_cb,
+            "combine_passes": self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
             "cutoutgapsize": self.ui.cutout_gap_entry,
@@ -335,33 +335,33 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
     def on_generatenoncopper_button_click(self, *args):
 
-#        bounding_box = self.solid_geometry.envelope.buffer(0.05)
+        #        bounding_box = self.solid_geometry.envelope.buffer(0.05)
 
-#        empty = self.get_empty_area(bounding_box)
+        #        empty = self.get_empty_area(bounding_box)
 
-#        if type(empty) is Polygon:
-#            polygons = []
-#            polygons.append(empty)
-#            polygons = MultiPolygon(polygons)
-#        else:
-#            polygons = empty
+        #        if type(empty) is Polygon:
+        #            polygons = []
+        #            polygons.append(empty)
+        #            polygons = MultiPolygon(polygons)
+        #        else:
+        #            polygons = empty
 
-#        FlatCAMApp.App.log.debug("get_empty_area count: %d", len(polygons))
+        #        FlatCAMApp.App.log.debug("get_empty_area count: %d", len(polygons))
 
-#        name = self.options["name"] + "_clear"
+        #        name = self.options["name"] + "_clear"
 
-#        def noncop_init(geo_obj, app_obj):
+        #        def noncop_init(geo_obj, app_obj):
 
-#            assert isinstance(geo_obj, FlatCAMGeometry), \
-#            "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
+        #            assert isinstance(geo_obj, FlatCAMGeometry), \
+        #            "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
 
-#            geo_obj.solid_geometry = []
-#            for p in polygons:
-#                FlatCAMApp.App.log.debug(type(p))
-#                cp = self.clear_polygon(p, 0.01, 0.15)
-#                geo_obj.solid_geometry.append(list(cp.get_objects()))
+        #            geo_obj.solid_geometry = []
+        #            for p in polygons:
+        #                FlatCAMApp.App.log.debug(type(p))
+        #                cp = self.clear_polygon(p, 0.01, 0.15)
+        #                geo_obj.solid_geometry.append(list(cp.get_objects()))
 
-#        self.app.new_object("geometry", name, noncop_init)
+        #        self.app.new_object("geometry", name, noncop_init)
 
         self.app.report_usage("gerber_on_generatenoncopper_button")
 
@@ -400,7 +400,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         name = self.options["name"] + "_cutout"
 
         def geo_init(geo_obj, app_obj):
-            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"]/2
+            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"] / 2
             gap_size = self.options["cutoutgapsize"] + self.options["cutouttooldia"]
             minx, miny, maxx, maxy = self.bounds()
             minx -= margin
@@ -461,37 +461,44 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         print "non-copper clear button clicked", tools, over, margin
 
         # Sort tools in descending order
-        tools.sort(reverse = True)
+        tools.sort(reverse=True)
 
-        # Get non-copper poly
-        bounding_box = self.solid_geometry.envelope.buffer(distance = margin, join_style = JOIN_STYLE.mitre)
+        # Prepare non-copper polygons
+        bounding_box = self.solid_geometry.envelope.buffer(distance=margin, join_style=JOIN_STYLE.mitre)
         empty = self.get_empty_area(bounding_box)
-
         if type(empty) is Polygon:
             empty = MultiPolygon([empty])
 
-        # Current cleared area
         filled = MultiPolygon()
-        cleared = MultiPolygon()
 
+        # Geometry object creating callback
+        def geo_init(geo_obj, app_obj):
+            geo_obj.solid_geometry = []
+            for p in area.geoms:
+                try:
+                    cp = self.clear_polygon(p, tool, over)
+                    geo_obj.solid_geometry.append(list(cp.get_objects()))
+                except:
+                    FlatCAMApp.App.log.warning("Polygon is ommited")
+
+        # Generate toolpaths for each tool
         for tool in tools:
-            print "tool:", tool
-
             # Area to clear
             area = empty.difference(filled.buffer(-tool * 1.1))
 
+            # Transform area to MultiPolygon
             if type(area) is Polygon:
                 area = MultiPolygon([area])
 
+            # Check if area not empty
             if len(area.geoms) > 0:
-                print "area", len(area.geoms)
                 filled = area.buffer(-tool / 2).buffer(tool / 2)
-                cleared = cleared.union(filled)
 
-        def geo_init(geo_obj, app_obj):
-            geo_obj.solid_geometry = cleared
-
-        self.app.new_object("geometry", "debug", geo_init)
+                # Create geometry object
+                name = self.options["name"] + "_ncc_" + repr(tool)
+                self.app.new_object("geometry", name, geo_init)
+            else:
+                return
 
     def follow(self, outname=None):
         """
@@ -566,7 +573,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 geo_obj.solid_geometry = []
                 for i in range(passes):
                     offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
-                    geom = generate_envelope (offset, i == 0)
+                    geom = generate_envelope(offset, i == 0)
                     geo_obj.solid_geometry.append(geom)
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
@@ -576,7 +583,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         else:
             for i in range(passes):
 
-                offset = (2 * i + 1) / 2.0 * dia - i * overlap  * dia
+                offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
                 if passes > 1:
                     iso_name = base_name + str(i + 1)
                 else:
@@ -586,7 +593,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 def iso_init(geo_obj, app_obj):
                     # Propagate options
                     geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-                    geo_obj.solid_geometry = generate_envelope (offset, i == 0)
+                    geo_obj.solid_geometry = generate_envelope(offset, i == 0)
                     app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
                 # TODO: Do something if this is None. Offer changing name?
@@ -1088,12 +1095,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             else:
                 geo_final.solid_geometry.append(geo.solid_geometry)
 
-            # try:  # Iterable
-            #     for shape in geo.solid_geometry:
-            #         geo_final.solid_geometry.append(shape)
-            #
-            # except TypeError:  # Non-iterable
-            #     geo_final.solid_geometry.append(geo.solid_geometry)
+                # try:  # Iterable
+                #     for shape in geo.solid_geometry:
+                #         geo_final.solid_geometry.append(shape)
+                #
+                # except TypeError:  # Non-iterable
+                #     geo_final.solid_geometry.append(geo.solid_geometry)
 
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)
@@ -1175,7 +1182,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     def paint_poly(self, inside_pt, tooldia, overlap):
 
         # Which polygon.
-        #poly = find_polygon(self.solid_geometry, inside_pt)
+        # poly = find_polygon(self.solid_geometry, inside_pt)
         poly = self.find_polygon(inside_pt)
 
         # No polygon?
@@ -1192,7 +1199,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry), \
                 "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
-            #assert isinstance(app_obj, App)
+            # assert isinstance(app_obj, App)
 
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]),
