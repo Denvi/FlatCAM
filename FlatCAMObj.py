@@ -446,43 +446,60 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if type(empty) is Polygon:
             empty = MultiPolygon([empty])
 
-        # Already cleared area
-        cleared = MultiPolygon()
+        # Main procedure
+        def clear_non_copper():
 
-        # Geometry object creating callback
-        def geo_init(geo_obj, app_obj):
-            geo_obj.options["cnctooldia"] = tool
-            geo_obj.solid_geometry = []
-            for p in area.geoms:
-                try:
-                    cp = self.clear_polygon(p, tool, over)
-                    geo_obj.solid_geometry.append(list(cp.get_objects()))
-                except:
-                    FlatCAMApp.App.log.warning("Polygon is ommited")
+            # Already cleared area
+            cleared = MultiPolygon()
 
-        # Generate toolpaths for each tool
-        offset = sum(tools)
-        for tool in tools:
-            # Get remaining tools offset
-            offset -= tool
+            # Geometry object creating callback
+            def geo_init(geo_obj, app_obj):
+                geo_obj.options["cnctooldia"] = tool
+                geo_obj.solid_geometry = []
+                for p in area.geoms:
+                    try:
+                        cp = self.clear_polygon(p, tool, over)
+                        geo_obj.solid_geometry.append(list(cp.get_objects()))
+                    except:
+                        FlatCAMApp.App.log.warning("Polygon is ommited")
 
-            # Area to clear
-            area = empty.buffer(-offset).difference(cleared)
+            # Generate area for each tool
+            offset = sum(tools)
+            for tool in tools:
+                # Get remaining tools offset
+                offset -= tool
 
-            # Transform area to MultiPolygon
-            if type(area) is Polygon:
-                area = MultiPolygon([area])
+                # Area to clear
+                area = empty.buffer(-offset).difference(cleared)
 
-            # Check if area not empty
-            if len(area.geoms) > 0:
-                # Overall cleared area
-                cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
+                # Transform area to MultiPolygon
+                if type(area) is Polygon:
+                    area = MultiPolygon([area])
 
-                # Create geometry object
-                name = self.options["name"] + "_ncc_" + repr(tool) + "D"
-                self.app.new_object("geometry", name, geo_init)
-            else:
-                return
+                # Check if area not empty
+                if len(area.geoms) > 0:
+                    # Overall cleared area
+                    cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
+
+                    # Create geometry object
+                    name = self.options["name"] + "_ncc_" + repr(tool) + "D"
+                    self.app.new_object("geometry", name, geo_init)
+                else:
+                    return
+
+        # Do job in background
+        proc = self.app.proc_container.new("Clearing non-copper areas.")
+
+        def job_thread(app_obj):
+            try:
+                clear_non_copper()
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        self.app.inform.emit("Clear non-copper areas started ...")
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def follow(self, outname=None):
         """

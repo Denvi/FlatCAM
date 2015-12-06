@@ -146,7 +146,9 @@ class App(QtCore.QObject):
         self.app_home = os.path.dirname(os.path.realpath(__file__))
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
-        os.chdir(self.app_home)
+
+        if sys.platform != 'win32':
+            os.chdir(self.app_home)
 
         ####################
         ## Initialize GUI ##
