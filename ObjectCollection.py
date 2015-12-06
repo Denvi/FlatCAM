@@ -24,7 +24,7 @@ class KeySensitiveListView(QtGui.QTreeView):
         self.keyPressed.emit(event.key())
 
 
-class TreeItem(object):
+class TreeItem:
     """
     Item of a tree model
     """
@@ -47,10 +47,13 @@ class TreeItem(object):
     def remove_child(self, item):
         child = self.child_items.pop(self.child_items.index(item))
         child.obj = None
+        child.icon = None
 
     def remove_children(self):
         for child in self.child_items:
             child.obj = None
+            child.icon = None
+
         self.child_items = []
 
     def child(self, row):
