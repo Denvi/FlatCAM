@@ -494,11 +494,22 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
             # Check if area not empty
             if len(area.geoms) > 0:
+                # Get next tool dia
+                try:
+                    next_tool = tools[tools.index(tool) + 1]
+                except:
+                    next_tool = 0
+
                 # Overall cleared area
-                cleared = empty.buffer(-tool / 2).buffer(tool / 2)
+                cleared = empty.buffer(-tool / 2).buffer(tool / 2).buffer(-(next_tool * (1 - over)))
+
+                # Area to clear
+                area = area.buffer(-(next_tool * (1 - over)))
+                if type(area) is Polygon:
+                    area = MultiPolygon([area])
 
                 # Create geometry object
-                name = self.options["name"] + "_ncc_" + repr(tool)
+                name = self.options["name"] + "_ncc_" + repr(tool) + "D"
                 self.app.new_object("geometry", name, geo_init)
             else:
                 return
