@@ -24,7 +24,7 @@ class KeySensitiveListView(QtGui.QTreeView):
         self.keyPressed.emit(event.key())
 
 
-class TreeItem(object):
+class TreeItem:
     """
     Item of a tree model
     """
