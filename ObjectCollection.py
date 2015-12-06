@@ -31,9 +31,9 @@ class TreeItem(object):
     def __init__(self, data, icon = None, obj = None, parent_item = None):
 
         self.parent_item = parent_item
-        self.item_data = data
-        self.icon = icon
-        self.obj = obj
+        self.item_data = data                   # Columns string data
+        self.icon = icon                        # Decoration
+        self.obj = obj                          # FlatCAMObj
 
         self.child_items = []
 
@@ -212,7 +212,11 @@ class ObjectCollection(QtCore.QAbstractItemModel):
             return QtCore.QVariant()
 
         if role in [Qt.Qt.DisplayRole, Qt.Qt.EditRole]:
-            return index.internalPointer().data(index.column())
+            obj = index.internalPointer().obj
+            if obj:
+                return obj.options["name"]
+            else:
+                return index.internalPointer().data(index.column())
 
         elif role == Qt.Qt.DecorationRole:
             icon = index.internalPointer().icon
@@ -227,7 +231,6 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         if index.isValid():
             obj = index.internalPointer().obj
             if obj:
-                index.internalPointer().item_data = [data]
                 obj.options["name"] = data.toString()
                 obj.build_ui()
 
@@ -294,7 +297,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         self.beginInsertRows(group_index, group.child_count(), group.child_count())
 
         # Append new item
-        group.append_child(TreeItem([obj.options["name"]], self.icons[obj.kind], obj))
+        obj.item = TreeItem(None, self.icons[obj.kind], obj, group)
 
         # Required after appending (Qt MVC)
         self.endInsertRows()
@@ -342,12 +345,6 @@ class ObjectCollection(QtCore.QAbstractItemModel):
                 FlatCAMApp.App.log.warning("DEV WARNING: Tried to get bounds of empty geometry.")
 
         return [xmin, ymin, xmax, ymax]
-
-    def get_item(self, obj):
-        for item in self.get_items_list():
-            if item.obj == obj:
-                return item
-        return None
 
     def get_by_name(self, name):
         """
@@ -406,7 +403,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         :return: None
         """
         obj = self.get_by_name(name)
-        item = self.get_item(obj)
+        item = obj.item
         group = self.group_items[obj.kind]
 
         group_index = self.index(group.row(), 0, Qt.QModelIndex())
@@ -461,11 +458,3 @@ class ObjectCollection(QtCore.QAbstractItemModel):
                 obj_list.append(item.obj)
 
         return obj_list
-
-    def get_items_list(self):
-        items = []
-        for group in self.root_item.child_items:
-            if group.child_count() > 0:
-                items += group.child_items
-
-        return items
