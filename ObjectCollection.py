@@ -45,9 +45,12 @@ class TreeItem(object):
         item.set_parent_item(self)
 
     def remove_child(self, item):
-        self.child_items.pop(self.child_items.index(item))
+        child = self.child_items.pop(self.child_items.index(item))
+        child.obj = None
 
     def remove_children(self):
+        for child in self.child_items:
+            child.obj = None
         self.child_items = []
 
     def child(self, row):
@@ -155,10 +158,11 @@ class ObjectCollection(QtCore.QAbstractItemModel):
     def on_key(self, key):
 
         # Delete
-        if key == QtCore.Qt.Key_Delete:
+        active = self.get_active()
+        if key == QtCore.Qt.Key_Delete and active:
             # Delete via the application to
             # ensure cleanup of the GUI
-            self.get_active().app.on_delete()
+            active.app.on_delete()
 
     def on_mouse_down(self, event):
         FlatCAMApp.App.log.debug("Mouse button pressed on list")
