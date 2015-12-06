@@ -6,6 +6,7 @@ import inspect  # TODO: For debugging only.
 from camlib import *
 from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
+from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
 
 ########################################
@@ -327,6 +328,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
         self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
+        self.ui.generate_ncc_button.clicked.connect(self.on_ncc_button_click)
         self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
         self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
@@ -438,6 +440,58 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.report_usage("gerber_on_iso_button")
         self.read_form()
         self.isolate()
+
+    def on_ncc_button_click(self, *args):
+        self.app.report_usage("gerber_on_ncc_button")
+
+        # Prepare parameters
+        try:
+            tools = [float(eval(dia)) for dia in self.ui.ncc_tool_dia_entry.get_value().split(",")]
+        except:
+            FlatCAMApp.App.log.error("At least one tool diameter needed")
+            return
+
+        over = self.ui.ncc_overlap_entry.get_value()
+        margin = self.ui.ncc_margin_entry.get_value()
+
+        if over is None or margin is None:
+            FlatCAMApp.App.log.error("Overlap and margin values needed")
+            return
+
+        print "non-copper clear button clicked", tools, over, margin
+
+        # Sort tools in descending order
+        tools.sort(reverse = True)
+
+        # Get non-copper poly
+        bounding_box = self.solid_geometry.envelope.buffer(distance = margin, join_style = JOIN_STYLE.mitre)
+        empty = self.get_empty_area(bounding_box)
+
+        if type(empty) is Polygon:
+            empty = MultiPolygon([empty])
+
+        # Current cleared area
+        filled = MultiPolygon()
+        cleared = MultiPolygon()
+
+        for tool in tools:
+            print "tool:", tool
+
+            # Area to clear
+            area = empty.difference(filled.buffer(-tool * 1.1))
+
+            if type(area) is Polygon:
+                area = MultiPolygon([area])
+
+            if len(area.geoms) > 0:
+                print "area", len(area.geoms)
+                filled = area.buffer(-tool / 2).buffer(tool / 2)
+                cleared = cleared.union(filled)
+
+        def geo_init(geo_obj, app_obj):
+            geo_obj.solid_geometry = cleared
+
+        self.app.new_object("geometry", "debug", geo_init)
 
     def follow(self, outname=None):
         """
