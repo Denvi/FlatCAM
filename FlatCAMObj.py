@@ -484,9 +484,13 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     FlatCAMApp.App.log.warning("Polygon is ommited")
 
         # Generate toolpaths for each tool
+        offset = sum(tools)
         for tool in tools:
+            # Get remaining tools offset
+            offset -= tool
+
             # Area to clear
-            area = empty.difference(cleared.buffer(-tool * 1.1))
+            area = empty.buffer(-offset).difference(cleared)
 
             # Transform area to MultiPolygon
             if type(area) is Polygon:
@@ -494,19 +498,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
             # Check if area not empty
             if len(area.geoms) > 0:
-                # Get next tool dia
-                try:
-                    next_tool = tools[tools.index(tool) + 1]
-                except:
-                    next_tool = 0
-
                 # Overall cleared area
-                cleared = empty.buffer(-tool / 2).buffer(tool / 2).buffer(-(next_tool * (1 - over)))
-
-                # Area to clear
-                area = area.buffer(-(next_tool * (1 - over)))
-                if type(area) is Polygon:
-                    area = MultiPolygon([area])
+                cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
 
                 # Create geometry object
                 name = self.options["name"] + "_ncc_" + repr(tool) + "D"
