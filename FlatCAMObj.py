@@ -70,8 +70,9 @@ class FlatCAMObj(QtCore.QObject):
     def on_name_editing_finished(self):
         old_name = copy(self.options["name"])
         new_name = self.ui.name_entry.get_value()
-        self.options["name"] = self.ui.name_entry.get_value()
-        self.app.info("Name changed from %s to %s" % (old_name, new_name))
+        if new_name != old_name:
+            self.options["name"] = new_name
+            self.app.info("Name changed from %s to %s" % (old_name, new_name))
 
     def on_offset_button_click(self):
         self.app.report_usage("obj_on_offset_button")

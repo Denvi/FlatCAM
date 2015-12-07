@@ -25,6 +25,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
+import re
 
 
 ########################################
@@ -147,8 +148,11 @@ class App(QtCore.QObject):
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
 
-        if sys.platform != 'win32':
-            os.chdir(self.app_home)
+        # cx_freeze workaround
+        if os.path.isfile(self.app_home):
+            self.app_home = os.path.dirname(self.app_home)
+
+        os.chdir(self.app_home)
 
         ####################
         ## Initialize GUI ##
@@ -1602,6 +1606,9 @@ class App(QtCore.QObject):
                                                          directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
+
+        if filename == "":
+            return
 
         try:
             f = open(filename, 'r')
