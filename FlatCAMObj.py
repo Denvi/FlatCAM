@@ -168,8 +168,8 @@ class FlatCAMObj(QtCore.QObject):
             self.app.ui.selected_scroll_area.takeWidget()
         except:
             self.app.log.debug("Nothing to remove")
+
         self.app.ui.selected_scroll_area.setWidget(self.ui)
-        self.to_form()
 
         self.muted_ui = False
 
@@ -329,6 +329,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "bboxmargin": self.ui.bbmargin_entry,
             "bboxrounded": self.ui.bbrounded_cb
         })
+
+        # Fill form fields only on object create
+        self.to_form()
 
         assert isinstance(self.ui, GerberObjectUI)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -773,6 +776,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "spindlespeed": self.ui.spindlespeed_entry
         })
 
+        # Fill form fields
+        self.to_form()
+
         assert isinstance(self.ui, ExcellonObjectUI), \
             "Expected a ExcellonObjectUI, got %s" % type(self.ui)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -1004,6 +1010,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "prepend": self.ui.prepend_text
         })
 
+        # Fill form fields only on object create
+        self.to_form()
+
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.updateplot_button.clicked.connect(self.on_updateplot_button_click)
         self.ui.export_gcode_button.clicked.connect(self.on_exportgcode_button_click)
@@ -1155,6 +1164,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "multidepth": self.ui.mpass_cb,
             "depthperpass": self.ui.maxdepth_entry
         })
+
+        # Fill form fields only on object create
+        self.to_form()
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.generate_cnc_button.clicked.connect(self.on_generatecnc_button_click)
