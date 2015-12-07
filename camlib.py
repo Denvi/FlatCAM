@@ -3099,15 +3099,16 @@ class CNCjob(Geometry):
         else:
             for geo in self.gcode_parsed:
                 path_num += 1
-                axes.annotate(str(path_num), xy=geo['geom'].coords[0],
-                              xycoords='data')
+                # axes.annotate(str(path_num), xy=geo['geom'].coords[0],
+                #               xycoords='data')
 
                 poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
-                                     edgecolor=color[geo['kind'][0]][1],
-                                     alpha=alpha[geo['kind'][0]], zorder=2)
-                axes.add_patch(patch)
-        
+                if "C" in geo['kind']:
+                    patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
+                                         edgecolor=color[geo['kind'][0]][1],
+                                         alpha=alpha[geo['kind'][0]], zorder=2)
+                    axes.add_patch(patch)
+
     def create_geometry(self):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])

@@ -8,6 +8,7 @@ from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
 from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
+TOLERANCE = 0.01
 
 ########################################
 ##            FlatCAMObj              ##
@@ -1062,7 +1063,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(self.axes, tooldia=self.options["tooldia"])
+        self.plot2(self.axes, tooldia=self.options["tooldia"], tool_tolerance=TOLERANCE)
 
         self.app.plotcanvas.auto_adjust_axes()
 
@@ -1391,7 +1392,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         except TypeError:  # Element is not iterable...
 
             if type(element) == Polygon:
-                x, y = element.exterior.coords.xy
+                x, y = element.simplify(TOLERANCE).exterior.coords.xy
                 self.axes.plot(x, y, 'r-')
                 for ints in element.interiors:
                     x, y = ints.coords.xy
@@ -1399,7 +1400,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 return
 
             if type(element) == LineString or type(element) == LinearRing:
-                x, y = element.coords.xy
+                x, y = element.simplify(TOLERANCE).coords.xy
                 self.axes.plot(x, y, 'r-')
                 return
 

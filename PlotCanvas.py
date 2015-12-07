@@ -343,7 +343,8 @@ class PlotCanvas:
                     self.pan_axes.append(a)
 
             # Set pan view flag
-            if len(self.pan_axes) > 0: self.panning = True;
+            if len(self.pan_axes) > 0:
+                self.panning = True;
 
     def on_mouse_release(self, event):
 
