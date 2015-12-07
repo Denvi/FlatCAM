@@ -5,6 +5,7 @@ from FlatCAMTool import FlatCAMTool
 from FlatCAMObj import *
 from shapely.geometry import Point
 from shapely import affinity
+from PyQt4 import QtCore
 
 
 class DblSidedTool(FlatCAMTool):
@@ -25,6 +26,8 @@ class DblSidedTool(FlatCAMTool):
         ## Layer to mirror
         self.object_combo = QtGui.QComboBox()
         self.object_combo.setModel(self.app.collection)
+        self.object_combo.setRootModelIndex(self.app.collection.index(0, 0, QtCore.QModelIndex()))
+
         self.botlay_label = QtGui.QLabel("Bottom Layer:")
         self.botlay_label.setToolTip(
             "Layer to be mirrorer."
@@ -69,6 +72,7 @@ class DblSidedTool(FlatCAMTool):
         self.point_box_container.addWidget(self.point)
         self.box_combo = QtGui.QComboBox()
         self.box_combo.setModel(self.app.collection)
+        self.box_combo.setRootModelIndex(self.app.collection.index(0, 0, QtCore.QModelIndex()))
         self.point_box_container.addWidget(self.box_combo)
         self.box_combo.hide()
 
@@ -129,7 +133,8 @@ class DblSidedTool(FlatCAMTool):
             px, py = self.point.get_value()
         else:
             selection_index = self.box_combo.currentIndex()
-            bb_obj = self.app.collection.object_list[selection_index]  # TODO: Direct access??
+            model_index = self.app.collection.index(selection_index, 0, self.object_combo.rootModelIndex())
+            bb_obj = model_index.internalPointer().obj
             xmin, ymin, xmax, ymax = bb_obj.bounds()
             px = 0.5 * (xmin + xmax)
             py = 0.5 * (ymin + ymax)
@@ -158,7 +163,9 @@ class DblSidedTool(FlatCAMTool):
 
     def on_mirror(self):
         selection_index = self.object_combo.currentIndex()
-        fcobj = self.app.collection.object_list[selection_index]
+        # fcobj = self.app.collection.object_list[selection_index]
+        model_index = self.app.collection.index(selection_index, 0, self.object_combo.rootModelIndex())
+        fcobj = model_index.internalPointer().obj
 
         # For now, lets limit to Gerbers and Excellons.
         # assert isinstance(gerb, FlatCAMGerber)
@@ -173,7 +180,8 @@ class DblSidedTool(FlatCAMTool):
             px, py = self.point.get_value()
         else:
             selection_index = self.box_combo.currentIndex()
-            bb_obj = self.app.collection.object_list[selection_index]  # TODO: Direct access??
+            model_index = self.app.collection.index(selection_index, 0, self.object_combo.rootModelIndex())
+            bb_obj = model_index.internalPointer().obj
             xmin, ymin, xmax, ymax = bb_obj.bounds()
             px = 0.5 * (xmin + xmax)
             py = 0.5 * (ymin + ymax)

@@ -23,45 +23,54 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # New
         self.menufilenew = QtGui.QAction(QtGui.QIcon('share/file16.png'), '&New', self)
         self.menufile.addAction(self.menufilenew)
-        # Open recent
-
-        # Recent
-        self.recent = self.menufile.addMenu(QtGui.QIcon('share/folder16.png'), "Open recent ...")
-
-        # Open gerber
-        self.menufileopengerber = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Gerber ...', self)
-        self.menufile.addAction(self.menufileopengerber)
-
-        # Open Excellon ...
-        self.menufileopenexcellon = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Excellon ...', self)
-        self.menufile.addAction(self.menufileopenexcellon)
-
-        # Open G-Code ...
-        self.menufileopengcode = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open G-&Code ...', self)
-        self.menufile.addAction(self.menufileopengcode)
 
         # Open Project ...
         self.menufileopenproject = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Project ...', self)
         self.menufile.addAction(self.menufileopenproject)
+
+        # Open gerber
+        self.menufileopengerber = QtGui.QAction('Open &Gerber ...', self)
+        self.menufile.addAction(self.menufileopengerber)
+
+        # Open Excellon ...
+        self.menufileopenexcellon = QtGui.QAction('Open &Excellon ...', self)
+        self.menufile.addAction(self.menufileopenexcellon)
+
+        # Open G-Code ...
+        self.menufileopengcode = QtGui.QAction('Open G-&Code ...', self)
+        self.menufile.addAction(self.menufileopengcode)
+
+        # Open recent
+        # Recent
+        self.recent = self.menufile.addMenu("Recent files")
+
+        # Separator
+        self.menufile.addSeparator()
+
+        # Save Defaults
+        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
+        self.menufile.addAction(self.menufilesavedefaults)
+
+        # Separator
+        self.menufile.addSeparator()
 
         # Save Project
         self.menufilesaveproject = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), '&Save Project', self)
         self.menufile.addAction(self.menufilesaveproject)
 
         # Save Project As ...
-        self.menufilesaveprojectas = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save Project &As ...', self)
+        self.menufilesaveprojectas = QtGui.QAction('Save Project &As ...', self)
         self.menufile.addAction(self.menufilesaveprojectas)
 
         # Save Project Copy ...
-        self.menufilesaveprojectcopy = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save Project C&opy ...', self)
+        self.menufilesaveprojectcopy = QtGui.QAction('Save Project C&opy ...', self)
         self.menufile.addAction(self.menufilesaveprojectcopy)
 
-        # Save Defaults
-        self.menufilesavedefaults = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save &Defaults', self)
-        self.menufile.addAction(self.menufilesavedefaults)
+        # Separator
+        self.menufile.addSeparator()
 
         # Quit
-        exit_action = QtGui.QAction(QtGui.QIcon('share/power16.png'), '&Exit', self)
+        exit_action = QtGui.QAction(QtGui.QIcon('share/power16.png'), 'E&xit', self)
         # exitAction.setShortcut('Ctrl+Q')
         # exitAction.setStatusTip('Exit application')
         exit_action.triggered.connect(QtGui.qApp.quit)
