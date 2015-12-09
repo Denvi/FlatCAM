@@ -668,6 +668,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             for poly in geometry:
                 # TODO: Too many things hardcoded.
                 try:
+                    poly = poly.simplify(TOLERANCE)
                     patch = PolygonPatch(poly,
                                          facecolor="#BBF268",
                                          edgecolor="#006E20",
@@ -679,6 +680,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     FlatCAMApp.App.log.warning(str(poly))
         else:
             for poly in geometry:
+                poly = poly.simplify(TOLERANCE)
                 x, y = poly.exterior.xy
                 self.axes.plot(x, y, linespec)
                 for ints in poly.interiors:

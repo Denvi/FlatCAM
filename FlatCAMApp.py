@@ -434,7 +434,7 @@ class App(QtCore.QObject):
                      lambda: self.worker_task.emit({'fcn': self.version_check,
                                                     'params': [],
                                                     'worker_name': "worker2"}))
-        self.thr2.start()
+        # self.thr2.start()
 
         ### Signal handling ###
         ## Custom signals
