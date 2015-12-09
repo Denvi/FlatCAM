@@ -22,6 +22,6 @@ Plans for the far future:
 
 Some screenshots:
 
-![test](https://github.com/Denvi/FlatCAM/blob/develop/screenshots/copper_clear_1.png)
-![test](https://github.com/Denvi/FlatCAM/blob/develop/screenshots/copper_clear_cnc_job_1.png)
-![test](https://github.com/Denvi/FlatCAM/blob/develop/screenshots/copper_clear_cnc_job_2.png)
+![copper_clear_1.png](https://bitbucket.org/repo/zbbdpg/images/2313087322-copper_clear_1.png)
+![copper_clear_cnc_job_1.png](https://bitbucket.org/repo/zbbdpg/images/1699766214-copper_clear_cnc_job_1.png)
+![copper_clear_cnc_job_2.png](https://bitbucket.org/repo/zbbdpg/images/3722929164-copper_clear_cnc_job_2.png)
