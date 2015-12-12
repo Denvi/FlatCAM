@@ -46,13 +46,11 @@ class TreeItem:
 
     def remove_child(self, item):
         child = self.child_items.pop(self.child_items.index(item))
-        child.obj = None
-        child.icon = None
+        del child
 
     def remove_children(self):
         for child in self.child_items:
-            child.obj = None
-            child.icon = None
+            del child
 
         self.child_items = []
 
@@ -74,6 +72,9 @@ class TreeItem:
     def set_parent_item(self, parent_item):
         self.parent_item = parent_item
 
+    def __del__(self):
+        del self.obj
+        del self.icon
 
 class ObjectCollection(QtCore.QAbstractItemModel):
     """
