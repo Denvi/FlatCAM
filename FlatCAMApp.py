@@ -2926,6 +2926,7 @@ class App(QtCore.QObject):
         """
         FlatCAMObj.app = self
         ObjectCollection.app = self
+        PlotCanvas.app = self
 
         FCProcess.app = self
         FCProcessContainer.app = self

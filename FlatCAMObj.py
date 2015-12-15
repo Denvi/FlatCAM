@@ -90,38 +90,6 @@ class FlatCAMObj(QtCore.QObject):
         self.scale(factor)
         self.plot()
 
-    def setup_axes(self, figure):
-        """
-        1) Creates axes if they don't exist. 2) Clears axes. 3) Attaches
-        them to figure if not part of the figure. 4) Sets transparent
-        background. 5) Sets 1:1 scale aspect ratio.
-
-        :param figure: A Matplotlib.Figure on which to add/configure axes.
-        :type figure: matplotlib.figure.Figure
-        :return: None
-        :rtype: None
-        """
-
-        if self.axes is None:
-            FlatCAMApp.App.log.debug("setup_axes(): New axes")
-            self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
-                                        label=self.options["name"])
-        elif self.axes not in figure.axes:
-            FlatCAMApp.App.log.debug("setup_axes(): Clearing and attaching axes")
-            self.axes.cla()
-            figure.add_axes(self.axes)
-        else:
-            FlatCAMApp.App.log.debug("setup_axes(): Clearing Axes")
-            self.axes.cla()
-
-        # Remove all decoration. The app's axes will have
-        # the ticks and grid.
-        self.axes.set_frame_on(False)  # No frame
-        self.axes.set_xticks([])  # No tick
-        self.axes.set_yticks([])  # No ticks
-        self.axes.patch.set_visible(False)  # No background
-        self.axes.set_aspect(1)
-
     def to_form(self):
         """
         Copies options to the UI form.

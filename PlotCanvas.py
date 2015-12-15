@@ -12,15 +12,19 @@ from PyQt4 import QtGui, QtCore
 from matplotlib import use as mpl_use
 mpl_use("Qt4Agg")
 
+import FlatCAMApp
+from cStringIO import StringIO
+import matplotlib.image as mpimg
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-import FlatCAMApp
-
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
 
 class PlotCanvas:
     """
     Class handling the plotting area in the application.
     """
+
+    app = None
 
     def __init__(self, container):
         """
@@ -42,6 +46,10 @@ class PlotCanvas:
         self.figure = Figure(dpi=50)  # TODO: dpi needed?
         self.figure.patch.set_visible(False)
 
+        # Offscreen figure
+        self.offscreen_figure = Figure(dpi=50)
+        self.offscreen_figure.patch.set_visible(False)
+
         # These axes show the ticks and grid. No plotting done here.
         # New axes must have a label, otherwise mpl returns an existing one.
         self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
@@ -50,8 +58,12 @@ class PlotCanvas:
 
         # The canvas is the top level container (Gtk.DrawingArea)
         self.canvas = FigureCanvas(self.figure)
+        self.offscreen_canvas = FigureOffscreenCanvas(self.offscreen_figure)
         # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         # self.canvas.setFocus()
+
+        # Image
+        self.image = None
 
         #self.canvas.set_hexpand(1)
         #self.canvas.set_vexpand(1)
@@ -145,6 +157,7 @@ class PlotCanvas:
         self.axes.cla()
         try:
             self.figure.clf()
+            self.offscreen_figure.clf()
         except KeyError:
             FlatCAMApp.App.log.warning("KeyError in MPL figure.clf()")
 
@@ -152,6 +165,15 @@ class PlotCanvas:
         self.figure.add_axes(self.axes)
         self.axes.set_aspect(1)
         self.axes.grid(True)
+
+        # Prepare offscreen base axes
+        ax = self.offscreen_figure.add_axes([0.0, 0.0, 1.0, 1.0], label='base')
+        ax.set_frame_on(True)
+        ax.patch.set_color("white")
+        # Hide frame edge
+        for spine in ax.spines:
+            ax.spines[spine].set_visible(False)
+        ax.set_aspect(1)
 
         # Re-draw
         self.canvas.draw_idle()
@@ -239,6 +261,7 @@ class PlotCanvas:
 
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
+
         width = xmax - xmin
         height = ymax - ymin
 
@@ -265,6 +288,40 @@ class PlotCanvas:
         # Async re-draw
         self.canvas.draw_idle()
 
+        # Get bounds
+        margin = 2
+        x1, y1, x2, y2 = self.app.collection.get_bounds()
+        x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
+
+        # Calculate bounds in screen space
+        points = self.axes.transData.transform([(x1, y1), (x2, y2)]);
+
+        # Calculate width/height of image
+        w, h = round(points[1][0] - points[0][0]), round(points[1][1] - points[0][1])
+
+        # Rescale axes
+        for ax in self.offscreen_figure.get_axes():
+            ax.set_xlim(x1, x2)
+            ax.set_ylim(y1, y2)
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        # Resize figure
+        dpi = self.offscreen_figure.dpi
+        self.offscreen_figure.set_size_inches(w / dpi, h / dpi)
+
+        # Draw to image
+        cache = StringIO()
+        self.offscreen_canvas.print_png(cache, format="png")
+        cache.seek(0)
+        image = mpimg.imread(cache, format="png")
+
+        # Add image to canvas
+        try:
+            self.image.remove()
+        finally:
+            self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
+
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
@@ -288,7 +345,13 @@ class PlotCanvas:
         :rtype: Axes
         """
 
-        return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
+        ax = self.offscreen_figure.add_axes([0.0, 0.0, 1.0, 1.0], label=name)
+
+        ax.set_frame_on(False)  # No frame
+        ax.patch.set_visible(False)  # No background
+        ax.set_aspect(1)
+
+        return ax
 
     def on_scroll(self, event):
         """
