@@ -15,6 +15,7 @@ mpl_use("Qt4Agg")
 import FlatCAMApp
 from cStringIO import StringIO
 import matplotlib.image as mpimg
+import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
@@ -299,28 +300,51 @@ class PlotCanvas:
         # Calculate width/height of image
         w, h = round(points[1][0] - points[0][0]), round(points[1][1] - points[0][1])
 
-        # Rescale axes
-        for ax in self.offscreen_figure.get_axes():
-            ax.set_xlim(x1, x2)
-            ax.set_ylim(y1, y2)
-            ax.set_xticks([])
-            ax.set_yticks([])
+        def update_image():
 
-        # Resize figure
-        dpi = self.offscreen_figure.dpi
-        self.offscreen_figure.set_size_inches(w / dpi, h / dpi)
+            # Rescale axes
+            for ax in self.offscreen_figure.get_axes():
+                ax.set_xlim(x1, x2)
+                ax.set_ylim(y1, y2)
+                ax.set_xticks([])
+                ax.set_yticks([])
 
-        # Draw to image
-        cache = StringIO()
-        self.offscreen_canvas.print_png(cache, format="png")
-        cache.seek(0)
-        image = mpimg.imread(cache, format="png")
+            # Resize figure
+            dpi = self.offscreen_figure.dpi
+            self.offscreen_figure.set_size_inches(w / dpi, h / dpi)
 
-        # Add image to canvas
-        try:
-            self.image.remove()
-        finally:
+            # Draw to buffer
+            self.offscreen_canvas.draw()
+
+            buf = self.offscreen_canvas.buffer_rgba()
+            ncols, nrows = self.offscreen_canvas.get_width_height()
+            image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
+
+            # Remove previous image if exists
+            try:
+                self.image.remove()
+            except:
+                pass
+
+            # Set new image
             self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
+
+            # Update canvas
+            self.canvas.draw_idle()
+
+        # Do job in background
+        proc = self.app.proc_container.new("Updating view.")
+
+        def job_thread(app_obj):
+            try:
+                update_image()
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        self.app.inform.emit("View update starting ...")
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
