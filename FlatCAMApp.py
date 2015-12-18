@@ -430,6 +430,7 @@ class App(QtCore.QObject):
         self.ui.menufileopenexcellon.triggered.connect(self.on_fileopenexcellon)
         self.ui.menufileopengcode.triggered.connect(self.on_fileopengcode)
         self.ui.menufileopenproject.triggered.connect(self.on_file_openproject)
+        self.ui.menufileimportsvg.triggered.connect(self.on_file_importsvg)
         self.ui.menufilesaveproject.triggered.connect(self.on_file_saveproject)
         self.ui.menufilesaveprojectas.triggered.connect(self.on_file_saveprojectas)
         self.ui.menufilesaveprojectcopy.triggered.connect(lambda: self.on_file_saveprojectas(make_copy=True))
@@ -1542,6 +1543,29 @@ class App(QtCore.QObject):
             # The above was failing because open_project() is not
             # thread safe. The new_project()
             self.open_project(filename)
+
+    def on_file_importsvg(self):
+        """
+        Callback for menu item File->Import SVG.
+
+        :return: None
+        """
+        self.report_usage("on_file_importsvg")
+        App.log.debug("on_file_importsvg()")
+
+        try:
+            filename = QtGui.QFileDialog.getOpenFileName(caption="Import SVG",
+                                                         directory=self.get_last_folder())
+        except TypeError:
+            filename = QtGui.QFileDialog.getOpenFileName(caption="Import SVG")
+
+        filename = str(filename)
+
+        if str(filename) == "":
+            self.inform.emit("Open cancelled.")
+        else:
+            self.worker_task.emit({'fcn': self.import_svg,
+                                   'params': [filename]})
 
     def on_file_saveproject(self):
         """

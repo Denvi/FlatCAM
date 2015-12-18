@@ -2,15 +2,24 @@
 # FlatCAM: 2D Post-processing for Manufacturing            #
 # http://flatcam.org                                       #
 # Author: Juan Pablo Caram (c)                             #
-# Date: 12/18/2015                                           #
+# Date: 12/18/2015                                         #
 # MIT Licence                                              #
+#                                                          #
+# SVG Features supported:                                  #
+#  * Groups                                                #
+#  * Rectangles                                            #
+#  * Circles                                               #
+#  * Paths                                                 #
+#  * All transformations                                   #
+#                                                          #
+#  Reference: www.w3.org/TR/SVG/Overview.html              #
 ############################################################
 
 import xml.etree.ElementTree as ET
 import re
 import itertools
 from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
-from shapely.geometry import LinearRing, LineString
+from shapely.geometry import LinearRing, LineString, Point
 from shapely.affinity import translate, rotate, scale, skew, affine_transform
 
 
@@ -43,10 +52,13 @@ def path2shapely(path, res=1.0):
         if isinstance(component, Arc) or \
            isinstance(component, CubicBezier) or \
            isinstance(component, QuadraticBezier):
+
+            # How many points to use in the dicrete representation.
             length = component.length(res / 10.0)
             steps = int(length / res + 0.5)
             frac = 1.0 / steps
-            print length, steps, frac
+
+            # print length, steps, frac
             for i in range(steps):
                 point = component.point(i * frac)
                 x, y = point.real, point.imag
@@ -66,6 +78,16 @@ def path2shapely(path, res=1.0):
 
 
 def svgrect2shapely(rect):
+    """
+    Converts an SVG rect into Shapely geometry.
+
+    :param rect: Rect Element
+    :type rect: xml.etree.ElementTree.Element
+    :return: shapely.geometry.polygon.LinearRing
+
+    :param rect:
+    :return:
+    """
     w = float(rect.get('width'))
     h = float(rect.get('height'))
     x = float(rect.get('x'))
@@ -74,6 +96,22 @@ def svgrect2shapely(rect):
         (x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)
     ]
     return LinearRing(pts)
+
+
+def svgcircle2shapely(circle):
+    """
+    Converts an SVG circle into Shapely geometry.
+
+    :param circle: Circle Element
+    :type circle: xml.etree.ElementTree.Element
+    :return: shapely.geometry.polygon.LinearRing
+    """
+    cx = float(circle.get('cx'))
+    cy = float(circle.get('cy'))
+    r = float(circle.get('r'))
+
+    # TODO: No resolution specified.
+    return Point(cx, cy).buffer(r)
 
 
 def getsvggeo(node):
@@ -105,6 +143,11 @@ def getsvggeo(node):
         print "***RECT***"
         R = svgrect2shapely(node)
         geo = [R]
+
+    elif kind == 'circle':
+        print "***CIRCLE***"
+        C = svgcircle2shapely(node)
+        geo = [C]
 
     else:
         print "Unknown kind:", kind

@@ -28,7 +28,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Recent
         self.recent = self.menufile.addMenu(QtGui.QIcon('share/folder16.png'), "Open recent ...")
 
-        # Open gerber
+        # Open gerber ...
         self.menufileopengerber = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Gerber ...', self)
         self.menufile.addAction(self.menufileopengerber)
 
@@ -39,6 +39,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Open G-Code ...
         self.menufileopengcode = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open G-&Code ...', self)
         self.menufile.addAction(self.menufileopengcode)
+
+        # Import SVG ...
+        self.menufileimportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Import &SVG ...', self)
+        self.menufile.addAction(self.menufileimportsvg)
 
         # Open Project ...
         self.menufileopenproject = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Project ...', self)

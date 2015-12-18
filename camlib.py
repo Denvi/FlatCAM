@@ -358,6 +358,7 @@ class Geometry(object):
         Imports shapes from an SVG file into the object's geometry.
 
         :param filename: Path to the SVG file.
+        :type filename: str
         :return: None
         """
 
