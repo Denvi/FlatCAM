@@ -1604,6 +1604,34 @@ class App(QtCore.QObject):
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
 
+    def import_svg(self, filename, outname=None):
+        """
+        Adds a new Geometry Object to the projects and populates
+        it with shapes extracted from the SVG file.
+
+        :param filename: Path to the SVG file.
+        :param outname:
+        :return:
+        """
+
+        def obj_init(geo_obj, app_obj):
+
+            geo_obj.import_svg(filename)
+
+        with self.proc_container.new("Importing SVG") as proc:
+
+            # Object name
+            name = outname or filename.split('/')[-1].split('\\')[-1]
+
+            self.new_object("geometry", name, obj_init)
+
+            # TODO: No support for this yet.
+            # Register recent file
+            # self.file_opened.emit("gerber", filename)
+
+            # GUI feedback
+            self.inform.emit("Opened: " + filename)
+
     def open_gerber(self, filename, follow=False, outname=None):
         """
         Opens a Gerber file, parses it and creates a new object for
@@ -1958,6 +1986,17 @@ class App(QtCore.QObject):
                     name = None
 
             return a, kwa
+
+        def import_svg(filename, *args):
+            a, kwa = h(*args)
+            types = {'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.import_svg(str(filename), **kwa)
 
         def open_gerber(filename, *args):
             a, kwa = h(*args)
@@ -2555,6 +2594,12 @@ class App(QtCore.QObject):
             'help': {
                 'fcn': shelp,
                 'help': "Shows list of commands."
+            },
+            'import_svg': {
+                'fcn': import_svg,
+                'help': "Import an SVG file as a Geometry Object.\n" +
+                        "> import_svg <filename>" +
+                        "   filename: Path to the file to import."
             },
             'open_gerber': {
                 'fcn': open_gerber,

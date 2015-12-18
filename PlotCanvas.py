@@ -124,7 +124,7 @@ class PlotCanvas:
 
     def connect(self, event_name, callback):
         """
-        Attach an event handler to the canvas through the native GTK interface.
+        Attach an event handler to the canvas through the native Qt interface.
 
         :param event_name: Name of the event
         :type event_name: str

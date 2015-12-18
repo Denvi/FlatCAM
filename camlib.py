@@ -42,6 +42,16 @@ import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
 #from matplotlib.pyplot import plot, subplot
 
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+import itertools
+
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+
+
+from svgparse import *
+
 import logging
 
 log = logging.getLogger('base2')
@@ -193,7 +203,6 @@ class Geometry(object):
 
         return interiors
 
-
     def get_exteriors(self, geometry=None):
         """
         Returns all exteriors of polygons in geometry. Uses
@@ -343,6 +352,36 @@ class Geometry(object):
             return True
 
         return False
+
+    def import_svg(self, filename):
+        """
+        Imports shapes from an SVG file into the object's geometry.
+
+        :param filename: Path to the SVG file.
+        :return: None
+        """
+
+        # Parse into list of shapely objects
+        svg_tree = ET.parse(filename)
+        svg_root = svg_tree.getroot()
+
+        # Change origin to bottom left
+        h = float(svg_root.get('height'))
+        # w = float(svg_root.get('width'))
+        geos = getsvggeo(svg_root)
+        geo_flip = [translate(scale(g, 1.0, -1.0, origin=(0, 0)), yoff=h) for g in geos]
+
+        # Add to object
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(cascaded_union(geo_flip))
+        else:  # It's shapely geometry
+            self.solid_geometry = cascaded_union([self.solid_geometry,
+                                                  cascaded_union(geo_flip)])
+
+        return
 
     def size(self):
         """
