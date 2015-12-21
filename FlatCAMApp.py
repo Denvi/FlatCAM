@@ -1649,9 +1649,8 @@ class App(QtCore.QObject):
 
             self.new_object("geometry", name, obj_init)
 
-            # TODO: No support for this yet.
             # Register recent file
-            # self.file_opened.emit("gerber", filename)
+            self.file_opened.emit("svg", filename)
 
             # GUI feedback
             self.inform.emit("Opened: " + filename)
@@ -2896,14 +2895,16 @@ class App(QtCore.QObject):
             "gerber": "share/flatcam_icon16.png",
             "excellon": "share/drill16.png",
             "cncjob": "share/cnc16.png",
-            "project": "share/project16.png"
+            "project": "share/project16.png",
+            "svg": "share/geometry16.png"
         }
 
         openers = {
             'gerber': lambda fname: self.worker_task.emit({'fcn': self.open_gerber, 'params': [fname]}),
             'excellon': lambda fname: self.worker_task.emit({'fcn': self.open_excellon, 'params': [fname]}),
             'cncjob': lambda fname: self.worker_task.emit({'fcn': self.open_gcode, 'params': [fname]}),
-            'project': self.open_project
+            'project': self.open_project,
+            'svg': self.import_svg
         }
 
         # Open file
