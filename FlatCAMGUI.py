@@ -40,13 +40,13 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menufileopengcode = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open G-&Code ...', self)
         self.menufile.addAction(self.menufileopengcode)
 
-        # Import SVG ...
-        self.menufileimportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Import &SVG ...', self)
-        self.menufile.addAction(self.menufileimportsvg)
-
         # Open Project ...
         self.menufileopenproject = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Project ...', self)
         self.menufile.addAction(self.menufileopenproject)
+
+        # Import SVG ...
+        self.menufileimportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Import &SVG ...', self)
+        self.menufile.addAction(self.menufileimportsvg)
 
         # Save Project
         self.menufilesaveproject = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), '&Save Project', self)

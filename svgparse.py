@@ -23,6 +23,20 @@ from shapely.geometry import LinearRing, LineString, Point
 from shapely.affinity import translate, rotate, scale, skew, affine_transform
 
 
+def svgparselength(lengthstr):
+
+    integer_re_str = r'[+-]?[0-9]+'
+    number_re_str = r'(?:' + integer_re_str + r'(?:[Ee]' + integer_re_str + r')?' + r')|' + \
+                    r'(?: [+-]?[0-9]*\.[0-9]+(?:[Ee]' + integer_re_str + ')?)'
+    length_re_str = r'(' + number_re_str + r')(em|ex|px|in|cm|mm|pt|pc|%)?'
+
+    match = re.search(length_re_str, lengthstr)
+    if match:
+        return float(match.group(1)), match.group(2)
+
+    raise Exception('Cannot parse SVG length: %s' % lengthstr)
+
+
 def path2shapely(path, res=1.0):
     """
     Converts an svg.path.Path into a Shapely
@@ -106,9 +120,12 @@ def svgcircle2shapely(circle):
     :type circle: xml.etree.ElementTree.Element
     :return: shapely.geometry.polygon.LinearRing
     """
-    cx = float(circle.get('cx'))
-    cy = float(circle.get('cy'))
-    r = float(circle.get('r'))
+    # cx = float(circle.get('cx'))
+    # cy = float(circle.get('cy'))
+    # r = float(circle.get('r'))
+    cx = svgparselength(circle.get('cx'))[0]  # TODO: No units support yet
+    cy = svgparselength(circle.get('cy'))[1]  # TODO: No units support yet
+    r = svgparselength(circle.get('r'))[0]  # TODO: No units support yet
 
     # TODO: No resolution specified.
     return Point(cx, cy).buffer(r)

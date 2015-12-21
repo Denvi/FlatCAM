@@ -353,7 +353,7 @@ class Geometry(object):
 
         return False
 
-    def import_svg(self, filename):
+    def import_svg(self, filename, flip=True):
         """
         Imports shapes from an SVG file into the object's geometry.
 
@@ -367,20 +367,23 @@ class Geometry(object):
         svg_root = svg_tree.getroot()
 
         # Change origin to bottom left
-        h = float(svg_root.get('height'))
+        # h = float(svg_root.get('height'))
         # w = float(svg_root.get('width'))
+        h = svgparselength(svg_root.get('height'))[0]  # TODO: No units support yet
         geos = getsvggeo(svg_root)
-        geo_flip = [translate(scale(g, 1.0, -1.0, origin=(0, 0)), yoff=h) for g in geos]
+
+        if flip:
+            geos = [translate(scale(g, 1.0, -1.0, origin=(0, 0)), yoff=h) for g in geos]
 
         # Add to object
         if self.solid_geometry is None:
             self.solid_geometry = []
 
         if type(self.solid_geometry) is list:
-            self.solid_geometry.append(cascaded_union(geo_flip))
+            self.solid_geometry.append(cascaded_union(geos))
         else:  # It's shapely geometry
             self.solid_geometry = cascaded_union([self.solid_geometry,
-                                                  cascaded_union(geo_flip)])
+                                                  cascaded_union(geos)])
 
         return
 
