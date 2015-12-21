@@ -26,8 +26,8 @@ from shapely.affinity import translate, rotate, scale, skew, affine_transform
 def svgparselength(lengthstr):
 
     integer_re_str = r'[+-]?[0-9]+'
-    number_re_str = r'(?:' + integer_re_str + r'(?:[Ee]' + integer_re_str + r')?' + r')|' + \
-                    r'(?: [+-]?[0-9]*\.[0-9]+(?:[Ee]' + integer_re_str + ')?)'
+    number_re_str = r'(?:[+-]?[0-9]*\.[0-9]+(?:[Ee]' + integer_re_str + ')?' + r')|' + \
+                    r'(?:' + integer_re_str + r'(?:[Ee]' + integer_re_str + r')?)'
     length_re_str = r'(' + number_re_str + r')(em|ex|px|in|cm|mm|pt|pc|%)?'
 
     match = re.search(length_re_str, lengthstr)
@@ -230,6 +230,9 @@ def parse_svg_transform(trstr):
       transformation matrix [a b c d e f]. Result is
       ['matrix', a, b, c, d, e, f]
 
+    Note: All parameters to the transformations are "numbers",
+    i.e. no units present.
+
     :param trstr: SVG transform string.
     :type trstr: str
     :return: List of transforms.
@@ -240,31 +243,35 @@ def parse_svg_transform(trstr):
     assert isinstance(trstr, str)
     trstr = trstr.strip(' ')
 
-    num_re_str = r'[\+\-]?[0-9\.e]+'  # TODO: Negative exponents missing
+    integer_re_str = r'[+-]?[0-9]+'
+    number_re_str = r'(?:[+-]?[0-9]*\.[0-9]+(?:[Ee]' + integer_re_str + ')?' + r')|' + \
+                    r'(?:' + integer_re_str + r'(?:[Ee]' + integer_re_str + r')?)'
+
+    # num_re_str = r'[\+\-]?[0-9\.e]+'  # TODO: Negative exponents missing
     comma_or_space_re_str = r'(?:(?:\s+)|(?:\s*,\s*))'
     translate_re_str = r'translate\s*\(\s*(' + \
-                       num_re_str + r')' + \
-                       r'(?:' + comma_or_space_re_str + \
-                       r'(' + num_re_str + r'))?\s*\)'
+                       number_re_str + r')(?:' + \
+                       comma_or_space_re_str + \
+                       r'(' + number_re_str + r'))?\s*\)'
     scale_re_str = r'scale\s*\(\s*(' + \
-                   num_re_str + r')' + \
+                   number_re_str + r')' + \
                    r'(?:' + comma_or_space_re_str + \
-                   r'(' + num_re_str + r'))?\s*\)'
+                   r'(' + number_re_str + r'))?\s*\)'
     skew_re_str = r'skew([XY])\s*\(\s*(' + \
-                  num_re_str + r')\s*\)'
+                  number_re_str + r')\s*\)'
     rotate_re_str = r'rotate\s*\(\s*(' + \
-                    num_re_str + r')' + \
+                    number_re_str + r')' + \
                     r'(?:' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')' + \
+                    r'(' + number_re_str + r')' + \
                     comma_or_space_re_str + \
-                    r'(' + num_re_str + r'))?\*\)'
+                    r'(' + number_re_str + r'))?\*\)'
     matrix_re_str = r'matrix\s*\(\s*' + \
-                    r'(' + num_re_str + r')' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')' + comma_or_space_re_str + \
-                    r'(' + num_re_str + r')\s*\)'
+                    r'(' + number_re_str + r')' + comma_or_space_re_str + \
+                    r'(' + number_re_str + r')' + comma_or_space_re_str + \
+                    r'(' + number_re_str + r')' + comma_or_space_re_str + \
+                    r'(' + number_re_str + r')' + comma_or_space_re_str + \
+                    r'(' + number_re_str + r')' + comma_or_space_re_str + \
+                    r'(' + number_re_str + r')\s*\)'
 
     while len(trstr) > 0:
         match = re.search(r'^' + translate_re_str, trstr)
