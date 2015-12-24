@@ -244,7 +244,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM %s' % version)
+        self.setWindowTitle('FlatCAM %s - Development Version' % version)
         self.show()
 
     def closeEvent(self, event):

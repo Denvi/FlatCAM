@@ -21,6 +21,7 @@ import itertools
 from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 from shapely.geometry import LinearRing, LineString, Point
 from shapely.affinity import translate, rotate, scale, skew, affine_transform
+import numpy as np
 
 
 def svgparselength(lengthstr):
@@ -124,11 +125,35 @@ def svgcircle2shapely(circle):
     # cy = float(circle.get('cy'))
     # r = float(circle.get('r'))
     cx = svgparselength(circle.get('cx'))[0]  # TODO: No units support yet
-    cy = svgparselength(circle.get('cy'))[1]  # TODO: No units support yet
+    cy = svgparselength(circle.get('cy'))[0]  # TODO: No units support yet
     r = svgparselength(circle.get('r'))[0]  # TODO: No units support yet
 
     # TODO: No resolution specified.
     return Point(cx, cy).buffer(r)
+
+
+def svgellipse2shapely(ellipse, n_points=32):
+    """
+    Converts an SVG ellipse into Shapely geometry
+
+    :param ellipse: Ellipse Element
+    :type ellipse: xml.etree.ElementTree.Element
+    :param n_points: Number of discrete points in output.
+    :return: shapely.geometry.polygon.LinearRing
+    """
+
+    cx = svgparselength(ellipse.get('cx'))[0]  # TODO: No units support yet
+    cy = svgparselength(ellipse.get('cy'))[0]  # TODO: No units support yet
+
+    rx = svgparselength(ellipse.get('rx'))[0]  # TODO: No units support yet
+    ry = svgparselength(ellipse.get('ry'))[0]  # TODO: No units support yet
+
+    t = np.arange(n_points, dtype=float) / n_points
+    x = cx + rx * np.cos(2 * np.pi * t)
+    y = cy + ry * np.sin(2 * np.pi * t)
+    pts = [(x[i], y[i]) for i in range(n_points)]
+
+    return LinearRing(pts)
 
 
 def getsvggeo(node):
@@ -165,6 +190,11 @@ def getsvggeo(node):
         print "***CIRCLE***"
         C = svgcircle2shapely(node)
         geo = [C]
+
+    elif kind == 'ellipse':
+        print "***ELLIPSE***"
+        E = svgellipse2shapely(node)
+        geo = [E]
 
     else:
         print "Unknown kind:", kind
