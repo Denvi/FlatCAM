@@ -9,6 +9,10 @@
 #  * Groups                                                #
 #  * Rectangles                                            #
 #  * Circles                                               #
+#  * Ellipses                                              #
+#  * Polygons                                              #
+#  * Polylines                                             #
+#  * Lines                                                 #
 #  * Paths                                                 #
 #  * All transformations                                   #
 #                                                          #
@@ -22,6 +26,9 @@ from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 from shapely.geometry import LinearRing, LineString, Point
 from shapely.affinity import translate, rotate, scale, skew, affine_transform
 import numpy as np
+import logging
+
+log = logging.getLogger('base2')
 
 
 def svgparselength(lengthstr):
@@ -83,7 +90,7 @@ def path2shapely(path, res=1.0):
             points.append((end.real, end.imag))
             continue
 
-        print "I don't know what this is:", component
+        log.warning("I don't know what this is:", component)
         continue
 
     if path.closed:
@@ -156,6 +163,32 @@ def svgellipse2shapely(ellipse, n_points=32):
     return LinearRing(pts)
 
 
+def svgline2shapely(line):
+
+    x1 = svgparselength(line.get('x1'))
+    y1 = svgparselength(line.get('y1'))
+    x2 = svgparselength(line.get('x2'))
+    y2 = svgparselength(line.get('y2'))
+
+    return LineString([(x1, y1), (x2, y2)])
+
+
+def svgpolyline2shapely(polyline):
+
+    ptliststr = polyline.get('points')
+    points = parse_svg_point_list(ptliststr)
+
+    return LineString(points)
+
+
+def svgpolygon2shapely(polygon):
+
+    ptliststr = polygon.get('points')
+    points = parse_svg_point_list(ptliststr)
+
+    return LinearRing(points)
+
+
 def getsvggeo(node):
     """
     Extracts and flattens all geometry from an SVG node
@@ -176,35 +209,50 @@ def getsvggeo(node):
 
     # Parse
     elif kind == 'path':
-        print "***PATH***"
+        log.debug("***PATH***")
         P = parse_path(node.get('d'))
         P = path2shapely(P)
         geo = [P]
 
     elif kind == 'rect':
-        print "***RECT***"
+        log.debug("***RECT***")
         R = svgrect2shapely(node)
         geo = [R]
 
     elif kind == 'circle':
-        print "***CIRCLE***"
+        log.debug("***CIRCLE***")
         C = svgcircle2shapely(node)
         geo = [C]
 
     elif kind == 'ellipse':
-        print "***ELLIPSE***"
+        log.debug("***ELLIPSE***")
         E = svgellipse2shapely(node)
         geo = [E]
 
+    elif kind == 'polygon':
+        log.debug("***POLYGON***")
+        poly = svgpolygon2shapely(node)
+        geo = [poly]
+
+    elif kind == 'line':
+        log.debug("***LINE***")
+        line = svgline2shapely(node)
+        geo = [line]
+
+    elif kind == 'polyline':
+        log.debug("***POLYLINE***")
+        pline = svgpolyline2shapely(node)
+        geo = [pline]
+
     else:
-        print "Unknown kind:", kind
+        log.warning("Unknown kind: " + kind)
         geo = None
 
     # Transformations
     if 'transform' in node.attrib:
         trstr = node.get('transform')
         trlist = parse_svg_transform(trstr)
-        print trlist
+        #log.debug(trlist)
 
         # Transformations are applied in reverse order
         for tr in trlist[::-1]:
@@ -225,6 +273,42 @@ def getsvggeo(node):
                 raise Exception('Unknown transformation: %s', tr)
 
     return geo
+
+
+def parse_svg_point_list(ptliststr):
+    """
+    Returns a list of coordinate pairs extracted from the "points"
+    attribute in SVG polygons and polylines.
+
+    :param ptliststr: "points" attribute string in polygon or polyline.
+    :return: List of tuples with coordinates.
+    """
+
+    pairs = []
+    last = None
+    pos = 0
+    i = 0
+
+    for match in re.finditer(r'(\s*,\s*)|(\s+)', ptliststr):
+
+        val = float(ptliststr[pos:match.start()])
+
+        if i % 2 == 1:
+            pairs.append((last, val))
+        else:
+            last = val
+
+        pos = match.end()
+        i += 1
+
+    # Check for last element
+    val = float(ptliststr[pos:])
+    if i % 2 == 1:
+        pairs.append((last, val))
+    else:
+        log.warning("Incomplete coordinates.")
+
+    return pairs
 
 
 def parse_svg_transform(trstr):
