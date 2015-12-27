@@ -7,7 +7,7 @@
 #                                                          #
 # SVG Features supported:                                  #
 #  * Groups                                                #
-#  * Rectangles                                            #
+#  * Rectangles (w/ rounded corners)                       #
 #  * Circles                                               #
 #  * Ellipses                                              #
 #  * Polygons                                              #
@@ -32,6 +32,14 @@ log = logging.getLogger('base2')
 
 
 def svgparselength(lengthstr):
+    """
+    Parse an SVG length string into a float and a units
+    string, if any.
+
+    :param lengthstr: SVG length string.
+    :return: Number and units pair.
+    :rtype: tuple(float, str|None)
+    """
 
     integer_re_str = r'[+-]?[0-9]+'
     number_re_str = r'(?:[+-]?[0-9]*\.[0-9]+(?:[Ee]' + integer_re_str + ')?' + r')|' + \
@@ -99,24 +107,63 @@ def path2shapely(path, res=1.0):
         return LineString(points)
 
 
-def svgrect2shapely(rect):
+def svgrect2shapely(rect, n_points=32):
     """
     Converts an SVG rect into Shapely geometry.
 
     :param rect: Rect Element
     :type rect: xml.etree.ElementTree.Element
     :return: shapely.geometry.polygon.LinearRing
-
-    :param rect:
-    :return:
     """
-    w = float(rect.get('width'))
-    h = float(rect.get('height'))
-    x = float(rect.get('x'))
-    y = float(rect.get('y'))
-    pts = [
-        (x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)
-    ]
+    w = svgparselength(rect.get('width'))[0]
+    h = svgparselength(rect.get('height'))[0]
+    x = svgparselength(rect.get('x'))[0]
+    y = svgparselength(rect.get('y'))[0]
+
+    rxstr = rect.get('rx')
+    rystr = rect.get('ry')
+
+    if rxstr is None and rystr is None:  # Sharp corners
+        pts = [
+            (x, y), (x + w, y), (x + w, y + h), (x, y + h), (x, y)
+        ]
+
+    else:  # Rounded corners
+        rx = 0.0 if rxstr is None else svgparselength(rxstr)[0]
+        ry = 0.0 if rystr is None else svgparselength(rystr)[0]
+
+        n_points = int(n_points / 4 + 0.5)
+        t = np.arange(n_points, dtype=float) / n_points / 4
+
+        x_ = (x + w - rx) + rx * np.cos(2 * np.pi * (t + 0.75))
+        y_ = (y + ry) + ry * np.sin(2 * np.pi * (t + 0.75))
+
+        lower_right = [(x_[i], y_[i]) for i in range(n_points)]
+
+        x_ = (x + w - rx) + rx * np.cos(2 * np.pi * t)
+        y_ = (y + h - ry) + ry * np.sin(2 * np.pi * t)
+
+        upper_right = [(x_[i], y_[i]) for i in range(n_points)]
+
+        x_ = (x + rx) + rx * np.cos(2 * np.pi * (t + 0.25))
+        y_ = (y + h - ry) + ry * np.sin(2 * np.pi * (t + 0.25))
+
+        upper_left = [(x_[i], y_[i]) for i in range(n_points)]
+
+        x_ = (x + rx) + rx * np.cos(2 * np.pi * (t + 0.5))
+        y_ = (y + ry) + ry * np.sin(2 * np.pi * (t + 0.5))
+
+        lower_left = [(x_[i], y_[i]) for i in range(n_points)]
+
+        pts = [(x + rx, y), (x - rx + w, y)] + \
+            lower_right + \
+            [(x + w, y + ry), (x + w, y + h - ry)] + \
+            upper_right + \
+            [(x + w - rx, y + h), (x + rx, y + h)] + \
+            upper_left + \
+            [(x, y + h - ry), (x, y + ry)] + \
+            lower_left
+
     return LinearRing(pts)
 
 
@@ -126,7 +173,8 @@ def svgcircle2shapely(circle):
 
     :param circle: Circle Element
     :type circle: xml.etree.ElementTree.Element
-    :return: shapely.geometry.polygon.LinearRing
+    :return: Shapely representation of the circle.
+    :rtype: shapely.geometry.polygon.LinearRing
     """
     # cx = float(circle.get('cx'))
     # cy = float(circle.get('cy'))
@@ -139,14 +187,15 @@ def svgcircle2shapely(circle):
     return Point(cx, cy).buffer(r)
 
 
-def svgellipse2shapely(ellipse, n_points=32):
+def svgellipse2shapely(ellipse, n_points=64):
     """
     Converts an SVG ellipse into Shapely geometry
 
     :param ellipse: Ellipse Element
     :type ellipse: xml.etree.ElementTree.Element
     :param n_points: Number of discrete points in output.
-    :return: shapely.geometry.polygon.LinearRing
+    :return: Shapely representation of the ellipse.
+    :rtype: shapely.geometry.polygon.LinearRing
     """
 
     cx = svgparselength(ellipse.get('cx'))[0]  # TODO: No units support yet
@@ -164,11 +213,18 @@ def svgellipse2shapely(ellipse, n_points=32):
 
 
 def svgline2shapely(line):
+    """
 
-    x1 = svgparselength(line.get('x1'))
-    y1 = svgparselength(line.get('y1'))
-    x2 = svgparselength(line.get('x2'))
-    y2 = svgparselength(line.get('y2'))
+    :param line: Line element
+    :type line: xml.etree.ElementTree.Element
+    :return: Shapely representation on the line.
+    :rtype: shapely.geometry.polygon.LinearRing
+    """
+
+    x1 = svgparselength(line.get('x1'))[0]
+    y1 = svgparselength(line.get('y1'))[0]
+    x2 = svgparselength(line.get('x2'))[0]
+    y2 = svgparselength(line.get('y2'))[0]
 
     return LineString([(x1, y1), (x2, y2)])
 
@@ -194,8 +250,9 @@ def getsvggeo(node):
     Extracts and flattens all geometry from an SVG node
     into a list of Shapely geometry.
 
-    :param node:
-    :return:
+    :param node: xml.etree.ElementTree.Element
+    :return: List of Shapely geometry
+    :rtype: list
     """
     kind = re.search('(?:\{.*\})?(.*)$', node.tag).group(1)
     geo = []
