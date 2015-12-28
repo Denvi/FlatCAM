@@ -14,13 +14,54 @@ mpl_use("Qt4Agg")
 
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import FlatCAMApp
 
 
-class PlotCanvas:
+class CanvasCache(QtCore.QObject):
+
+    # Signals
+    new_screen = QtCore.pyqtSignal()
+
+    def __init__(self, plotcanvas, dpi=50):
+
+        super(CanvasCache, self).__init__()
+
+        self.plotcanvas = plotcanvas
+        self.dpi = dpi
+
+        self.figure = Figure(dpi=dpi)
+
+        self.axes = self.figure.add_axes([0.0, 0.0, 1.0, 1.0], alpha=1.0)
+        self.axes.set_frame_on(False)
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+
+        self.canvas = FigureCanvasAgg(self.figure)
+
+        self.cache = None
+
+    def run(self):
+
+        self.plotcanvas.update_screen_request.connect(self.on_update_req)
+
+    def on_update_req(self, extents):
+
+        # Move the requested screen portion to the main thread
+        # and inform about the update:
+
+        self.new_screen.emit()
+
+        # Continue to update the cache.
+
+
+class PlotCanvas(QtCore.QObject):
     """
     Class handling the plotting area in the application.
     """
+
+    # Signals
+    update_screen_request = QtCore.pyqtSignal(list)
 
     def __init__(self, container):
         """
@@ -64,6 +105,14 @@ class PlotCanvas:
         # Copy a bitmap of the canvas for quick animation.
         # Update every time the canvas is re-drawn.
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+        # Bitmap Cache
+        self.cache = CanvasCache(self)
+        self.cache_thread = QtCore.QThread()
+        self.cache.moveToThread(self.cache_thread)
+        super(PlotCanvas, self).connect(self.cache_thread, QtCore.SIGNAL("started()"), self.cache.run)
+        # self.connect()
+        self.cache_thread.start()
 
         # Events
         self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
