@@ -20,7 +20,8 @@ import FlatCAMApp
 
 class CanvasCache(QtCore.QObject):
 
-    # Signals
+    # Signals:
+    # A bitmap is ready to be displayed.
     new_screen = QtCore.pyqtSignal()
 
     def __init__(self, plotcanvas, dpi=50):
@@ -43,9 +44,16 @@ class CanvasCache(QtCore.QObject):
 
     def run(self):
 
+        print "CanvasCache Thread Started!"
+
         self.plotcanvas.update_screen_request.connect(self.on_update_req)
 
     def on_update_req(self, extents):
+        """
+        Event handler for an updated display request.
+
+        :param extents: [xmin, xmax, ymin, ymax, zoom(optional)]
+        """
 
         # Move the requested screen portion to the main thread
         # and inform about the update:
@@ -60,7 +68,9 @@ class PlotCanvas(QtCore.QObject):
     Class handling the plotting area in the application.
     """
 
-    # Signals
+    # Signals:
+    # Request for new bitmap to display. The parameter
+    # is a list with [xmin, xmax, ymin, ymax, zoom(optional)]
     update_screen_request = QtCore.pyqtSignal(list)
 
     def __init__(self, container):
@@ -72,6 +82,9 @@ class PlotCanvas(QtCore.QObject):
         :param container: The parent container in which to draw plots.
         :rtype: PlotCanvas
         """
+
+        super(PlotCanvas, self).__init__()
+
         # Options
         self.x_margin = 15  # pixels
         self.y_margin = 25  # Pixels
