@@ -60,6 +60,13 @@ class CanvasCache(QtCore.QObject):
 
         log.debug("Canvas update requested: %s" % str(extents))
 
+        # Note: This information here might be out of date. Establish
+        # a protocol regarding when to change the canvas in the main
+        # thread and when to check these values here in the background,
+        # or pass this data in the signal (safer).
+        log.debug("Size: %s [px]" % str(self.plotcanvas.get_axes_pixelsize()))
+        log.debug("Density: %s [units/px]" % str(self.plotcanvas.get_density()))
+
         # Move the requested screen portion to the main thread
         # and inform about the update:
 

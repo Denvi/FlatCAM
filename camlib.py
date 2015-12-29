@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 import re
 import sys
 import traceback
+from decimal import Decimal
 
 import collections
 import numpy as np
@@ -2865,17 +2866,24 @@ class CNCjob(Geometry):
 
                 #--------- Multi-pass ---------
                 else:
+                    if isinstance(self.z_cut, Decimal):
+                        z_cut = self.z_cut
+                    else:
+                        z_cut = Decimal(self.z_cut).quantize(Decimal('0.000000001'))
+
                     if depthpercut is None:
-                        depthpercut = self.z_cut
+                        depthpercut = z_cut
+                    elif not isinstance(depthpercut, Decimal):
+                        depthpercut = Decimal(depthpercut).quantize(Decimal('0.000000001'))
 
                     depth = 0
                     reverse = False
-                    while depth > self.z_cut:
+                    while depth > z_cut:
 
                         # Increase depth. Limit to z_cut.
                         depth -= depthpercut
-                        if depth < self.z_cut:
-                            depth = self.z_cut
+                        if depth < z_cut:
+                            depth = z_cut
 
                         # Cut at specific depth and do not lift the tool.
                         # Note: linear2gcode() will use G00 to move to the
