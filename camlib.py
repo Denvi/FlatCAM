@@ -1307,7 +1307,9 @@ class Gerber (Geometry):
         self.comm_re = re.compile(r'^G0?4(.*)$')
 
         # AD - Aperture definition
-        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.]*)(?:,(.*))?\*%$')
+        # Aperture Macro names: Name = [a-zA-Z_.$]{[a-zA-Z_.0-9]+}
+        # NOTE: Adding "-" to support output from Upverter.
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.\-]*)(?:,(.*))?\*%$')
 
         # AM - Aperture Macro
         # Beginning of macro (Ends with *%):
