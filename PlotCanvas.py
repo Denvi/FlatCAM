@@ -16,6 +16,9 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 import FlatCAMApp
+import logging
+
+log = logging.getLogger('base')
 
 
 class CanvasCache(QtCore.QObject):
@@ -44,7 +47,7 @@ class CanvasCache(QtCore.QObject):
 
     def run(self):
 
-        print "CanvasCache Thread Started!"
+        log.debug("CanvasCache Thread Started!")
 
         self.plotcanvas.update_screen_request.connect(self.on_update_req)
 
@@ -54,6 +57,8 @@ class CanvasCache(QtCore.QObject):
 
         :param extents: [xmin, xmax, ymin, ymax, zoom(optional)]
         """
+
+        log.debug("Canvas update requested: %s" % str(extents))
 
         # Move the requested screen portion to the main thread
         # and inform about the update:
@@ -102,7 +107,7 @@ class PlotCanvas(QtCore.QObject):
         self.axes.set_aspect(1)
         self.axes.grid(True)
 
-        # The canvas is the top level container (Gtk.DrawingArea)
+        # The canvas is the top level container (FigureCanvasQTAgg)
         self.canvas = FigureCanvas(self.figure)
         # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         # self.canvas.setFocus()
@@ -119,13 +124,14 @@ class PlotCanvas(QtCore.QObject):
         # Update every time the canvas is re-drawn.
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
-        # Bitmap Cache
+        ### Bitmap Cache
         self.cache = CanvasCache(self)
         self.cache_thread = QtCore.QThread()
         self.cache.moveToThread(self.cache_thread)
         super(PlotCanvas, self).connect(self.cache_thread, QtCore.SIGNAL("started()"), self.cache.run)
         # self.connect()
         self.cache_thread.start()
+        self.cache.new_screen.connect(self.on_new_screen)
 
         # Events
         self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
@@ -145,6 +151,10 @@ class PlotCanvas(QtCore.QObject):
 
         self.pan_axes = []
         self.panning = False
+
+    def on_new_screen(self):
+
+        log.debug("Cache updated the screen!")
 
     def on_key_down(self, event):
         """
@@ -275,6 +285,9 @@ class PlotCanvas(QtCore.QObject):
         # Sync re-draw to proper paint on form resize
         self.canvas.draw()
 
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
+
     def auto_adjust_axes(self, *args):
         """
         Calls ``adjust_axes()`` using the extents of the base axes.
@@ -327,6 +340,9 @@ class PlotCanvas(QtCore.QObject):
         # Async re-draw
         self.canvas.draw_idle()
 
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
+
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
@@ -340,6 +356,9 @@ class PlotCanvas(QtCore.QObject):
 
         # Re-draw
         self.canvas.draw_idle()
+
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def new_axes(self, name):
         """
@@ -434,7 +453,40 @@ class PlotCanvas(QtCore.QObject):
             # Async re-draw (redraws only on thread idle state, uses timer on backend)
             self.canvas.draw_idle()
 
+            ##### Temporary place-holder for cached update #####
+            self.update_screen_request.emit([0, 0, 0, 0, 0])
+
     def on_draw(self, renderer):
 
         # Store background on canvas redraw
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+    def get_axes_pixelsize(self):
+        """
+        Axes size in pixels.
+
+        :return: Pixel width and height
+        :rtype: tuple
+        """
+        bbox = self.axes.get_window_extent().transformed(self.figure.dpi_scale_trans.inverted())
+        width, height = bbox.width, bbox.height
+        width *= self.figure.dpi
+        height *= self.figure.dpi
+        return width, height
+
+    def get_density(self):
+        """
+        Returns unit length per pixel on horizontal
+        and vertical axes.
+
+        :return: X and Y density
+        :rtype: tuple
+        """
+        xpx, ypx = self.get_axes_pixelsize()
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax - xmin
+        height = ymax - ymin
+
+        return width / xpx, height / ypx
