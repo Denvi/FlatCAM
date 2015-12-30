@@ -1169,6 +1169,8 @@ class ApertureMacro:
 
         :param modifiers: Modifiers (parameters) for this macro
         :type modifiers: list
+        :return: Shapely geometry
+        :rtype: shapely.geometry.polygon
         """
 
         ## Primitive makers
@@ -1189,11 +1191,11 @@ class ApertureMacro:
         modifiers = [float(m) for m in modifiers]
         self.locvars = {}
         for i in range(0, len(modifiers)):
-            self.locvars[str(i+1)] = modifiers[i]
+            self.locvars[str(i + 1)] = modifiers[i]
 
         ## Parse
         self.primitives = []  # Cleanup
-        self.geometry = None
+        self.geometry = Polygon()
         self.parse_content()
 
         ## Make the geometry
@@ -1202,9 +1204,9 @@ class ApertureMacro:
             prim_geo = makers[str(int(primitive[0]))](primitive[1:])
 
             # Add it (according to polarity)
-            if self.geometry is None and prim_geo['pol'] == 1:
-                self.geometry = prim_geo['geometry']
-                continue
+            # if self.geometry is None and prim_geo['pol'] == 1:
+            #     self.geometry = prim_geo['geometry']
+            #     continue
             if prim_geo['pol'] == 1:
                 self.geometry = self.geometry.union(prim_geo['geometry'])
                 continue
@@ -1567,7 +1569,8 @@ class Gerber (Geometry):
 
                         # Otherwise leave as is.
                         else:
-                            yield cleanline
+                            # yield cleanline
+                            yield line
                             break
 
             self.parse_lines(line_generator(), follow=follow)
@@ -1648,7 +1651,7 @@ class Gerber (Geometry):
                     match = self.am1_re.search(gline)
                     # Start macro if match, else not an AM, carry on.
                     if match:
-                        log.info("Starting macro. Line %d: %s" % (line_num, gline))
+                        log.debug("Starting macro. Line %d: %s" % (line_num, gline))
                         current_macro = match.group(1)
                         self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
                         if match.group(2):  # Append
@@ -1656,13 +1659,13 @@ class Gerber (Geometry):
                         if match.group(3):  # Finish macro
                             #self.aperture_macros[current_macro].parse_content()
                             current_macro = None
-                            log.info("Macro complete in 1 line.")
+                            log.debug("Macro complete in 1 line.")
                         continue
                 else:  # Continue macro
-                    log.info("Continuing macro. Line %d." % line_num)
+                    log.debug("Continuing macro. Line %d." % line_num)
                     match = self.am2_re.search(gline)
                     if match:  # Finish macro
-                        log.info("End of macro. Line %d." % line_num)
+                        log.debug("End of macro. Line %d." % line_num)
                         self.aperture_macros[current_macro].append(match.group(1))
                         #self.aperture_macros[current_macro].parse_content()
                         current_macro = None
@@ -2163,8 +2166,11 @@ class Gerber (Geometry):
         if aperture['type'] == 'AM':  # Aperture Macro
             loc = location.coords[0]
             flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
+            if flash_geo.is_empty:
+                log.warning("Empty geometry for Aperture Macro: %s" % str(aperture['macro'].name))
             return affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
 
+        log.warning("Unknown aperture type: %s" % aperture['type'])
         return None
     
     def create_geometry(self):
