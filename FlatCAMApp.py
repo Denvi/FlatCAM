@@ -1973,7 +1973,8 @@ class App(QtCore.QObject):
 
         def shelp(p=None):
             if not p:
-                return "Available commands:\n" + '\n'.join(['  ' + cmd for cmd in commands]) + \
+                return "Available commands:\n" + \
+                       '\n'.join(['  ' + cmd for cmd in sorted(commands)]) + \
                        "\n\nType help <command_name> for usage.\n Example: help open_gerber"
 
             if p not in commands:
@@ -2626,8 +2627,8 @@ class App(QtCore.QObject):
             },
             'open_gerber': {
                 'fcn': open_gerber,
-                'help': "Opens a Gerber file.\n' +"
-                        "> open_gerber <filename> [-follow <0|1>] [-outname <o>]\n' +"
+                'help': "Opens a Gerber file.\n"
+                        "> open_gerber <filename> [-follow <0|1>] [-outname <o>]\n"
                         "   filename: Path to file to open.\n" +
                         "   follow: If 1, does not create polygons, just follows the gerber path.\n" +
                         "   outname: Name of the created gerber object."
