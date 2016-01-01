@@ -22,6 +22,21 @@ log = logging.getLogger('base')
 
 
 class CanvasCache(QtCore.QObject):
+    """
+
+    Case story #1:
+
+    1) No objects in the project.
+    2) Object is created (new_object() emits object_created(obj)).
+       on_object_created() adds (i) object to collection and emits
+       (ii) new_object_available() then calls (iii) object.plot()
+    3) object.plot() creates axes if necessary on
+       app.collection.figure. Then plots on it.
+    4) Plots on a cache-size canvas (in background).
+    5) Plot completes. Bitmap is generated.
+    6) Visible canvas is painted.
+
+    """
 
     # Signals:
     # A bitmap is ready to be displayed.
