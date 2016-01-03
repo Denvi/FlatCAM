@@ -42,9 +42,11 @@ class CanvasCache(QtCore.QObject):
     # A bitmap is ready to be displayed.
     new_screen = QtCore.pyqtSignal()
 
-    def __init__(self, plotcanvas, dpi=50):
+    def __init__(self, plotcanvas, app, dpi=50):
 
         super(CanvasCache, self).__init__()
+
+        self.app = app
 
         self.plotcanvas = plotcanvas
         self.dpi = dpi
@@ -66,6 +68,8 @@ class CanvasCache(QtCore.QObject):
 
         self.plotcanvas.update_screen_request.connect(self.on_update_req)
 
+        self.app.new_object_available.connect(self.on_new_object_available)
+
     def on_update_req(self, extents):
         """
         Event handler for an updated display request.
@@ -75,7 +79,7 @@ class CanvasCache(QtCore.QObject):
 
         log.debug("Canvas update requested: %s" % str(extents))
 
-        # Note: This information here might be out of date. Establish
+        # Note: This information below might be out of date. Establish
         # a protocol regarding when to change the canvas in the main
         # thread and when to check these values here in the background,
         # or pass this data in the signal (safer).
@@ -89,6 +93,10 @@ class CanvasCache(QtCore.QObject):
 
         # Continue to update the cache.
 
+    def on_new_object_available(self):
+
+        log.debug("A new object is available. Should plot it!")
+
 
 class PlotCanvas(QtCore.QObject):
     """
@@ -100,7 +108,7 @@ class PlotCanvas(QtCore.QObject):
     # is a list with [xmin, xmax, ymin, ymax, zoom(optional)]
     update_screen_request = QtCore.pyqtSignal(list)
 
-    def __init__(self, container):
+    def __init__(self, container, app):
         """
         The constructor configures the Matplotlib figure that
         will contain all plots, creates the base axes and connects
@@ -111,6 +119,8 @@ class PlotCanvas(QtCore.QObject):
         """
 
         super(PlotCanvas, self).__init__()
+
+        self.app = app
 
         # Options
         self.x_margin = 15  # pixels
@@ -147,7 +157,7 @@ class PlotCanvas(QtCore.QObject):
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
         ### Bitmap Cache
-        self.cache = CanvasCache(self)
+        self.cache = CanvasCache(self, self.app)
         self.cache_thread = QtCore.QThread()
         self.cache.moveToThread(self.cache_thread)
         super(PlotCanvas, self).connect(self.cache_thread, QtCore.SIGNAL("started()"), self.cache.run)

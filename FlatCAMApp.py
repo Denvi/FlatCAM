@@ -72,11 +72,26 @@ class App(QtCore.QObject):
     ## Manual URL
     manual_url = "http://flatcam.org/manual/index.html"
 
-    ## Signals
-    inform = QtCore.pyqtSignal(str)  # Message
-    worker_task = QtCore.pyqtSignal(dict)  # Worker task
+    ##################
+    ##    Signals   ##
+    ##################
+
+    # Inform the user
+    # Handled by:
+    #  * App.info() --> Print on the status bar
+    inform = QtCore.pyqtSignal(str)
+
+    # General purpose background task
+    worker_task = QtCore.pyqtSignal(dict)
+
+    # File opened
+    # Handled by:
+    #  * register_folder()
+    #  * register_recent()
     file_opened = QtCore.pyqtSignal(str, str)  # File type and filename
+
     progress = QtCore.pyqtSignal(int)  # Percentage of progress
+
     plots_updated = QtCore.pyqtSignal()
 
     # Emitted by new_object() and passes the new object as argument.
@@ -87,6 +102,7 @@ class App(QtCore.QObject):
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
     new_object_available = QtCore.pyqtSignal(object)
+
     message = QtCore.pyqtSignal(str, str, str)
 
     def __init__(self, user_defaults=True, post_gui=None):
@@ -161,7 +177,7 @@ class App(QtCore.QObject):
 
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
-        self.plotcanvas = PlotCanvas(self.ui.right_layout)
+        self.plotcanvas = PlotCanvas(self.ui.right_layout, self)
         self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
         self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
