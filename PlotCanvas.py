@@ -13,19 +13,20 @@ from matplotlib import use as mpl_use
 mpl_use("Qt4Agg")
 
 import FlatCAMApp
-from cStringIO import StringIO
-import matplotlib.image as mpimg
 import numpy as np
+import copy
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
 
-class PlotCanvas:
+class PlotCanvas(QtCore.QObject):
     """
     Class handling the plotting area in the application.
     """
 
     app = None
+
+    plots_updated = QtCore.pyqtSignal(object, object)
 
     def __init__(self, container):
         """
@@ -36,6 +37,9 @@ class PlotCanvas:
         :param container: The parent container in which to draw plots.
         :rtype: PlotCanvas
         """
+
+        super(PlotCanvas, self).__init__()
+
         # Options
         self.x_margin = 15  # pixels
         self.y_margin = 25  # Pixels
@@ -59,7 +63,6 @@ class PlotCanvas:
 
         # The canvas is the top level container (Gtk.DrawingArea)
         self.canvas = FigureCanvas(self.figure)
-        self.offscreen_canvas = FigureOffscreenCanvas(self.offscreen_figure)
         # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         # self.canvas.setFocus()
 
@@ -96,6 +99,20 @@ class PlotCanvas:
 
         self.pan_axes = []
         self.panning = False
+
+        self.plots_updated.connect(self.on_plots_updated)
+
+    def on_plots_updated(self, image, box):
+        # Remove previous image if exists
+        try:
+            self.image.remove()
+        except:
+            pass
+
+        # Set new image
+        x1, x2, y1, y2 = box
+        self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
+        self.canvas.draw()
 
     def on_key_down(self, event):
         """
@@ -260,6 +277,8 @@ class PlotCanvas:
         :return: None
         """
 
+        print "zoom"
+
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
 
@@ -295,56 +314,64 @@ class PlotCanvas:
         x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
 
         # Calculate bounds in screen space
-        points = self.axes.transData.transform([(x1, y1), (x2, y2)]);
+        points = self.axes.transData.transform([(x1, y1), (x2, y2)])
 
         # Calculate width/height of image
         w, h = round(points[1][0] - points[0][0]), round(points[1][1] - points[0][1])
 
-        def update_image():
+        self.abort = True
+
+        def update_image(figure):
+
+            self.abort = False
 
             # Rescale axes
-            for ax in self.offscreen_figure.get_axes():
+            for ax in figure.get_axes():
                 ax.set_xlim(x1, x2)
                 ax.set_ylim(y1, y2)
                 ax.set_xticks([])
                 ax.set_yticks([])
 
             # Resize figure
-            dpi = self.offscreen_figure.dpi
-            self.offscreen_figure.set_size_inches(w / dpi, h / dpi)
+            dpi = figure.dpi
+            figure.set_size_inches(w / dpi, h / dpi)
 
             # Draw to buffer
-            self.offscreen_canvas.draw()
+            print "plotting"
+            offscreen_canvas = FigureOffscreenCanvas(figure)
+            offscreen_canvas.draw()
 
-            buf = self.offscreen_canvas.buffer_rgba()
-            ncols, nrows = self.offscreen_canvas.get_width_height()
+            buf = offscreen_canvas.buffer_rgba()
+            ncols, nrows = offscreen_canvas.get_width_height()
             image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
+            del offscreen_canvas
+            print "image done"
 
-            # Remove previous image if exists
-            try:
-                self.image.remove()
-            except:
-                pass
+            if self.abort:
+                print "aborted"
+                return
 
-            # Set new image
-            self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
-
+            print "updating done"
             # Update canvas
-            self.canvas.draw_idle()
+            # self.canvas.draw()
+            self.plots_updated.emit(copy.deepcopy(image), (x1, x2, y1, y2))
 
         # Do job in background
         proc = self.app.proc_container.new("Updating view.")
 
-        def job_thread(app_obj):
+        def job_thread(app_obj, figure):
             try:
-                update_image()
+                update_image(figure)
             except Exception as e:
                 proc.done()
                 raise e
             proc.done()
 
         self.app.inform.emit("View update starting ...")
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
+
+        print "zoom ended"
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()

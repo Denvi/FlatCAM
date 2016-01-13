@@ -1265,7 +1265,7 @@ class App(QtCore.QObject):
             return
 
         # Remove plot
-        self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
+        self.plotcanvas.offscreen_figure.delaxes(self.collection.get_active().axes)
         self.plotcanvas.auto_adjust_axes()
 
         # Clear form
