@@ -15,6 +15,7 @@ mpl_use("Qt4Agg")
 import FlatCAMApp
 import numpy as np
 import copy
+from math import ceil, floor
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
@@ -111,6 +112,9 @@ class PlotCanvas(QtCore.QObject):
 
         # Set new image
         x1, x2, y1, y2 = box
+
+        print "setting new image", x1, x2, y1, y2
+
         self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
         self.canvas.draw()
 
@@ -316,8 +320,26 @@ class PlotCanvas(QtCore.QObject):
         # Calculate bounds in screen space
         points = self.axes.transData.transform([(x1, y1), (x2, y2)])
 
+        # Round bounds to integers
+        rounded_points = [(floor(points[0][0]), floor(points[0][1])), (ceil(points[1][0]), ceil(points[1][1]))]
+
         # Calculate width/height of image
-        w, h = round(points[1][0] - points[0][0]), round(points[1][1] - points[0][1])
+        w, h = (rounded_points[1][0] - rounded_points[0][0]), (rounded_points[1][1] - rounded_points[0][1])
+
+        # Get bounds back in axes units
+        inverted_transform = self.axes.transData.inverted()
+        bounds = inverted_transform.transform(rounded_points)
+
+        print "image bounds", x1, x2, y1, y2, points, rounded_points, bounds, w, h, self.axes.transData.transform(bounds)
+
+        x1, x2, y1, y2 = bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
+
+        print "new image bounds", x1, x2, y1, y2
+
+        pixel = inverted_transform.transform([(0, 0), (1, 1)])
+        pixel_size = pixel[1][0] - pixel[0][0]
+
+        print "pixel size", pixel, pixel_size
 
         self.abort = True
 
@@ -327,7 +349,7 @@ class PlotCanvas(QtCore.QObject):
 
             # Rescale axes
             for ax in figure.get_axes():
-                ax.set_xlim(x1, x2)
+                ax.set_xlim(x1 + pixel_size, x2 + pixel_size)
                 ax.set_ylim(y1, y2)
                 ax.set_xticks([])
                 ax.set_yticks([])
@@ -345,7 +367,7 @@ class PlotCanvas(QtCore.QObject):
             ncols, nrows = offscreen_canvas.get_width_height()
             image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
             del offscreen_canvas
-            print "image done"
+            print "image done", ncols, nrows
 
             if self.abort:
                 print "aborted"
