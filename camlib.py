@@ -2746,7 +2746,7 @@ class CNCjob(Geometry):
 
         gcode += self.pausecode + "\n"
 
-        for tool in points:
+        for tool in tools:
 
             # Tool change sequence (optional)
             if toolchange:

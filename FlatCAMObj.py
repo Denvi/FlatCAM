@@ -648,6 +648,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             dia.setFlags(QtCore.Qt.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 1, dia)  # Diameter
             i += 1
+        
+        # sort the tool diameter column
+        self.ui.tools_table.sortItems(1)
+        # all the tools are selected by default
+        self.ui.tools_table.selectColumn(0)
+        
         self.ui.tools_table.resizeColumnsToContents()
         self.ui.tools_table.resizeRowsToContents()
         self.ui.tools_table.horizontalHeader().setStretchLastSection(True)
