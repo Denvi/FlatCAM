@@ -55,8 +55,6 @@ from svgparse import *
 
 import logging
 
-import operator
-
 log = logging.getLogger('base2')
 log.setLevel(logging.DEBUG)
 # log.setLevel(logging.WARNING)
@@ -2713,7 +2711,7 @@ class CNCjob(Geometry):
         
         # sort the tools list by the second item in tuple (here we have a dict with diameter of the tool)
         # so we actually are sorting the tools by diameter
-        sorted_tools = sorted(exobj.tools.items(), key = operator.itemgetter(1))    
+        sorted_tools = sorted(exobj.tools.items(), key = (lambda x: x[1]))
         if tools == "all":
             tools = str([i[0] for i in sorted_tools])   # we get a string of ordered tools
             log.debug("Tools 'all' and sorted are: %s" % str(tools))
