@@ -586,14 +586,22 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
         self.feedrate_entry = LengthEntry()
         grid1.addWidget(self.feedrate_entry, 2, 1)
 
+        toolchangezlabel = QtGui.QLabel('Toolchange Z:')
+        toolchangezlabel.setToolTip(
+            "Tool Z where user can change drill bit\n"
+        )
+        grid1.addWidget(toolchangezlabel, 3, 0)
+        self.toolchangez_entry = LengthEntry()
+        grid1.addWidget(self.toolchangez_entry, 3, 1)
+
         spdlabel = QtGui.QLabel('Spindle speed:')
         spdlabel.setToolTip(
             "Speed of the spindle\n"
             "in RPM (optional)"
         )
-        grid1.addWidget(spdlabel, 3, 0)
+        grid1.addWidget(spdlabel, 4, 0)
         self.spindlespeed_entry = IntEntry(allow_empty=True)
-        grid1.addWidget(self.spindlespeed_entry, 3, 1)
+        grid1.addWidget(self.spindlespeed_entry, 4, 1)
 
 
 class GeometryOptionsGroupUI(OptionsGroupUI):
