@@ -55,6 +55,8 @@ from svgparse import *
 
 import logging
 
+import operator
+
 log = logging.getLogger('base2')
 log.setLevel(logging.DEBUG)
 # log.setLevel(logging.WARNING)
@@ -2708,12 +2710,18 @@ class CNCjob(Geometry):
         log.debug("Creating CNC Job from Excellon...")
 
         # Tools
+        
+        #sort the tools list by the second item in tuple (here we have a dict with diameter of the tool)
+        #so we actually are sorting the tools by diameter
+        sorted_tools = sorted(exobj.tools.items(), key = operator.itemgetter(1))    
         if tools == "all":
-            tools = [tool for tool in exobj.tools]
+            tools = str([i[0] for i in sorted_tools])   #we get a string of ordered tools
+            log.debug("Tools 'all' and sorted are: %s" % str(tools))
         else:
-            tools = [x.strip() for x in tools.split(",")]
-            tools = filter(lambda i: i in exobj.tools, tools)
-        log.debug("Tools are: %s" % str(tools))
+            selected_tools = [x.strip() for x in tools.split(",")]  #we strip spaces and also separate the tools by ','
+            selected_tools = filter(lambda i: i in selected_tools, selected_tools)
+            tools = [i for i,j in sorted_tools for k in selected_tools if i == k]   #create a sorted list of selected tools from the sorted_tools list
+            log.debug("Tools selected and sorted are: %s" % str(tools)) 
 
         # Points (Group by tool)
         points = {}
