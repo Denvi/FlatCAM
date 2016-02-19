@@ -7,17 +7,108 @@
 ############################################################
 
 from PyQt4 import QtGui, QtCore
+
+# Prevent conflict with Qt5 and above.
+from matplotlib import use as mpl_use
+mpl_use("Qt4Agg")
+
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import FlatCAMApp
+import logging
+
+log = logging.getLogger('base')
 
 
-class PlotCanvas:
+class CanvasCache(QtCore.QObject):
+    """
+
+    Case story #1:
+
+    1) No objects in the project.
+    2) Object is created (new_object() emits object_created(obj)).
+       on_object_created() adds (i) object to collection and emits
+       (ii) new_object_available() then calls (iii) object.plot()
+    3) object.plot() creates axes if necessary on
+       app.collection.figure. Then plots on it.
+    4) Plots on a cache-size canvas (in background).
+    5) Plot completes. Bitmap is generated.
+    6) Visible canvas is painted.
+
+    """
+
+    # Signals:
+    # A bitmap is ready to be displayed.
+    new_screen = QtCore.pyqtSignal()
+
+    def __init__(self, plotcanvas, app, dpi=50):
+
+        super(CanvasCache, self).__init__()
+
+        self.app = app
+
+        self.plotcanvas = plotcanvas
+        self.dpi = dpi
+
+        self.figure = Figure(dpi=dpi)
+
+        self.axes = self.figure.add_axes([0.0, 0.0, 1.0, 1.0], alpha=1.0)
+        self.axes.set_frame_on(False)
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+
+        self.canvas = FigureCanvasAgg(self.figure)
+
+        self.cache = None
+
+    def run(self):
+
+        log.debug("CanvasCache Thread Started!")
+
+        self.plotcanvas.update_screen_request.connect(self.on_update_req)
+
+        self.app.new_object_available.connect(self.on_new_object_available)
+
+    def on_update_req(self, extents):
+        """
+        Event handler for an updated display request.
+
+        :param extents: [xmin, xmax, ymin, ymax, zoom(optional)]
+        """
+
+        log.debug("Canvas update requested: %s" % str(extents))
+
+        # Note: This information below might be out of date. Establish
+        # a protocol regarding when to change the canvas in the main
+        # thread and when to check these values here in the background,
+        # or pass this data in the signal (safer).
+        log.debug("Size: %s [px]" % str(self.plotcanvas.get_axes_pixelsize()))
+        log.debug("Density: %s [units/px]" % str(self.plotcanvas.get_density()))
+
+        # Move the requested screen portion to the main thread
+        # and inform about the update:
+
+        self.new_screen.emit()
+
+        # Continue to update the cache.
+
+    def on_new_object_available(self):
+
+        log.debug("A new object is available. Should plot it!")
+
+
+class PlotCanvas(QtCore.QObject):
     """
     Class handling the plotting area in the application.
     """
 
-    def __init__(self, container):
+    # Signals:
+    # Request for new bitmap to display. The parameter
+    # is a list with [xmin, xmax, ymin, ymax, zoom(optional)]
+    update_screen_request = QtCore.pyqtSignal(list)
+
+    def __init__(self, container, app):
         """
         The constructor configures the Matplotlib figure that
         will contain all plots, creates the base axes and connects
@@ -26,6 +117,11 @@ class PlotCanvas:
         :param container: The parent container in which to draw plots.
         :rtype: PlotCanvas
         """
+
+        super(PlotCanvas, self).__init__()
+
+        self.app = app
+
         # Options
         self.x_margin = 15  # pixels
         self.y_margin = 25  # Pixels
@@ -43,8 +139,11 @@ class PlotCanvas:
         self.axes.set_aspect(1)
         self.axes.grid(True)
 
-        # The canvas is the top level container (Gtk.DrawingArea)
+        # The canvas is the top level container (FigureCanvasQTAgg)
         self.canvas = FigureCanvas(self.figure)
+        # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
+        # self.canvas.setFocus()
+
         #self.canvas.set_hexpand(1)
         #self.canvas.set_vexpand(1)
         #self.canvas.set_can_focus(True)  # For key press
@@ -57,7 +156,18 @@ class PlotCanvas:
         # Update every time the canvas is re-drawn.
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
 
+        ### Bitmap Cache
+        self.cache = CanvasCache(self, self.app)
+        self.cache_thread = QtCore.QThread()
+        self.cache.moveToThread(self.cache_thread)
+        super(PlotCanvas, self).connect(self.cache_thread, QtCore.SIGNAL("started()"), self.cache.run)
+        # self.connect()
+        self.cache_thread.start()
+        self.cache.new_screen.connect(self.on_new_screen)
+
         # Events
+        self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
+        self.canvas.mpl_connect('button_release_event', self.on_mouse_release)
         self.canvas.mpl_connect('motion_notify_event', self.on_mouse_move)
         #self.canvas.connect('configure-event', self.auto_adjust_axes)
         self.canvas.mpl_connect('resize_event', self.auto_adjust_axes)
@@ -66,9 +176,17 @@ class PlotCanvas:
         self.canvas.mpl_connect('scroll_event', self.on_scroll)
         self.canvas.mpl_connect('key_press_event', self.on_key_down)
         self.canvas.mpl_connect('key_release_event', self.on_key_up)
+        self.canvas.mpl_connect('draw_event', self.on_draw)
 
         self.mouse = [0, 0]
         self.key = None
+
+        self.pan_axes = []
+        self.panning = False
+
+    def on_new_screen(self):
+
+        log.debug("Cache updated the screen!")
 
     def on_key_down(self, event):
         """
@@ -110,7 +228,7 @@ class PlotCanvas:
 
     def connect(self, event_name, callback):
         """
-        Attach an event handler to the canvas through the native GTK interface.
+        Attach an event handler to the canvas through the native Qt interface.
 
         :param event_name: Name of the event
         :type event_name: str
@@ -140,7 +258,7 @@ class PlotCanvas:
         self.axes.grid(True)
 
         # Re-draw
-        self.canvas.draw()
+        self.canvas.draw_idle()
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
@@ -196,9 +314,11 @@ class PlotCanvas:
             ax.set_ylim((ymin, ymax))
             ax.set_position([x_ratio, y_ratio, 1 - 2 * x_ratio, 1 - 2 * y_ratio])
 
-        # Re-draw
+        # Sync re-draw to proper paint on form resize
         self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def auto_adjust_axes(self, *args):
         """
@@ -249,9 +369,11 @@ class PlotCanvas:
             ax.set_xlim((xmin, xmax))
             ax.set_ylim((ymin, ymax))
 
-        # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        # Async re-draw
+        self.canvas.draw_idle()
+
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -261,12 +383,14 @@ class PlotCanvas:
 
         # Adjust axes
         for ax in self.figure.get_axes():
-            ax.set_xlim((xmin + x*width, xmax + x*width))
-            ax.set_ylim((ymin + y*height, ymax + y*height))
+            ax.set_xlim((xmin + x * width, xmax + x * width))
+            ax.set_ylim((ymin + y * height, ymax + y * height))
 
         # Re-draw
-        self.canvas.draw()
-        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+        self.canvas.draw_idle()
+
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def new_axes(self, name):
         """
@@ -299,7 +423,7 @@ class PlotCanvas:
             if event.button == 'up':
                 self.zoom(1.5, self.mouse)
             else:
-                self.zoom(1/1.5, self.mouse)
+                self.zoom(1 / 1.5, self.mouse)
             return
 
         if self.key == 'shift':
@@ -318,12 +442,83 @@ class PlotCanvas:
                 self.pan(0, -0.3)
             return
 
+    def on_mouse_press(self, event):
+
+        # Check for middle mouse button press
+        if event.button == 2:
+
+            # Prepare axes for pan (using 'matplotlib' pan function)
+            self.pan_axes = []
+            for a in self.figure.get_axes():
+                if (event.x is not None and event.y is not None and a.in_axes(event) and
+                        a.get_navigate() and a.can_pan()):
+                    a.start_pan(event.x, event.y, 1)
+                    self.pan_axes.append(a)
+
+            # Set pan view flag
+            if len(self.pan_axes) > 0: self.panning = True;
+
+    def on_mouse_release(self, event):
+
+        # Check for middle mouse button release to complete pan procedure
+        if event.button == 2:
+            for a in self.pan_axes:
+                a.end_pan()
+
+            # Clear pan flag
+            self.panning = False
+
     def on_mouse_move(self, event):
         """
-        Mouse movement event hadler. Stores the coordinates.
+        Mouse movement event hadler. Stores the coordinates. Updates view on pan.
 
         :param event: Contains information about the event.
         :return: None
         """
         self.mouse = [event.xdata, event.ydata]
 
+        # Update pan view on mouse move
+        if self.panning is True:
+            for a in self.pan_axes:
+                a.drag_pan(1, event.key, event.x, event.y)
+
+            # Async re-draw (redraws only on thread idle state, uses timer on backend)
+            self.canvas.draw_idle()
+
+            ##### Temporary place-holder for cached update #####
+            self.update_screen_request.emit([0, 0, 0, 0, 0])
+
+    def on_draw(self, renderer):
+
+        # Store background on canvas redraw
+        self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+    def get_axes_pixelsize(self):
+        """
+        Axes size in pixels.
+
+        :return: Pixel width and height
+        :rtype: tuple
+        """
+        bbox = self.axes.get_window_extent().transformed(self.figure.dpi_scale_trans.inverted())
+        width, height = bbox.width, bbox.height
+        width *= self.figure.dpi
+        height *= self.figure.dpi
+        return width, height
+
+    def get_density(self):
+        """
+        Returns unit length per pixel on horizontal
+        and vertical axes.
+
+        :return: X and Y density
+        :rtype: tuple
+        """
+        xpx, ypx = self.get_axes_pixelsize()
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax - xmin
+        height = ymax - ymin
+
+        return width / xpx, height / ypx

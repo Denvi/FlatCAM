@@ -4,6 +4,9 @@ from GUIElements import *
 
 class FlatCAMGUI(QtGui.QMainWindow):
 
+    # Emitted when persistent window geometry needs to be retained
+    geom_update = QtCore.pyqtSignal(int, int, int, int, name='geomUpdate')
+
     def __init__(self, version):
         super(FlatCAMGUI, self).__init__()
 
@@ -25,7 +28,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Recent
         self.recent = self.menufile.addMenu(QtGui.QIcon('share/folder16.png'), "Open recent ...")
 
-        # Open gerber
+        # Open gerber ...
         self.menufileopengerber = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Gerber ...', self)
         self.menufile.addAction(self.menufileopengerber)
 
@@ -40,6 +43,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Open Project ...
         self.menufileopenproject = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Project ...', self)
         self.menufile.addAction(self.menufileopenproject)
+
+        # Import SVG ...
+        self.menufileimportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Import &SVG ...', self)
+        self.menufile.addAction(self.menufileimportsvg)
 
         # Save Project
         self.menufilesaveproject = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), '&Save Project', self)
@@ -70,6 +77,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menueditnew = self.menuedit.addAction(QtGui.QIcon('share/new_geo16.png'), 'New Geometry')
         self.menueditedit = self.menuedit.addAction(QtGui.QIcon('share/edit16.png'), 'Edit Geometry')
         self.menueditok = self.menuedit.addAction(QtGui.QIcon('share/edit_ok16.png'), 'Update Geometry')
+        #self.menueditok.
         #self.menueditcancel = self.menuedit.addAction(QtGui.QIcon('share/cancel_edit16.png'), "Cancel Edit")
         self.menueditjoin = self.menuedit.addAction(QtGui.QIcon('share/join16.png'), 'Join Geometry')
         self.menueditdelete = self.menuedit.addAction(QtGui.QIcon('share/trash16.png'), 'Delete')
@@ -92,7 +100,9 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menuviewenable = self.menuview.addAction(QtGui.QIcon('share/replot16.png'), 'Enable all plots')
 
         ### Tool ###
-        self.menutool = self.menu.addMenu('&Tool')
+        #self.menutool = self.menu.addMenu('&Tool')
+        self.menutool = QtGui.QMenu('&Tool')
+        self.menutoolaction = self.menu.addMenu(self.menutool)
         self.menutoolshell = self.menutool.addAction(QtGui.QIcon('share/shell16.png'), '&Command Line')
 
         ### Help ###
@@ -115,6 +125,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.newgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/new_geo32.png'), "New Blank Geometry")
         self.editgeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit32.png'), "Edit Geometry")
         self.updategeo_btn = self.toolbar.addAction(QtGui.QIcon('share/edit_ok32.png'), "Update Geometry")
+        self.updategeo_btn.setEnabled(False)
         #self.canceledit_btn = self.toolbar.addAction(QtGui.QIcon('share/cancel_edit32.png'), "Cancel Edit")
         self.delete_btn = self.toolbar.addAction(QtGui.QIcon('share/delete32.png'), "&Delete")
         self.shell_btn = self.toolbar.addAction(QtGui.QIcon('share/shell32.png'), "&Command Line")
@@ -191,7 +202,6 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # self.right_layout.setContentsMargins(0, 0, 0, 0)
         right_widget.setLayout(self.right_layout)
 
-
         ################
         ### Info bar ###
         ################
@@ -216,7 +226,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.progress_bar = QtGui.QProgressBar()
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
-        infobar.addWidget(self.progress_bar)
+        #infobar.addWidget(self.progress_bar)
+
+        self.activity_view = FlatCAMActivityView()
+        infobar.addWidget(self.activity_view)
 
         #############
         ### Icons ###
@@ -231,11 +244,46 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM %s' % version)
+        self.setWindowTitle('FlatCAM %s - Development Version' % version)
         self.show()
 
     def closeEvent(self, event):
+        grect = self.geometry()
+        self.geom_update.emit(grect.x(), grect.y(), grect.width(), grect.height())
         QtGui.qApp.quit()
+
+
+class FlatCAMActivityView(QtGui.QWidget):
+
+    def __init__(self, parent=None):
+        super(FlatCAMActivityView, self).__init__(parent=parent)
+
+        self.setMinimumWidth(200)
+
+        self.icon = QtGui.QLabel(self)
+        self.icon.setGeometry(0, 0, 12, 12)
+        self.movie = QtGui.QMovie("share/active.gif")
+        self.icon.setMovie(self.movie)
+        #self.movie.start()
+
+        layout = QtGui.QHBoxLayout()
+        layout.setContentsMargins(5, 0, 5, 0)
+        layout.setAlignment(QtCore.Qt.AlignLeft)
+        self.setLayout(layout)
+
+        layout.addWidget(self.icon)
+        self.text = QtGui.QLabel(self)
+        self.text.setText("Idle.")
+
+        layout.addWidget(self.text)
+
+    def set_idle(self):
+        self.movie.stop()
+        self.text.setText("Idle.")
+
+    def set_busy(self, msg):
+        self.movie.start()
+        self.text.setText(msg)
 
 
 class FlatCAMInfoBar(QtGui.QWidget):
@@ -256,6 +304,7 @@ class FlatCAMInfoBar(QtGui.QWidget):
 
         self.text = QtGui.QLabel(self)
         self.text.setText("Hello!")
+        self.text.setToolTip("Hello!")
 
         layout.addWidget(self.text)
 
@@ -263,6 +312,7 @@ class FlatCAMInfoBar(QtGui.QWidget):
 
     def set_text_(self, text):
         self.text.setText(text)
+        self.text.setToolTip(text)
 
     def set_status(self, text, level="info"):
         level = str(level)
@@ -361,6 +411,12 @@ class GerberOptionsGroupUI(OptionsGroupUI):
         grid1.addWidget(overlabel, 2, 0)
         self.iso_overlap_entry = FloatEntry()
         grid1.addWidget(self.iso_overlap_entry, 2, 1)
+        
+        self.combine_passes_cb = FCCheckBox(label='Combine Passes')
+        self.combine_passes_cb.setToolTip(
+            "Combine all passes into one object"
+        )
+        grid1.addWidget(self.combine_passes_cb, 3, 0)
 
         ## Board cuttout
         self.board_cutout_label = QtGui.QLabel("<b>Board cutout:</b>")
@@ -530,6 +586,23 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
         self.feedrate_entry = LengthEntry()
         grid1.addWidget(self.feedrate_entry, 2, 1)
 
+        toolchangezlabel = QtGui.QLabel('Toolchange Z:')
+        toolchangezlabel.setToolTip(
+            "Tool Z where user can change drill bit\n"
+        )
+        grid1.addWidget(toolchangezlabel, 3, 0)
+        self.toolchangez_entry = LengthEntry()
+        grid1.addWidget(self.toolchangez_entry, 3, 1)
+
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 4, 0)
+        self.spindlespeed_entry = IntEntry(allow_empty=True)
+        grid1.addWidget(self.spindlespeed_entry, 4, 1)
+
 
 class GeometryOptionsGroupUI(OptionsGroupUI):
     def __init__(self, parent=None):
@@ -596,6 +669,15 @@ class GeometryOptionsGroupUI(OptionsGroupUI):
         grid1.addWidget(tdlabel, 3, 0)
         self.cnctooldia_entry = LengthEntry()
         grid1.addWidget(self.cnctooldia_entry, 3, 1)
+
+        spdlabel = QtGui.QLabel('Spindle speed:')
+        spdlabel.setToolTip(
+            "Speed of the spindle\n"
+            "in RPM (optional)"
+        )
+        grid1.addWidget(spdlabel, 4, 0)
+        self.cncspindlespeed_entry = IntEntry(allow_empty=True)
+        grid1.addWidget(self.cncspindlespeed_entry, 4, 1)
 
         ## Paint area
         self.paint_label = QtGui.QLabel('<b>Paint Area:</b>')
@@ -680,7 +762,18 @@ class CNCJobOptionsGroupUI(OptionsGroupUI):
         )
         self.layout.addWidget(self.export_gcode_label)
 
-        # Append text to Gerber
+        # Prepend to G-Code
+        prependlabel = QtGui.QLabel('Prepend to G-Code:')
+        prependlabel.setToolTip(
+            "Type here any G-Code commands you would\n"
+            "like to add at the beginning of the G-Code file."
+        )
+        self.layout.addWidget(prependlabel)
+
+        self.prepend_text = FCTextArea()
+        self.layout.addWidget(self.prepend_text)
+
+        # Append text to G-Code
         appendlabel = QtGui.QLabel('Append to G-Code:')
         appendlabel.setToolTip(
             "Type here any G-Code commands you would\n"

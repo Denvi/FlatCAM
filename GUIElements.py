@@ -1,7 +1,10 @@
 from PyQt4 import QtGui, QtCore
 from copy import copy
-import FlatCAMApp
+#import FlatCAMApp
 import re
+import logging
+
+log = logging.getLogger('base')
 
 
 class RadioSet(QtGui.QWidget):
@@ -37,7 +40,7 @@ class RadioSet(QtGui.QWidget):
         self.group_toggle_fn = lambda: None
 
     def on_toggle(self):
-        FlatCAMApp.App.log.debug("Radio toggled")
+        log.debug("Radio toggled")
         radio = self.sender()
         if radio.isChecked():
             self.group_toggle_fn()
@@ -47,7 +50,7 @@ class RadioSet(QtGui.QWidget):
         for choice in self.choices:
             if choice['radio'].isChecked():
                 return choice['value']
-        FlatCAMApp.App.log.error("No button was toggled in RadioSet.")
+        log.error("No button was toggled in RadioSet.")
         return None
 
     def set_value(self, val):
@@ -55,7 +58,7 @@ class RadioSet(QtGui.QWidget):
             if choice['value'] == val:
                 choice['radio'].setChecked(True)
                 return
-        FlatCAMApp.App.log.error("Value given is not part of this RadioSet: %s" % str(val))
+        log.error("Value given is not part of this RadioSet: %s" % str(val))
 
 
 class LengthEntry(QtGui.QLineEdit):
@@ -78,21 +81,25 @@ class LengthEntry(QtGui.QLineEdit):
         if val is not None:
             self.set_text(QtCore.QString(str(val)))
         else:
-            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
+            log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
         raw = str(self.text()).strip(' ')
-        match = self.format_re.search(raw)
+        # match = self.format_re.search(raw)
 
-        if not match:
-            return None
         try:
-            if match.group(2) is not None and match.group(2).upper() in self.scales:
-                return float(eval(match.group(1)))*float(self.scales[self.output_units][match.group(2).upper()])
-            else:
-                return float(eval(match.group(1)))
+            units = raw[-2:]
+            units = self.scales[self.output_units][units.upper()]
+            value = raw[:-2]
+            return float(eval(value))*units
+        except IndexError:
+            value = raw
+            return float(eval(value))
+        except KeyError:
+            value = raw
+            return float(eval(value))
         except:
-            FlatCAMApp.App.log.warning("Could not parse value in entry: %s" % str(raw))
+            log.warning("Could not parse value in entry: %s" % str(raw))
             return None
 
     def set_value(self, val):
@@ -108,30 +115,43 @@ class FloatEntry(QtGui.QLineEdit):
         if val is not None:
             self.set_text(QtCore.QString(str(val)))
         else:
-            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.text())
+            log.warning("Could not interpret entry: %s" % self.text())
 
     def get_value(self):
         raw = str(self.text()).strip(' ')
         try:
             evaled = eval(raw)
         except:
-            FlatCAMApp.App.log.error("Could not evaluate: %s" % str(raw))
+            log.error("Could not evaluate: %s" % str(raw))
             return None
 
         return float(evaled)
 
     def set_value(self, val):
-        self.setText("%.6f"%val)
+        self.setText("%.6f" % val)
 
 
 class IntEntry(QtGui.QLineEdit):
-    def __init__(self, parent=None):
+
+    def __init__(self, parent=None, allow_empty=False, empty_val=None):
         super(IntEntry, self).__init__(parent)
+        self.allow_empty = allow_empty
+        self.empty_val = empty_val
 
     def get_value(self):
+
+        if self.allow_empty:
+            if str(self.text()) == "":
+                return self.empty_val
+
         return int(self.text())
 
     def set_value(self, val):
+
+        if val == self.empty_val and self.allow_empty:
+            self.setText(QtCore.QString(""))
+            return
+
         self.setText(QtCore.QString(str(val)))
 
 
@@ -155,14 +175,14 @@ class EvalEntry(QtGui.QLineEdit):
         if val is not None:
             self.setText(QtCore.QString(str(val)))
         else:
-            FlatCAMApp.App.log.warning("Could not interpret entry: %s" % self.get_text())
+            log.warning("Could not interpret entry: %s" % self.get_text())
 
     def get_value(self):
         raw = str(self.text()).strip(' ')
         try:
             return eval(raw)
         except:
-            FlatCAMApp.App.log.error("Could not evaluate: %s" % str(raw))
+            log.error("Could not evaluate: %s" % str(raw))
             return None
 
     def set_value(self, val):
@@ -213,18 +233,51 @@ class VerticalScrollArea(QtGui.QScrollArea):
         :return:
         """
         if event.type() == QtCore.QEvent.Resize and source == self.widget():
-            # FlatCAMApp.App.log.debug("VerticalScrollArea: Widget resized:")
-            # FlatCAMApp.App.log.debug(" minimumSizeHint().width() = %d" % self.widget().minimumSizeHint().width())
-            # FlatCAMApp.App.log.debug(" verticalScrollBar().width() = %d" % self.verticalScrollBar().width())
+            # log.debug("VerticalScrollArea: Widget resized:")
+            # log.debug(" minimumSizeHint().width() = %d" % self.widget().minimumSizeHint().width())
+            # log.debug(" verticalScrollBar().width() = %d" % self.verticalScrollBar().width())
 
             self.setMinimumWidth(self.widget().sizeHint().width() +
                                  self.verticalScrollBar().sizeHint().width())
 
             # if self.verticalScrollBar().isVisible():
-            #     FlatCAMApp.App.log.debug(" Scroll bar visible")
+            #     log.debug(" Scroll bar visible")
             #     self.setMinimumWidth(self.widget().minimumSizeHint().width() +
             #                          self.verticalScrollBar().width())
             # else:
-            #     FlatCAMApp.App.log.debug(" Scroll bar hidden")
+            #     log.debug(" Scroll bar hidden")
             #     self.setMinimumWidth(self.widget().minimumSizeHint().width())
         return QtGui.QWidget.eventFilter(self, source, event)
+
+
+class OptionalInputSection:
+
+    def __init__(self, cb, optinputs):
+        """
+        Associates the a checkbox with a set of inputs.
+
+        :param cb: Checkbox that enables the optional inputs.
+        :param optinputs: List of widgets that are optional.
+        :return:
+        """
+        assert isinstance(cb, FCCheckBox), \
+            "Expected an FCCheckBox, got %s" % type(cb)
+
+        self.cb = cb
+        self.optinputs = optinputs
+
+        self.on_cb_change()
+        self.cb.stateChanged.connect(self.on_cb_change)
+
+    def on_cb_change(self):
+
+        if self.cb.checkState():
+
+            for widget in self.optinputs:
+                widget.setEnabled(True)
+
+        else:
+
+            for widget in self.optinputs:
+                widget.setEnabled(False)
+

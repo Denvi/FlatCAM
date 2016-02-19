@@ -1,4 +1,5 @@
 from PyQt4 import QtCore
+from copy import copy
 from ObjectUI import *
 import FlatCAMApp
 import inspect  # TODO: For debugging only.
@@ -25,8 +26,6 @@ class FlatCAMObj(QtCore.QObject):
         """
 
         :param name: Name of the object given by the user.
-        :param ui: User interface to interact with the object.
-        :type ui: ObjectUI
         :return: FlatCAMObj
         """
         QtCore.QObject.__init__(self)
@@ -140,7 +139,8 @@ class FlatCAMObj(QtCore.QObject):
 
     def build_ui(self):
         """
-        Sets up the UI/form for this object.
+        Sets up the UI/form for this object. Show the UI
+        in the App.
 
         :return: None
         :rtype: None
@@ -219,7 +219,6 @@ class FlatCAMObj(QtCore.QObject):
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
-        # GLib.idle_add(self.axes.cla)
         return True
 
     def serialize(self):
@@ -265,6 +264,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
+            "combine_passes": True,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
@@ -290,6 +290,14 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
 
     def set_ui(self, ui):
+        """
+        Maps options with GUI inputs.
+        Connects GUI events to methods.
+
+        :param ui: GUI object.
+        :type ui: GerberObjectUI
+        :return: None
+        """
         FlatCAMObj.set_ui(self, ui)
 
         FlatCAMApp.App.log.debug("FlatCAMGerber.set_ui()")
@@ -301,6 +309,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
+            "combine_passes":self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
             "cutoutgapsize": self.ui.cutout_gap_entry,
@@ -418,7 +427,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         # TODO: Do something if this is None. Offer changing name?
         self.app.new_object("geometry", follow_name, follow_init)
 
-    def isolate(self, dia=None, passes=None, overlap=None, outname=None):
+    def isolate(self, dia=None, passes=None, overlap=None, outname=None, combine=None):
         """
         Creates an isolation routing geometry object in the project.
 
@@ -428,35 +437,75 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         :param outname: Base name of the output object
         :return: None
         """
-
         if dia is None:
             dia = self.options["isotooldia"]
         if passes is None:
             passes = int(self.options["isopasses"])
         if overlap is None:
-            overlap = self.options["isooverlap"] * dia
+            overlap = self.options["isooverlap"]
+        if combine is None:
+            combine = self.options["combine_passes"]
+        else:
+            combine = bool(combine)
 
         base_name = self.options["name"] + "_iso"
         base_name = outname or base_name
 
-        for i in range(passes):
+        def generate_envelope(offset, invert):
+            # isolation_geometry produces an envelope that is going on the left of the geometry
+            # (the copper features). To leave the least amount of burrs on the features
+            # the tool needs to travel on the right side of the features (this is called conventional milling)
+            # the first pass is the one cutting all of the features, so it needs to be reversed
+            # the other passes overlap preceding ones and cut the left over copper. It is better for them
+            # to cut on the right side of the left over copper i.e on the left side of the features. 
+            geom = self.isolation_geometry(offset)
+            if invert:
+                if type(geom) is MultiPolygon:
+                    pl = []
+                    for p in geom:
+                        pl.append(Polygon(p.exterior.coords[::-1], p.interiors))
+                    geom = MultiPolygon(pl)
+                elif type(geom) is Polygon:
+                    geom = Polygon(geom.exterior.coords[::-1], geom.interiors)
+                else:
+                    raise "Unexpected Geometry"
+            return geom
 
-            offset = (2*i + 1)/2.0 * dia - i*overlap
-            if passes > 1:
-                iso_name = base_name + str(i+1)
-            else:
-                iso_name = base_name
+        if combine:
+            iso_name = base_name
 
             # TODO: This is ugly. Create way to pass data into init function.
             def iso_init(geo_obj, app_obj):
                 # Propagate options
                 geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-
-                geo_obj.solid_geometry = self.isolation_geometry(offset)
+                geo_obj.solid_geometry = []
+                for i in range(passes):
+                    offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
+                    geom = generate_envelope (offset, i == 0)
+                    geo_obj.solid_geometry.append(geom)
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
             # TODO: Do something if this is None. Offer changing name?
             self.app.new_object("geometry", iso_name, iso_init)
+
+        else:
+            for i in range(passes):
+
+                offset = (2 * i + 1) / 2.0 * dia - i * overlap  * dia
+                if passes > 1:
+                    iso_name = base_name + str(i + 1)
+                else:
+                    iso_name = base_name
+
+                # TODO: This is ugly. Create way to pass data into init function.
+                def iso_init(geo_obj, app_obj):
+                    # Propagate options
+                    geo_obj.options["cnctooldia"] = self.options["isotooldia"]
+                    geo_obj.solid_geometry = generate_envelope (offset, i == 0)
+                    app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
+
+                # TODO: Do something if this is None. Offer changing name?
+                self.app.new_object("geometry", iso_name, iso_init)
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -567,7 +616,10 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "travelz": 0.1,
             "feedrate": 5.0,
             # "toolselection": ""
-            "tooldia": 0.1
+            "tooldia": 0.1,
+            "toolchange": False,
+            "toolchangez": 1.0,
+            "spindlespeed": None
         })
 
         # TODO: Document this.
@@ -596,6 +648,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             dia.setFlags(QtCore.Qt.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 1, dia)  # Diameter
             i += 1
+        
+        # sort the tool diameter column
+        self.ui.tools_table.sortItems(1)
+        # all the tools are selected by default
+        self.ui.tools_table.selectColumn(0)
+        
         self.ui.tools_table.resizeColumnsToContents()
         self.ui.tools_table.resizeRowsToContents()
         self.ui.tools_table.horizontalHeader().setStretchLastSection(True)
@@ -603,6 +661,14 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ui.tools_table.setSortingEnabled(True)
 
     def set_ui(self, ui):
+        """
+        Configures the user interface for this object.
+        Connects options to form fields.
+
+        :param ui: User interface object.
+        :type ui: ExcellonObjectUI
+        :return: None
+        """
         FlatCAMObj.set_ui(self, ui)
 
         FlatCAMApp.App.log.debug("FlatCAMExcellon.set_ui()")
@@ -613,14 +679,16 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "drillz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.feedrate_entry,
-            # "toolselection": self.ui.tools_entry
-            "tooldia": self.ui.tooldia_entry
+            "tooldia": self.ui.tooldia_entry,
+            "toolchange": self.ui.toolchange_cb,
+            "toolchangez": self.ui.toolchangez_entry,
+            "spindlespeed": self.ui.spindlespeed_entry
         })
 
-        assert isinstance(self.ui, ExcellonObjectUI)
+        assert isinstance(self.ui, ExcellonObjectUI), \
+            "Expected a ExcellonObjectUI, got %s" % type(self.ui)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
-        # self.ui.choose_tools_button.clicked.connect(self.show_tool_chooser)
         self.ui.generate_cnc_button.clicked.connect(self.on_create_cncjob_button_click)
         self.ui.generate_milling_button.clicked.connect(self.on_generate_milling_button_click)
 
@@ -628,30 +696,46 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         """
         Returns the keys to the self.tools dictionary corresponding
         to the selections on the tool list in the GUI.
+
+        :return: List of tools.
+        :rtype: list
         """
         return [str(x.text()) for x in self.ui.tools_table.selectedItems()]
 
-    def on_generate_milling_button_click(self, *args):
-        self.app.report_usage("excellon_on_create_milling_button")
-        self.read_form()
+    def generate_milling(self, tools=None, outname=None, tooldia=None):
+        """
+        Note: This method is a good template for generic operations as
+        it takes it's options from parameters or otherwise from the
+        object's options and returns a success, msg tuple as feedback
+        for shell operations.
+
+        :return: Success/failure condition tuple (bool, str).
+        :rtype: tuple
+        """
 
         # Get the tools from the list. These are keys
         # to self.tools
-        tools = self.get_selected_tools_list()
+        if tools is None:
+            tools = self.get_selected_tools_list()
+
+        if outname is None:
+            outname = self.options["name"] + "_mill"
+
+        if tooldia is None:
+            tooldia = self.options["tooldia"]
 
         if len(tools) == 0:
             self.app.inform.emit("Please select one or more tools from the list and try again.")
-            return
+            return False, "Error: No tools."
 
         for tool in tools:
-            if self.tools[tool]["C"] < self.options["tooldia"]:
+            if self.tools[tool]["C"] < tooldia:
                 self.app.inform.emit("[warning] Milling tool is larger than hole size. Cancelled.")
-                return
-
-        geo_name = self.options["name"] + "_mill"
+                return False, "Error: Milling tool is larger than hole."
 
         def geo_init(geo_obj, app_obj):
-            assert isinstance(geo_obj, FlatCAMGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry), \
+                "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
             app_obj.progress.emit(20)
 
             geo_obj.solid_geometry = []
@@ -660,16 +744,26 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 if hole['tool'] in tools:
                     geo_obj.solid_geometry.append(
                         Point(hole['point']).buffer(self.tools[hole['tool']]["C"] / 2 -
-                                                    self.options["tooldia"] / 2).exterior
+                                                    tooldia / 2).exterior
                     )
 
         def geo_thread(app_obj):
-            app_obj.new_object("geometry", geo_name, geo_init)
+            app_obj.new_object("geometry", outname, geo_init)
             app_obj.progress.emit(100)
 
+        # Create a promise with the new name
+        self.app.collection.promise(outname)
+
         # Send to worker
-        # self.app.worker.add_task(job_thread, [self.app])
         self.app.worker_task.emit({'fcn': geo_thread, 'params': [self.app]})
+
+        return True, ""
+
+    def on_generate_milling_button_click(self, *args):
+        self.app.report_usage("excellon_on_create_milling_button")
+        self.read_form()
+
+        self.generate_milling()
 
     def on_create_cncjob_button_click(self, *args):
         self.app.report_usage("excellon_on_create_cncjob_button")
@@ -686,38 +780,38 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
 
         # Object initialization function for app.new_object()
         def job_init(job_obj, app_obj):
-            assert isinstance(job_obj, FlatCAMCNCjob)
+            assert isinstance(job_obj, FlatCAMCNCjob), \
+                "Initializer expected a FlatCAMCNCjob, got %s" % type(job_obj)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             app_obj.progress.emit(20)
             job_obj.z_cut = self.options["drillz"]
             job_obj.z_move = self.options["travelz"]
             job_obj.feedrate = self.options["feedrate"]
+            job_obj.spindlespeed = self.options["spindlespeed"]
             # There could be more than one drill size...
             # job_obj.tooldia =   # TODO: duplicate variable!
             # job_obj.options["tooldia"] =
 
             tools_csv = ','.join(tools)
-            # job_obj.generate_from_excellon_by_tool(self, self.options["toolselection"])
-            job_obj.generate_from_excellon_by_tool(self, tools_csv)
+            job_obj.generate_from_excellon_by_tool(self, tools_csv,
+                                                   toolchange=self.options["toolchange"],
+                                                   toolchangez=self.options["toolchangez"])
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             app_obj.progress.emit(50)
             job_obj.gcode_parse()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
             app_obj.progress.emit(60)
             job_obj.create_geometry()
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
             app_obj.progress.emit(80)
 
         # To be run in separate thread
         def job_thread(app_obj):
             app_obj.new_object("cncjob", job_name, job_init)
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
             app_obj.progress.emit(100)
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, ""))
+
+        # Create promise for the new name.
+        self.app.collection.promise(job_name)
 
         # Send to worker
         # self.app.worker.add_task(job_thread, [self.app])
@@ -772,33 +866,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                     self.axes.plot(x, y, 'g-')
 
         self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)
-
-    def show_tool_chooser(self):
-        # win = Gtk.Window()
-        # box = Gtk.Box(spacing=2)
-        # box.set_orientation(Gtk.Orientation(1))
-        # win.add(box)
-        # for tool in self.tools:
-        #     self.tool_cbs[tool] = Gtk.CheckButton(label=tool + ": " + str(self.tools[tool]))
-        #     box.pack_start(self.tool_cbs[tool], False, False, 1)
-        # button = Gtk.Button(label="Accept")
-        # box.pack_start(button, False, False, 1)
-        # win.show_all()
-        #
-        # def on_accept(widget):
-        #     win.destroy()
-        #     tool_list = []
-        #     for toolx in self.tool_cbs:
-        #         if self.tool_cbs[toolx].get_active():
-        #             tool_list.append(toolx)
-        #     self.options["toolselection"] = ", ".join(tool_list)
-        #     self.to_form()
-        #
-        # button.connect("activate", on_accept)
-        # button.connect("clicked", on_accept)
-        return
 
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
@@ -809,10 +876,15 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     ui_type = CNCObjectUI
 
     def __init__(self, name, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0):
+                 feedrate=3.0, z_cut=-0.002, tooldia=0.0,
+                 spindlespeed=None):
+
         FlatCAMApp.App.log.debug("Creating CNCJob object...")
+
         CNCjob.__init__(self, units=units, kind=kind, z_move=z_move,
-                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia)
+                        feedrate=feedrate, z_cut=z_cut, tooldia=tooldia,
+                        spindlespeed=spindlespeed)
+
         FlatCAMObj.__init__(self, name)
 
         self.kind = "cncjob"
@@ -820,7 +892,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.options.update({
             "plot": True,
             "tooldia": 0.4 / 25.4,  # 0.4mm in inches
-            "append": ""
+            "append": "",
+            "prepend": ""
         })
 
         # Attributes to be included in serialization
@@ -833,12 +906,14 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         FlatCAMApp.App.log.debug("FlatCAMCNCJob.set_ui()")
 
-        assert isinstance(self.ui, CNCObjectUI)
+        assert isinstance(self.ui, CNCObjectUI), \
+            "Expected a CNCObjectUI, got %s" % type(self.ui)
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
             "tooldia": self.ui.tooldia_entry,
-            "append": self.ui.append_text
+            "append": self.ui.append_text,
+            "prepend": self.ui.prepend_text
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -862,16 +937,19 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...")
 
+        preamble = str(self.ui.prepend_text.get_value())
         postamble = str(self.ui.append_text.get_value())
 
-        self.export_gcode(filename, preamble='', postamble=postamble)
+        self.export_gcode(filename, preamble=preamble, postamble=postamble)
 
     def export_gcode(self, filename, preamble='', postamble=''):
         f = open(filename, 'w')
         f.write(preamble + '\n' + self.gcode + "\n" + postamble)
         f.close()
 
+        # Just for adding it to the recent files list.
         self.app.file_opened.emit("cncjob", filename)
+
         self.app.inform.emit("Saved to: " + filename)
 
     def on_plot_cb_click(self, *args):
@@ -915,14 +993,28 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         :param geo_final: Destination FlatCAMGeometry object.
         :return: None
         """
-        geo_final.solid_geometry = []
+
+        if geo_final.solid_geometry is None:
+            geo_final.solid_geometry = []
+        if type(geo_final.solid_geometry) is not list:
+            geo_final.solid_geometry = [geo_final.solid_geometry]
 
         for geo in geo_list:
-            try:
-                for shape in geo.solid_geometry:
-                    geo_final.solid_geometry.append(shape)
-            except:
-                geo_final.solid_geometry.append(geo)
+
+            # Expand lists
+            if type(geo) is list:
+                FlatCAMGeometry.merge(geo, geo_final)
+
+            # If not list, just append
+            else:
+                geo_final.solid_geometry.append(geo.solid_geometry)
+
+            # try:  # Iterable
+            #     for shape in geo.solid_geometry:
+            #         geo_final.solid_geometry.append(shape)
+            #
+            # except TypeError:  # Non-iterable
+            #     geo_final.solid_geometry.append(geo.solid_geometry)
 
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)
@@ -932,16 +1024,17 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         self.options.update({
             "plot": True,
-            # "solid": False,
-            # "multicolored": False,
             "cutz": -0.002,
             "travelz": 0.1,
             "feedrate": 5.0,
+            "spindlespeed": None,
             "cnctooldia": 0.4 / 25.4,
             "painttooldia": 0.0625,
             "paintoverlap": 0.15,
             "paintmargin": 0.01,
-            "paintmethod": "standard"
+            "paintmethod": "standard",
+            "multidepth": False,
+            "depthperpass": 0.002
         })
 
         # Attributes to be included in serialization
@@ -957,20 +1050,22 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         FlatCAMApp.App.log.debug("FlatCAMGeometry.set_ui()")
 
-        assert isinstance(self.ui, GeometryObjectUI)
+        assert isinstance(self.ui, GeometryObjectUI), \
+            "Expected a GeometryObjectUI, got %s" % type(self.ui)
 
         self.form_fields.update({
             "plot": self.ui.plot_cb,
-            # "solid": self.ui.sol,
-            # "multicolored": self.ui.,
             "cutz": self.ui.cutz_entry,
             "travelz": self.ui.travelz_entry,
             "feedrate": self.ui.cncfeedrate_entry,
+            "spindlespeed": self.ui.cncspindlespeed_entry,
             "cnctooldia": self.ui.cnctooldia_entry,
             "painttooldia": self.ui.painttooldia_entry,
             "paintoverlap": self.ui.paintoverlap_entry,
             "paintmargin": self.ui.paintmargin_entry,
-            "paintmethod": self.ui.paintmethod_combo
+            "paintmethod": self.ui.paintmethod_combo,
+            "multidepth": self.ui.mpass_cb,
+            "depthperpass": self.ui.maxdepth_entry
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -990,6 +1085,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         # To be called after clicking on the plot.
         def doit(event):
+            self.app.info("Painting polygon...")
             self.app.plotcanvas.mpl_disconnect(subscription)
             point = [event.xdata, event.ydata]
             self.paint_poly(point, tooldia, overlap)
@@ -999,80 +1095,136 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     def paint_poly(self, inside_pt, tooldia, overlap):
 
         # Which polygon.
-        poly = find_polygon(self.solid_geometry, inside_pt)
+        #poly = find_polygon(self.solid_geometry, inside_pt)
+        poly = self.find_polygon(inside_pt)
 
         # No polygon?
         if poly is None:
             self.app.log.warning('No polygon found.')
-            self.app.inform('[warning] No polygon found.')
+            self.app.inform.emit('[warning] No polygon found.')
             return
+
+        proc = self.app.proc_container.new("Painting polygon.")
+
+        name = self.options["name"] + "_paint"
 
         # Initializes the new geometry object
         def gen_paintarea(geo_obj, app_obj):
-            assert isinstance(geo_obj, FlatCAMGeometry)
+            assert isinstance(geo_obj, FlatCAMGeometry), \
+                "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
             #assert isinstance(app_obj, App)
 
-            cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
             if self.options["paintmethod"] == "seed":
-                cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]), tooldia, overlap=overlap)
-            geo_obj.solid_geometry = cp
-            geo_obj.options["cnctooldia"] = tooldia
+                cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]),
+                                         tooldia, overlap=overlap)
 
-        name = self.options["name"] + "_paint"
-        self.app.new_object("geometry", name, gen_paintarea)
+            else:
+                cp = self.clear_polygon(poly.buffer(-self.options["paintmargin"]),
+                                        tooldia, overlap=overlap)
+
+            geo_obj.solid_geometry = list(cp.get_objects())
+            geo_obj.options["cnctooldia"] = tooldia
+            self.app.inform.emit("Done.")
+
+        def job_thread(app_obj):
+            try:
+                app_obj.new_object("geometry", name, gen_paintarea)
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        self.app.inform.emit("Polygon Paint started ...")
+
+        # Promise object with the new name
+        self.app.collection.promise(name)
+
+        # Background
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def on_generatecnc_button_click(self, *args):
         self.app.report_usage("geometry_on_generatecnc_button")
         self.read_form()
         self.generatecncjob()
 
-    def generatecncjob(self, z_cut=None, z_move=None,
-                       feedrate=None, tooldia=None, outname=None):
+    def generatecncjob(self,
+                       z_cut=None,
+                       z_move=None,
+                       feedrate=None,
+                       tooldia=None,
+                       outname=None,
+                       spindlespeed=None,
+                       multidepth=None,
+                       depthperpass=None):
+        """
+        Creates a CNCJob out of this Geometry object. The actual
+        work is done by the target FlatCAMCNCjob object's
+        `generate_from_geometry_2()` method.
+
+        :param z_cut: Cut depth (negative)
+        :param z_move: Hight of the tool when travelling (not cutting)
+        :param feedrate: Feed rate while cutting
+        :param tooldia: Tool diameter
+        :param outname: Name of the new object
+        :param spindlespeed: Spindle speed (RPM)
+        :return: None
+        """
 
         outname = outname if outname is not None else self.options["name"] + "_cnc"
         z_cut = z_cut if z_cut is not None else self.options["cutz"]
         z_move = z_move if z_move is not None else self.options["travelz"]
         feedrate = feedrate if feedrate is not None else self.options["feedrate"]
         tooldia = tooldia if tooldia is not None else self.options["cnctooldia"]
+        multidepth = multidepth if multidepth is not None else self.options["multidepth"]
+        depthperpass = depthperpass if depthperpass is not None else self.options["depthperpass"]
+
+        # To allow default value to be "" (optional in gui) and translate to None
+        # if not isinstance(spindlespeed, int):
+        #     if isinstance(self.options["spindlespeed"], int) or \
+        #             isinstance(self.options["spindlespeed"], float):
+        #         spindlespeed = int(self.options["spindlespeed"])
+        #     else:
+        #         spindlespeed = None
+
+        if spindlespeed is None:
+            # int or None.
+            spindlespeed = self.options['spindlespeed']
 
         # Object initialization function for app.new_object()
         # RUNNING ON SEPARATE THREAD!
         def job_init(job_obj, app_obj):
-            assert isinstance(job_obj, FlatCAMCNCjob)
+            assert isinstance(job_obj, FlatCAMCNCjob), \
+                "Initializer expected a FlatCAMCNCjob, got %s" % type(job_obj)
+
             # Propagate options
             job_obj.options["tooldia"] = tooldia
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.2, "Creating CNC Job..."))
             app_obj.progress.emit(20)
             job_obj.z_cut = z_cut
             job_obj.z_move = z_move
             job_obj.feedrate = feedrate
-
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.4, "Analyzing Geometry..."))
+            job_obj.spindlespeed = spindlespeed
             app_obj.progress.emit(40)
             # TODO: The tolerance should not be hard coded. Just for testing.
-            #job_obj.generate_from_geometry(self, tolerance=0.0005)
-            job_obj.generate_from_geometry_2(self, tolerance=0.0005)
+            job_obj.generate_from_geometry_2(self,
+                                             multidepth=multidepth,
+                                             depthpercut=depthperpass,
+                                             tolerance=0.0005)
 
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.5, "Parsing G-Code..."))
             app_obj.progress.emit(50)
             job_obj.gcode_parse()
 
-            # TODO: job_obj.create_geometry creates stuff that is not used.
-            #GLib.idle_add(lambda: app_obj.set_progress_bar(0.6, "Creating New Geometry..."))
-            #job_obj.create_geometry()
-
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(0.8, "Plotting..."))
             app_obj.progress.emit(80)
 
         # To be run in separate thread
         def job_thread(app_obj):
-            app_obj.new_object("cncjob", outname, job_init)
-            # GLib.idle_add(lambda: app_obj.info("CNCjob created: %s" % job_name))
-            # GLib.idle_add(lambda: app_obj.set_progress_bar(1.0, "Done!"))
-            # GLib.timeout_add_seconds(1, lambda: app_obj.set_progress_bar(0.0, "Idle"))
-            app_obj.inform.emit("CNCjob created: %s" % outname)
-            app_obj.progress.emit(100)
+            with self.app.proc_container.new("Generating CNC Job."):
+                app_obj.new_object("cncjob", outname, job_init)
+                app_obj.inform.emit("CNCjob created: %s" % outname)
+                app_obj.progress.emit(100)
+
+        # Create a promise with the name
+        self.app.collection.promise(outname)
 
         # Send to worker
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
@@ -1204,5 +1356,3 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         self.plot_element(self.solid_geometry)
 
         self.app.plotcanvas.auto_adjust_axes()
-        # GLib.idle_add(self.app.plotcanvas.auto_adjust_axes)
-        # self.emit(QtCore.SIGNAL("plotChanged"), self)

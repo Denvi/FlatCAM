@@ -6,19 +6,23 @@
 # MIT Licence                                              #
 ############################################################
 #from __future__ import division
-import traceback
+#from scipy import optimize
+#import traceback
 
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
 from numpy.linalg import solve, norm
 from matplotlib.figure import Figure
 import re
+import sys
+import traceback
+from decimal import Decimal
 
 import collections
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
-from scipy.spatial import Delaunay, KDTree
+#import matplotlib.pyplot as plt
+#from scipy.spatial import Delaunay, KDTree
 
 from rtree import index as rtindex
 
@@ -37,18 +41,32 @@ from descartes.patch import PolygonPatch
 
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
-#from matplotlib.pyplot import plot
+#from matplotlib.pyplot import plot, subplot
+
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+import itertools
+
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+
+
+from svgparse import *
 
 import logging
 
 log = logging.getLogger('base2')
 log.setLevel(logging.DEBUG)
-#log.setLevel(logging.WARNING)
-#log.setLevel(logging.INFO)
+# log.setLevel(logging.WARNING)
+# log.setLevel(logging.INFO)
 formatter = logging.Formatter('[%(levelname)s] %(message)s')
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 log.addHandler(handler)
+
+
+class ParseError(Exception):
+    pass
 
 
 class Geometry(object):
@@ -73,9 +91,6 @@ class Geometry(object):
         # Flattened geometry (list of paths only)
         self.flat_geometry = []
 
-        # Flat geometry rtree index
-        self.flat_geometry_rtree = rtindex.Index()
-
     def add_circle(self, origin, radius):
         """
         Adds a circle to the object.
@@ -96,7 +111,8 @@ class Geometry(object):
         try:
             self.solid_geometry = self.solid_geometry.union(Point(origin).buffer(radius))
         except:
-            print "Failed to run union on polygons."
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polygons.")
             raise
 
     def add_polygon(self, points):
@@ -116,7 +132,8 @@ class Geometry(object):
         try:
             self.solid_geometry = self.solid_geometry.union(Polygon(points))
         except:
-            print "Failed to run union on polygons."
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polygons.")
             raise
 
     def bounds(self):
@@ -138,7 +155,94 @@ class Geometry(object):
         else:
             return self.solid_geometry.bounds
 
+    def find_polygon(self, point, geoset=None):
+        """
+        Find an object that object.contains(Point(point)) in
+        poly, which can can be iterable, contain iterable of, or
+        be itself an implementer of .contains().
+
+        :param poly: See description
+        :return: Polygon containing point or None.
+        """
+
+        if geoset is None:
+            geoset = self.solid_geometry
+
+        try:  # Iterable
+            for sub_geo in geoset:
+                p = self.find_polygon(point, geoset=sub_geo)
+                if p is not None:
+                    return p
+
+        except TypeError:  # Non-iterable
+
+            try:  # Implements .contains()
+                if geoset.contains(Point(point)):
+                    return geoset
+
+            except AttributeError:  # Does not implement .contains()
+                return None
+
+        return None
+
+    def get_interiors(self, geometry=None):
+
+        interiors = []
+
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        ## If iterable, expand recursively.
+        try:
+            for geo in geometry:
+                interiors.extend(self.get_interiors(geometry=geo))
+
+        ## Not iterable, get the exterior if polygon.
+        except TypeError:
+            if type(geometry) == Polygon:
+                interiors.extend(geometry.interiors)
+
+        return interiors
+
+    def get_exteriors(self, geometry=None):
+        """
+        Returns all exteriors of polygons in geometry. Uses
+        ``self.solid_geometry`` if geometry is not provided.
+
+        :param geometry: Shapely type or list or list of list of such.
+        :return: List of paths constituting the exteriors
+           of polygons in geometry.
+        """
+
+        exteriors = []
+
+        if geometry is None:
+            geometry = self.solid_geometry
+
+        ## If iterable, expand recursively.
+        try:
+            for geo in geometry:
+                exteriors.extend(self.get_exteriors(geometry=geo))
+
+        ## Not iterable, get the exterior if polygon.
+        except TypeError:
+            if type(geometry) == Polygon:
+                exteriors.append(geometry.exterior)
+
+        return exteriors
+
     def flatten(self, geometry=None, reset=True, pathonly=False):
+        """
+        Creates a list of non-iterable linear geometry objects.
+        Polygons are expanded into its exterior and interiors if specified.
+
+        Results are placed in self.flat_geoemtry
+
+        :param geometry: Shapely type or list or list of list of such.
+        :param reset: Clears the contents of self.flat_geometry.
+        :param pathonly: Expands polygons into linear elements.
+        """
+
         if geometry is None:
             geometry = self.solid_geometry
 
@@ -161,31 +265,29 @@ class Geometry(object):
                              pathonly=True)
             else:
                 self.flat_geometry.append(geometry)
-            # if type(geometry) == Polygon:
-            #     self.flat_geometry.append(geometry)
 
         return self.flat_geometry
 
-    def make2Dindex(self):
-
-        self.flatten()
-
-        def get_pts(o):
-            pts = []
-            if type(o) == Polygon:
-                g = o.exterior
-                pts += list(g.coords)
-                for i in o.interiors:
-                    pts += list(i.coords)
-            else:
-                pts += list(o.coords)
-            return pts
-
-        idx = FlatCAMRTreeStorage()
-        idx.get_points = get_pts
-        for shape in self.flat_geometry:
-            idx.insert(shape)
-        return idx
+    # def make2Dstorage(self):
+    #
+    #     self.flatten()
+    #
+    #     def get_pts(o):
+    #         pts = []
+    #         if type(o) == Polygon:
+    #             g = o.exterior
+    #             pts += list(g.coords)
+    #             for i in o.interiors:
+    #                 pts += list(i.coords)
+    #         else:
+    #             pts += list(o.coords)
+    #         return pts
+    #
+    #     storage = FlatCAMRTreeStorage()
+    #     storage.get_points = get_pts
+    #     for shape in self.flat_geometry:
+    #         storage.insert(shape)
+    #     return storage
 
     # def flatten_to_paths(self, geometry=None, reset=True):
     #     """
@@ -252,6 +354,40 @@ class Geometry(object):
 
         return False
 
+    def import_svg(self, filename, flip=True):
+        """
+        Imports shapes from an SVG file into the object's geometry.
+
+        :param filename: Path to the SVG file.
+        :type filename: str
+        :return: None
+        """
+
+        # Parse into list of shapely objects
+        svg_tree = ET.parse(filename)
+        svg_root = svg_tree.getroot()
+
+        # Change origin to bottom left
+        # h = float(svg_root.get('height'))
+        # w = float(svg_root.get('width'))
+        h = svgparselength(svg_root.get('height'))[0]  # TODO: No units support yet
+        geos = getsvggeo(svg_root)
+
+        if flip:
+            geos = [translate(scale(g, 1.0, -1.0, origin=(0, 0)), yoff=h) for g in geos]
+
+        # Add to object
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(cascaded_union(geos))
+        else:  # It's shapely geometry
+            self.solid_geometry = cascaded_union([self.solid_geometry,
+                                                  cascaded_union(geos)])
+
+        return
+
     def size(self):
         """
         Returns (width, height) of rectangular
@@ -273,7 +409,8 @@ class Geometry(object):
             boundary = self.solid_geometry.envelope
         return boundary.difference(self.solid_geometry)
         
-    def clear_polygon(self, polygon, tooldia, overlap=0.15):
+    @staticmethod
+    def clear_polygon(polygon, tooldia, overlap=0.15):
         """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
@@ -286,16 +423,63 @@ class Geometry(object):
         :param overlap: Overlap of toolpasses.
         :return:
         """
-        poly_cuts = [polygon.buffer(-tooldia/2.0)]
+
+        log.debug("camlib.clear_polygon()")
+        assert type(polygon) == Polygon or type(polygon) == MultiPolygon, \
+            "Expected a Polygon or MultiPolygon, got %s" % type(polygon)
+
+        ## The toolpaths
+        # Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+        geoms = FlatCAMRTreeStorage()
+        geoms.get_points = get_pts
+
+        # Can only result in a Polygon or MultiPolygon
+        current = polygon.buffer(-tooldia / 2.0)
+
+        # current can be a MultiPolygon
+        try:
+            for p in current:
+                geoms.insert(p.exterior)
+                for i in p.interiors:
+                    geoms.insert(i)
+
+        # Not a Multipolygon. Must be a Polygon
+        except TypeError:
+            geoms.insert(current.exterior)
+            for i in current.interiors:
+                geoms.insert(i)
+
         while True:
-            polygon = poly_cuts[-1].buffer(-tooldia*(1-overlap))
-            if polygon.area > 0:
-                poly_cuts.append(polygon)
+
+            # Can only result in a Polygon or MultiPolygon
+            current = current.buffer(-tooldia * (1 - overlap))
+            if current.area > 0:
+
+                # current can be a MultiPolygon
+                try:
+                    for p in current:
+                        geoms.insert(p.exterior)
+                        for i in p.interiors:
+                            geoms.insert(i)
+
+                # Not a Multipolygon. Must be a Polygon
+                except TypeError:
+                    geoms.insert(current.exterior)
+                    for i in current.interiors:
+                        geoms.insert(i)
             else:
                 break
-        return poly_cuts
 
-    def clear_polygon2(self, polygon, tooldia, seedpoint=None, overlap=0.15):
+        # Optimization: Reduce lifts
+        log.debug("Reducing tool lifts...")
+        geoms = Geometry.paint_connect(geoms, polygon, tooldia)
+
+        return geoms
+
+    @staticmethod
+    def clear_polygon2(polygon, tooldia, seedpoint=None, overlap=0.15):
         """
         Creates geometry inside a polygon for a tool to cover
         the whole area.
@@ -305,27 +489,34 @@ class Geometry(object):
         valid cuts. Finalizes by cutting around the inside edge of
         the polygon.
 
-        :param polygon:
-        :param tooldia:
-        :param seedpoint:
-        :param overlap:
-        :return:
+        :param polygon: Shapely.geometry.Polygon
+        :param tooldia: Diameter of the tool
+        :param seedpoint: Shapely.geometry.Point or None
+        :param overlap: Tool fraction overlap bewteen passes
+        :return: List of toolpaths covering polygon.
         """
 
-        # Estimate good seedpoint if not provided.
-        if seedpoint is None:
-            seedpoint = polygon.representative_point()
+        log.debug("camlib.clear_polygon2()")
 
         # Current buffer radius
         radius = tooldia / 2 * (1 - overlap)
 
-        # The toolpaths
-        geoms = []
+        ## The toolpaths
+        # Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+        geoms = FlatCAMRTreeStorage()
+        geoms.get_points = get_pts
 
         # Path margin
         path_margin = polygon.buffer(-tooldia / 2)
 
-        # Grow from seed until outside the box.
+        # Estimate good seedpoint if not provided.
+        if seedpoint is None:
+            seedpoint = path_margin.representative_point()
+
+        # Grow from seed until outside the box. The polygons will
+        # never have an interior, so take the exterior LinearRing.
         while 1:
             path = Point(seedpoint).buffer(radius).exterior
             path = path.intersection(path_margin)
@@ -334,17 +525,34 @@ class Geometry(object):
             if path.is_empty:
                 break
             else:
-                geoms.append(path)
+                #geoms.append(path)
+                #geoms.insert(path)
+                # path can be a collection of paths.
+                try:
+                    for p in path:
+                        geoms.insert(p)
+                except TypeError:
+                    geoms.insert(path)
 
             radius += tooldia * (1 - overlap)
 
-        # Clean edges
+        # Clean inside edges of the original polygon
         outer_edges = [x.exterior for x in autolist(polygon.buffer(-tooldia / 2))]
         inner_edges = []
         for x in autolist(polygon.buffer(-tooldia / 2)):  # Over resulting polygons
             for y in x.interiors:  # Over interiors of each polygon
                 inner_edges.append(y)
-        geoms += outer_edges + inner_edges
+        #geoms += outer_edges + inner_edges
+        for g in outer_edges + inner_edges:
+            geoms.insert(g)
+
+        # Optimization connect touching paths
+        # log.debug("Connecting paths...")
+        # geoms = Geometry.path_connect(geoms)
+
+        # Optimization: Reduce lifts
+        log.debug("Reducing tool lifts...")
+        geoms = Geometry.paint_connect(geoms, polygon, tooldia)
 
         return geoms
 
@@ -369,6 +577,209 @@ class Geometry(object):
         """
         return
 
+    @staticmethod
+    def paint_connect(storage, boundary, tooldia, max_walk=None):
+        """
+        Connects paths that results in a connection segment that is
+        within the paint area. This avoids unnecessary tool lifting.
+
+        :param storage: Geometry to be optimized.
+        :type storage: FlatCAMRTreeStorage
+        :param boundary: Polygon defining the limits of the paintable area.
+        :type boundary: Polygon
+        :param max_walk: Maximum allowable distance without lifting tool.
+        :type max_walk: float or None
+        :return: Optimized geometry.
+        :rtype: FlatCAMRTreeStorage
+        """
+
+        # If max_walk is not specified, the maximum allowed is
+        # 10 times the tool diameter
+        max_walk = max_walk or 10 * tooldia
+
+        # Assuming geolist is a flat list of flat elements
+
+        ## Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+
+        # storage = FlatCAMRTreeStorage()
+        # storage.get_points = get_pts
+        #
+        # for shape in geolist:
+        #     if shape is not None:  # TODO: This shouldn't have happened.
+        #         # Make LlinearRings into linestrings otherwise
+        #         # When chaining the coordinates path is messed up.
+        #         storage.insert(LineString(shape))
+        #         #storage.insert(shape)
+
+        ## Iterate over geometry paths getting the nearest each time.
+        #optimized_paths = []
+        optimized_paths = FlatCAMRTreeStorage()
+        optimized_paths.get_points = get_pts
+        path_count = 0
+        current_pt = (0, 0)
+        pt, geo = storage.nearest(current_pt)
+        storage.remove(geo)
+        geo = LineString(geo)
+        current_pt = geo.coords[-1]
+        try:
+            while True:
+                path_count += 1
+                #log.debug("Path %d" % path_count)
+
+                pt, candidate = storage.nearest(current_pt)
+                storage.remove(candidate)
+                candidate = LineString(candidate)
+
+                # If last point in geometry is the nearest
+                # then reverse coordinates.
+                # but prefer the first one if last == first
+                if pt != candidate.coords[0] and pt == candidate.coords[-1]:
+                    candidate.coords = list(candidate.coords)[::-1]
+
+                # Straight line from current_pt to pt.
+                # Is the toolpath inside the geometry?
+                walk_path = LineString([current_pt, pt])
+                walk_cut = walk_path.buffer(tooldia / 2)
+
+                if walk_cut.within(boundary) and walk_path.length < max_walk:
+                    #log.debug("Walk to path #%d is inside. Joining." % path_count)
+
+                    # Completely inside. Append...
+                    geo.coords = list(geo.coords) + list(candidate.coords)
+                    # try:
+                    #     last = optimized_paths[-1]
+                    #     last.coords = list(last.coords) + list(geo.coords)
+                    # except IndexError:
+                    #     optimized_paths.append(geo)
+
+                else:
+
+                    # Have to lift tool. End path.
+                    #log.debug("Path #%d not within boundary. Next." % path_count)
+                    #optimized_paths.append(geo)
+                    optimized_paths.insert(geo)
+                    geo = candidate
+
+                current_pt = geo.coords[-1]
+
+                # Next
+                #pt, geo = storage.nearest(current_pt)
+
+        except StopIteration:  # Nothing left in storage.
+            #pass
+            optimized_paths.insert(geo)
+
+        return optimized_paths
+
+    @staticmethod
+    def path_connect(storage, origin=(0, 0)):
+        """
+
+        :return: None
+        """
+
+        log.debug("path_connect()")
+
+        ## Index first and last points in paths
+        def get_pts(o):
+            return [o.coords[0], o.coords[-1]]
+        #
+        # storage = FlatCAMRTreeStorage()
+        # storage.get_points = get_pts
+        #
+        # for shape in pathlist:
+        #     if shape is not None:  # TODO: This shouldn't have happened.
+        #         storage.insert(shape)
+
+        path_count = 0
+        pt, geo = storage.nearest(origin)
+        storage.remove(geo)
+        #optimized_geometry = [geo]
+        optimized_geometry = FlatCAMRTreeStorage()
+        optimized_geometry.get_points = get_pts
+        #optimized_geometry.insert(geo)
+        try:
+            while True:
+                path_count += 1
+
+                #print "geo is", geo
+
+                _, left = storage.nearest(geo.coords[0])
+                #print "left is", left
+
+                # If left touches geo, remove left from original
+                # storage and append to geo.
+                if type(left) == LineString:
+                    if left.coords[0] == geo.coords[0]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords)[::-1] + list(left.coords)
+                        continue
+
+                    if left.coords[-1] == geo.coords[0]:
+                        storage.remove(left)
+                        geo.coords = list(left.coords) + list(geo.coords)
+                        continue
+
+                    if left.coords[0] == geo.coords[-1]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords) + list(left.coords)
+                        continue
+
+                    if left.coords[-1] == geo.coords[-1]:
+                        storage.remove(left)
+                        geo.coords = list(geo.coords) + list(left.coords)[::-1]
+                        continue
+
+                _, right = storage.nearest(geo.coords[-1])
+                #print "right is", right
+
+                # If right touches geo, remove left from original
+                # storage and append to geo.
+                if type(right) == LineString:
+                    if right.coords[0] == geo.coords[-1]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords) + list(right.coords)
+                        continue
+
+                    if right.coords[-1] == geo.coords[-1]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords) + list(right.coords)[::-1]
+                        continue
+
+                    if right.coords[0] == geo.coords[0]:
+                        storage.remove(right)
+                        geo.coords = list(geo.coords)[::-1] + list(right.coords)
+                        continue
+
+                    if right.coords[-1] == geo.coords[0]:
+                        storage.remove(right)
+                        geo.coords = list(left.coords) + list(geo.coords)
+                        continue
+
+                # right is either a LinearRing or it does not connect
+                # to geo (nothing left to connect to geo), so we continue
+                # with right as geo.
+                storage.remove(right)
+
+                if type(right) == LinearRing:
+                    optimized_geometry.insert(right)
+                else:
+                    # Cannot exteng geo any further. Put it away.
+                    optimized_geometry.insert(geo)
+
+                    # Continue with right.
+                    geo = right
+
+        except StopIteration:  # Nothing found in storage.
+            optimized_geometry.insert(geo)
+
+        #print path_count
+        log.debug("path_count = %d" % path_count)
+
+        return optimized_geometry
+
     def convert_units(self, units):
         """
         Converts the units of the object to ``units`` by scaling all
@@ -388,7 +799,7 @@ class Geometry(object):
         if units.upper() == "MM":
             factor = 25.4
         elif units.upper() == "IN":
-            factor = 1/25.4
+            factor = 1 / 25.4
         else:
             log.error("Unsupported units: %s" % str(units))
             return 1.0
@@ -434,7 +845,6 @@ class Geometry(object):
         :return: None
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
-
 
 
 class ApertureMacro:
@@ -547,7 +957,7 @@ class ApertureMacro:
             if match:
                 ## Replace all variables
                 for v in self.locvars:
-                    part = re.sub(r'\$'+str(v)+r'(?![0-9a-zA-Z])', str(self.locvars[v]), part)
+                    part = re.sub(r'\$' + str(v) + r'(?![0-9a-zA-Z])', str(self.locvars[v]), part)
 
                 # Make all others 0
                 part = re.sub(r'\$[0-9a-zA-Z](?![0-9a-zA-Z])', "0", part)
@@ -585,7 +995,7 @@ class ApertureMacro:
         :return: Zero-padded list.
         :rtype: list
         """
-        x = [0.0]*n
+        x = [0.0] * n
         na = len(mods)
         x[0:na] = mods
         return x
@@ -759,6 +1169,8 @@ class ApertureMacro:
 
         :param modifiers: Modifiers (parameters) for this macro
         :type modifiers: list
+        :return: Shapely geometry
+        :rtype: shapely.geometry.polygon
         """
 
         ## Primitive makers
@@ -779,11 +1191,11 @@ class ApertureMacro:
         modifiers = [float(m) for m in modifiers]
         self.locvars = {}
         for i in range(0, len(modifiers)):
-            self.locvars[str(i+1)] = modifiers[i]
+            self.locvars[str(i + 1)] = modifiers[i]
 
         ## Parse
         self.primitives = []  # Cleanup
-        self.geometry = None
+        self.geometry = Polygon()
         self.parse_content()
 
         ## Make the geometry
@@ -792,9 +1204,9 @@ class ApertureMacro:
             prim_geo = makers[str(int(primitive[0]))](primitive[1:])
 
             # Add it (according to polarity)
-            if self.geometry is None and prim_geo['pol'] == 1:
-                self.geometry = prim_geo['geometry']
-                continue
+            # if self.geometry is None and prim_geo['pol'] == 1:
+            #     self.geometry = prim_geo['geometry']
+            #     continue
             if prim_geo['pol'] == 1:
                 self.geometry = self.geometry.union(prim_geo['geometry'])
                 continue
@@ -843,7 +1255,8 @@ class Gerber (Geometry):
     """
 
     defaults = {
-        "steps_per_circle": 40
+        "steps_per_circle": 40,
+        "use_buffer_for_union": True
     }
 
     def __init__(self, steps_per_circle=None):
@@ -896,7 +1309,9 @@ class Gerber (Geometry):
         self.comm_re = re.compile(r'^G0?4(.*)$')
 
         # AD - Aperture definition
-        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.]*)(?:,(.*))?\*%$')
+        # Aperture Macro names: Name = [a-zA-Z_.$]{[a-zA-Z_.0-9]+}
+        # NOTE: Adding "-" to support output from Upverter.
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.\-]*)(?:,(.*))?\*%$')
 
         # AM - Aperture Macro
         # Beginning of macro (Ends with *%):
@@ -908,7 +1323,7 @@ class Gerber (Geometry):
 
         # G01... - Linear interpolation plus flashes with coordinates
         # Operation code (D0x) missing is deprecated... oh well I will support it.
-        self.lin_re = re.compile(r'^(?:G0?(1))?(?=.*X(-?\d+))?(?=.*Y(-?\d+))?[XY][^DIJ]*(?:D0?([123]))?\*$')
+        self.lin_re = re.compile(r'^(?:G0?(1))?(?=.*X([\+-]?\d+))?(?=.*Y([\+-]?\d+))?[XY][^DIJ]*(?:D0?([123]))?\*$')
 
         # Operation code alone, usually just D03 (Flash)
         self.opcode_re = re.compile(r'^D0?([123])\*$')
@@ -918,8 +1333,8 @@ class Gerber (Geometry):
         # Operation code (D0x) missing is deprecated... oh well I will support it.
         # Optional start with G02 or G03, optional end with D01 or D02 with
         # optional coordinates but at least one in any order.
-        self.circ_re = re.compile(r'^(?:G0?([23]))?(?=.*X(-?\d+))?(?=.*Y(-?\d+))' +
-                                  '?(?=.*I(-?\d+))?(?=.*J(-?\d+))?[XYIJ][^D]*(?:D0([12]))?\*$')
+        self.circ_re = re.compile(r'^(?:G0?([23]))?(?=.*X([\+-]?\d+))?(?=.*Y([\+-]?\d+))' +
+                                  '?(?=.*I([\+-]?\d+))?(?=.*J([\+-]?\d+))?[XYIJ][^D]*(?:D0([12]))?\*$')
 
         # G01/2/3 Occurring without coordinates
         self.interp_re = re.compile(r'^(?:G0?([123]))\*')
@@ -960,6 +1375,8 @@ class Gerber (Geometry):
 
         # How to discretize a circle.
         self.steps_per_circ = steps_per_circle or Gerber.defaults['steps_per_circle']
+
+        self.use_buffer_for_union = self.defaults["use_buffer_for_union"]
 
     def scale(self, factor):
         """
@@ -1113,8 +1530,15 @@ class Gerber (Geometry):
         
     def parse_file(self, filename, follow=False):
         """
-        Calls Gerber.parse_lines() with array of lines
-        read from the given file.
+        Calls Gerber.parse_lines() with generator of lines
+        read from the given file. Will split the lines if multiple
+        statements are found in a single original line.
+
+        The following line is split into two::
+
+            G54D11*G36*
+
+        First is ``G54D11*`` and seconds is ``G36*``.
 
         :param filename: Gerber file to parse.
         :type filename: str
@@ -1123,11 +1547,35 @@ class Gerber (Geometry):
         :type follow: bool
         :return: None
         """
-        gfile = open(filename, 'r')
-        gstr = gfile.readlines()
-        gfile.close()
-        self.parse_lines(gstr, follow=follow)
 
+        with open(filename, 'r') as gfile:
+
+            def line_generator():
+                for line in gfile:
+                    line = line.strip(' \r\n')
+                    while len(line) > 0:
+
+                        # If ends with '%' leave as is.
+                        if line[-1] == '%':
+                            yield line
+                            break
+
+                        # Split after '*' if any.
+                        starpos = line.find('*')
+                        if starpos > -1:
+                            cleanline = line[:starpos + 1]
+                            yield cleanline
+                            line = line[starpos + 1:]
+
+                        # Otherwise leave as is.
+                        else:
+                            # yield cleanline
+                            yield line
+                            break
+
+            self.parse_lines(line_generator(), follow=follow)
+
+    #@profile
     def parse_lines(self, glines, follow=False):
         """
         Main Gerber parser. Reads Gerber and populates ``self.paths``, ``self.apertures``,
@@ -1193,6 +1641,8 @@ class Gerber (Geometry):
                 ### Cleanup
                 gline = gline.strip(' \r\n')
 
+                #log.debug("%3s %s" % (line_num, gline))
+
                 ### Aperture Macros
                 # Having this at the beggining will slow things down
                 # but macros can have complicated statements than could
@@ -1201,7 +1651,7 @@ class Gerber (Geometry):
                     match = self.am1_re.search(gline)
                     # Start macro if match, else not an AM, carry on.
                     if match:
-                        log.info("Starting macro. Line %d: %s" % (line_num, gline))
+                        log.debug("Starting macro. Line %d: %s" % (line_num, gline))
                         current_macro = match.group(1)
                         self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
                         if match.group(2):  # Append
@@ -1209,13 +1659,13 @@ class Gerber (Geometry):
                         if match.group(3):  # Finish macro
                             #self.aperture_macros[current_macro].parse_content()
                             current_macro = None
-                            log.info("Macro complete in 1 line.")
+                            log.debug("Macro complete in 1 line.")
                         continue
                 else:  # Continue macro
-                    log.info("Continuing macro. Line %d." % line_num)
+                    log.debug("Continuing macro. Line %d." % line_num)
                     match = self.am2_re.search(gline)
                     if match:  # Finish macro
-                        log.info("End of macro. Line %d." % line_num)
+                        log.debug("End of macro. Line %d." % line_num)
                         self.aperture_macros[current_macro].append(match.group(1))
                         #self.aperture_macros[current_macro].parse_content()
                         current_macro = None
@@ -1267,18 +1717,30 @@ class Gerber (Geometry):
                                 if follow:
                                     geo = LineString(path)
                                 else:
-                                    geo = LineString(path).buffer(width/2)
-                            poly_buffer.append(geo)
+                                    geo = LineString(path).buffer(width / 2)
+                            if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path
 
                     # Flash
+                    # Not allowed in region mode.
                     elif current_operation_code == 3:
 
+                        # Create path draw so far.
+                        if len(path) > 1:
+                            # --- Buffered ----
+                            width = self.apertures[last_path_aperture]["size"]
+                            geo = LineString(path).buffer(width / 2)
+                            if not geo.is_empty: poly_buffer.append(geo)
+
+                        # Reset path starting point
+                        path = [[current_x, current_y]]
+
                         # --- BUFFERED ---
+                        # Draw the flash
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
-                        poly_buffer.append(flash)
+                        if not flash.is_empty: poly_buffer.append(flash)
 
                     continue
 
@@ -1331,8 +1793,8 @@ class Gerber (Geometry):
 
                             # --- BUFFERED ---
                             width = self.apertures[last_path_aperture]["size"]
-                            buffered = LineString(path).buffer(width/2)
-                            poly_buffer.append(buffered)
+                            buffered = LineString(path).buffer(width / 2)
+                            if not buffered.is_empty: poly_buffer.append(buffered)
 
                         current_x = x
                         current_y = y
@@ -1360,9 +1822,15 @@ class Gerber (Geometry):
                                        arcdir[current_interpolation_mode],
                                        self.steps_per_circ)
 
+                        # The last point in the computed arc can have
+                        # numerical errors. The exact final point is the
+                        # specified (x, y). Replace.
+                        this_arc[-1] = (x, y)
+
                         # Last point in path is current point
-                        current_x = this_arc[-1][0]
-                        current_y = this_arc[-1][1]
+                        # current_x = this_arc[-1][0]
+                        # current_y = this_arc[-1][1]
+                        current_x, current_y = x, y
 
                         # Append
                         path += this_arc
@@ -1383,11 +1851,11 @@ class Gerber (Geometry):
                         valid = False
                         log.debug("I: %f  J: %f" % (i, j))
                         for center in center_candidates:
-                            radius = sqrt(i**2 + j**2)
+                            radius = sqrt(i ** 2 + j ** 2)
 
                             # Make sure radius to start is the same as radius to end.
-                            radius2 = sqrt((center[0] - x)**2 + (center[1] - y)**2)
-                            if radius2 < radius*0.95 or radius2 > radius*1.05:
+                            radius2 = sqrt((center[0] - x) ** 2 + (center[1] - y) ** 2)
+                            if radius2 < radius * 0.95 or radius2 > radius * 1.05:
                                 continue  # Not a valid center.
 
                             # Correct i and j and continue as with multi-quadrant.
@@ -1400,16 +1868,22 @@ class Gerber (Geometry):
                             log.debug("ARC START: %f, %f  CENTER: %f, %f  STOP: %f, %f" %
                                       (current_x, current_y, center[0], center[1], x, y))
                             log.debug("START Ang: %f, STOP Ang: %f, DIR: %s, ABS: %.12f <= %.12f: %s" %
-                                      (start*180/pi, stop*180/pi, arcdir[current_interpolation_mode],
-                                       angle*180/pi, pi/2*180/pi, angle <= (pi+1e-6)/2))
+                                      (start * 180 / pi, stop * 180 / pi, arcdir[current_interpolation_mode],
+                                       angle * 180 / pi, pi / 2 * 180 / pi, angle <= (pi + 1e-6) / 2))
 
-                            if angle <= (pi+1e-6)/2:
+                            if angle <= (pi + 1e-6) / 2:
                                 log.debug("########## ACCEPTING ARC ############")
                                 this_arc = arc(center, radius, start, stop,
                                                arcdir[current_interpolation_mode],
                                                self.steps_per_circ)
-                                current_x = this_arc[-1][0]
-                                current_y = this_arc[-1][1]
+
+                                # Replace with exact values
+                                this_arc[-1] = (x, y)
+
+                                # current_x = this_arc[-1][0]
+                                # current_y = this_arc[-1][1]
+                                current_x, current_y = x, y
+
                                 path += this_arc
                                 last_path_aperture = current_aperture
                                 valid = True
@@ -1430,9 +1904,12 @@ class Gerber (Geometry):
 
                         ## --- Buffered ---
                         try:
-                            flash = Gerber.create_flash_geometry(Point(path[-1]),
+                            log.debug("Bare op-code %d." % current_operation_code)
+                            # flash = Gerber.create_flash_geometry(Point(path[-1]),
+                            #                                      self.apertures[current_aperture])
+                            flash = Gerber.create_flash_geometry(Point(current_x, current_y),
                                                                  self.apertures[current_aperture])
-                            poly_buffer.append(flash)
+                            if not flash.is_empty: poly_buffer.append(flash)
                         except IndexError:
                             log.warning("Line %d: %s -> Nothing there to flash!" % (line_num, gline))
 
@@ -1455,7 +1932,7 @@ class Gerber (Geometry):
                         ## --- Buffered ---
                         width = self.apertures[last_path_aperture]["size"]
                         geo = LineString(path).buffer(width/2)
-                        poly_buffer.append(geo)
+                        if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -1485,7 +1962,7 @@ class Gerber (Geometry):
                     region = Polygon(path)
                     if not region.is_valid:
                         region = region.buffer(0)
-                    poly_buffer.append(region)
+                    if not region.is_empty: poly_buffer.append(region)
 
                     path = [[current_x, current_y]]  # Start new path
                     continue
@@ -1510,15 +1987,16 @@ class Gerber (Geometry):
                 # Example: D12*
                 match = self.tool_re.search(gline)
                 if match:
-                    log.debug("Line %d: Aperture change to (%s)" % (line_num, match.group(1)))
                     current_aperture = match.group(1)
+                    log.debug("Line %d: Aperture change to (%s)" % (line_num, match.group(1)))
+                    log.debug(self.apertures[current_aperture])
 
                     # Take care of the current path with the previous tool
                     if len(path) > 1:
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width/2)
-                        poly_buffer.append(geo)
+                        geo = LineString(path).buffer(width / 2)
+                        if not geo.is_empty: poly_buffer.append(geo)
                         path = [path[-1]]
 
                     continue
@@ -1534,7 +2012,7 @@ class Gerber (Geometry):
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
                         geo = LineString(path).buffer(width / 2)
-                        poly_buffer.append(geo)
+                        if not geo.is_empty: poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -1565,13 +2043,19 @@ class Gerber (Geometry):
                 # Example: %MOIN*%
                 match = self.mode_re.search(gline)
                 if match:
-                    self.units = match.group(1)
+                    #self.units = match.group(1)
+
+                    # Changed for issue #80
+                    self.convert_units(match.group(1))
                     continue
 
                 ### Units (G70/1) OBSOLETE
                 match = self.units_re.search(gline)
                 if match:
-                    self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+                    #self.units = {'0': 'IN', '1': 'MM'}[match.group(1)]
+
+                    # Changed for issue #80
+                    self.convert_units({'0': 'IN', '1': 'MM'}[match.group(1)])
                     continue
 
                 ### Absolute/relative coordinates G90/1 OBSOLETE
@@ -1599,28 +2083,45 @@ class Gerber (Geometry):
 
                 ## --- Buffered ---
                 width = self.apertures[last_path_aperture]["size"]
-                geo = LineString(path).buffer(width/2)
-                poly_buffer.append(geo)
+                geo = LineString(path).buffer(width / 2)
+                if not geo.is_empty: poly_buffer.append(geo)
 
             # --- Apply buffer ---
-            if current_polarity == 'D':
-                self.solid_geometry = self.solid_geometry.union(cascaded_union(poly_buffer))
+            log.warn("Joining %d polygons." % len(poly_buffer))
+            if self.use_buffer_for_union:
+                log.debug("Union by buffer...")
+                new_poly = MultiPolygon(poly_buffer)
+                new_poly = new_poly.buffer(0.00000001)
+                new_poly = new_poly.buffer(-0.00000001)
+                log.warn("Union(buffer) done.")
             else:
-                self.solid_geometry = self.solid_geometry.difference(cascaded_union(poly_buffer))
+                log.debug("Union by union()...")
+                new_poly = cascaded_union(poly_buffer)
+                new_poly = new_poly.buffer(0)
+                log.warn("Union done.")
+            if current_polarity == 'D':
+                self.solid_geometry = self.solid_geometry.union(new_poly)
+            else:
+                self.solid_geometry = self.solid_geometry.difference(new_poly)
 
         except Exception, err:
+            ex_type, ex, tb = sys.exc_info()
+            traceback.print_tb(tb)
             #print traceback.format_exc()
+
             log.error("PARSING FAILED. Line %d: %s" % (line_num, gline))
-            raise
+            raise ParseError("Line %d: %s" % (line_num, gline), repr(err))
 
     @staticmethod
     def create_flash_geometry(location, aperture):
+
+        log.debug('Flashing @%s, Aperture: %s' % (location, aperture))
 
         if type(location) == list:
             location = Point(location)
 
         if aperture['type'] == 'C':  # Circles
-            return location.buffer(aperture['size']/2)
+            return location.buffer(aperture['size'] / 2)
 
         if aperture['type'] == 'R':  # Rectangles
             loc = location.coords[0]
@@ -1654,8 +2155,8 @@ class Gerber (Geometry):
             n_vertices = aperture['nVertices']
             points = []
             for i in range(0, n_vertices):
-                x = loc[0] + diam * (cos(2 * pi * i / n_vertices))
-                y = loc[1] + diam * (sin(2 * pi * i / n_vertices))
+                x = loc[0] + 0.5 * diam * (cos(2 * pi * i / n_vertices))
+                y = loc[1] + 0.5 * diam * (sin(2 * pi * i / n_vertices))
                 points.append((x, y))
             ply = Polygon(points)
             if 'rotation' in aperture:
@@ -1665,8 +2166,11 @@ class Gerber (Geometry):
         if aperture['type'] == 'AM':  # Aperture Macro
             loc = location.coords[0]
             flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
+            if flash_geo.is_empty:
+                log.warning("Empty geometry for Aperture Macro: %s" % str(aperture['macro'].name))
             return affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
 
+        log.warning("Unknown aperture type: %s" % aperture['type'])
         return None
     
     def create_geometry(self):
@@ -1735,7 +2239,11 @@ class Excellon(Geometry):
     ================  ====================================
     """
 
-    def __init__(self, zeros="L"):
+    defaults = {
+        "zeros": "L"
+    }
+
+    def __init__(self, zeros=None):
         """
         The constructor takes no parameters.
 
@@ -1749,9 +2257,12 @@ class Excellon(Geometry):
         
         self.drills = []
 
+        ## IN|MM -> Units are inherited from Geometry
+        #self.units = units
+
         # Trailing "T" or leading "L" (default)
         #self.zeros = "T"
-        self.zeros = zeros
+        self.zeros = zeros or self.defaults["zeros"]
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -1772,7 +2283,8 @@ class Excellon(Geometry):
         self.hend_re = re.compile(r'^(?:M95|%)$')
 
         # FMAT Excellon format
-        self.fmat_re = re.compile(r'^FMAT,([12])$')
+        # Ignored in the parser
+        #self.fmat_re = re.compile(r'^FMAT,([12])$')
 
         # Number format and units
         # INCH uses 6 digits
@@ -1857,104 +2369,136 @@ class Excellon(Geometry):
 
         #### Parsing starts here ####
         line_num = 0  # Line number
-        for eline in elines:
-            line_num += 1
+        eline = ""
+        try:
+            for eline in elines:
+                line_num += 1
+                #log.debug("%3d %s" % (line_num, str(eline)))
 
-            ### Cleanup lines
-            eline = eline.strip(' \r\n')
+                ### Cleanup lines
+                eline = eline.strip(' \r\n')
 
-            ## Header Begin/End ##
-            if self.hbegin_re.search(eline):
-                in_header = True
-                continue
-
-            if self.hend_re.search(eline):
-                in_header = False
-                continue
-
-            #### Body ####
-            if not in_header:
-
-                ## Tool change ##
-                match = self.toolsel_re.search(eline)
-                if match:
-                    current_tool = str(int(match.group(1)))
+                ## Header Begin (M48) ##
+                if self.hbegin_re.search(eline):
+                    in_header = True
                     continue
 
-                ## Coordinates without period ##
-                match = self.coordsnoperiod_re.search(eline)
+                ## Header End ##
+                if self.hend_re.search(eline):
+                    in_header = False
+                    continue
+
+                ## Alternative units format M71/M72
+                # Supposed to be just in the body (yes, the body)
+                # but some put it in the header (PADS for example).
+                # Will detect anywhere. Occurrence will change the
+                # object's units.
+                match = self.meas_re.match(eline)
                 if match:
-                    try:
-                        #x = float(match.group(1))/10000
-                        x = self.parse_number(match.group(1))
-                        current_x = x
-                    except TypeError:
-                        x = current_x
+                    #self.units = {"1": "MM", "2": "IN"}[match.group(1)]
 
-                    try:
-                        #y = float(match.group(2))/10000
-                        y = self.parse_number(match.group(2))
-                        current_y = y
-                    except TypeError:
-                        y = current_y
+                    # Modified for issue #80
+                    self.convert_units({"1": "MM", "2": "IN"}[match.group(1)])
+                    log.debug("  Units: %s" % self.units)
+                    continue
 
-                    if x is None or y is None:
-                        log.error("Missing coordinates")
+                #### Body ####
+                if not in_header:
+
+                    ## Tool change ##
+                    match = self.toolsel_re.search(eline)
+                    if match:
+                        current_tool = str(int(match.group(1)))
+                        log.debug("Tool change: %s" % current_tool)
                         continue
 
-                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
-                    continue
+                    ## Coordinates without period ##
+                    match = self.coordsnoperiod_re.search(eline)
+                    if match:
+                        try:
+                            #x = float(match.group(1))/10000
+                            x = self.parse_number(match.group(1))
+                            current_x = x
+                        except TypeError:
+                            x = current_x
 
-                ## Coordinates with period: Use literally. ##
-                match = self.coordsperiod_re.search(eline)
-                if match:
-                    try:
-                        x = float(match.group(1))
-                        current_x = x
-                    except TypeError:
-                        x = current_x
+                        try:
+                            #y = float(match.group(2))/10000
+                            y = self.parse_number(match.group(2))
+                            current_y = y
+                        except TypeError:
+                            y = current_y
 
-                    try:
-                        y = float(match.group(2))
-                        current_y = y
-                    except TypeError:
-                        y = current_y
+                        if x is None or y is None:
+                            log.error("Missing coordinates")
+                            continue
 
-                    if x is None or y is None:
-                        log.error("Missing coordinates")
+                        self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                        log.debug("{:15} {:8} {:8}".format(eline, x, y))
                         continue
 
-                    self.drills.append({'point': Point((x, y)), 'tool': current_tool})
-                    continue
+                    ## Coordinates with period: Use literally. ##
+                    match = self.coordsperiod_re.search(eline)
+                    if match:
+                        try:
+                            x = float(match.group(1))
+                            current_x = x
+                        except TypeError:
+                            x = current_x
 
-            #### Header ####
-            if in_header:
+                        try:
+                            y = float(match.group(2))
+                            current_y = y
+                        except TypeError:
+                            y = current_y
 
-                ## Tool definitions ##
-                match = self.toolset_re.search(eline)
-                if match:
-                    name = str(int(match.group(1)))
-                    spec = {
-                        "C": float(match.group(2)),
-                        # "F": float(match.group(3)),
-                        # "S": float(match.group(4)),
-                        # "B": float(match.group(5)),
-                        # "H": float(match.group(6)),
-                        # "Z": float(match.group(7))
-                    }
-                    self.tools[name] = spec
-                    continue
+                        if x is None or y is None:
+                            log.error("Missing coordinates")
+                            continue
 
-                ## Units and number format ##
-                match = self.units_re.match(eline)
-                if match:
-                    self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
-                    self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
-                    continue
+                        self.drills.append({'point': Point((x, y)), 'tool': current_tool})
+                        log.debug("{:15} {:8} {:8}".format(eline, x, y))
+                        continue
 
-            log.warning("Line ignored: %s" % eline)
+                #### Header ####
+                if in_header:
 
-        log.info("Zeros: %s, Units %s." % (self.zeros, self.units))
+                    ## Tool definitions ##
+                    match = self.toolset_re.search(eline)
+                    if match:
+
+                        name = str(int(match.group(1)))
+                        spec = {
+                            "C": float(match.group(2)),
+                            # "F": float(match.group(3)),
+                            # "S": float(match.group(4)),
+                            # "B": float(match.group(5)),
+                            # "H": float(match.group(6)),
+                            # "Z": float(match.group(7))
+                        }
+                        self.tools[name] = spec
+                        log.debug("  Tool definition: %s %s" % (name, spec))
+                        continue
+
+                    ## Units and number format ##
+                    match = self.units_re.match(eline)
+                    if match:
+                        self.zeros = match.group(2) or self.zeros  # "T" or "L". Might be empty
+
+                        #self.units = {"INCH": "IN", "METRIC": "MM"}[match.group(1)]
+
+                        # Modified for issue #80
+                        self.convert_units({"INCH": "IN", "METRIC": "MM"}[match.group(1)])
+                        log.debug("  Units/Format: %s %s" % (self.units, self.zeros))
+                        continue
+
+                log.warning("Line ignored: %s" % eline)
+
+            log.info("Zeros: %s, Units %s." % (self.zeros, self.units))
+
+        except Exception as e:
+            log.error("PARSING FAILED. Line %d: %s" % (line_num, eline))
+            raise
         
     def parse_number(self, number_str):
         """
@@ -1974,16 +2518,21 @@ class Excellon(Geometry):
             # If less than size digits, they are automatically added,
             # 5 digits then are divided by 10^3 and so on.
             match = self.leadingzeros_re.search(number_str)
-            return float(number_str)/(10**(len(match.group(1)) + len(match.group(2)) - 2))
+            if self.units.lower() == "in":
+                return float(number_str) / \
+                    (10 ** (len(match.group(1)) + len(match.group(2)) - 2))
+            else:
+                return float(number_str) / \
+                    (10 ** (len(match.group(1)) + len(match.group(2)) - 3))
 
         else:  # Trailing
             # You must show all zeros to the right of the number and can omit
             # all zeros to the left of the number. The CNC-7 will count the number
             # of digits you typed and automatically fill in the missing zeros.
             if self.units.lower() == "in":  # Inches is 00.0000
-                return float(number_str)/10000
-
-            return float(number_str)/1000  # Metric is 000.000
+                return float(number_str) / 10000
+            else:
+                return float(number_str) / 1000  # Metric is 000.000
 
     def create_geometry(self):
         """
@@ -1995,9 +2544,9 @@ class Excellon(Geometry):
         self.solid_geometry = []
 
         for drill in self.drills:
-            #poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
+            # poly = drill['point'].buffer(self.tools[drill['tool']]["C"]/2.0)
             tooldia = self.tools[drill['tool']]['C']
-            poly = drill['point'].buffer(tooldia/2.0)
+            poly = drill['point'].buffer(tooldia / 2.0)
             self.solid_geometry.append(poly)
 
     def scale(self, factor):
@@ -2085,11 +2634,19 @@ class CNCjob(Geometry):
     """
 
     defaults = {
-        "zdownrate": None
+        "zdownrate": None,
+        "coordinate_format": "X%.4fY%.4f"
     }
 
-    def __init__(self, units="in", kind="generic", z_move=0.1,
-                 feedrate=3.0, z_cut=-0.002, tooldia=0.0, zdownrate=None):
+    def __init__(self,
+                 units="in",
+                 kind="generic",
+                 z_move=0.1,
+                 feedrate=3.0,
+                 z_cut=-0.002,
+                 tooldia=0.0,
+                 zdownrate=None,
+                 spindlespeed=None):
 
         Geometry.__init__(self)
         self.kind = kind
@@ -2106,6 +2663,7 @@ class CNCjob(Geometry):
         self.input_geometry_bounds = None
         self.gcode_parsed = None
         self.steps_per_circ = 20  # Used when parsing G-code arcs
+
         if zdownrate is not None:
             self.zdownrate = float(zdownrate)
         elif CNCjob.defaults["zdownrate"] is not None:
@@ -2113,6 +2671,7 @@ class CNCjob(Geometry):
         else:
             self.zdownrate = None
 
+        self.spindlespeed = spindlespeed
 
         # Attributes to be included in serialization
         # Always append to it because it carries contents
@@ -2120,34 +2679,6 @@ class CNCjob(Geometry):
         self.ser_attrs += ['kind', 'z_cut', 'z_move', 'feedrate', 'tooldia',
                            'gcode', 'input_geometry_bounds', 'gcode_parsed',
                            'steps_per_circ']
-
-        # Buffer for linear (No polygons or iterable geometry) elements
-        # and their properties.
-        self.flat_geometry = []
-
-        # 2D index of self.flat_geometry
-        self.flat_geometry_rtree = rtindex.Index()
-
-        # Current insert position to flat_geometry
-        self.fg_current_index = 0
-
-    def flatten(self, geo):
-        """
-        Flattens the input geometry into an array of non-iterable geometry
-        elements and indexes into rtree by their first and last coordinate
-        pairs.
-
-        :param geo:
-        :return:
-        """
-        try:
-            for g in geo:
-                self.flatten(g)
-        except TypeError:  # is not iterable
-            self.flat_geometry.append({"path": geo})
-            self.flat_geometry_rtree.insert(self.fg_current_index, geo.coords[0])
-            self.flat_geometry_rtree.insert(self.fg_current_index, geo.coords[-1])
-            self.fg_current_index += 1
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -2160,45 +2691,8 @@ class CNCjob(Geometry):
 
         return factor
 
-    def generate_from_excellon(self, exobj):
-        """
-        Generates G-code for drilling from Excellon object.
-        self.gcode becomes a list, each element is a
-        different job for each tool in the excellon code.
-        """
-        self.kind = "drill"
-        self.gcode = []
-        
-        t = "G00 X%.4fY%.4f\n"
-        down = "G01 Z%.4f\n" % self.z_cut
-        up = "G01 Z%.4f\n" % self.z_move
-
-        for tool in exobj.tools:
-            
-            points = []
-            
-            for drill in exobj.drill:
-                if drill['tool'] == tool:
-                    points.append(drill['point'])
-            
-            gcode = self.unitcode[self.units.upper()] + "\n"
-            gcode += self.absolutecode + "\n"
-            gcode += self.feedminutecode + "\n"
-            gcode += "F%.2f\n" % self.feedrate
-            gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
-            gcode += "M03\n"  # Spindle start
-            gcode += self.pausecode + "\n"
-            
-            for point in points:
-                gcode += t % point
-                gcode += down + up
-            
-            gcode += t % (0, 0)
-            gcode += "M05\n"  # Spindle stop
-            
-            self.gcode.append(gcode)
-
-    def generate_from_excellon_by_tool(self, exobj, tools="all"):
+    def generate_from_excellon_by_tool(self, exobj, tools="all",
+                                       toolchange=False, toolchangez=0.1):
         """
         Creates gcode for this object from an Excellon object
         for the specified tools.
@@ -2210,112 +2704,87 @@ class CNCjob(Geometry):
         :return: None
         :rtype: None
         """
-        log.debug("Creating CNC Job from Excellon...")
-        if tools == "all":
-            tools = [tool for tool in exobj.tools]
-        else:
-            tools = [x.strip() for x in tools.split(",")]
-            tools = filter(lambda i: i in exobj.tools, tools)
-        log.debug("Tools are: %s" % str(tools))
 
-        points = []
+        log.debug("Creating CNC Job from Excellon...")
+
+        # Tools
+        
+        # sort the tools list by the second item in tuple (here we have a dict with diameter of the tool)
+        # so we actually are sorting the tools by diameter
+        sorted_tools = sorted(exobj.tools.items(), key = lambda x: x[1])
+        if tools == "all":
+            tools = str([i[0] for i in sorted_tools])   # we get a string of ordered tools
+            log.debug("Tools 'all' and sorted are: %s" % str(tools))
+        else:
+            selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
+            selected_tools = filter(lambda i: i in selected_tools, selected_tools)
+            tools = [i for i,j in sorted_tools for k in selected_tools if i == k]   # create a sorted list of selected tools from the sorted_tools list
+            log.debug("Tools selected and sorted are: %s" % str(tools)) 
+
+        # Points (Group by tool)
+        points = {}
         for drill in exobj.drills:
             if drill['tool'] in tools:
-                points.append(drill['point'])
+                try:
+                    points[drill['tool']].append(drill['point'])
+                except KeyError:
+                    points[drill['tool']] = [drill['point']]
 
-        log.debug("Found %d drills." % len(points))
-        #self.kind = "drill"
+        #log.debug("Found %d drills." % len(points))
         self.gcode = []
 
-        t = "G00 X%.4fY%.4f\n"
+        # Basic G-Code macros
+        t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
         up = "G01 Z%.4f\n" % self.z_move
 
+        # Initialization
         gcode = self.unitcode[self.units.upper()] + "\n"
         gcode += self.absolutecode + "\n"
         gcode += self.feedminutecode + "\n"
         gcode += "F%.2f\n" % self.feedrate
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
-        gcode += "M03\n"  # Spindle start
+
+        if self.spindlespeed is not None:
+            gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+        else:
+            gcode += "M03\n"  # Spindle start
+
         gcode += self.pausecode + "\n"
 
-        for point in points:
-            x, y = point.coords.xy
-            gcode += t % (x[0], y[0])
-            gcode += down + up
+        for tool in tools:
+
+            # Tool change sequence (optional)
+            if toolchange:
+                gcode += "G00 Z%.4f\n" % toolchangez
+                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
+                gcode += "M5\n"  # Spindle Stop
+                gcode += "M6\n"  # Tool change
+                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
+                gcode += "M0\n"  # Temporary machine stop
+                if self.spindlespeed is not None:
+                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+                else:
+                    gcode += "M03\n"  # Spindle start
+
+            # Drillling!
+            for point in points[tool]:
+                x, y = point.coords.xy
+                gcode += t % (x[0], y[0])
+                gcode += down + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
 
         self.gcode = gcode
 
-    def generate_from_geometry(self, geometry, append=True, tooldia=None, tolerance=0):
-        """
-        Generates G-Code from a Geometry object. Stores in ``self.gcode``.
-
-        Algorithm description:
-        ----------------------
-        Follow geometry paths in the order they are being read. No attempt
-        to optimize.
-
-        :param geometry: Geometry defining the toolpath
-        :type geometry: Geometry
-        :param append: Wether to append to self.gcode or re-write it.
-        :type append: bool
-        :param tooldia: If given, sets the tooldia property but does
-            not affect the process in any other way.
-        :type tooldia: bool
-        :param tolerance: All points in the simplified object will be within the
-            tolerance distance of the original geometry.
-        :return: None
-        :rtype: None
-        """
-        if tooldia is not None:
-            self.tooldia = tooldia
-            
-        self.input_geometry_bounds = geometry.bounds()
-        
-        if not append:
-            self.gcode = ""
-
-        # Initial G-Code
-        self.gcode = self.unitcode[self.units.upper()] + "\n"
-        self.gcode += self.absolutecode + "\n"
-        self.gcode += self.feedminutecode + "\n"
-        self.gcode += "F%.2f\n" % self.feedrate
-        self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
-        self.gcode += "M03\n"  # Spindle start
-        self.gcode += self.pausecode + "\n"
-
-        # Iterate over geometry and run individual methods
-        # depending on type
-        for geo in geometry.solid_geometry:
-            
-            if type(geo) == Polygon:
-                self.gcode += self.polygon2gcode(geo, tolerance=tolerance)
-                continue
-            
-            if type(geo) == LineString or type(geo) == LinearRing:
-                self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-                continue
-            
-            if type(geo) == Point:
-                self.gcode += self.point2gcode(geo)
-                continue
-
-            if type(geo) == MultiPolygon:
-                for poly in geo:
-                    self.gcode += self.polygon2gcode(poly, tolerance=tolerance)
-                continue
-
-            log.warning("G-code generation not implemented for %s" % (str(type(geo))))
-
-        # Finish
-        self.gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        self.gcode += "G00 X0Y0\n"
-        self.gcode += "M05\n"  # Spindle stop
-
-    def generate_from_geometry_2(self, geometry, append=True, tooldia=None, tolerance=0):
+    def generate_from_geometry_2(self,
+                                 geometry,
+                                 append=True,
+                                 tooldia=None,
+                                 tolerance=0,
+                                 multidepth=False,
+                                 depthpercut=None):
         """
         Second algorithm to generate from Geometry.
 
@@ -2327,21 +2796,32 @@ class CNCjob(Geometry):
         :param append:
         :param tooldia:
         :param tolerance:
+        :param multidepth: If True, use multiple passes to reach
+           the desired depth.
+        :param depthpercut: Maximum depth in each pass.
         :return: None
         """
-        assert isinstance(geometry, Geometry)
+        assert isinstance(geometry, Geometry), \
+            "Expected a Geometry, got %s" % type(geometry)
+
+        log.debug("generate_from_geometry_2()")
 
         ## Flatten the geometry
+        # Only linear elements (no polygons) remain.
         flat_geometry = geometry.flatten(pathonly=True)
         log.debug("%d paths" % len(flat_geometry))
 
         ## Index first and last points in paths
+        # What points to index.
         def get_pts(o):
             return [o.coords[0], o.coords[-1]]
 
+        # Create the indexed storage.
         storage = FlatCAMRTreeStorage()
         storage.get_points = get_pts
 
+        # Store the geometry
+        log.debug("Indexing geometry before generating G-Code...")
         for shape in flat_geometry:
             if shape is not None:  # TODO: This shouldn't have happened.
                 storage.insert(shape)
@@ -2349,7 +2829,7 @@ class CNCjob(Geometry):
         if tooldia is not None:
             self.tooldia = tooldia
 
-        self.input_geometry_bounds = geometry.bounds()
+        # self.input_geometry_bounds = geometry.bounds()
 
         if not append:
             self.gcode = ""
@@ -2360,10 +2840,14 @@ class CNCjob(Geometry):
         self.gcode += self.feedminutecode + "\n"
         self.gcode += "F%.2f\n" % self.feedrate
         self.gcode += "G00 Z%.4f\n" % self.z_move  # Move (up) to travel height
-        self.gcode += "M03\n"  # Spindle start
+        if self.spindlespeed is not None:
+            self.gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+        else:
+            self.gcode += "M03\n"  # Spindle start
         self.gcode += self.pausecode + "\n"
 
         ## Iterate over geometry paths getting the nearest each time.
+        log.debug("Starting G-Code...")
         path_count = 0
         current_pt = (0, 0)
         pt, geo = storage.nearest(current_pt)
@@ -2376,18 +2860,79 @@ class CNCjob(Geometry):
                 # deletion will fail.
                 storage.remove(geo)
 
-                if list(pt) == list(geo.coords[-1]):
-                    #print "Reversing"
+                # If last point in geometry is the nearest
+                # but prefer the first one if last point == first point
+                # then reverse coordinates.
+                if pt != geo.coords[0] and pt == geo.coords[-1]:
                     geo.coords = list(geo.coords)[::-1]
 
-                # G-code
-                if type(geo) == LineString or type(geo) == LinearRing:
-                    self.gcode += self.linear2gcode(geo, tolerance=tolerance)
-                elif type(geo) == Point:
-                    self.gcode += self.point2gcode(geo)
-                else:
-                    log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+                #---------- Single depth/pass --------
+                if not multidepth:
+                    # G-code
+                    # Note: self.linear2gcode() and self.point2gcode() will
+                    # lower and raise the tool every time.
+                    if type(geo) == LineString or type(geo) == LinearRing:
+                        self.gcode += self.linear2gcode(geo, tolerance=tolerance)
+                    elif type(geo) == Point:
+                        self.gcode += self.point2gcode(geo)
+                    else:
+                        log.warning("G-code generation not implemented for %s" % (str(type(geo))))
 
+                #--------- Multi-pass ---------
+                else:
+                    if isinstance(self.z_cut, Decimal):
+                        z_cut = self.z_cut
+                    else:
+                        z_cut = Decimal(self.z_cut).quantize(Decimal('0.000000001'))
+
+                    if depthpercut is None:
+                        depthpercut = z_cut
+                    elif not isinstance(depthpercut, Decimal):
+                        depthpercut = Decimal(depthpercut).quantize(Decimal('0.000000001'))
+
+                    depth = 0
+                    reverse = False
+                    while depth > z_cut:
+
+                        # Increase depth. Limit to z_cut.
+                        depth -= depthpercut
+                        if depth < z_cut:
+                            depth = z_cut
+
+                        # Cut at specific depth and do not lift the tool.
+                        # Note: linear2gcode() will use G00 to move to the
+                        # first point in the path, but it should be already
+                        # at the first point if the tool is down (in the material).
+                        # So, an extra G00 should show up but is inconsequential.
+                        if type(geo) == LineString or type(geo) == LinearRing:
+                            self.gcode += self.linear2gcode(geo, tolerance=tolerance,
+                                                            zcut=depth,
+                                                            up=False)
+
+                        # Ignore multi-pass for points.
+                        elif type(geo) == Point:
+                            self.gcode += self.point2gcode(geo)
+                            break  # Ignoring ...
+
+                        else:
+                            log.warning("G-code generation not implemented for %s" % (str(type(geo))))
+
+                        # Reverse coordinates if not a loop so we can continue
+                        # cutting without returning to the beginhing.
+                        if type(geo) == LineString:
+                            geo.coords = list(geo.coords)[::-1]
+                            reverse = True
+
+                    # If geometry is reversed, revert.
+                    if reverse:
+                        if type(geo) == LineString:
+                            geo.coords = list(geo.coords)[::-1]
+
+                    # Lift the tool
+                    self.gcode += "G00 Z%.4f\n" % self.z_move
+                    # self.gcode += "( End of path. )\n"
+
+                # Did deletion at the beginning.
                 # Delete from index, update current location and continue.
                 #rti.delete(hits[0], geo.coords[0])
                 #rti.delete(hits[0], geo.coords[-1])
@@ -2443,7 +2988,7 @@ class CNCjob(Geometry):
             # 0   4       12
             # G01 X-0.007 Y-0.057
             # --> codes_idx = [0, 4, 12]
-            codes = "NMGXYZIJFP"
+            codes = "NMGXYZIJFPST"
             codes_idx = []
             i = 0
             for ch in line:
@@ -2456,7 +3001,7 @@ class CNCjob(Geometry):
 
             # Separate codes in line
             parts = []
-            for p in range(n_codes-1):
+            for p in range(n_codes - 1):
                 parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
             parts.append(line[codes_idx[-1]:].strip())
 
@@ -2552,7 +3097,7 @@ class CNCjob(Geometry):
 
         self.gcode_parsed = geometry
         return geometry
-        
+
     # def plot(self, tooldia=None, dpi=75, margin=0.1,
     #          color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
     #          alpha={"T": 0.3, "C": 1.0}):
@@ -2589,8 +3134,8 @@ class CNCjob(Geometry):
     #     return fig
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
-             color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-             alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005):
+              color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
+              alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005):
         """
         Plots the G-code job onto the given axes.
 
@@ -2632,57 +3177,9 @@ class CNCjob(Geometry):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-    def polygon2gcode(self, polygon, tolerance=0):
-        """
-        Creates G-Code for the exterior and all interior paths
-        of a polygon.
-
-        :param polygon: A Shapely.Polygon
-        :type polygon: Shapely.Polygon
-        :param tolerance: All points in the simplified object will be within the
-            tolerance distance of the original geometry.
-        :type tolerance: float
-        :return: G-code to cut along polygon.
-        :rtype: str
-        """
-
-        if tolerance > 0:
-            target_polygon = polygon.simplify(tolerance)
-        else:
-            target_polygon = polygon
-
-        gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
-        path = list(target_polygon.exterior.coords)             # Polygon exterior
-        gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-
-        if self.zdownrate is not None:
-            gcode += "F%.2f\n" % self.zdownrate
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-            gcode += "F%.2f\n" % self.feedrate
-        else:
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-
-        for pt in path[1:]:
-            gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-        gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        for ints in target_polygon.interiors:               # Polygon interiors
-            path = list(ints.coords)
-            gcode += t % (0, path[0][0], path[0][1])  # Move to first point
-
-            if self.zdownrate is not None:
-                gcode += "F%.2f\n" % self.zdownrate
-                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-                gcode += "F%.2f\n" % self.feedrate
-            else:
-                gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-
-            for pt in path[1:]:
-                gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-            gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
-        return gcode
-
-    def linear2gcode(self, linear, tolerance=0):
+    def linear2gcode(self, linear, tolerance=0, down=True, up=True,
+                     zcut=None, ztravel=None, downrate=None,
+                     feedrate=None, cont=False):
         """
         Generates G-code to cut along the linear feature.
 
@@ -2691,35 +3188,62 @@ class CNCjob(Geometry):
         :param tolerance: All points in the simplified object will be within the
             tolerance distance of the original geometry.
         :type tolerance: float
-        :return: G-code to cut alon the linear feature.
+        :return: G-code to cut along the linear feature.
         :rtype: str
         """
 
+        if zcut is None:
+            zcut = self.z_cut
+
+        if ztravel is None:
+            ztravel = self.z_move
+
+        if downrate is None:
+            downrate = self.zdownrate
+
+        if feedrate is None:
+            feedrate = self.feedrate
+
+        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
+
+        # Simplify paths?
         if tolerance > 0:
             target_linear = linear.simplify(tolerance)
         else:
             target_linear = linear
 
         gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
+
         path = list(target_linear.coords)
-        gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
-        if self.zdownrate is not None:
-            gcode += "F%.2f\n" % self.zdownrate
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
-            gcode += "F%.2f\n" % self.feedrate
-        else:
-            gcode += "G01 Z%.4f\n" % self.z_cut       # Start cutting
+        # Move fast to 1st point
+        if not cont:
+            gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
+        # Move down to cutting depth
+        if down:
+            # Different feedrate for vertical cut?
+            if self.zdownrate is not None:
+                gcode += "F%.2f\n" % downrate
+                gcode += "G01 Z%.4f\n" % zcut       # Start cutting
+                gcode += "F%.2f\n" % feedrate       # Restore feedrate
+            else:
+                gcode += "G01 Z%.4f\n" % zcut       # Start cutting
+
+        # Cutting...
         for pt in path[1:]:
             gcode += t % (1, pt[0], pt[1])    # Linear motion to point
-        gcode += "G00 Z%.4f\n" % self.z_move  # Stop cutting
+
+        # Up to travelling height.
+        if up:
+            gcode += "G00 Z%.4f\n" % ztravel  # Stop cutting
+
         return gcode
 
     def point2gcode(self, point):
         gcode = ""
-        t = "G0%d X%.4fY%.4f\n"
+        #t = "G0%d X%.4fY%.4f\n"
+        t = "G0%d " + CNCjob.defaults["coordinate_format"] + "\n"
         path = list(point.coords)
         gcode += t % (0, path[0][0], path[0][1])  # Move to first point
 
@@ -2826,7 +3350,7 @@ def arc(center, radius, start, stop, direction, steps_per_circ):
     :return: The desired arc, as list of tuples
     :rtype: list
     """
-    # TODO: Resolution should be established by fraction of total length, not angle.
+    # TODO: Resolution should be established by maximum error from the exact arc.
 
     da_sign = {"cw": -1.0, "ccw": 1.0}
     points = []
@@ -2863,42 +3387,32 @@ def arc_angle(start, stop, direction):
     return angle
 
 
-# def clear_poly(poly, tooldia, overlap=0.1):
+# def find_polygon(poly, point):
 #     """
-#     Creates a list of Shapely geometry objects covering the inside
-#     of a Shapely.Polygon. Use for removing all the copper in a region
-#     or bed flattening.
+#     Find an object that object.contains(Point(point)) in
+#     poly, which can can be iterable, contain iterable of, or
+#     be itself an implementer of .contains().
 #
-#     :param poly: Target polygon
-#     :type poly: Shapely.Polygon
-#     :param tooldia: Diameter of the tool
-#     :type tooldia: float
-#     :param overlap: Fraction of the tool diameter to overlap
-#         in each pass.
-#     :type overlap: float
-#     :return: list of Shapely.Polygon
-#     :rtype: list
+#     :param poly: See description
+#     :return: Polygon containing point or None.
 #     """
-#     poly_cuts = [poly.buffer(-tooldia/2.0)]
-#     while True:
-#         poly = poly_cuts[-1].buffer(-tooldia*(1-overlap))
-#         if poly.area > 0:
-#             poly_cuts.append(poly)
-#         else:
-#             break
-#     return poly_cuts
-
-
-def find_polygon(poly_set, point):
-    """
-    Return the first polygon in the list of polygons poly_set
-    that contains the given point.
-    """
-    p = Point(point)
-    for poly in poly_set:
-        if poly.contains(p):
-            return poly
-    return None
+#
+#     if poly is None:
+#         return None
+#
+#     try:
+#         for sub_poly in poly:
+#             p = find_polygon(sub_poly, point)
+#             if p is not None:
+#                 return p
+#     except TypeError:
+#         try:
+#             if poly.contains(Point(point)):
+#                 return poly
+#         except AttributeError:
+#             return None
+#
+#     return None
 
 
 def to_dict(obj):
@@ -2946,7 +3460,7 @@ def dict2obj(d):
         return d
 
 
-def plotg(geo, solid_poly=False):
+def plotg(geo, solid_poly=False, color="black"):
     try:
         _ = iter(geo)
     except:
@@ -2964,15 +3478,15 @@ def plotg(geo, solid_poly=False):
                 ax.add_patch(patch)
             else:
                 x, y = g.exterior.coords.xy
-                plot(x, y)
+                plot(x, y, color=color)
                 for ints in g.interiors:
                     x, y = ints.coords.xy
-                    plot(x, y)
+                    plot(x, y, color=color)
                 continue
 
         if type(g) == LineString or type(g) == LinearRing:
             x, y = g.coords.xy
-            plot(x, y)
+            plot(x, y, color=color)
             continue
 
         if type(g) == Point:
@@ -2982,7 +3496,7 @@ def plotg(geo, solid_poly=False):
 
         try:
             _ = iter(g)
-            plotg(g)
+            plotg(g, color=color)
         except:
             log.error("Cannot plot: " + str(type(g)))
             continue
@@ -3001,209 +3515,209 @@ def parse_gerber_number(strnumber, frac_digits):
     :return: The number in floating point.
     :rtype: float
     """
-    return int(strnumber)*(10**(-frac_digits))
+    return int(strnumber) * (10 ** (-frac_digits))
 
 
-def voronoi(P):
-    """
-    Returns a list of all edges of the voronoi diagram for the given input points.
-    """
-    delauny = Delaunay(P)
-    triangles = delauny.points[delauny.vertices]
-
-    circum_centers = np.array([triangle_csc(tri) for tri in triangles])
-    long_lines_endpoints = []
-
-    lineIndices = []
-    for i, triangle in enumerate(triangles):
-        circum_center = circum_centers[i]
-        for j, neighbor in enumerate(delauny.neighbors[i]):
-            if neighbor != -1:
-                lineIndices.append((i, neighbor))
-            else:
-                ps = triangle[(j+1)%3] - triangle[(j-1)%3]
-                ps = np.array((ps[1], -ps[0]))
-
-                middle = (triangle[(j+1)%3] + triangle[(j-1)%3]) * 0.5
-                di = middle - triangle[j]
-
-                ps /= np.linalg.norm(ps)
-                di /= np.linalg.norm(di)
-
-                if np.dot(di, ps) < 0.0:
-                    ps *= -1000.0
-                else:
-                    ps *= 1000.0
-
-                long_lines_endpoints.append(circum_center + ps)
-                lineIndices.append((i, len(circum_centers) + len(long_lines_endpoints)-1))
-
-    vertices = np.vstack((circum_centers, long_lines_endpoints))
-
-    # filter out any duplicate lines
-    lineIndicesSorted = np.sort(lineIndices) # make (1,2) and (2,1) both (1,2)
-    lineIndicesTupled = [tuple(row) for row in lineIndicesSorted]
-    lineIndicesUnique = np.unique(lineIndicesTupled)
-
-    return vertices, lineIndicesUnique
-
-
-def triangle_csc(pts):
-    rows, cols = pts.shape
-
-    A = np.bmat([[2 * np.dot(pts, pts.T), np.ones((rows, 1))],
-                 [np.ones((1, rows)), np.zeros((1, 1))]])
-
-    b = np.hstack((np.sum(pts * pts, axis=1), np.ones((1))))
-    x = np.linalg.solve(A,b)
-    bary_coords = x[:-1]
-    return np.sum(pts * np.tile(bary_coords.reshape((pts.shape[0], 1)), (1, pts.shape[1])), axis=0)
-
-
-def voronoi_cell_lines(points, vertices, lineIndices):
-    """
-    Returns a mapping from a voronoi cell to its edges.
-
-    :param points: shape (m,2)
-    :param vertices: shape (n,2)
-    :param lineIndices: shape (o,2)
-    :rtype: dict point index -> list of shape (n,2) with vertex indices
-    """
-    kd = KDTree(points)
-
-    cells = collections.defaultdict(list)
-    for i1, i2 in lineIndices:
-        v1, v2 = vertices[i1], vertices[i2]
-        mid = (v1+v2)/2
-        _, (p1Idx, p2Idx) = kd.query(mid, 2)
-        cells[p1Idx].append((i1, i2))
-        cells[p2Idx].append((i1, i2))
-
-    return cells
-
-
-def voronoi_edges2polygons(cells):
-    """
-    Transforms cell edges into polygons.
-
-    :param cells: as returned from voronoi_cell_lines
-    :rtype: dict point index -> list of vertex indices which form a polygon
-    """
-
-    # first, close the outer cells
-    for pIdx, lineIndices_ in cells.items():
-        dangling_lines = []
-        for i1, i2 in lineIndices_:
-            connections = filter(lambda (i1_, i2_): (i1, i2) != (i1_, i2_) and (i1 == i1_ or i1 == i2_ or i2 == i1_ or i2 == i2_), lineIndices_)
-            assert 1 <= len(connections) <= 2
-            if len(connections) == 1:
-                dangling_lines.append((i1, i2))
-        assert len(dangling_lines) in [0, 2]
-        if len(dangling_lines) == 2:
-            (i11, i12), (i21, i22) = dangling_lines
-
-            # determine which line ends are unconnected
-            connected = filter(lambda (i1,i2): (i1,i2) != (i11,i12) and (i1 == i11 or i2 == i11), lineIndices_)
-            i11Unconnected = len(connected) == 0
-
-            connected = filter(lambda (i1,i2): (i1,i2) != (i21,i22) and (i1 == i21 or i2 == i21), lineIndices_)
-            i21Unconnected = len(connected) == 0
-
-            startIdx = i11 if i11Unconnected else i12
-            endIdx = i21 if i21Unconnected else i22
-
-            cells[pIdx].append((startIdx, endIdx))
-
-    # then, form polygons by storing vertex indices in (counter-)clockwise order
-    polys = dict()
-    for pIdx, lineIndices_ in cells.items():
-        # get a directed graph which contains both directions and arbitrarily follow one of both
-        directedGraph = lineIndices_ + [(i2, i1) for (i1, i2) in lineIndices_]
-        directedGraphMap = collections.defaultdict(list)
-        for (i1, i2) in directedGraph:
-            directedGraphMap[i1].append(i2)
-        orderedEdges = []
-        currentEdge = directedGraph[0]
-        while len(orderedEdges) < len(lineIndices_):
-            i1 = currentEdge[1]
-            i2 = directedGraphMap[i1][0] if directedGraphMap[i1][0] != currentEdge[0] else directedGraphMap[i1][1]
-            nextEdge = (i1, i2)
-            orderedEdges.append(nextEdge)
-            currentEdge = nextEdge
-
-        polys[pIdx] = [i1 for (i1, i2) in orderedEdges]
-
-    return polys
-
-
-def voronoi_polygons(points):
-    """
-    Returns the voronoi polygon for each input point.
-
-    :param points: shape (n,2)
-    :rtype: list of n polygons where each polygon is an array of vertices
-    """
-    vertices, lineIndices = voronoi(points)
-    cells = voronoi_cell_lines(points, vertices, lineIndices)
-    polys = voronoi_edges2polygons(cells)
-    polylist = []
-    for i in xrange(len(points)):
-        poly = vertices[np.asarray(polys[i])]
-        polylist.append(poly)
-    return polylist
-
-
-class Zprofile:
-    def __init__(self):
-
-        # data contains lists of [x, y, z]
-        self.data = []
-
-        # Computed voronoi polygons (shapely)
-        self.polygons = []
-        pass
-
-    def plot_polygons(self):
-        axes = plt.subplot(1, 1, 1)
-
-        plt.axis([-0.05, 1.05, -0.05, 1.05])
-
-        for poly in self.polygons:
-            p = PolygonPatch(poly, facecolor=np.random.rand(3, 1), alpha=0.3)
-            axes.add_patch(p)
-
-    def init_from_csv(self, filename):
-        pass
-
-    def init_from_string(self, zpstring):
-        pass
-
-    def init_from_list(self, zplist):
-        self.data = zplist
-
-    def generate_polygons(self):
-        self.polygons = [Polygon(p) for p in voronoi_polygons(array([[x[0], x[1]] for x in self.data]))]
-
-    def normalize(self, origin):
-        pass
-
-    def paste(self, path):
-        """
-        Return a list of dictionaries containing the parts of the original
-        path and their z-axis offset.
-        """
-
-        # At most one region/polygon will contain the path
-        containing = [i for i in range(len(self.polygons)) if self.polygons[i].contains(path)]
-
-        if len(containing) > 0:
-            return [{"path": path, "z": self.data[containing[0]][2]}]
-
-        # All region indexes that intersect with the path
-        crossing = [i for i in range(len(self.polygons)) if self.polygons[i].intersects(path)]
-
-        return [{"path": path.intersection(self.polygons[i]),
-                 "z": self.data[i][2]} for i in crossing]
+# def voronoi(P):
+#     """
+#     Returns a list of all edges of the voronoi diagram for the given input points.
+#     """
+#     delauny = Delaunay(P)
+#     triangles = delauny.points[delauny.vertices]
+#
+#     circum_centers = np.array([triangle_csc(tri) for tri in triangles])
+#     long_lines_endpoints = []
+#
+#     lineIndices = []
+#     for i, triangle in enumerate(triangles):
+#         circum_center = circum_centers[i]
+#         for j, neighbor in enumerate(delauny.neighbors[i]):
+#             if neighbor != -1:
+#                 lineIndices.append((i, neighbor))
+#             else:
+#                 ps = triangle[(j+1)%3] - triangle[(j-1)%3]
+#                 ps = np.array((ps[1], -ps[0]))
+#
+#                 middle = (triangle[(j+1)%3] + triangle[(j-1)%3]) * 0.5
+#                 di = middle - triangle[j]
+#
+#                 ps /= np.linalg.norm(ps)
+#                 di /= np.linalg.norm(di)
+#
+#                 if np.dot(di, ps) < 0.0:
+#                     ps *= -1000.0
+#                 else:
+#                     ps *= 1000.0
+#
+#                 long_lines_endpoints.append(circum_center + ps)
+#                 lineIndices.append((i, len(circum_centers) + len(long_lines_endpoints)-1))
+#
+#     vertices = np.vstack((circum_centers, long_lines_endpoints))
+#
+#     # filter out any duplicate lines
+#     lineIndicesSorted = np.sort(lineIndices) # make (1,2) and (2,1) both (1,2)
+#     lineIndicesTupled = [tuple(row) for row in lineIndicesSorted]
+#     lineIndicesUnique = np.unique(lineIndicesTupled)
+#
+#     return vertices, lineIndicesUnique
+#
+#
+# def triangle_csc(pts):
+#     rows, cols = pts.shape
+#
+#     A = np.bmat([[2 * np.dot(pts, pts.T), np.ones((rows, 1))],
+#                  [np.ones((1, rows)), np.zeros((1, 1))]])
+#
+#     b = np.hstack((np.sum(pts * pts, axis=1), np.ones((1))))
+#     x = np.linalg.solve(A,b)
+#     bary_coords = x[:-1]
+#     return np.sum(pts * np.tile(bary_coords.reshape((pts.shape[0], 1)), (1, pts.shape[1])), axis=0)
+#
+#
+# def voronoi_cell_lines(points, vertices, lineIndices):
+#     """
+#     Returns a mapping from a voronoi cell to its edges.
+#
+#     :param points: shape (m,2)
+#     :param vertices: shape (n,2)
+#     :param lineIndices: shape (o,2)
+#     :rtype: dict point index -> list of shape (n,2) with vertex indices
+#     """
+#     kd = KDTree(points)
+#
+#     cells = collections.defaultdict(list)
+#     for i1, i2 in lineIndices:
+#         v1, v2 = vertices[i1], vertices[i2]
+#         mid = (v1+v2)/2
+#         _, (p1Idx, p2Idx) = kd.query(mid, 2)
+#         cells[p1Idx].append((i1, i2))
+#         cells[p2Idx].append((i1, i2))
+#
+#     return cells
+#
+#
+# def voronoi_edges2polygons(cells):
+#     """
+#     Transforms cell edges into polygons.
+#
+#     :param cells: as returned from voronoi_cell_lines
+#     :rtype: dict point index -> list of vertex indices which form a polygon
+#     """
+#
+#     # first, close the outer cells
+#     for pIdx, lineIndices_ in cells.items():
+#         dangling_lines = []
+#         for i1, i2 in lineIndices_:
+#             connections = filter(lambda (i1_, i2_): (i1, i2) != (i1_, i2_) and (i1 == i1_ or i1 == i2_ or i2 == i1_ or i2 == i2_), lineIndices_)
+#             assert 1 <= len(connections) <= 2
+#             if len(connections) == 1:
+#                 dangling_lines.append((i1, i2))
+#         assert len(dangling_lines) in [0, 2]
+#         if len(dangling_lines) == 2:
+#             (i11, i12), (i21, i22) = dangling_lines
+#
+#             # determine which line ends are unconnected
+#             connected = filter(lambda (i1,i2): (i1,i2) != (i11,i12) and (i1 == i11 or i2 == i11), lineIndices_)
+#             i11Unconnected = len(connected) == 0
+#
+#             connected = filter(lambda (i1,i2): (i1,i2) != (i21,i22) and (i1 == i21 or i2 == i21), lineIndices_)
+#             i21Unconnected = len(connected) == 0
+#
+#             startIdx = i11 if i11Unconnected else i12
+#             endIdx = i21 if i21Unconnected else i22
+#
+#             cells[pIdx].append((startIdx, endIdx))
+#
+#     # then, form polygons by storing vertex indices in (counter-)clockwise order
+#     polys = dict()
+#     for pIdx, lineIndices_ in cells.items():
+#         # get a directed graph which contains both directions and arbitrarily follow one of both
+#         directedGraph = lineIndices_ + [(i2, i1) for (i1, i2) in lineIndices_]
+#         directedGraphMap = collections.defaultdict(list)
+#         for (i1, i2) in directedGraph:
+#             directedGraphMap[i1].append(i2)
+#         orderedEdges = []
+#         currentEdge = directedGraph[0]
+#         while len(orderedEdges) < len(lineIndices_):
+#             i1 = currentEdge[1]
+#             i2 = directedGraphMap[i1][0] if directedGraphMap[i1][0] != currentEdge[0] else directedGraphMap[i1][1]
+#             nextEdge = (i1, i2)
+#             orderedEdges.append(nextEdge)
+#             currentEdge = nextEdge
+#
+#         polys[pIdx] = [i1 for (i1, i2) in orderedEdges]
+#
+#     return polys
+#
+#
+# def voronoi_polygons(points):
+#     """
+#     Returns the voronoi polygon for each input point.
+#
+#     :param points: shape (n,2)
+#     :rtype: list of n polygons where each polygon is an array of vertices
+#     """
+#     vertices, lineIndices = voronoi(points)
+#     cells = voronoi_cell_lines(points, vertices, lineIndices)
+#     polys = voronoi_edges2polygons(cells)
+#     polylist = []
+#     for i in xrange(len(points)):
+#         poly = vertices[np.asarray(polys[i])]
+#         polylist.append(poly)
+#     return polylist
+#
+#
+# class Zprofile:
+#     def __init__(self):
+#
+#         # data contains lists of [x, y, z]
+#         self.data = []
+#
+#         # Computed voronoi polygons (shapely)
+#         self.polygons = []
+#         pass
+#
+#     def plot_polygons(self):
+#         axes = plt.subplot(1, 1, 1)
+#
+#         plt.axis([-0.05, 1.05, -0.05, 1.05])
+#
+#         for poly in self.polygons:
+#             p = PolygonPatch(poly, facecolor=np.random.rand(3, 1), alpha=0.3)
+#             axes.add_patch(p)
+#
+#     def init_from_csv(self, filename):
+#         pass
+#
+#     def init_from_string(self, zpstring):
+#         pass
+#
+#     def init_from_list(self, zplist):
+#         self.data = zplist
+#
+#     def generate_polygons(self):
+#         self.polygons = [Polygon(p) for p in voronoi_polygons(array([[x[0], x[1]] for x in self.data]))]
+#
+#     def normalize(self, origin):
+#         pass
+#
+#     def paste(self, path):
+#         """
+#         Return a list of dictionaries containing the parts of the original
+#         path and their z-axis offset.
+#         """
+#
+#         # At most one region/polygon will contain the path
+#         containing = [i for i in range(len(self.polygons)) if self.polygons[i].contains(path)]
+#
+#         if len(containing) > 0:
+#             return [{"path": path, "z": self.data[containing[0]][2]}]
+#
+#         # All region indexes that intersect with the path
+#         crossing = [i for i in range(len(self.polygons)) if self.polygons[i].intersects(path)]
+#
+#         return [{"path": path.intersection(self.polygons[i]),
+#                  "z": self.data[i][2]} for i in crossing]
 
 
 def autolist(obj):
@@ -3234,7 +3748,6 @@ def three_point_circle(p1, p2, p3):
 
     # Params
     T = solve(transpose(array([-b1, b2])), a1 - a2)
-    print T
 
     # Center
     center = a1 + b1 * T[0]
@@ -3266,6 +3779,13 @@ class FlatCAMRTree(object):
         self.get_points = lambda go: go.coords
 
     def grow_obj2points(self, idx):
+        """
+        Increases the size of self.obj2points to fit
+        idx + 1 items.
+
+        :param idx: Index to fit into list.
+        :return: None
+        """
         if len(self.obj2points) > idx:
             # len == 2, idx == 1, ok.
             return
@@ -3290,6 +3810,12 @@ class FlatCAMRTree(object):
             self.rti.delete(self.obj2points[objid][i], (pt[0], pt[1], pt[0], pt[1]))
 
     def nearest(self, pt):
+        """
+        Will raise StopIteration if no items are found.
+
+        :param pt:
+        :return:
+        """
         return self.rti.nearest(pt, objects=True).next()
 
 
@@ -3299,13 +3825,29 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
 
         self.objects = []
 
+        # Optimization attempt!
+        self.indexes = {}
+
     def insert(self, obj):
         self.objects.append(obj)
-        super(FlatCAMRTreeStorage, self).insert(len(self.objects) - 1, obj)
+        idx = len(self.objects) - 1
 
+        # Note: Shapely objects are not hashable any more, althought
+        # there seem to be plans to re-introduce the feature in
+        # version 2.0. For now, we will index using the object's id,
+        # but it's important to remember that shapely geometry is
+        # mutable, ie. it can be modified to a totally different shape
+        # and continue to have the same id.
+        # self.indexes[obj] = idx
+        self.indexes[id(obj)] = idx
+
+        super(FlatCAMRTreeStorage, self).insert(idx, obj)
+
+    #@profile
     def remove(self, obj):
-        # Get index in list
-        objidx = self.objects.index(obj)
+        # See note about self.indexes in insert().
+        # objidx = self.indexes[obj]
+        objidx = self.indexes[id(obj)]
 
         # Remove from list
         self.objects[objidx] = None
@@ -3330,58 +3872,58 @@ class FlatCAMRTreeStorage(FlatCAMRTree):
         return (tidx.bbox[0], tidx.bbox[1]), self.objects[tidx.object]
 
 
-class myO:
-    def __init__(self, coords):
-        self.coords = coords
-
-
-def test_rti():
-
-    o1 = myO([(0, 0), (0, 1), (1, 1)])
-    o2 = myO([(2, 0), (2, 1), (2, 1)])
-    o3 = myO([(2, 0), (2, 1), (3, 1)])
-
-    os = [o1, o2]
-
-    idx = FlatCAMRTree()
-
-    for o in range(len(os)):
-        idx.insert(o, os[o])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove_obj(0, o1)
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove_obj(1, o2)
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-
-def test_rtis():
-
-    o1 = myO([(0, 0), (0, 1), (1, 1)])
-    o2 = myO([(2, 0), (2, 1), (2, 1)])
-    o3 = myO([(2, 0), (2, 1), (3, 1)])
-
-    os = [o1, o2]
-
-    idx = FlatCAMRTreeStorage()
-
-    for o in range(len(os)):
-        idx.insert(os[o])
-
-    #os = None
-    #o1 = None
-    #o2 = None
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove(idx.nearest((2,0))[1])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
-
-    idx.remove(idx.nearest((0,0))[1])
-
-    print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+# class myO:
+#     def __init__(self, coords):
+#         self.coords = coords
+#
+#
+# def test_rti():
+#
+#     o1 = myO([(0, 0), (0, 1), (1, 1)])
+#     o2 = myO([(2, 0), (2, 1), (2, 1)])
+#     o3 = myO([(2, 0), (2, 1), (3, 1)])
+#
+#     os = [o1, o2]
+#
+#     idx = FlatCAMRTree()
+#
+#     for o in range(len(os)):
+#         idx.insert(o, os[o])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove_obj(0, o1)
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove_obj(1, o2)
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#
+# def test_rtis():
+#
+#     o1 = myO([(0, 0), (0, 1), (1, 1)])
+#     o2 = myO([(2, 0), (2, 1), (2, 1)])
+#     o3 = myO([(2, 0), (2, 1), (3, 1)])
+#
+#     os = [o1, o2]
+#
+#     idx = FlatCAMRTreeStorage()
+#
+#     for o in range(len(os)):
+#         idx.insert(os[o])
+#
+#     #os = None
+#     #o1 = None
+#     #o2 = None
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove(idx.nearest((2,0))[1])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
+#
+#     idx.remove(idx.nearest((0,0))[1])
+#
+#     print [x.bbox for x in idx.rti.nearest((0, 0), num_results=20, objects=True)]
