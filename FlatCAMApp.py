@@ -2134,6 +2134,42 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+
+        def geocutout(name, *args):
+            """
+                cut gaps in current geometry
+
+            :param name:
+            :param args:
+            :return:
+            """
+            a, kwa = h(*args)
+            types = {'dia': float,
+                     'gapsize': float,
+                     'gaps': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+
+
+            xmin, ymin, xmax, ymax = obj.bounds()
+            px = 0.5 * (xmin + xmax)
+            py = 0.5 * (ymin + ymax)
+            gapsize = kwa['gapsize']+kwa['dia']/2
+            if kwa['gaps'] == '4' or kwa['gaps']=='lr':
+                del_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
+            if kwa['gaps'] == '4' or kwa['gaps']=='tb':
+                del_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
+            return 'Ok'
+
         def mirror(name, *args):
             a, kwa = h(*args)
             types = {'box': str,
@@ -2201,6 +2237,142 @@ class App(QtCore.QObject):
                     return "Operation failed: %s" % str(e)
 
             return 'Ok'
+
+        def aligndrill(name, *args):
+            a, kwa = h(*args)
+            types = {'box': str,
+                     'axis': str,
+                     'holes': str,
+                     'grid': float,
+                     'gridoffset': float,
+                     'axisoffset': float,
+                     'dia': float,
+                     'dist': float}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            # Get source object.
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
+                return "ERROR: Only Gerber and Excellon objects can be used."
+
+
+            # Axis
+            try:
+                axis = kwa['axis'].upper()
+            except KeyError:
+                return "ERROR: Specify -axis X or -axis Y"
+
+            if not ('holes' in kwa or ('grid' in kwa and 'gridoffset' in kwa)):
+                    return "ERROR: Specify -holes or -grid with -gridoffset "
+
+            if 'holes' in kwa:
+                try:
+                    holes = eval("[" + kwa['holes'] + "]")
+                except KeyError:
+                    return "ERROR: Wrong -holes format (X1,Y1),(X2,Y2)"
+
+            xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+            # Tools
+            tools = {"1": {"C": kwa['dia']}}
+
+            def alligndrill_init_me(init_obj, app_obj):
+
+                drills = []
+                if 'holes' in kwa:
+                    for hole in holes:
+                        point = Point(hole)
+                        point_mirror = affinity.scale(point, xscale, yscale, origin=(px, py))
+                        drills.append({"point": point, "tool": "1"})
+                        drills.append({"point": point_mirror, "tool": "1"})
+                else:
+                    if not 'box' in kwa:
+                        return "ERROR: -grid can be used only for -box"
+
+                    if 'axisoffset' in kwa:
+                        axisoffset=kwa['axisoffset']
+                    else:
+                        axisoffset=0
+
+
+                    if axis == "X":
+                        firstpoint=-kwa['gridoffset']+xmin
+                        #-5
+                        minlenght=(xmax-xmin+2*kwa['gridoffset'])
+                        #57+10=67
+                        gridstripped=(minlenght//kwa['grid'])*kwa['grid']
+                        #67//10=60
+                        if (minlenght-gridstripped) >kwa['gridoffset']:
+                            gridstripped=gridstripped+kwa['grid']
+                        lastpoint=(firstpoint+gridstripped)
+                        localHoles=(firstpoint,axisoffset),(lastpoint,axisoffset)
+                    else:
+                        firstpoint=-kwa['gridoffset']+ymin
+                        minlenght=(ymax-ymin+2*kwa['gridoffset'])
+                        gridstripped=minlenght//kwa['grid']*kwa['grid']
+                        if (minlenght-gridstripped) >kwa['gridoffset']:
+                            gridstripped=gridstripped+kwa['grid']
+                        lastpoint=(firstpoint+gridstripped)
+                        localHoles=(axisoffset,firstpoint),(axisoffset,lastpoint)
+
+                    for hole in localHoles:
+                        point = Point(hole)
+                        point_mirror = affinity.scale(point, xscale, yscale, origin=(px, py))
+                        drills.append({"point": point, "tool": "1"})
+                        drills.append({"point": point_mirror, "tool": "1"})
+
+                init_obj.tools = tools
+                init_obj.drills = drills
+                init_obj.create_geometry()
+
+            # Box
+            if 'box' in kwa:
+                try:
+                    box = self.collection.get_by_name(kwa['box'])
+                except:
+                    return "Could not retrieve object box: %s" % kwa['box']
+
+                if box is None:
+                    return "Object box not found: %s" % kwa['box']
+
+                try:
+                    xmin, ymin, xmax, ymax = box.bounds()
+                    px = 0.5 * (xmin + xmax)
+                    py = 0.5 * (ymin + ymax)
+
+                    obj.app.new_object("excellon", name + "_aligndrill", alligndrill_init_me)
+
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
+
+            else:
+                try:
+                    dist = float(kwa['dist'])
+                except KeyError:
+                    dist = 0.0
+                except ValueError:
+                    return "Invalid distance: %s" % kwa['dist']
+
+                try:
+                    px=dist
+                    py=dist
+                    obj.app.new_object("excellon", name + "_alligndrill", alligndrill_init_me)
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
 
         def drillcncjob(name, *args):
             a, kwa = h(*args)
@@ -2492,6 +2664,34 @@ class App(QtCore.QObject):
             return add_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
+        def del_poly(obj_name, *args):
+            if len(args) % 2 != 0:
+                return "Incomplete coordinate."
+
+            points = [[float(args[2*i]), float(args[2*i+1])] for i in range(len(args)/2)]
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            def init_obj_me(init_obj, app):
+                assert isinstance(init_obj, FlatCAMGeometry)
+                init_obj.solid_geometry=cascaded_union(diff)
+
+            diff= obj.del_polygon(points)
+            try:
+                delete(obj_name)
+                obj.app.new_object("geometry", obj_name, init_obj_me)
+            except Exception as e:
+                return "Failed: %s" % str(e)
+
+        def del_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
+            return del_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
+                            topright_x, topright_y, topright_x, botleft_y)
+
         def add_circle(obj_name, center_x, center_y, radius):
             try:
                 obj = self.collection.get_by_name(str(obj_name))
@@ -2721,12 +2921,49 @@ class App(QtCore.QObject):
                         "   gapsize: size of gap\n" +
                         "   gaps: type of gaps"
             },
+            'geocutout': {
+                'fcn': geocutout,
+                'help': "Cut holding gaps closed geometry.\n" +
+                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
+                        "   name: Name of the geometry object\n" +
+                        "   dia: Tool diameter\n" +
+                        "   margin: Margin over bounds\n" +
+                        "   gapsize: size of gap\n" +
+                        "   gaps: type of gaps\n" +
+                        "\n" +
+                        "   example:\n" +
+                        "\n" +
+                        "      #isolate margin for example from fritzing arduino shield or any svg etc\n" +
+                        "      isolate BCu_margin -dia 3 -overlap 1\n" +
+                        "\n" +
+                        "      #create exteriors from isolated object\n" +
+                        "      exteriors BCu_margin_iso -outname BCu_margin_iso_exterior\n" +
+                        "\n" +
+                        "      #delete isolated object if you dond need id anymore\n" +
+                        "      delete BCu_margin_iso\n" +
+                        "\n" +
+                        "      #finally cut holding gaps\n" +
+                        "      geocutout BCu_margin_iso_exterior -dia 3 -gapsize 0.6 -gaps 4\n"
+            },
             'mirror': {
                 'fcn': mirror,
                 'help': "Mirror a layer.\n" +
                         "> mirror <name> -axis <X|Y> [-box <nameOfBox> | -dist <number>]\n" +
                         "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
                         "   box: Name of object which act as box (cutout for example.)\n" +
+                        "   axis: Mirror axis parallel to the X or Y axis.\n" +
+                        "   dist: Distance of the mirror axis to the X or Y axis."
+            },
+            'aligndrill': {
+                'fcn': aligndrill,
+                'help': "Create excellon with drills for aligment.\n" +
+                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
+                        "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
+                        "   dia: Tool diameter\n" +
+                        "   box: Name of object which act as box (cutout for example.)\n" +
+                        "   grid: aligning  to grid, for thouse, who have aligning pins inside table in grid (-5,0),(5,0),(15,0)..." +
+                        "   gridoffset: offset from pcb from 0 position and   minimal offset to grid on max" +
+                        "   axisoffset: offset on second axis before aligment holes" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
             },
@@ -2827,6 +3064,13 @@ class App(QtCore.QObject):
                         '   name: Name of the geometry object to which to append the polygon.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
+            'del_poly': {
+                'fcn': del_poly,
+                'help': ' - Remove a polygon from the given Geometry object.\n' +
+                        '> del_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
+                        '   name: Name of the geometry object to which to remove the polygon.\n' +
+                        '   xi, yi: Coordinates of points in the polygon.'
+            },
             'delete': {
                 'fcn': delete,
                 'help': 'Deletes the give object.\n' +
@@ -2849,6 +3093,14 @@ class App(QtCore.QObject):
                         '> join_geometries <out_name> <obj_name_0>....\n' +
                         '   out_name: Name of the new geometry object.' +
                         '   obj_name_0... names of the objects to join'
+            },
+            'del_rect': {
+                'fcn': del_rectangle,
+                'help': 'Delete a rectange from the given Geometry object.\n' +
+                        '> del_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
+                        '   name: Name of the geometry object to which to remove the rectangle.\n' +
+                        '   botleft_x, botleft_y: Coordinates of the bottom left corner.\n' +
+                        '   topright_x, topright_y Coordinates of the top right corner.'
             },
             'add_rect': {
                 'fcn': add_rectangle,
