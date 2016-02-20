@@ -136,6 +136,29 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
+    def del_polygon(self, points):
+        """
+        Delete a polygon from the object
+
+        :param points: The vertices of the polygon.
+        :return: None
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+
+        flat_geometry = self.flatten(pathonly=True)
+        log.debug("%d paths" % len(flat_geometry))
+        polygon=Polygon(points)
+        toolgeo=cascaded_union(polygon)
+        diffs=[]
+        for target in flat_geometry:
+            if type(target) == LineString or type(target) == LinearRing:
+                diffs.append(target.difference(toolgeo))
+            else:
+                log.warning("Not implemented.")
+        return cascaded_union(diffs)
+
     def bounds(self):
         """
         Returns coordinates of rectangular bounds
