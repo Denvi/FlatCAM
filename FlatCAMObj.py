@@ -631,10 +631,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         self.ser_attrs += ['options', 'kind']
 
     @staticmethod
-    def merge(exc_list, exc_final):
-        FlatCAMExcellon.merge(exc_list,exc_final,False)
-
-    @staticmethod
     def merge(exc_list, exc_final, copy_options):
         """
         Merges(copy if used on one) the excellon of objects in exc_list into
