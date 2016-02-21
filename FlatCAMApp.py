@@ -2741,6 +2741,120 @@ class App(QtCore.QObject):
             if objs is not None:
                 self.new_object("geometry", obj_name, initialize)
 
+        def join_excellons(obj_name, *obj_names):
+            objs = []
+            for obj_n in obj_names:
+                obj = self.collection.get_by_name(str(obj_n))
+                if obj is None:
+                    return "Object not found: %s" % obj_n
+                else:
+                    objs.append(obj)
+
+            def initialize(obj, app):
+                FlatCAMExcellon.merge(objs, obj,True)
+
+            if objs is not None:
+                self.new_object("excellon", obj_name, initialize)
+
+        def panelize(name, *args):
+            a, kwa = h(*args)
+            types = {'box': str,
+                     'spacing_columns': float,
+                     'spacing_rows': float,
+                     'columns': int,
+                     'rows': int,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            # Get source object.
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if 'box' in kwa:
+                boxname=kwa['box']
+                try:
+                    box = self.collection.get_by_name(boxname)
+                except:
+                    return "Could not retrieve object: %s" % name
+            else:
+                box=obj
+
+            if 'columns' not in kwa or 'rows' not in kwa:
+                return "ERROR: Specify -columns and -rows"
+
+            if 'outname' in kwa:
+                outname=kwa['outname']
+            else:
+                outname=name+'_panelized'
+
+            if 'spacing_columns' in kwa:
+                spacing_columns=kwa['spacing_columns']
+            else:
+                spacing_columns=5
+
+            if 'spacing_rows' in kwa:
+                spacing_rows=kwa['spacing_rows']
+            else:
+                spacing_rows=5
+
+            xmin, ymin, xmax, ymax = box.bounds()
+            lenghtx = xmax-xmin+spacing_columns
+            lenghty = ymax-ymin+spacing_rows
+
+            currenty=0
+            def initialize_local(obj_init, app):
+                obj_init.solid_geometry = obj.solid_geometry
+                obj_init.offset([float(currentx), float(currenty)]),
+
+            def initialize_local_excellon(obj_init, app):
+                FlatCAMExcellon.merge(obj, obj_init,True)
+                obj_init.offset([float(currentx), float(currenty)]),
+
+            def initialize_geometry(obj_init, app):
+                FlatCAMGeometry.merge(objs, obj_init)
+
+            def initialize_excellon(obj_init, app):
+                FlatCAMExcellon.merge(objs, obj_init,True)
+
+            objs=[]
+            if obj is not None:
+
+                for row in range(kwa['rows']):
+                    currentx=0
+                    for col in range(kwa['columns']):
+                        local_outname=outname+".tmp."+str(col)+"."+str(row)
+                        if isinstance(obj, FlatCAMExcellon):
+                            new_obj=self.new_object("excellon", local_outname, initialize_local_excellon)
+                        else:
+                            new_obj=self.new_object("geometry", local_outname, initialize_local)
+                        objs.append(new_obj)
+                        currentx=currentx+lenghtx
+                    currenty=currenty+lenghty
+
+                if isinstance(obj, FlatCAMExcellon):
+                    self.new_object("excellon", outname, initialize_excellon)
+                else:
+                    self.new_object("geometry", outname, initialize_geometry)
+
+
+                for delobj in objs:
+                    self.collection.set_active(delobj.options['name'])
+                    self.on_delete()
+
+            else:
+                return "ERROR: obj is None"
+
+            return "Ok"
+
         def make_docs():
             output = ''
             import collections
@@ -3093,6 +3207,26 @@ class App(QtCore.QObject):
                         '> join_geometries <out_name> <obj_name_0>....\n' +
                         '   out_name: Name of the new geometry object.' +
                         '   obj_name_0... names of the objects to join'
+            },
+            'join_excellons': {
+                'fcn': join_excellons,
+                'help': 'Runs a merge operation (join) on the excellon ' +
+                        'objects.' +
+                        '> join_excellons <out_name> <obj_name_0>....\n' +
+                        '   out_name: Name of the new excellon object.' +
+                        '   obj_name_0... names of the objects to join'
+            },
+            'panelize': {
+                'fcn': panelize,
+                'help': "Simple panelize geometries.\n" +
+                        "> panelize <name> [-box <nameOfBox>]  [-spacing_columns <5 (float)>] [-spacing_rows <5 (float)>] -columns <int> -rows <int>  [-outname <n>]\n" +
+                        "   name: Name of the object to panelize.\n" +
+                        "   box: Name of object which act as box (cutout for example.) for cutout boundary. Object from name is used if not specified.\n" +
+                        "   spacing_columns: spacing between columns\n"+
+                        "   spacing_rows: spacing between rows\n"+
+                        "   columns: number of columns\n"+
+                        "   rows: number of rows\n"+
+                        "   outname: Name of the new geometry object."
             },
             'del_rect': {
                 'fcn': del_rectangle,
