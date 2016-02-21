@@ -2263,9 +2263,8 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % name
 
-            if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
-                return "ERROR: Only Gerber and Excellon objects can be used."
-
+            if not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
+                return "ERROR: Only Gerber, Geometry and Excellon objects can be used."
 
             # Axis
             try:
