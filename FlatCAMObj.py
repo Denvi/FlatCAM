@@ -630,6 +630,75 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
+    @staticmethod
+    def merge(exc_list, exc_final):
+        FlatCAMExcellon.merge(exc_list,exc_final,False)
+
+    @staticmethod
+    def merge(exc_list, exc_final, copy_options):
+        """
+        Merges(copy if used on one) the excellon of objects in exc_list into
+        options  have same like exc_final
+        the geometry of geo_final.
+
+        :param exc_list: List of FlatCAMExcellon Objects to join.
+        :param exc_final: Destination FlatCAMExcellon object.
+        :return: None
+        """
+
+        if type(exc_list) is not list:
+            exc_list_real= list()
+            exc_list_real.append(exc_list)
+        else:
+            exc_list_real=exc_list
+
+
+        for exc in exc_list_real:
+            # Expand lists
+            if type(exc) is list:
+                FlatCAMExcellon.merge(exc, exc_final, copy_options)
+
+            # If not list, just append
+            else:
+                if copy_options is True:
+                    exc_final.options["plot"]=exc.options["plot"]
+                    exc_final.options["solid"]=exc.options["solid"]
+                    exc_final.options["drillz"]=exc.options["drillz"]
+                    exc_final.options["travelz"]=exc.options["travelz"]
+                    exc_final.options["feedrate"]=exc.options["feedrate"]
+                    exc_final.options["tooldia"]=exc.options["tooldia"]
+                    exc_final.options["toolchange"]=exc.options["toolchange"]
+                    exc_final.options["toolchangez"]=exc.options["toolchangez"]
+                    exc_final.options["spindlespeed"]=exc.options["spindlespeed"]
+
+
+                for drill in exc.drills:
+                    point = Point(drill['point'].x,drill['point'].y)
+                    exc_final.drills.append({"point": point, "tool": drill['tool']})
+                toolsrework=dict()
+                max_numeric_tool=0
+                for toolname in exc.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc.tools[toolname]['C']]=toolname
+
+                #final as last  becouse  names from final tools  will be used
+                for toolname in exc_final.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc_final.tools[toolname]['C']]=toolname
+
+                for toolvalues in toolsrework.iterkeys():
+                    if toolsrework[toolvalues] in exc_final.tools:
+                        if exc_final.tools[toolsrework[toolvalues]]!={"C": toolvalues}:
+                            exc_final.tools[str(max_numeric_tool+1)]={"C": toolvalues}
+                    else:
+                        exc_final.tools[toolsrework[toolvalues]]={"C": toolvalues}
+                exc_final.create_geometry()
+
+
     def build_ui(self):
         FlatCAMObj.build_ui(self)
 
@@ -1264,11 +1333,16 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         dx, dy = vect
 
-        if type(self.solid_geometry) == list:
-            self.solid_geometry = [affinity.translate(g, xoff=dx, yoff=dy)
-                                   for g in self.solid_geometry]
-        else:
-            self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
+        def translate_recursion(geom):
+            if type(geom) == list:
+                geoms=list()
+                for local_geom in geom:
+                    geoms.append(translate_recursion(local_geom))
+                return geoms
+            else:
+                return  affinity.translate(geom, xoff=dx, yoff=dy)
+
+        self.solid_geometry=translate_recursion(self.solid_geometry)
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
