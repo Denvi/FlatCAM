@@ -2137,7 +2137,7 @@ class App(QtCore.QObject):
 
         def geocutout(name, *args):
             """
-                cut gaps in current geometry
+                subtract gaps from geometry, this will not create new object
 
             :param name:
             :param args:
@@ -2147,6 +2147,14 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'gapsize': float,
                      'gaps': str}
+
+            #way gaps wil be rendered:
+            # lr    - left + right
+            # tb    - top + bottom
+            # 4     - left + right +top + bottom
+            # 2lr   - 2*left + 2*right
+            # 2tb   - 2*top + 2*bottom
+            # 8     - 2*left + 2*right +2*top + 2*bottom
 
             for key in kwa:
                 if key not in types:
@@ -2159,15 +2167,23 @@ class App(QtCore.QObject):
                 return "Could not retrieve object: %s" % name
 
 
-
+            #get min and max data for each object as we just cut rectangles across X or Y
             xmin, ymin, xmax, ymax = obj.bounds()
             px = 0.5 * (xmin + xmax)
             py = 0.5 * (ymin + ymax)
+            lenghtx = (xmax - xmin)
+            lenghty = (ymax - ymin)
             gapsize = kwa['gapsize']+kwa['dia']/2
+            if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
+                subtract_rectangle(name,xmin-gapsize,py-gapsize+lenghty/4,xmax+gapsize,py+gapsize+lenghty/4)
+                subtract_rectangle(name,xmin-gapsize,py-gapsize-lenghty/4,xmax+gapsize,py+gapsize-lenghty/4)
+            if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
+                subtract_rectangle(name,px-gapsize+lenghtx/4,ymin-gapsize,px+gapsize+lenghtx/4,ymax+gapsize)
+                subtract_rectangle(name,px-gapsize-lenghtx/4,ymin-gapsize,px+gapsize-lenghtx/4,ymax+gapsize)
             if kwa['gaps'] == '4' or kwa['gaps']=='lr':
-                del_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
+                subtract_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
             if kwa['gaps'] == '4' or kwa['gaps']=='tb':
-                del_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
+                subtract_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
             return 'Ok'
 
         def mirror(name, *args):
@@ -2456,26 +2472,26 @@ class App(QtCore.QObject):
                 return "ERROR: Only Excellon objects can be drilled."
 
             try:
-              
+
                 # Get the tools from the list
                 job_name = kwa["outname"]
-        
+
                 # Object initialization function for app.new_object()
                 def job_init(job_obj, app_obj):
                     assert isinstance(job_obj, FlatCAMCNCjob), \
                         "Initializer expected FlatCAMCNCjob, got %s" % type(job_obj)
-                    
+
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
                     job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
                     toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
                     job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
-                    
+
                     job_obj.gcode_parse()
-                    
+
                     job_obj.create_geometry()
-        
+
                 obj.app.new_object("cncjob", job_name, job_init)
 
             except Exception, e:
@@ -2600,7 +2616,7 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'passes': int,
                      'overlap': float,
-                     'outname': str, 
+                     'outname': str,
                      'combine': int}
 
             for key in kwa:
@@ -2718,7 +2734,7 @@ class App(QtCore.QObject):
             return add_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
-        def del_poly(obj_name, *args):
+        def subtract_poly(obj_name, *args):
             if len(args) % 2 != 0:
                 return "Incomplete coordinate."
 
@@ -2731,19 +2747,13 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % obj_name
 
-            def init_obj_me(init_obj, app):
-                assert isinstance(init_obj, FlatCAMGeometry)
-                init_obj.solid_geometry=cascaded_union(diff)
+            obj.subtract_polygon(points)
+            obj.plot()
 
-            diff= obj.del_polygon(points)
-            try:
-                delete(obj_name)
-                obj.app.new_object("geometry", obj_name, init_obj_me)
-            except Exception as e:
-                return "Failed: %s" % str(e)
+            return "OK."
 
-        def del_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
-            return del_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
+        def subtract_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
+            return subtract_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
         def add_circle(obj_name, center_x, center_y, radius):
@@ -3091,8 +3101,8 @@ class App(QtCore.QObject):
             },
             'geocutout': {
                 'fcn': geocutout,
-                'help': "Cut holding gaps closed geometry.\n" +
-                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
+                'help': "Cut holding gaps from geometry.\n" +
+                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (8|4|tb|lr|2tb|2lr)>]\n" +
                         "   name: Name of the geometry object\n" +
                         "   dia: Tool diameter\n" +
                         "   margin: Margin over bounds\n" +
@@ -3245,11 +3255,11 @@ class App(QtCore.QObject):
                         '   name: Name of the geometry object to which to append the polygon.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
-            'del_poly': {
-                'fcn': del_poly,
-                'help': ' - Remove a polygon from the given Geometry object.\n' +
-                        '> del_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
-                        '   name: Name of the geometry object to which to remove the polygon.\n' +
+            'subtract_poly': {
+                'fcn': subtract_poly,
+                'help': 'Subtract polygon from the given Geometry object.\n' +
+                        '> subtract_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
+                        '   name: Name of the geometry object, which will be  sutracted.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
             'delete': {
@@ -3295,11 +3305,11 @@ class App(QtCore.QObject):
                         "   rows: number of rows\n"+
                         "   outname: Name of the new geometry object."
             },
-            'del_rect': {
-                'fcn': del_rectangle,
-                'help': 'Delete a rectange from the given Geometry object.\n' +
-                        '> del_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
-                        '   name: Name of the geometry object to which to remove the rectangle.\n' +
+            'subtract_rect': {
+                'fcn': subtract_rectangle,
+                'help': 'Subtract rectange from the given Geometry object.\n' +
+                        '> subtract_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
+                        '   name: Name of the geometry object, which will be subtracted.\n' +
                         '   botleft_x, botleft_y: Coordinates of the bottom left corner.\n' +
                         '   topright_x, topright_y Coordinates of the top right corner.'
             },
