@@ -2238,6 +2238,61 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+        def aligndrillgrid(outname, *args):
+            a, kwa = h(*args)
+            types = {'gridx': float,
+                     'gridy': float,
+                     'gridoffsetx': float,
+                     'gridoffsety': float,
+                     'columns':int,
+                     'rows':int,
+                     'dia': float
+                     }
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+
+            if 'columns' not in kwa or 'rows' not in kwa:
+                return "ERROR: Specify -columns and -rows"
+
+            if 'gridx' not in kwa or 'gridy' not in kwa:
+                return "ERROR: Specify -gridx and -gridy"
+
+            if 'dia' not in kwa:
+                return "ERROR: Specify -dia"
+
+            if 'gridoffsetx' not in kwa:
+                gridoffsetx=0
+            else:
+                gridoffsetx=kwa['gridoffsetx']
+
+            if 'gridoffsety' not in kwa:
+                gridoffsety=0
+            else:
+                gridoffsety=kwa['gridoffsety']
+
+
+            # Tools
+            tools = {"1": {"C": kwa['dia']}}
+
+            def aligndrillgrid_init_me(init_obj, app_obj):
+                drills = []
+                currenty=0
+                for row in range(kwa['rows']):
+                    currentx=0
+                    for col in range(kwa['columns']):
+                        point = Point(currentx-gridoffsetx,currenty-gridoffsety)
+                        drills.append({"point": point, "tool": "1"})
+                        currentx=currentx+kwa['gridx']
+                    currenty=currenty+kwa['gridy']
+                init_obj.tools = tools
+                init_obj.drills = drills
+                init_obj.create_geometry()
+
+            self.new_object("excellon", outname , aligndrillgrid_init_me)
+
         def aligndrill(name, *args):
             a, kwa = h(*args)
             types = {'box': str,
@@ -3066,6 +3121,19 @@ class App(QtCore.QObject):
                         "   box: Name of object which act as box (cutout for example.)\n" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
+            },
+            'aligndrillgrid': {
+                'fcn': aligndrillgrid,
+                'help': "Create excellon with drills for aligment grid.\n" +
+                        "> aligndrillgrid <outname> [-dia <3.0 (float)>] -gridx <float> [-gridoffsetx <0 (float)>] -gridy <float> [-gridoffsety <0 (float)>] -columns <int> -rows <int>\n" +
+                        "   outname: Name of the object to create.\n" +
+                        "   dia: Tool diameter\n" +
+                        "   gridx: grid size in X axis\n" +
+                        "   gridoffsetx: move grid  from origin\n" +
+                        "   gridy: grid size in Y axis\n" +
+                        "   gridoffsety: move grid  from origin\n" +
+                        "   colums: grid holes on X axis\n" +
+                        "   rows: grid holes on Y axis\n"
             },
             'aligndrill': {
                 'fcn': aligndrill,
