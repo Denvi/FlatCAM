@@ -2283,7 +2283,7 @@ class App(QtCore.QObject):
                 for row in range(kwa['rows']):
                     currentx=0
                     for col in range(kwa['columns']):
-                        point = Point(currentx-gridoffsetx,currenty-gridoffsety)
+                        point = Point(currentx+gridoffsetx,currenty+gridoffsety)
                         drills.append({"point": point, "tool": "1"})
                         currentx=currentx+kwa['gridx']
                     currenty=currenty+kwa['gridy']
