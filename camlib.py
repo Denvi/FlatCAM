@@ -136,17 +136,17 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
-    def del_polygon(self, points):
+    def subtract_polygon(self, points):
         """
-        Delete a polygon from the object
+        Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.
 
         :param points: The vertices of the polygon.
-        :return: None
+        :return: none
         """
         if self.solid_geometry is None:
             self.solid_geometry = []
 
-
+        #pathonly should be allways True, otherwise polygons are not subtracted
         flat_geometry = self.flatten(pathonly=True)
         log.debug("%d paths" % len(flat_geometry))
         polygon=Polygon(points)
@@ -157,7 +157,7 @@ class Geometry(object):
                 diffs.append(target.difference(toolgeo))
             else:
                 log.warning("Not implemented.")
-        return cascaded_union(diffs)
+        self.solid_geometry=cascaded_union(diffs)
 
     def bounds(self):
         """
