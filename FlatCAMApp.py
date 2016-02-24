@@ -2315,6 +2315,7 @@ class App(QtCore.QObject):
                      'axis': str,
                      'holes': str,
                      'grid': float,
+                     'minoffset': float,
                      'gridoffset': float,
                      'axisoffset': float,
                      'dia': float,
@@ -2375,25 +2376,22 @@ class App(QtCore.QObject):
                     else:
                         axisoffset=0
 
-
+                    #this  will align hole  to given aligngridoffset and minimal offset from pcb, based on selected axis
                     if axis == "X":
-                        firstpoint=-kwa['gridoffset']+xmin
-                        #-5
-                        minlenght=(xmax-xmin+2*kwa['gridoffset'])
-                        #57+10=67
-                        gridstripped=(minlenght//kwa['grid'])*kwa['grid']
-                        #67//10=60
-                        if (minlenght-gridstripped) >kwa['gridoffset']:
-                            gridstripped=gridstripped+kwa['grid']
-                        lastpoint=(firstpoint+gridstripped)
+                        firstpoint=kwa['gridoffset']
+                        while (xmin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (xmax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
                         localHoles=(firstpoint,axisoffset),(lastpoint,axisoffset)
                     else:
-                        firstpoint=-kwa['gridoffset']+ymin
-                        minlenght=(ymax-ymin+2*kwa['gridoffset'])
-                        gridstripped=minlenght//kwa['grid']*kwa['grid']
-                        if (minlenght-gridstripped) >kwa['gridoffset']:
-                            gridstripped=gridstripped+kwa['grid']
-                        lastpoint=(firstpoint+gridstripped)
+                        firstpoint=kwa['gridoffset']
+                        while (ymin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (ymax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
                         localHoles=(axisoffset,firstpoint),(axisoffset,lastpoint)
 
                     for hole in localHoles:
@@ -3151,12 +3149,13 @@ class App(QtCore.QObject):
             'aligndrill': {
                 'fcn': aligndrill,
                 'help': "Create excellon with drills for aligment.\n" +
-                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
+                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> -minoffset <float> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
                         "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
                         "   dia: Tool diameter\n" +
                         "   box: Name of object which act as box (cutout for example.)\n" +
                         "   grid: aligning  to grid, for thouse, who have aligning pins inside table in grid (-5,0),(5,0),(15,0)..." +
-                        "   gridoffset: offset from pcb from 0 position and   minimal offset to grid on max" +
+                        "   gridoffset: offset of grid from 0 position" +
+                        "   minoffset: min and max distance between align hole and pcb" +
                         "   axisoffset: offset on second axis before aligment holes" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
