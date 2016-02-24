@@ -244,6 +244,27 @@ class ObjectCollection(QtCore.QAbstractListModel):
         iobj = self.createIndex(self.get_names().index(name), 0)  # Column 0
         self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel.Select)
 
+    def set_inactive(self, name):
+        """
+        Unselect object by name from the project list. This triggers the
+        list_selection_changed event and call on_list_selection_changed.
+
+        :param name: Name of the FlatCAM Object
+        :return: None
+        """
+        iobj = self.createIndex(self.get_names().index(name), 0)  # Column 0
+        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel.Deselect)
+
+    def set_all_inactive(self):
+        """
+        Unselect all objects from the project list. This triggers the
+        list_selection_changed event and call on_list_selection_changed.
+
+        :return: None
+        """
+        for name in self.get_names():
+            self.set_inactive(name)
+
     def on_list_selection_change(self, current, previous):
         FlatCAMApp.App.log.debug("on_list_selection_change()")
         FlatCAMApp.App.log.debug("Current: %s, Previous %s" % (str(current), str(previous)))

@@ -2774,6 +2774,8 @@ class App(QtCore.QObject):
 
         def delete(obj_name):
             try:
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
                 self.collection.set_active(str(obj_name))
                 self.on_delete()
             except Exception, e:
@@ -2815,7 +2817,7 @@ class App(QtCore.QObject):
                     objs.append(obj)
 
             def initialize(obj, app):
-                FlatCAMExcellon.merge(objs, obj,True)
+                FlatCAMExcellon.merge(objs, obj)
 
             if objs is not None:
                 self.new_object("excellon", obj_name, initialize)
@@ -2880,14 +2882,14 @@ class App(QtCore.QObject):
                 obj_init.offset([float(currentx), float(currenty)]),
 
             def initialize_local_excellon(obj_init, app):
-                FlatCAMExcellon.merge(obj, obj_init,True)
+                FlatCAMExcellon.merge(obj, obj_init)
                 obj_init.offset([float(currentx), float(currenty)]),
 
             def initialize_geometry(obj_init, app):
                 FlatCAMGeometry.merge(objs, obj_init)
 
             def initialize_excellon(obj_init, app):
-                FlatCAMExcellon.merge(objs, obj_init,True)
+                FlatCAMExcellon.merge(objs, obj_init)
 
             objs=[]
             if obj is not None:
@@ -2909,7 +2911,8 @@ class App(QtCore.QObject):
                 else:
                     self.new_object("geometry", outname, initialize_geometry)
 
-
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
                 for delobj in objs:
                     self.collection.set_active(delobj.options['name'])
                     self.on_delete()
