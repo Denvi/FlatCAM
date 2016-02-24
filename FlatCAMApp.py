@@ -2648,7 +2648,9 @@ class App(QtCore.QObject):
                      'feedrate': float,
                      'tooldia': float,
                      'outname': str,
-                     'spindlespeed': int
+                     'spindlespeed': int,
+                     'multidepth' : bool,
+                     'depthperpass' : float
                      }
 
             for key in kwa:
