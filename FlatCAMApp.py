@@ -2134,6 +2134,58 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+
+        def geocutout(name, *args):
+            """
+                subtract gaps from geometry, this will not create new object
+
+            :param name:
+            :param args:
+            :return:
+            """
+            a, kwa = h(*args)
+            types = {'dia': float,
+                     'gapsize': float,
+                     'gaps': str}
+
+            #way gaps wil be rendered:
+            # lr    - left + right
+            # tb    - top + bottom
+            # 4     - left + right +top + bottom
+            # 2lr   - 2*left + 2*right
+            # 2tb   - 2*top + 2*bottom
+            # 8     - 2*left + 2*right +2*top + 2*bottom
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+
+            #get min and max data for each object as we just cut rectangles across X or Y
+            xmin, ymin, xmax, ymax = obj.bounds()
+            px = 0.5 * (xmin + xmax)
+            py = 0.5 * (ymin + ymax)
+            lenghtx = (xmax - xmin)
+            lenghty = (ymax - ymin)
+            gapsize = kwa['gapsize']+kwa['dia']/2
+            if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
+                subtract_rectangle(name,xmin-gapsize,py-gapsize+lenghty/4,xmax+gapsize,py+gapsize+lenghty/4)
+                subtract_rectangle(name,xmin-gapsize,py-gapsize-lenghty/4,xmax+gapsize,py+gapsize-lenghty/4)
+            if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
+                subtract_rectangle(name,px-gapsize+lenghtx/4,ymin-gapsize,px+gapsize+lenghtx/4,ymax+gapsize)
+                subtract_rectangle(name,px-gapsize-lenghtx/4,ymin-gapsize,px+gapsize-lenghtx/4,ymax+gapsize)
+            if kwa['gaps'] == '4' or kwa['gaps']=='lr':
+                subtract_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
+            if kwa['gaps'] == '4' or kwa['gaps']=='tb':
+                subtract_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
+            return 'Ok'
+
         def mirror(name, *args):
             a, kwa = h(*args)
             types = {'box': str,
@@ -2202,6 +2254,194 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
+        def aligndrillgrid(outname, *args):
+            a, kwa = h(*args)
+            types = {'gridx': float,
+                     'gridy': float,
+                     'gridoffsetx': float,
+                     'gridoffsety': float,
+                     'columns':int,
+                     'rows':int,
+                     'dia': float
+                     }
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+
+            if 'columns' not in kwa or 'rows' not in kwa:
+                return "ERROR: Specify -columns and -rows"
+
+            if 'gridx' not in kwa or 'gridy' not in kwa:
+                return "ERROR: Specify -gridx and -gridy"
+
+            if 'dia' not in kwa:
+                return "ERROR: Specify -dia"
+
+            if 'gridoffsetx' not in kwa:
+                gridoffsetx=0
+            else:
+                gridoffsetx=kwa['gridoffsetx']
+
+            if 'gridoffsety' not in kwa:
+                gridoffsety=0
+            else:
+                gridoffsety=kwa['gridoffsety']
+
+
+            # Tools
+            tools = {"1": {"C": kwa['dia']}}
+
+            def aligndrillgrid_init_me(init_obj, app_obj):
+                drills = []
+                currenty=0
+                for row in range(kwa['rows']):
+                    currentx=0
+                    for col in range(kwa['columns']):
+                        point = Point(currentx+gridoffsetx,currenty+gridoffsety)
+                        drills.append({"point": point, "tool": "1"})
+                        currentx=currentx+kwa['gridx']
+                    currenty=currenty+kwa['gridy']
+                init_obj.tools = tools
+                init_obj.drills = drills
+                init_obj.create_geometry()
+
+            self.new_object("excellon", outname , aligndrillgrid_init_me)
+
+        def aligndrill(name, *args):
+            a, kwa = h(*args)
+            types = {'box': str,
+                     'axis': str,
+                     'holes': str,
+                     'grid': float,
+                     'minoffset': float,
+                     'gridoffset': float,
+                     'axisoffset': float,
+                     'dia': float,
+                     'dist': float}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            # Get source object.
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
+                return "ERROR: Only Gerber, Geometry and Excellon objects can be used."
+
+            # Axis
+            try:
+                axis = kwa['axis'].upper()
+            except KeyError:
+                return "ERROR: Specify -axis X or -axis Y"
+
+            if not ('holes' in kwa or ('grid' in kwa and 'gridoffset' in kwa)):
+                    return "ERROR: Specify -holes or -grid with -gridoffset "
+
+            if 'holes' in kwa:
+                try:
+                    holes = eval("[" + kwa['holes'] + "]")
+                except KeyError:
+                    return "ERROR: Wrong -holes format (X1,Y1),(X2,Y2)"
+
+            xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+            # Tools
+            tools = {"1": {"C": kwa['dia']}}
+
+            def alligndrill_init_me(init_obj, app_obj):
+
+                drills = []
+                if 'holes' in kwa:
+                    for hole in holes:
+                        point = Point(hole)
+                        point_mirror = affinity.scale(point, xscale, yscale, origin=(px, py))
+                        drills.append({"point": point, "tool": "1"})
+                        drills.append({"point": point_mirror, "tool": "1"})
+                else:
+                    if not 'box' in kwa:
+                        return "ERROR: -grid can be used only for -box"
+
+                    if 'axisoffset' in kwa:
+                        axisoffset=kwa['axisoffset']
+                    else:
+                        axisoffset=0
+
+                    #this  will align hole  to given aligngridoffset and minimal offset from pcb, based on selected axis
+                    if axis == "X":
+                        firstpoint=kwa['gridoffset']
+                        while (xmin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (xmax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
+                        localHoles=(firstpoint,axisoffset),(lastpoint,axisoffset)
+                    else:
+                        firstpoint=kwa['gridoffset']
+                        while (ymin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (ymax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
+                        localHoles=(axisoffset,firstpoint),(axisoffset,lastpoint)
+
+                    for hole in localHoles:
+                        point = Point(hole)
+                        point_mirror = affinity.scale(point, xscale, yscale, origin=(px, py))
+                        drills.append({"point": point, "tool": "1"})
+                        drills.append({"point": point_mirror, "tool": "1"})
+
+                init_obj.tools = tools
+                init_obj.drills = drills
+                init_obj.create_geometry()
+
+            # Box
+            if 'box' in kwa:
+                try:
+                    box = self.collection.get_by_name(kwa['box'])
+                except:
+                    return "Could not retrieve object box: %s" % kwa['box']
+
+                if box is None:
+                    return "Object box not found: %s" % kwa['box']
+
+                try:
+                    xmin, ymin, xmax, ymax = box.bounds()
+                    px = 0.5 * (xmin + xmax)
+                    py = 0.5 * (ymin + ymax)
+
+                    obj.app.new_object("excellon", name + "_aligndrill", alligndrill_init_me)
+
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
+
+            else:
+                try:
+                    dist = float(kwa['dist'])
+                except KeyError:
+                    dist = 0.0
+                except ValueError:
+                    return "Invalid distance: %s" % kwa['dist']
+
+                try:
+                    px=dist
+                    py=dist
+                    obj.app.new_object("excellon", name + "_alligndrill", alligndrill_init_me)
+                except Exception, e:
+                    return "Operation failed: %s" % str(e)
+
+            return 'Ok'
+
+
         def drillcncjob(name, *args):
             a, kwa = h(*args)
             types = {'tools': str,
@@ -2230,26 +2470,26 @@ class App(QtCore.QObject):
                 return "ERROR: Only Excellon objects can be drilled."
 
             try:
-              
+
                 # Get the tools from the list
                 job_name = kwa["outname"]
-        
+
                 # Object initialization function for app.new_object()
                 def job_init(job_obj, app_obj):
                     assert isinstance(job_obj, FlatCAMCNCjob), \
                         "Initializer expected FlatCAMCNCjob, got %s" % type(job_obj)
-                    
+
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
                     job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
                     toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
                     job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
-                    
+
                     job_obj.gcode_parse()
-                    
+
                     job_obj.create_geometry()
-        
+
                 obj.app.new_object("cncjob", job_name, job_init)
 
             except Exception, e:
@@ -2374,7 +2614,7 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'passes': int,
                      'overlap': float,
-                     'outname': str, 
+                     'outname': str,
                      'combine': int}
 
             for key in kwa:
@@ -2492,6 +2732,28 @@ class App(QtCore.QObject):
             return add_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
+        def subtract_poly(obj_name, *args):
+            if len(args) % 2 != 0:
+                return "Incomplete coordinate."
+
+            points = [[float(args[2*i]), float(args[2*i+1])] for i in range(len(args)/2)]
+
+            try:
+                obj = self.collection.get_by_name(str(obj_name))
+            except:
+                return "Could not retrieve object: %s" % obj_name
+            if obj is None:
+                return "Object not found: %s" % obj_name
+
+            obj.subtract_polygon(points)
+            obj.plot()
+
+            return "OK."
+
+        def subtract_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
+            return subtract_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
+                            topright_x, topright_y, topright_x, botleft_y)
+
         def add_circle(obj_name, center_x, center_y, radius):
             try:
                 obj = self.collection.get_by_name(str(obj_name))
@@ -2510,6 +2772,8 @@ class App(QtCore.QObject):
 
         def delete(obj_name):
             try:
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
                 self.collection.set_active(str(obj_name))
                 self.on_delete()
             except Exception, e:
@@ -2540,6 +2804,121 @@ class App(QtCore.QObject):
 
             if objs is not None:
                 self.new_object("geometry", obj_name, initialize)
+
+        def join_excellons(obj_name, *obj_names):
+            objs = []
+            for obj_n in obj_names:
+                obj = self.collection.get_by_name(str(obj_n))
+                if obj is None:
+                    return "Object not found: %s" % obj_n
+                else:
+                    objs.append(obj)
+
+            def initialize(obj, app):
+                FlatCAMExcellon.merge(objs, obj)
+
+            if objs is not None:
+                self.new_object("excellon", obj_name, initialize)
+
+        def panelize(name, *args):
+            a, kwa = h(*args)
+            types = {'box': str,
+                     'spacing_columns': float,
+                     'spacing_rows': float,
+                     'columns': int,
+                     'rows': int,
+                     'outname': str}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            # Get source object.
+            try:
+                obj = self.collection.get_by_name(str(name))
+            except:
+                return "Could not retrieve object: %s" % name
+
+            if obj is None:
+                return "Object not found: %s" % name
+
+            if 'box' in kwa:
+                boxname=kwa['box']
+                try:
+                    box = self.collection.get_by_name(boxname)
+                except:
+                    return "Could not retrieve object: %s" % name
+            else:
+                box=obj
+
+            if 'columns' not in kwa or 'rows' not in kwa:
+                return "ERROR: Specify -columns and -rows"
+
+            if 'outname' in kwa:
+                outname=kwa['outname']
+            else:
+                outname=name+'_panelized'
+
+            if 'spacing_columns' in kwa:
+                spacing_columns=kwa['spacing_columns']
+            else:
+                spacing_columns=5
+
+            if 'spacing_rows' in kwa:
+                spacing_rows=kwa['spacing_rows']
+            else:
+                spacing_rows=5
+
+            xmin, ymin, xmax, ymax = box.bounds()
+            lenghtx = xmax-xmin+spacing_columns
+            lenghty = ymax-ymin+spacing_rows
+
+            currenty=0
+            def initialize_local(obj_init, app):
+                obj_init.solid_geometry = obj.solid_geometry
+                obj_init.offset([float(currentx), float(currenty)]),
+
+            def initialize_local_excellon(obj_init, app):
+                FlatCAMExcellon.merge(obj, obj_init)
+                obj_init.offset([float(currentx), float(currenty)]),
+
+            def initialize_geometry(obj_init, app):
+                FlatCAMGeometry.merge(objs, obj_init)
+
+            def initialize_excellon(obj_init, app):
+                FlatCAMExcellon.merge(objs, obj_init)
+
+            objs=[]
+            if obj is not None:
+
+                for row in range(kwa['rows']):
+                    currentx=0
+                    for col in range(kwa['columns']):
+                        local_outname=outname+".tmp."+str(col)+"."+str(row)
+                        if isinstance(obj, FlatCAMExcellon):
+                            new_obj=self.new_object("excellon", local_outname, initialize_local_excellon)
+                        else:
+                            new_obj=self.new_object("geometry", local_outname, initialize_local)
+                        objs.append(new_obj)
+                        currentx=currentx+lenghtx
+                    currenty=currenty+lenghty
+
+                if isinstance(obj, FlatCAMExcellon):
+                    self.new_object("excellon", outname, initialize_excellon)
+                else:
+                    self.new_object("geometry", outname, initialize_geometry)
+
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
+                for delobj in objs:
+                    self.collection.set_active(delobj.options['name'])
+                    self.on_delete()
+
+            else:
+                return "ERROR: obj is None"
+
+            return "Ok"
 
         def make_docs():
             output = ''
@@ -2721,12 +3100,63 @@ class App(QtCore.QObject):
                         "   gapsize: size of gap\n" +
                         "   gaps: type of gaps"
             },
+            'geocutout': {
+                'fcn': geocutout,
+                'help': "Cut holding gaps from geometry.\n" +
+                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (8|4|tb|lr|2tb|2lr)>]\n" +
+                        "   name: Name of the geometry object\n" +
+                        "   dia: Tool diameter\n" +
+                        "   margin: Margin over bounds\n" +
+                        "   gapsize: size of gap\n" +
+                        "   gaps: type of gaps\n" +
+                        "\n" +
+                        "   example:\n" +
+                        "\n" +
+                        "      #isolate margin for example from fritzing arduino shield or any svg etc\n" +
+                        "      isolate BCu_margin -dia 3 -overlap 1\n" +
+                        "\n" +
+                        "      #create exteriors from isolated object\n" +
+                        "      exteriors BCu_margin_iso -outname BCu_margin_iso_exterior\n" +
+                        "\n" +
+                        "      #delete isolated object if you dond need id anymore\n" +
+                        "      delete BCu_margin_iso\n" +
+                        "\n" +
+                        "      #finally cut holding gaps\n" +
+                        "      geocutout BCu_margin_iso_exterior -dia 3 -gapsize 0.6 -gaps 4\n"
+            },
             'mirror': {
                 'fcn': mirror,
                 'help': "Mirror a layer.\n" +
                         "> mirror <name> -axis <X|Y> [-box <nameOfBox> | -dist <number>]\n" +
                         "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
                         "   box: Name of object which act as box (cutout for example.)\n" +
+                        "   axis: Mirror axis parallel to the X or Y axis.\n" +
+                        "   dist: Distance of the mirror axis to the X or Y axis."
+            },
+            'aligndrillgrid': {
+                'fcn': aligndrillgrid,
+                'help': "Create excellon with drills for aligment grid.\n" +
+                        "> aligndrillgrid <outname> [-dia <3.0 (float)>] -gridx <float> [-gridoffsetx <0 (float)>] -gridy <float> [-gridoffsety <0 (float)>] -columns <int> -rows <int>\n" +
+                        "   outname: Name of the object to create.\n" +
+                        "   dia: Tool diameter\n" +
+                        "   gridx: grid size in X axis\n" +
+                        "   gridoffsetx: move grid  from origin\n" +
+                        "   gridy: grid size in Y axis\n" +
+                        "   gridoffsety: move grid  from origin\n" +
+                        "   colums: grid holes on X axis\n" +
+                        "   rows: grid holes on Y axis\n"
+            },
+            'aligndrill': {
+                'fcn': aligndrill,
+                'help': "Create excellon with drills for aligment.\n" +
+                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> -minoffset <float> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
+                        "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
+                        "   dia: Tool diameter\n" +
+                        "   box: Name of object which act as box (cutout for example.)\n" +
+                        "   grid: aligning  to grid, for thouse, who have aligning pins inside table in grid (-5,0),(5,0),(15,0)..." +
+                        "   gridoffset: offset of grid from 0 position" +
+                        "   minoffset: min and max distance between align hole and pcb" +
+                        "   axisoffset: offset on second axis before aligment holes" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
             },
@@ -2827,6 +3257,13 @@ class App(QtCore.QObject):
                         '   name: Name of the geometry object to which to append the polygon.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
+            'subtract_poly': {
+                'fcn': subtract_poly,
+                'help': 'Subtract polygon from the given Geometry object.\n' +
+                        '> subtract_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
+                        '   name: Name of the geometry object, which will be  sutracted.\n' +
+                        '   xi, yi: Coordinates of points in the polygon.'
+            },
             'delete': {
                 'fcn': delete,
                 'help': 'Deletes the give object.\n' +
@@ -2849,6 +3286,34 @@ class App(QtCore.QObject):
                         '> join_geometries <out_name> <obj_name_0>....\n' +
                         '   out_name: Name of the new geometry object.' +
                         '   obj_name_0... names of the objects to join'
+            },
+            'join_excellons': {
+                'fcn': join_excellons,
+                'help': 'Runs a merge operation (join) on the excellon ' +
+                        'objects.' +
+                        '> join_excellons <out_name> <obj_name_0>....\n' +
+                        '   out_name: Name of the new excellon object.' +
+                        '   obj_name_0... names of the objects to join'
+            },
+            'panelize': {
+                'fcn': panelize,
+                'help': "Simple panelize geometries.\n" +
+                        "> panelize <name> [-box <nameOfBox>]  [-spacing_columns <5 (float)>] [-spacing_rows <5 (float)>] -columns <int> -rows <int>  [-outname <n>]\n" +
+                        "   name: Name of the object to panelize.\n" +
+                        "   box: Name of object which act as box (cutout for example.) for cutout boundary. Object from name is used if not specified.\n" +
+                        "   spacing_columns: spacing between columns\n"+
+                        "   spacing_rows: spacing between rows\n"+
+                        "   columns: number of columns\n"+
+                        "   rows: number of rows\n"+
+                        "   outname: Name of the new geometry object."
+            },
+            'subtract_rect': {
+                'fcn': subtract_rectangle,
+                'help': 'Subtract rectange from the given Geometry object.\n' +
+                        '> subtract_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
+                        '   name: Name of the geometry object, which will be subtracted.\n' +
+                        '   botleft_x, botleft_y: Coordinates of the bottom left corner.\n' +
+                        '   topright_x, topright_y Coordinates of the top right corner.'
             },
             'add_rect': {
                 'fcn': add_rectangle,

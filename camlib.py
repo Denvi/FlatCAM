@@ -136,6 +136,29 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
+    def subtract_polygon(self, points):
+        """
+        Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.
+
+        :param points: The vertices of the polygon.
+        :return: none
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        #pathonly should be allways True, otherwise polygons are not subtracted
+        flat_geometry = self.flatten(pathonly=True)
+        log.debug("%d paths" % len(flat_geometry))
+        polygon=Polygon(points)
+        toolgeo=cascaded_union(polygon)
+        diffs=[]
+        for target in flat_geometry:
+            if type(target) == LineString or type(target) == LinearRing:
+                diffs.append(target.difference(toolgeo))
+            else:
+                log.warning("Not implemented.")
+        self.solid_geometry=cascaded_union(diffs)
+
     def bounds(self):
         """
         Returns coordinates of rectangular bounds

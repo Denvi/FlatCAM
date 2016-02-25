@@ -123,8 +123,12 @@ class FlatCAMObj(QtCore.QObject):
 
         :return: None
         """
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.to_form()")
         for option in self.options:
-            self.set_form_item(option)
+            try:
+                self.set_form_item(option)
+            except:
+                self.app.log.warning("Unexpected error:", sys.exc_info())
 
     def read_form(self):
         """
@@ -135,7 +139,11 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.read_form()")
         for option in self.options:
-            self.read_form_item(option)
+            try:
+                self.read_form_item(option)
+            except:
+                self.app.log.warning("Unexpected error:", sys.exc_info())
+
 
     def build_ui(self):
         """
@@ -191,11 +199,16 @@ class FlatCAMObj(QtCore.QObject):
         :type option: str
         :return: None
         """
-
-        try:
-            self.options[option] = self.form_fields[option].get_value()
-        except KeyError:
-            self.app.log.warning("Failed to read option from field: %s" % option)
+        #try read field only when option have equivalent in form_fields
+        if option in self.form_fields:
+            option_type=type(self.options[option])
+            try:
+                value=self.form_fields[option].get_value()
+            #catch per option as it was ignored anyway, also when syntax error (probably uninitialized field),don't read either.
+            except (KeyError,SyntaxError):
+                self.app.log.warning("Failed to read option from field: %s" % option)
+        else:
+            self.app.log.warning("Form fied does not exists: %s" % option)
 
     def plot(self):
         """
@@ -629,6 +642,76 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # Always append to it because it carries contents
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
+
+    @staticmethod
+    def merge(exc_list, exc_final):
+        """
+        Merge excellons in exc_list into exc_final.
+        Options are allways copied from source .
+
+        Tools are also merged, if  name for  tool is same and   size differs, then as name is used next available  number from both lists
+
+        if only one object is  specified in exc_list then this acts  as copy only
+
+        :param exc_list: List or one object of FlatCAMExcellon Objects to join.
+        :param exc_final: Destination FlatCAMExcellon object.
+        :return: None
+        """
+
+        if type(exc_list) is not list:
+            exc_list_real= list()
+            exc_list_real.append(exc_list)
+        else:
+            exc_list_real=exc_list
+
+        for exc in exc_list_real:
+            # Expand lists
+            if type(exc) is list:
+                FlatCAMExcellon.merge(exc, exc_final)
+            # If not list, merge excellons
+            else:
+
+                #    TODO: I realize forms does not save values into options , when  object is deselected
+                #    leave this  here for future use
+                #    this  reinitialize options based on forms, all steps may not be necessary
+                #    exc.app.collection.set_active(exc.options['name'])
+                #    exc.to_form()
+                #    exc.read_form()
+                for option in exc.options:
+                    if option is not 'name':
+                        try:
+                            exc_final.options[option] = exc.options[option]
+                        except:
+                            exc.app.log.warning("Failed to copy option.",option)
+
+                #deep copy of all drills,to avoid any references
+                for drill in exc.drills:
+                    point = Point(drill['point'].x,drill['point'].y)
+                    exc_final.drills.append({"point": point, "tool": drill['tool']})
+                toolsrework=dict()
+                max_numeric_tool=0
+                for toolname in exc.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc.tools[toolname]['C']]=toolname
+
+                #exc_final as last because names from final tools will be used
+                for toolname in exc_final.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc_final.tools[toolname]['C']]=toolname
+
+                for toolvalues in toolsrework.iterkeys():
+                    if toolsrework[toolvalues] in exc_final.tools:
+                        if exc_final.tools[toolsrework[toolvalues]]!={"C": toolvalues}:
+                            exc_final.tools[str(max_numeric_tool+1)]={"C": toolvalues}
+                    else:
+                        exc_final.tools[toolsrework[toolvalues]]={"C": toolvalues}
+                #this value  was not co
+                exc_final.zeros=exc.zeros
+                exc_final.create_geometry()
 
     def build_ui(self):
         FlatCAMObj.build_ui(self)
@@ -1264,11 +1347,16 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         dx, dy = vect
 
-        if type(self.solid_geometry) == list:
-            self.solid_geometry = [affinity.translate(g, xoff=dx, yoff=dy)
-                                   for g in self.solid_geometry]
-        else:
-            self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
+        def translate_recursion(geom):
+            if type(geom) == list:
+                geoms=list()
+                for local_geom in geom:
+                    geoms.append(translate_recursion(local_geom))
+                return geoms
+            else:
+                return  affinity.translate(geom, xoff=dx, yoff=dy)
+
+        self.solid_geometry=translate_recursion(self.solid_geometry)
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
