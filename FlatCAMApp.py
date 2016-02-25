@@ -3221,14 +3221,17 @@ class App(QtCore.QObject):
             'cncjob': {
                 'fcn': cncjob,
                 'help': 'Generates a CNC Job from a Geometry Object.\n' +
-                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-spindlespeed (int)] [-outname <n>]\n' +
+                        '> cncjob <name> [-z_cut <c>] [-z_move <float>] [-feedrate <float>] [-tooldia <float>] [-spindlespeed <int>] [-multidepth <bool>] [-depthperpass <float>] [-outname <str>]\n' +
                         '   name: Name of the source object\n' +
                         '   z_cut: Z-axis cutting position\n' +
                         '   z_move: Z-axis moving position\n' +
                         '   feedrate: Moving speed when cutting\n' +
                         '   tooldia: Tool diameter to show on screen\n' +
                         '   spindlespeed: Speed of the spindle in rpm (example: 4000)\n' +
+                        '   multidepth: Use or not multidepth cnccut\n'+
+                        '   depthperpass: Height of one layer for multidepth\n'+
                         '   outname: Name of the output object'
+
             },
             'write_gcode': {
                 'fcn': write_gcode,
