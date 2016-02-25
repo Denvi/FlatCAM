@@ -3231,7 +3231,6 @@ class App(QtCore.QObject):
                         '   multidepth: Use or not multidepth cnccut\n'+
                         '   depthperpass: Height of one layer for multidepth\n'+
                         '   outname: Name of the output object'
-
             },
             'write_gcode': {
                 'fcn': write_gcode,
