@@ -659,7 +659,11 @@ class App(QtCore.QObject):
             result = self.tcl.eval(str(text))
             self.shell.append_output(result + '\n')
         except Tkinter.TclError, e:
-            self.shell.append_error('ERROR: ' + str(e) + '\n')
+            #this will display more precise answer if something in  TCL shell fail
+            result = self.tcl.eval("set errorInfo")
+            self.log.error("Exec command Exception: %s" % (str(e)+ '\n' + result + '\n'))
+            self.shell.append_error('ERROR: ' + str(e) + '\n' + result + '\n')
+            raise e
         return
 
         """
