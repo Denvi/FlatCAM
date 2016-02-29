@@ -144,7 +144,6 @@ class FlatCAMObj(QtCore.QObject):
             except:
                 self.app.log.warning("Unexpected error:", sys.exc_info())
 
-
     def build_ui(self):
         """
         Sets up the UI/form for this object. Show the UI
@@ -199,16 +198,22 @@ class FlatCAMObj(QtCore.QObject):
         :type option: str
         :return: None
         """
-        #try read field only when option have equivalent in form_fields
-        if option in self.form_fields:
-            option_type=type(self.options[option])
-            try:
-                value=self.form_fields[option].get_value()
-            #catch per option as it was ignored anyway, also when syntax error (probably uninitialized field),don't read either.
-            except (KeyError,SyntaxError):
-                self.app.log.warning("Failed to read option from field: %s" % option)
-        else:
-            self.app.log.warning("Form fied does not exists: %s" % option)
+
+        try:
+            self.options[option] = self.form_fields[option].get_value()
+        except KeyError:
+            self.app.log.warning("Failed to read option from field: %s" % option)
+
+        # #try read field only when option have equivalent in form_fields
+        # if option in self.form_fields:
+        #     option_type=type(self.options[option])
+        #     try:
+        #         value=self.form_fields[option].get_value()
+        #     #catch per option as it was ignored anyway, also when syntax error (probably uninitialized field),don't read either.
+        #     except (KeyError,SyntaxError):
+        #         self.app.log.warning("Failed to read option from field: %s" % option)
+        # else:
+        #     self.app.log.warning("Form fied does not exists: %s" % option)
 
     def plot(self):
         """
