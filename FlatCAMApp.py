@@ -2137,7 +2137,7 @@ class App(QtCore.QObject):
 
         def geocutout(name, *args):
             """
-                cut gaps in current geometry
+                subtract gaps from geometry, this will not create new object
 
             :param name:
             :param args:
@@ -2147,6 +2147,14 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'gapsize': float,
                      'gaps': str}
+
+            #way gaps wil be rendered:
+            # lr    - left + right
+            # tb    - top + bottom
+            # 4     - left + right +top + bottom
+            # 2lr   - 2*left + 2*right
+            # 2tb   - 2*top + 2*bottom
+            # 8     - 2*left + 2*right +2*top + 2*bottom
 
             for key in kwa:
                 if key not in types:
@@ -2159,15 +2167,23 @@ class App(QtCore.QObject):
                 return "Could not retrieve object: %s" % name
 
 
-
+            #get min and max data for each object as we just cut rectangles across X or Y
             xmin, ymin, xmax, ymax = obj.bounds()
             px = 0.5 * (xmin + xmax)
             py = 0.5 * (ymin + ymax)
+            lenghtx = (xmax - xmin)
+            lenghty = (ymax - ymin)
             gapsize = kwa['gapsize']+kwa['dia']/2
+            if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
+                subtract_rectangle(name,xmin-gapsize,py-gapsize+lenghty/4,xmax+gapsize,py+gapsize+lenghty/4)
+                subtract_rectangle(name,xmin-gapsize,py-gapsize-lenghty/4,xmax+gapsize,py+gapsize-lenghty/4)
+            if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
+                subtract_rectangle(name,px-gapsize+lenghtx/4,ymin-gapsize,px+gapsize+lenghtx/4,ymax+gapsize)
+                subtract_rectangle(name,px-gapsize-lenghtx/4,ymin-gapsize,px+gapsize-lenghtx/4,ymax+gapsize)
             if kwa['gaps'] == '4' or kwa['gaps']=='lr':
-                del_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
+                subtract_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
             if kwa['gaps'] == '4' or kwa['gaps']=='tb':
-                del_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
+                subtract_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
             return 'Ok'
 
         def mirror(name, *args):
@@ -2299,6 +2315,7 @@ class App(QtCore.QObject):
                      'axis': str,
                      'holes': str,
                      'grid': float,
+                     'minoffset': float,
                      'gridoffset': float,
                      'axisoffset': float,
                      'dia': float,
@@ -2359,25 +2376,22 @@ class App(QtCore.QObject):
                     else:
                         axisoffset=0
 
-
+                    #this  will align hole  to given aligngridoffset and minimal offset from pcb, based on selected axis
                     if axis == "X":
-                        firstpoint=-kwa['gridoffset']+xmin
-                        #-5
-                        minlenght=(xmax-xmin+2*kwa['gridoffset'])
-                        #57+10=67
-                        gridstripped=(minlenght//kwa['grid'])*kwa['grid']
-                        #67//10=60
-                        if (minlenght-gridstripped) >kwa['gridoffset']:
-                            gridstripped=gridstripped+kwa['grid']
-                        lastpoint=(firstpoint+gridstripped)
+                        firstpoint=kwa['gridoffset']
+                        while (xmin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (xmax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
                         localHoles=(firstpoint,axisoffset),(lastpoint,axisoffset)
                     else:
-                        firstpoint=-kwa['gridoffset']+ymin
-                        minlenght=(ymax-ymin+2*kwa['gridoffset'])
-                        gridstripped=minlenght//kwa['grid']*kwa['grid']
-                        if (minlenght-gridstripped) >kwa['gridoffset']:
-                            gridstripped=gridstripped+kwa['grid']
-                        lastpoint=(firstpoint+gridstripped)
+                        firstpoint=kwa['gridoffset']
+                        while (ymin-kwa['minoffset'])<firstpoint:
+                            firstpoint=firstpoint-kwa['grid']
+                        lastpoint=kwa['gridoffset']
+                        while (ymax+kwa['minoffset'])>lastpoint:
+                            lastpoint=lastpoint+kwa['grid']
                         localHoles=(axisoffset,firstpoint),(axisoffset,lastpoint)
 
                     for hole in localHoles:
@@ -2456,26 +2470,26 @@ class App(QtCore.QObject):
                 return "ERROR: Only Excellon objects can be drilled."
 
             try:
-              
+
                 # Get the tools from the list
                 job_name = kwa["outname"]
-        
+
                 # Object initialization function for app.new_object()
                 def job_init(job_obj, app_obj):
                     assert isinstance(job_obj, FlatCAMCNCjob), \
                         "Initializer expected FlatCAMCNCjob, got %s" % type(job_obj)
-                    
+
                     job_obj.z_cut = kwa["drillz"]
                     job_obj.z_move = kwa["travelz"]
                     job_obj.feedrate = kwa["feedrate"]
                     job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
                     toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
                     job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
-                    
+
                     job_obj.gcode_parse()
-                    
+
                     job_obj.create_geometry()
-        
+
                 obj.app.new_object("cncjob", job_name, job_init)
 
             except Exception, e:
@@ -2600,7 +2614,7 @@ class App(QtCore.QObject):
             types = {'dia': float,
                      'passes': int,
                      'overlap': float,
-                     'outname': str, 
+                     'outname': str,
                      'combine': int}
 
             for key in kwa:
@@ -2634,7 +2648,9 @@ class App(QtCore.QObject):
                      'feedrate': float,
                      'tooldia': float,
                      'outname': str,
-                     'spindlespeed': int
+                     'spindlespeed': int,
+                     'multidepth' : bool,
+                     'depthperpass' : float
                      }
 
             for key in kwa:
@@ -2718,7 +2734,7 @@ class App(QtCore.QObject):
             return add_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
-        def del_poly(obj_name, *args):
+        def subtract_poly(obj_name, *args):
             if len(args) % 2 != 0:
                 return "Incomplete coordinate."
 
@@ -2731,19 +2747,13 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % obj_name
 
-            def init_obj_me(init_obj, app):
-                assert isinstance(init_obj, FlatCAMGeometry)
-                init_obj.solid_geometry=cascaded_union(diff)
+            obj.subtract_polygon(points)
+            obj.plot()
 
-            diff= obj.del_polygon(points)
-            try:
-                delete(obj_name)
-                obj.app.new_object("geometry", obj_name, init_obj_me)
-            except Exception as e:
-                return "Failed: %s" % str(e)
+            return "OK."
 
-        def del_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
-            return del_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
+        def subtract_rectangle(obj_name, botleft_x, botleft_y, topright_x, topright_y):
+            return subtract_poly(obj_name, botleft_x, botleft_y, botleft_x, topright_y,
                             topright_x, topright_y, topright_x, botleft_y)
 
         def add_circle(obj_name, center_x, center_y, radius):
@@ -2764,6 +2774,8 @@ class App(QtCore.QObject):
 
         def delete(obj_name):
             try:
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
                 self.collection.set_active(str(obj_name))
                 self.on_delete()
             except Exception, e:
@@ -2805,7 +2817,7 @@ class App(QtCore.QObject):
                     objs.append(obj)
 
             def initialize(obj, app):
-                FlatCAMExcellon.merge(objs, obj,True)
+                FlatCAMExcellon.merge(objs, obj)
 
             if objs is not None:
                 self.new_object("excellon", obj_name, initialize)
@@ -2870,14 +2882,14 @@ class App(QtCore.QObject):
                 obj_init.offset([float(currentx), float(currenty)]),
 
             def initialize_local_excellon(obj_init, app):
-                FlatCAMExcellon.merge(obj, obj_init,True)
+                FlatCAMExcellon.merge(obj, obj_init)
                 obj_init.offset([float(currentx), float(currenty)]),
 
             def initialize_geometry(obj_init, app):
                 FlatCAMGeometry.merge(objs, obj_init)
 
             def initialize_excellon(obj_init, app):
-                FlatCAMExcellon.merge(objs, obj_init,True)
+                FlatCAMExcellon.merge(objs, obj_init)
 
             objs=[]
             if obj is not None:
@@ -2899,7 +2911,8 @@ class App(QtCore.QObject):
                 else:
                     self.new_object("geometry", outname, initialize_geometry)
 
-
+                #deselect all  to avoid  delete selected object when run  delete  from  shell
+                self.collection.set_all_inactive()
                 for delobj in objs:
                     self.collection.set_active(delobj.options['name'])
                     self.on_delete()
@@ -3091,8 +3104,8 @@ class App(QtCore.QObject):
             },
             'geocutout': {
                 'fcn': geocutout,
-                'help': "Cut holding gaps closed geometry.\n" +
-                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (4|tb|lr)>]\n" +
+                'help': "Cut holding gaps from geometry.\n" +
+                        "> geocutout <name> [-dia <3.0 (float)>] [-margin <0.0 (float)>] [-gapsize <0.5 (float)>] [-gaps <lr (8|4|tb|lr|2tb|2lr)>]\n" +
                         "   name: Name of the geometry object\n" +
                         "   dia: Tool diameter\n" +
                         "   margin: Margin over bounds\n" +
@@ -3138,12 +3151,13 @@ class App(QtCore.QObject):
             'aligndrill': {
                 'fcn': aligndrill,
                 'help': "Create excellon with drills for aligment.\n" +
-                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
+                        "> aligndrill <name> [-dia <3.0 (float)>] -axis <X|Y> [-box <nameOfBox> -minoffset <float> [-grid <10 (float)> -gridoffset <5 (float)> [-axisoffset <0 (float)>]] | -dist <number>]\n" +
                         "   name: Name of the object (Gerber or Excellon) to mirror.\n" +
                         "   dia: Tool diameter\n" +
                         "   box: Name of object which act as box (cutout for example.)\n" +
                         "   grid: aligning  to grid, for thouse, who have aligning pins inside table in grid (-5,0),(5,0),(15,0)..." +
-                        "   gridoffset: offset from pcb from 0 position and   minimal offset to grid on max" +
+                        "   gridoffset: offset of grid from 0 position" +
+                        "   minoffset: min and max distance between align hole and pcb" +
                         "   axisoffset: offset on second axis before aligment holes" +
                         "   axis: Mirror axis parallel to the X or Y axis.\n" +
                         "   dist: Distance of the mirror axis to the X or Y axis."
@@ -3207,13 +3221,15 @@ class App(QtCore.QObject):
             'cncjob': {
                 'fcn': cncjob,
                 'help': 'Generates a CNC Job from a Geometry Object.\n' +
-                        '> cncjob <name> [-z_cut <c>] [-z_move <m>] [-feedrate <f>] [-tooldia <t>] [-spindlespeed (int)] [-outname <n>]\n' +
+                        '> cncjob <name> [-z_cut <c>] [-z_move <float>] [-feedrate <float>] [-tooldia <float>] [-spindlespeed <int>] [-multidepth <bool>] [-depthperpass <float>] [-outname <str>]\n' +
                         '   name: Name of the source object\n' +
                         '   z_cut: Z-axis cutting position\n' +
                         '   z_move: Z-axis moving position\n' +
                         '   feedrate: Moving speed when cutting\n' +
                         '   tooldia: Tool diameter to show on screen\n' +
                         '   spindlespeed: Speed of the spindle in rpm (example: 4000)\n' +
+                        '   multidepth: Use or not multidepth cnccut\n'+
+                        '   depthperpass: Height of one layer for multidepth\n'+
                         '   outname: Name of the output object'
             },
             'write_gcode': {
@@ -3245,11 +3261,11 @@ class App(QtCore.QObject):
                         '   name: Name of the geometry object to which to append the polygon.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
-            'del_poly': {
-                'fcn': del_poly,
-                'help': ' - Remove a polygon from the given Geometry object.\n' +
-                        '> del_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
-                        '   name: Name of the geometry object to which to remove the polygon.\n' +
+            'subtract_poly': {
+                'fcn': subtract_poly,
+                'help': 'Subtract polygon from the given Geometry object.\n' +
+                        '> subtract_poly <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]\n' +
+                        '   name: Name of the geometry object, which will be  sutracted.\n' +
                         '   xi, yi: Coordinates of points in the polygon.'
             },
             'delete': {
@@ -3295,11 +3311,11 @@ class App(QtCore.QObject):
                         "   rows: number of rows\n"+
                         "   outname: Name of the new geometry object."
             },
-            'del_rect': {
-                'fcn': del_rectangle,
-                'help': 'Delete a rectange from the given Geometry object.\n' +
-                        '> del_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
-                        '   name: Name of the geometry object to which to remove the rectangle.\n' +
+            'subtract_rect': {
+                'fcn': subtract_rectangle,
+                'help': 'Subtract rectange from the given Geometry object.\n' +
+                        '> subtract_rect <name> <botleft_x> <botleft_y> <topright_x> <topright_y>\n' +
+                        '   name: Name of the geometry object, which will be subtracted.\n' +
                         '   botleft_x, botleft_y: Coordinates of the bottom left corner.\n' +
                         '   topright_x, topright_y Coordinates of the top right corner.'
             },
@@ -3412,13 +3428,17 @@ class App(QtCore.QObject):
         for recent in self.recent:
             filename = recent['filename'].split('/')[-1].split('\\')[-1]
 
-            action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
+            try:
+                action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
 
-            # Attach callback
-            o = make_callback(openers[recent["kind"]], recent['filename'])
-            action.triggered.connect(o)
+                # Attach callback
+                o = make_callback(openers[recent["kind"]], recent['filename'])
+                action.triggered.connect(o)
 
-            self.ui.recent.addAction(action)
+                self.ui.recent.addAction(action)
+
+            except KeyError:
+                App.log.error("Unsupported file type: %s" % recent["kind"])
 
         # self.builder.get_object('open_recent').set_submenu(recent_menu)
         # self.ui.menufilerecent.set_submenu(recent_menu)
