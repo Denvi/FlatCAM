@@ -3428,13 +3428,17 @@ class App(QtCore.QObject):
         for recent in self.recent:
             filename = recent['filename'].split('/')[-1].split('\\')[-1]
 
-            action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
+            try:
+                action = QtGui.QAction(QtGui.QIcon(icons[recent["kind"]]), filename, self)
 
-            # Attach callback
-            o = make_callback(openers[recent["kind"]], recent['filename'])
-            action.triggered.connect(o)
+                # Attach callback
+                o = make_callback(openers[recent["kind"]], recent['filename'])
+                action.triggered.connect(o)
 
-            self.ui.recent.addAction(action)
+                self.ui.recent.addAction(action)
+
+            except KeyError:
+                App.log.error("Unsupported file type: %s" % recent["kind"])
 
         # self.builder.get_object('open_recent').set_submenu(recent_menu)
         # self.ui.menufilerecent.set_submenu(recent_menu)
