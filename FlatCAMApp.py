@@ -662,7 +662,7 @@ class App(QtCore.QObject):
             #this will display more precise answer if something in  TCL shell fail
             result = self.tcl.eval("set errorInfo")
             self.log.error("Exec command Exception: %s" % (str(e)+ '\n' + result + '\n'))
-            self.shell.append_error('ERROR: ' + str(e) + '\n' + result + '\n')
+            self.shell.append_error('ERROR: ' + result + '\n')
             #show error in console and just return
         return
 
