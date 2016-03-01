@@ -644,6 +644,16 @@ class App(QtCore.QObject):
         else:
             self.defaults['stats'][resource] = 1
 
+    def raiseTclError(self, text):
+        """
+        this method  pass exception from python into TCL as error, so we get stacktrace and reason
+        :param text: text of error
+        :return: raise exception
+        """
+        self.tcl.eval('error "%s"' % text)
+        raise Exception(text)
+
+
     def exec_command(self, text):
         """
         Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
@@ -661,7 +671,7 @@ class App(QtCore.QObject):
         except Tkinter.TclError, e:
             #this will display more precise answer if something in  TCL shell fail
             result = self.tcl.eval("set errorInfo")
-            self.log.error("Exec command Exception: %s" % (str(e)+ '\n' + result + '\n'))
+            self.log.error("Exec command Exception: %s" % (result + '\n'))
             self.shell.append_error('ERROR: ' + result + '\n')
             #show error in console and just return
         return
@@ -2446,7 +2456,9 @@ class App(QtCore.QObject):
             return 'Ok'
 
 
-        def drillcncjob(name, *args):
+        def drillcncjob(name=None, *args):
+            #name should not be none, but we set it to default, because TCL return error without reason if argument is missing
+            #we should  check it inside shell commamnd instead
             a, kwa = h(*args)
             types = {'tools': str,
                      'outname': str,
@@ -2457,21 +2469,24 @@ class App(QtCore.QObject):
                      'toolchange': int
                      }
 
+            if name is None:
+                self.raiseTclError('Argument name is missing.')
+
             for key in kwa:
                 if key not in types:
-                    return 'Unknown parameter: %s' % key
+                    self.raiseTclError('Unknown parameter: %s' % key)
                 kwa[key] = types[key](kwa[key])
 
             try:
                 obj = self.collection.get_by_name(str(name))
             except:
-                return "Could not retrieve object: %s" % name
+                self.raiseTclError("Could not retrieve object: %s" % name)
 
             if obj is None:
-                return "Object not found: %s" % name
+                self.raiseTclError('Object not found: %s' % name)
 
             if not isinstance(obj, FlatCAMExcellon):
-                return "ERROR: Only Excellon objects can be drilled."
+                self.raiseTclError('Only Excellon objects can be drilled: %s' % name)
 
             try:
 
@@ -2497,7 +2512,7 @@ class App(QtCore.QObject):
                 obj.app.new_object("cncjob", job_name, job_init)
 
             except Exception, e:
-                return "Operation failed: %s" % str(e)
+                self.raiseTclError("Operation failed: %s" % str(e))
 
             return 'Ok'
 
