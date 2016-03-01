@@ -2454,7 +2454,6 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
-
         def drillcncjob(name=None, *args):
             #name should not be none, but we set it to default, because TCL return error without reason if argument is missing
             #we should  check it inside shell commamnd instead
