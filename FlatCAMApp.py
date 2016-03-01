@@ -650,7 +650,7 @@ class App(QtCore.QObject):
         :param text: text of error
         :return: raise exception
         """
-        self.tcl.eval('error "%s"' % text)
+        self.tcl.eval('return -code error "%s"' % text)
         raise Exception(text)
 
 
