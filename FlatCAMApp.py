@@ -653,7 +653,6 @@ class App(QtCore.QObject):
         self.tcl.eval('return -code error "%s"' % text)
         raise Exception(text)
 
-
     def exec_command(self, text):
         """
         Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
