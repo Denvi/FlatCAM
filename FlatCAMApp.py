@@ -2150,7 +2150,7 @@ class App(QtCore.QObject):
 
         def geocutout(name, *args):
             """
-                subtract gaps from geometry, this will not create new object
+            Subtract gaps from geometry, this will not create new object
 
             :param name:
             :param args:
@@ -2161,7 +2161,7 @@ class App(QtCore.QObject):
                      'gapsize': float,
                      'gaps': str}
 
-            #way gaps wil be rendered:
+            # How gaps wil be rendered:
             # lr    - left + right
             # tb    - top + bottom
             # 4     - left + right +top + bottom
@@ -2179,24 +2179,53 @@ class App(QtCore.QObject):
             except:
                 return "Could not retrieve object: %s" % name
 
-
-            #get min and max data for each object as we just cut rectangles across X or Y
+            # Get min and max data for each object as we just cut rectangles across X or Y
             xmin, ymin, xmax, ymax = obj.bounds()
             px = 0.5 * (xmin + xmax)
             py = 0.5 * (ymin + ymax)
             lenghtx = (xmax - xmin)
             lenghty = (ymax - ymin)
-            gapsize = kwa['gapsize']+kwa['dia']/2
+            gapsize = kwa['gapsize'] + kwa['dia'] / 2
+            
             if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
-                subtract_rectangle(name,xmin-gapsize,py-gapsize+lenghty/4,xmax+gapsize,py+gapsize+lenghty/4)
-                subtract_rectangle(name,xmin-gapsize,py-gapsize-lenghty/4,xmax+gapsize,py+gapsize-lenghty/4)
+                
+                subtract_rectangle(name, 
+                                   xmin - gapsize, 
+                                   py - gapsize + lenghty / 4, 
+                                   xmax + gapsize, 
+                                   py + gapsize + lenghty / 4)
+                subtract_rectangle(name, 
+                                   xmin-gapsize, 
+                                   py - gapsize - lenghty / 4,
+                                   xmax + gapsize,
+                                   py + gapsize - lenghty / 4)
+                
             if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
-                subtract_rectangle(name,px-gapsize+lenghtx/4,ymin-gapsize,px+gapsize+lenghtx/4,ymax+gapsize)
-                subtract_rectangle(name,px-gapsize-lenghtx/4,ymin-gapsize,px+gapsize-lenghtx/4,ymax+gapsize)
+                subtract_rectangle(name, 
+                                   px - gapsize + lenghtx / 4,
+                                   ymin-gapsize, 
+                                   px + gapsize + lenghtx / 4, 
+                                   ymax + gapsize)
+                subtract_rectangle(name,
+                                   px - gapsize - lenghtx / 4, 
+                                   ymin - gapsize,
+                                   px + gapsize - lenghtx / 4,
+                                   ymax + gapsize)
+                
             if kwa['gaps'] == '4' or kwa['gaps']=='lr':
-                subtract_rectangle(name,xmin-gapsize,py-gapsize,xmax+gapsize,py+gapsize)
+                subtract_rectangle(name,
+                                   xmin - gapsize,
+                                   py - gapsize,
+                                   xmax + gapsize,
+                                   py + gapsize)
+                
             if kwa['gaps'] == '4' or kwa['gaps']=='tb':
-                subtract_rectangle(name,px-gapsize,ymin-gapsize,px+gapsize,ymax+gapsize)
+                subtract_rectangle(name,
+                                   px - gapsize,
+                                   ymin - gapsize,
+                                   px + gapsize,
+                                   ymax + gapsize)
+                
             return 'Ok'
 
         def mirror(name, *args):
@@ -2222,13 +2251,11 @@ class App(QtCore.QObject):
             if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
                 return "ERROR: Only Gerber and Excellon objects can be mirrored."
 
-
             # Axis
             try:
                 axis = kwa['axis'].upper()
             except KeyError:
                 return "ERROR: Specify -axis X or -axis Y"
-
 
             # Box
             if 'box' in kwa:
@@ -2302,20 +2329,23 @@ class App(QtCore.QObject):
             else:
                 gridoffsety=kwa['gridoffsety']
 
-
             # Tools
             tools = {"1": {"C": kwa['dia']}}
 
             def aligndrillgrid_init_me(init_obj, app_obj):
                 drills = []
                 currenty=0
+                
                 for row in range(kwa['rows']):
                     currentx=0
+                    
                     for col in range(kwa['columns']):
-                        point = Point(currentx+gridoffsetx,currenty+gridoffsety)
+                        point = Point(currentx + gridoffsetx, currenty + gridoffsety)
                         drills.append({"point": point, "tool": "1"})
-                        currentx=currentx+kwa['gridx']
-                    currenty=currenty+kwa['gridy']
+                        currentx = currentx + kwa['gridx']
+                    
+                    currenty = currenty + kwa['gridy']
+                
                 init_obj.tools = tools
                 init_obj.drills = drills
                 init_obj.create_geometry()
@@ -2389,23 +2419,32 @@ class App(QtCore.QObject):
                     else:
                         axisoffset=0
 
-                    #this  will align hole  to given aligngridoffset and minimal offset from pcb, based on selected axis
+                    # This will align hole to given aligngridoffset and minimal offset from pcb, based on selected axis
                     if axis == "X":
-                        firstpoint=kwa['gridoffset']
-                        while (xmin-kwa['minoffset'])<firstpoint:
-                            firstpoint=firstpoint-kwa['grid']
-                        lastpoint=kwa['gridoffset']
-                        while (xmax+kwa['minoffset'])>lastpoint:
-                            lastpoint=lastpoint+kwa['grid']
-                        localHoles=(firstpoint,axisoffset),(lastpoint,axisoffset)
+                        firstpoint = kwa['gridoffset']
+                        
+                        while (xmin - kwa['minoffset']) < firstpoint:
+                            firstpoint = firstpoint - kwa['grid']
+                        
+                        lastpoint = kwa['gridoffset']
+                        
+                        while (xmax + kwa['minoffset']) > lastpoint:
+                            lastpoint = lastpoint + kwa['grid']
+                        
+                        localHoles = (firstpoint, axisoffset), (lastpoint, axisoffset)
+                    
                     else:
-                        firstpoint=kwa['gridoffset']
-                        while (ymin-kwa['minoffset'])<firstpoint:
-                            firstpoint=firstpoint-kwa['grid']
-                        lastpoint=kwa['gridoffset']
-                        while (ymax+kwa['minoffset'])>lastpoint:
+                        firstpoint = kwa['gridoffset']
+                        
+                        while (ymin - kwa['minoffset']) < firstpoint:
+                            firstpoint = firstpoint - kwa['grid']
+                        
+                        lastpoint = kwa['gridoffset']
+                        
+                        while (ymax + kwa['minoffset']) > lastpoint:
                             lastpoint=lastpoint+kwa['grid']
-                        localHoles=(axisoffset,firstpoint),(axisoffset,lastpoint)
+                        
+                        localHoles = (axisoffset, firstpoint), (axisoffset, lastpoint)
 
                     for hole in localHoles:
                         point = Point(hole)
@@ -2455,8 +2494,8 @@ class App(QtCore.QObject):
             return 'Ok'
 
         def drillcncjob(name=None, *args):
-            #name should not be none, but we set it to default, because TCL return error without reason if argument is missing
-            #we should  check it inside shell commamnd instead
+            # name should not be none, but we set it to default, because TCL return error without reason if argument is missing
+            # we should  check it inside shell commamnd instead
             a, kwa = h(*args)
             types = {'tools': str,
                      'outname': str,
