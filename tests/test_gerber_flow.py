@@ -6,7 +6,7 @@ from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry, FlatCAMCNCjob
 from ObjectUI import GerberObjectUI, GeometryObjectUI
 from time import sleep
 import os
-
+import tempfile
 
 class GerberFlowTestCase(unittest.TestCase):
 
@@ -128,7 +128,10 @@ class GerberFlowTestCase(unittest.TestCase):
         # Export G-Code, check output
         #-----------------------------------------
         assert isinstance(cnc_obj, FlatCAMCNCjob)
-        output_filename = "tests/tmp/" + cnc_name + ".gcode"
+        output_filename = ""
+        #get system temporary file(try create it and  delete also)
+        with tempfile.NamedTemporaryFile(prefix="unittest.",suffix="."+cnc_name+".gcode",delete=True) as tmpfile:
+            output_filename = tmpfile.name
         cnc_obj.export_gcode(output_filename)
         self.assertTrue(os.path.isfile(output_filename))
         os.remove(output_filename)
