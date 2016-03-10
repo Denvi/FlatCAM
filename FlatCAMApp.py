@@ -644,14 +644,32 @@ class App(QtCore.QObject):
         else:
             self.defaults['stats'][resource] = 1
 
+    class TclErrorException(Exception):
+        """
+        this exception is deffined here, to be able catch it if we sucessfully handle all errors from shell command
+        """
+
+        pass
+
+    def raiseTclUnknownError(self, unknownException):
+        """
+        raise Exception if is different type  than TclErrorException
+        :param unknownException:
+        :return:
+        """
+
+        if not isinstance(unknownException, self.TclErrorException):
+            self.raiseTclError("Unknown error: %s" % str(unknownException))
+
     def raiseTclError(self, text):
         """
         this method  pass exception from python into TCL as error, so we get stacktrace and reason
         :param text: text of error
         :return: raise exception
         """
+
         self.tcl.eval('return -code error "%s"' % text)
-        raise Exception(text)
+        raise self.TclErrorException(text)
 
     def exec_command(self, text):
         """
@@ -660,6 +678,7 @@ class App(QtCore.QObject):
         :param text: Input command
         :return: None
         """
+
         self.report_usage('exec_command')
 
         text = str(text)
@@ -2659,44 +2678,49 @@ class App(QtCore.QObject):
             :param args: array of arguments
             :return: "Ok" if completed without errors
             '''
-            a, kwa = h(*args)
-            types = {'outname': str}
 
-            for key in kwa:
-                if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+            try:
+                a, kwa = h(*args)
+                types = {'outname': str}
+
+                for key in kwa:
+                    if key not in types:
+                        self.raiseTclError('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+
+                if name is None:
+                    self.raiseTclError('Argument name is missing.')
+
                 try:
-                    kwa[key] = types[key](kwa[key])
-                except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raiseTclError("Could not retrieve object: %s" % name)
 
-            if name is None:
-                self.raiseTclError('Argument name is missing.')
+                if obj is None:
+                    self.raiseTclError("Object not found: %s" % name)
 
-            try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                if not isinstance(obj, Geometry):
+                    self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
 
-            if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                def geo_init(geo_obj, app_obj):
+                    geo_obj.solid_geometry = obj_interiors
 
-            if not isinstance(obj, Geometry):
-                self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
+                if 'outname' in kwa:
+                    outname = kwa['outname']
+                else:
+                    outname = name + ".interiors"
 
-            def geo_init(geo_obj, app_obj):
-                geo_obj.solid_geometry = obj_interiors
+                try:
+                    obj_interiors = obj.get_interiors()
+                    self.new_object('geometry', outname, geo_init)
+                except Exception as e:
+                    self.raiseTclError("Failed: %s" % str(e))
 
-            if 'outname' in kwa:
-                outname = kwa['outname']
-            else:
-                outname = name + ".interiors"
-
-            try:
-                obj_interiors = obj.get_interiors()
-                self.new_object('geometry', outname, geo_init)
-            except Exception as e:
-                self.raiseTclError("Failed: %s" % str(e))
+            except Exception as unknown:
+                self.raiseTclUnknownError(unknown)
 
             return 'Ok'
 
