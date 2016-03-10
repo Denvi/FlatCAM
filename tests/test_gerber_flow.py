@@ -129,9 +129,9 @@ class GerberFlowTestCase(unittest.TestCase):
         #-----------------------------------------
         assert isinstance(cnc_obj, FlatCAMCNCjob)
         output_filename = ""
-        #get system temporary file(try create it and  delete also)
-        with tempfile.NamedTemporaryFile(prefix="unittest.",suffix="."+cnc_name+".gcode",delete=True) as tmpfile:
-            output_filename = tmpfile.name
+        # get system temporary file(try create it and  delete also)
+        with tempfile.NamedTemporaryFile(prefix='unittest.', suffix="." + cnc_name + '.gcode', delete=True) as tmp_file:
+            output_filename = tmp_file.name
         cnc_obj.export_gcode(output_filename)
         self.assertTrue(os.path.isfile(output_filename))
         os.remove(output_filename)
