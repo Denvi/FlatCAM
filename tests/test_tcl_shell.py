@@ -141,7 +141,6 @@ class TclShellCommandTest(unittest.TestCase):
 
     def test_excellon_flow(self):
 
-
         self.fc.exec_command_test('set_sys units MM')
         self.fc.exec_command_test('open_excellon %s/%s -outname %s' % (self.gerber_files, self.excellon_filename, self.excellon_name))
         excellon_obj = self.fc.collection.get_by_name(self.excellon_name)

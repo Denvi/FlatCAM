@@ -679,7 +679,7 @@ class App(QtCore.QObject):
         :return: output if there was any
         """
 
-        return self.exec_command_test(self, text, False)
+        return self.exec_command_test(text, False)
 
     def exec_command_test(self, text, reraise=True):
         """
