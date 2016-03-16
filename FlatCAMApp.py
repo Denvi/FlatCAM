@@ -25,7 +25,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
-
+import tclCommands
 
 ########################################
 ##                App                 ##
@@ -660,6 +660,8 @@ class App(QtCore.QObject):
 
         if not isinstance(unknownException, self.TclErrorException):
             self.raiseTclError("Unknown error: %s" % str(unknownException))
+        else:
+            raise unknownException
 
     def raiseTclError(self, text):
         """
@@ -3546,6 +3548,9 @@ class App(QtCore.QObject):
                         '   paramvalue: Value to set.'
             }
         }
+
+        #import/overwrite tcl commands as objects of TclCommand descendants
+        tclCommands.register_all_commands(self, commands)
 
         # Add commands to the tcl interpreter
         for cmd in commands:
