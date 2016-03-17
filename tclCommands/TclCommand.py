@@ -1,31 +1,33 @@
 import sys, inspect, pkgutil
 import re
 import FlatCAMApp
-
+import collections
 
 class TclCommand(object):
 
     app=None
 
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
-    aliases = None
+    aliases = []
 
-    # dictionary of types from Tcl command: args = {'name': str}, this is  for  value without optionname
-    arg_names = {'name': str}
+    # dictionary of types from Tcl command, needs to be ordered
+    arg_names = collections.OrderedDict([
+        ('name', str)
+    ])
 
-    # dictionary of types from Tcl command: types = {'outname': str} , this  is  for options  like -optionname value
-    option_types = {}
+    # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
+    option_types = collections.OrderedDict([])
 
     # array of mandatory options for current Tcl command: required = {'name','outname'}
     required = ['name']
 
-    # structured help for current command
+    # structured help for current command, args needs to be ordered
     help = {
         'main': "undefined help.",
-        'args': {
-            'argumentname': 'undefined help.',
-            'optionname': 'undefined help.'
-        },
+        'args': collections.OrderedDict([
+            ('argumentname', 'undefined help.'),
+            ('optionname', 'undefined help.')
+        ]),
         'examples' : []
     }
 
@@ -41,7 +43,7 @@ class TclCommand(object):
 
         def get_decorated_command(alias):
             command_string = []
-            for key, value in reversed(self.help['args'].items()):
+            for key, value in self.help['args'].items():
                 command_string.append(get_decorated_argument(key, value, True))
             return "> " + alias + " " + " ".join(command_string)
 
@@ -49,11 +51,18 @@ class TclCommand(object):
             option_symbol = ''
             if key in self.arg_names:
                 type=self.arg_names[key]
-                in_command_name = "<" + str(type.__name__) + ">"
-            else:
+                type_name=str(type.__name__)
+                in_command_name = "<" + type_name + ">"
+            elif key in self.option_types:
                 option_symbol = '-'
                 type=self.option_types[key]
-                in_command_name = option_symbol + key + " <" + str(type.__name__) + ">"
+                type_name=str(type.__name__)
+                in_command_name = option_symbol + key + " <" + type_name + ">"
+            else:
+                option_symbol = ''
+                type_name='?'
+                in_command_name = option_symbol + key + " <" + type_name + ">"
+
             if in_command:
                 if key in self.required:
                     return in_command_name
@@ -61,19 +70,18 @@ class TclCommand(object):
                     return '[' + in_command_name + "]"
             else:
                 if key in self.required:
-                    return "\t" + option_symbol + key + " <" + str(type.__name__) + ">: " + value
+                    return "\t" + option_symbol + key + " <" + type_name + ">: " + value
                 else:
-                    return "\t[" + option_symbol + key + " <" + str(type.__name__) + ">: " + value+"]"
+                    return "\t[" + option_symbol + key + " <" + type_name + ">: " + value+"]"
 
         def get_decorated_example(example):
-            example_string = ''
-            return "todo" + example_string
+            return "> "+example
 
         help_string=[self.help['main']]
         for alias in self.aliases:
             help_string.append(get_decorated_command(alias))
 
-        for key, value in reversed(self.help['args'].items()):
+        for key, value in self.help['args'].items():
             help_string.append(get_decorated_argument(key, value))
 
         for example in self.help['examples']:
@@ -123,10 +131,10 @@ class TclCommand(object):
 
         # check arguments
         idx=0
-        arg_names_reversed=self.arg_names.items()
+        arg_names_items=self.arg_names.items()
         for argument in arguments:
             if len(self.arg_names) > idx:
-                key, type = arg_names_reversed[len(self.arg_names)-idx-1]
+                key, type = arg_names_items[idx]
                 try:
                     named_args[key] = type(argument)
                 except Exception, e:

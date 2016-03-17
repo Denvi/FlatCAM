@@ -5,6 +5,8 @@ import sys
 # allowed command modules
 import tclCommands.TclCommandExteriors
 import tclCommands.TclCommandInteriors
+import tclCommands.TclCommandAddPolygon
+import tclCommands.TclCommandAddPolyline
 
 
 __all__=[]

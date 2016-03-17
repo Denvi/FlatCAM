@@ -136,6 +136,27 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
+    def add_polyline(self, points):
+        """
+        Adds a polyline to the object (by union)
+
+        :param points: The vertices of the polyline.
+        :return: None
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(LineString(points))
+            return
+
+        try:
+            self.solid_geometry = self.solid_geometry.union(LineString(points))
+        except:
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polylines.")
+            raise
+
     def subtract_polygon(self, points):
         """
         Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.

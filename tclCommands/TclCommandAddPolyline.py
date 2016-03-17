@@ -2,13 +2,13 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandExteriors(TclCommand.TclCommand):
+class TclCommandAddPolyline(TclCommand.TclCommand):
     """
-    Tcl shell command to get exteriors of polygons
+    Tcl shell command to create a polyline in the given Geometry object
     """
 
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
-    aliases = ['exteriors','ext']
+    aliases = ['add_polyline']
 
     # dictionary of types from Tcl command, needs to be ordered
     arg_names = collections.OrderedDict([
@@ -16,21 +16,21 @@ class TclCommandExteriors(TclCommand.TclCommand):
     ])
 
     # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
-    option_types = collections.OrderedDict([
-        ('outname', str)
-    ])
+    option_types = collections.OrderedDict([])
 
     # array of mandatory options for current Tcl command: required = {'name','outname'}
     required = ['name']
 
     # structured help for current command, args needs to be ordered
     help = {
-        'main': "Get exteriors of polygons.",
-        'args':  collections.OrderedDict([
-            ('name', 'Name of the source Geometry object.'),
-            ('outname', 'Name of the resulting Geometry object.')
+        'main': "Creates a polyline in the given Geometry object.",
+        'args': collections.OrderedDict([
+            ('name', 'Name of the Geometry object to which to append the polyline.'),
+            ('xi, yi', 'Coordinates of points in the polyline.')
         ]),
-        'examples':[]
+        'examples':[
+            'add_polyline <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]'
+        ]
     }
 
     def execute(self, args, unnamed_args):
@@ -45,11 +45,6 @@ class TclCommandExteriors(TclCommand.TclCommand):
 
         name = args['name']
 
-        if 'outname' in args:
-            outname = args['outname']
-        else:
-            outname = name + "_exteriors"
-
         try:
             obj = self.app.collection.get_by_name(name)
         except:
@@ -61,8 +56,10 @@ class TclCommandExteriors(TclCommand.TclCommand):
         if not isinstance(obj, Geometry):
             self.app.raiseTclError('Expected Geometry, got %s %s.' % (name, type(obj)))
 
-        def geo_init(geo_obj, app_obj):
-            geo_obj.solid_geometry = obj_exteriors
+        if len(unnamed_args) % 2 != 0:
+            self.app.raiseTclError("Incomplete coordinates.")
 
-        obj_exteriors = obj.get_exteriors()
-        self.app.new_object('geometry', outname, geo_init)
+        points = [[float(unnamed_args[2*i]), float(unnamed_args[2*i+1])] for i in range(len(unnamed_args)/2)]
+
+        obj.add_polyline(points)
+        obj.plot()

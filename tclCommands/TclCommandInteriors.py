@@ -9,22 +9,26 @@ class TclCommandInteriors(TclCommand.TclCommand):
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
     aliases = ['interiors']
 
-    # dictionary of types from Tcl command: args = {'name': str}, this is  for  value without optionname
-    arg_names = {'name': str}
+    # dictionary of types from Tcl command, needs to be ordered
+    arg_names = collections.OrderedDict([
+        ('name', str)
+    ])
 
-    # dictionary of types from Tcl command: types = {'outname': str} , this  is  for options  like -optionname value
-    option_types = {'outname': str}
+    # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
+    option_types = collections.OrderedDict([
+        ('outname', str)
+    ])
 
     # array of mandatory options for current Tcl command: required = {'name','outname'}
     required = ['name']
 
-    # structured help for current command
+    # structured help for current command, args needs to be ordered
     help = {
         'main': "Get interiors of polygons.",
-        'args': {
-            'name': 'Name of the source Geometry object.',
-            'outname': 'Name of the resulting Geometry object.'
-        },
+        'args':  collections.OrderedDict([
+            ('name', 'Name of the source Geometry object.'),
+            ('outname', 'Name of the resulting Geometry object.')
+        ]),
         'examples':[]
     }
 
