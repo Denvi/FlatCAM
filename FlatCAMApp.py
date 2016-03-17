@@ -2031,6 +2031,71 @@ class App(QtCore.QObject):
 
             return a, kwa
 
+        from contextlib import contextmanager
+        @contextmanager
+        def wait_signal(signal, timeout=10000):
+            """Block loop until signal emitted, or timeout (ms) elapses."""
+            loop = QtCore.QEventLoop()
+            signal.connect(loop.quit)
+
+            status = {'timed_out': False}
+
+            def report_quit():
+                status['timed_out'] = True
+                loop.quit()
+
+            yield
+
+            if timeout is not None:
+                QtCore.QTimer.singleShot(timeout, report_quit)
+
+            loop.exec_()
+
+            if status['timed_out']:
+                raise Exception('Timed out!')
+
+        def wait_signal2(signal, timeout=10000):
+            """Block loop until signal emitted, or timeout (ms) elapses."""
+            loop = QtCore.QEventLoop()
+            signal.connect(loop.quit)
+            status = {'timed_out': False}
+
+            def report_quit():
+                status['timed_out'] = True
+                loop.quit()
+
+            if timeout is not None:
+                QtCore.QTimer.singleShot(timeout, report_quit)
+            loop.exec_()
+
+            if status['timed_out']:
+                raise Exception('Timed out!')
+
+        def mytest(*args):
+            to = int(args[0])
+
+            try:
+                for rec in self.recent:
+                    if rec['kind'] == 'gerber':
+                        self.open_gerber(str(rec['filename']))
+                        break
+
+                basename = self.collection.get_names()[0]
+                isolate(basename, '-passes', '10', '-combine', '1')
+                iso = self.collection.get_by_name(basename + "_iso")
+
+                with wait_signal(self.new_object_available, to):
+                    iso.generatecncjob()
+                # iso.generatecncjob()
+                # wait_signal2(self.new_object_available, to)
+
+                return str(self.collection.get_names())
+
+            except Exception as e:
+                return str(e)
+
+            return str(self.collection.get_names())
+
         def import_svg(filename, *args):
             a, kwa = h(*args)
             types = {'outname': str}
@@ -3016,6 +3081,10 @@ class App(QtCore.QObject):
             return "ERROR: No such system parameter."
 
         commands = {
+            'mytest': {
+                'fcn': mytest,
+                'help': "Test function. Only for testing."
+            },
             'help': {
                 'fcn': shelp,
                 'help': "Shows list of commands."
