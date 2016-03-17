@@ -698,7 +698,8 @@ class App(QtCore.QObject):
 
         try:
             result = self.tcl.eval(str(text))
-            self.shell.append_output(result + '\n')
+            if result!='None':
+                self.shell.append_output(result + '\n')
         except Tkinter.TclError, e:
             #this will display more precise answer if something in  TCL shell fail
             result = self.tcl.eval("set errorInfo")
