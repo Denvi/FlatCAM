@@ -651,7 +651,7 @@ class App(QtCore.QObject):
 
         pass
 
-    def raiseTclUnknownError(self, unknownException):
+    def raise_tcl_unknown_error(self, unknownException):
         """
         raise Exception if is different type  than TclErrorException
         :param unknownException:
@@ -659,11 +659,11 @@ class App(QtCore.QObject):
         """
 
         if not isinstance(unknownException, self.TclErrorException):
-            self.raiseTclError("Unknown error: %s" % str(unknownException))
+            self.raise_tcl_error("Unknown error: %s" % str(unknownException))
         else:
             raise unknownException
 
-    def raiseTclError(self, text):
+    def raise_tcl_error(self, text):
         """
         this method  pass exception from python into TCL as error, so we get stacktrace and reason
         :param text: text of error
@@ -2274,20 +2274,20 @@ class App(QtCore.QObject):
                 # 8     - 2*left + 2*right +2*top + 2*bottom
 
                 if name is None:
-                    self.raiseTclError('Argument name is missing.')
+                    self.raise_tcl_error('Argument name is missing.')
 
                 for key in kwa:
                     if key not in types:
-                        self.raiseTclError('Unknown parameter: %s' % key)
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
                     try:
                         kwa[key] = types[key](kwa[key])
                     except Exception, e:
-                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
 
                 try:
                     obj = self.collection.get_by_name(str(name))
                 except:
-                    self.raiseTclError("Could not retrieve object: %s" % name)
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
                 # Get min and max data for each object as we just cut rectangles across X or Y
                 xmin, ymin, xmax, ymax = obj.bounds()
@@ -2337,7 +2337,7 @@ class App(QtCore.QObject):
                                        ymax + gapsize)
 
             except Exception as unknown:
-                self.raiseTclUnknownError(unknown)
+                self.raise_tcl_unknown_error(unknown)
 
         def mirror(name, *args):
             a, kwa = h(*args)
@@ -2624,26 +2624,26 @@ class App(QtCore.QObject):
                          }
 
                 if name is None:
-                    self.raiseTclError('Argument name is missing.')
+                    self.raise_tcl_error('Argument name is missing.')
 
                 for key in kwa:
                     if key not in types:
-                        self.raiseTclError('Unknown parameter: %s' % key)
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
                     try:
                         kwa[key] = types[key](kwa[key])
                     except Exception, e:
-                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
 
                 try:
                     obj = self.collection.get_by_name(str(name))
                 except:
-                    self.raiseTclError("Could not retrieve object: %s" % name)
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
                 if obj is None:
-                    self.raiseTclError('Object not found: %s' % name)
+                    self.raise_tcl_error('Object not found: %s' % name)
 
                 if not isinstance(obj, FlatCAMExcellon):
-                    self.raiseTclError('Only Excellon objects can be drilled, got %s %s.' % (name,  type(obj)))
+                    self.raise_tcl_error('Only Excellon objects can be drilled, got %s %s.' % (name, type(obj)))
 
                 try:
                     # Get the tools from the list
@@ -2663,10 +2663,10 @@ class App(QtCore.QObject):
                     obj.app.new_object("cncjob", job_name, job_init)
 
                 except Exception, e:
-                    self.raiseTclError("Operation failed: %s" % str(e))
+                    self.raise_tcl_error("Operation failed: %s" % str(e))
 
             except Exception as unknown:
-                self.raiseTclUnknownError(unknown)
+                self.raise_tcl_unknown_error(unknown)
 
 
         def millholes(name=None, *args):
@@ -2684,43 +2684,43 @@ class App(QtCore.QObject):
                          'outname': str}
 
                 if name is None:
-                    self.raiseTclError('Argument name is missing.')
+                    self.raise_tcl_error('Argument name is missing.')
 
                 for key in kwa:
                     if key not in types:
-                        self.raiseTclError('Unknown parameter: %s' % key)
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
                     try:
                         kwa[key] = types[key](kwa[key])
                     except Exception, e:
-                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
 
                 try:
                     if 'tools' in kwa:
                         kwa['tools'] = [x.strip() for x in kwa['tools'].split(",")]
                 except Exception as e:
-                    self.raiseTclError("Bad tools: %s" % str(e))
+                    self.raise_tcl_error("Bad tools: %s" % str(e))
 
                 try:
                     obj = self.collection.get_by_name(str(name))
                 except:
-                    self.raiseTclError("Could not retrieve object: %s" % name)
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
                 if obj is None:
-                    self.raiseTclError("Object not found: %s" % name)
+                    self.raise_tcl_error("Object not found: %s" % name)
 
                 if not isinstance(obj, FlatCAMExcellon):
-                    self.raiseTclError('Only Excellon objects can be mill drilled, got %s %s.' % (name,  type(obj)))
+                    self.raise_tcl_error('Only Excellon objects can be mill drilled, got %s %s.' % (name, type(obj)))
 
                 try:
                     success, msg = obj.generate_milling(**kwa)
                 except Exception as e:
-                    self.raiseTclError("Operation failed: %s" % str(e))
+                    self.raise_tcl_error("Operation failed: %s" % str(e))
 
                 if not success:
-                    self.raiseTclError(msg)
+                    self.raise_tcl_error(msg)
 
             except Exception as unknown:
-                self.raiseTclUnknownError(unknown)
+                self.raise_tcl_unknown_error(unknown)
 
         def exteriors(name=None, *args):
             '''
@@ -2735,26 +2735,26 @@ class App(QtCore.QObject):
                 types = {'outname': str}
 
                 if name is None:
-                    self.raiseTclError('Argument name is missing.')
+                    self.raise_tcl_error('Argument name is missing.')
 
                 for key in kwa:
                     if key not in types:
-                        self.raiseTclError('Unknown parameter: %s' % key)
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
                     try:
                         kwa[key] = types[key](kwa[key])
                     except Exception, e:
-                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
 
                 try:
                     obj = self.collection.get_by_name(str(name))
                 except:
-                    self.raiseTclError("Could not retrieve object: %s" % name)
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
                 if obj is None:
-                    self.raiseTclError("Object not found: %s" % name)
+                    self.raise_tcl_error("Object not found: %s" % name)
 
                 if not isinstance(obj, Geometry):
-                    self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
+                    self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
                 def geo_init(geo_obj, app_obj):
                     geo_obj.solid_geometry = obj_exteriors
@@ -2768,10 +2768,10 @@ class App(QtCore.QObject):
                     obj_exteriors = obj.get_exteriors()
                     self.new_object('geometry', outname, geo_init)
                 except Exception as e:
-                    self.raiseTclError("Failed: %s" % str(e))
+                    self.raise_tcl_error("Failed: %s" % str(e))
 
             except Exception as unknown:
-                self.raiseTclUnknownError(unknown)
+                self.raise_tcl_unknown_error(unknown)
 
         def interiors(name=None, *args):
             '''
@@ -2787,25 +2787,25 @@ class App(QtCore.QObject):
 
                 for key in kwa:
                     if key not in types:
-                        self.raiseTclError('Unknown parameter: %s' % key)
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
                     try:
                         kwa[key] = types[key](kwa[key])
                     except Exception, e:
-                        self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
 
                 if name is None:
-                    self.raiseTclError('Argument name is missing.')
+                    self.raise_tcl_error('Argument name is missing.')
 
                 try:
                     obj = self.collection.get_by_name(str(name))
                 except:
-                    self.raiseTclError("Could not retrieve object: %s" % name)
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
                 if obj is None:
-                    self.raiseTclError("Object not found: %s" % name)
+                    self.raise_tcl_error("Object not found: %s" % name)
 
                 if not isinstance(obj, Geometry):
-                    self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
+                    self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
                 def geo_init(geo_obj, app_obj):
                     geo_obj.solid_geometry = obj_interiors
@@ -2819,10 +2819,10 @@ class App(QtCore.QObject):
                     obj_interiors = obj.get_interiors()
                     self.new_object('geometry', outname, geo_init)
                 except Exception as e:
-                    self.raiseTclError("Failed: %s" % str(e))
+                    self.raise_tcl_error("Failed: %s" % str(e))
 
             except Exception as unknown:
-                self.raiseTclUnknownError(unknown)
+                self.raise_tcl_unknown_error(unknown)
 
         def isolate(name=None, *args):
             '''
@@ -2840,29 +2840,29 @@ class App(QtCore.QObject):
 
             for key in kwa:
                 if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+                    self.raise_tcl_error('Unknown parameter: %s' % key)
                 try:
                     kwa[key] = types[key](kwa[key])
                 except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
             try:
                 obj = self.collection.get_by_name(str(name))
             except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                self.raise_tcl_error("Could not retrieve object: %s" % name)
 
             if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                self.raise_tcl_error("Object not found: %s" % name)
 
             assert isinstance(obj, FlatCAMGerber), \
                 "Expected a FlatCAMGerber, got %s" % type(obj)
 
             if not isinstance(obj, FlatCAMGerber):
-                self.raiseTclError('Expected FlatCAMGerber, got %s %s.' % (name,  type(obj)))
+                self.raise_tcl_error('Expected FlatCAMGerber, got %s %s.' % (name, type(obj)))
 
             try:
                 obj.isolate(**kwa)
             except Exception, e:
-                self.raiseTclError("Operation failed: %s" % str(e))
+                self.raise_tcl_error("Operation failed: %s" % str(e))
 
             return 'Ok'
 
@@ -3253,11 +3253,11 @@ class App(QtCore.QObject):
             Test it like this:
             if name is None:
 
-                self.raiseTclError('Argument name is missing.')
+                self.raise_tcl_error('Argument name is missing.')
 
-            When error ocurre, always use raiseTclError, never return "sometext" on error,
+            When error ocurre, always use raise_tcl_error, never return "sometext" on error,
             otherwise we will miss it and processing will silently continue.
-            Method raiseTclError  pass error into TCL interpreter, then raise python exception,
+            Method raise_tcl_error  pass error into TCL interpreter, then raise python exception,
             which is catched in exec_command and displayed in TCL shell console with red background.
             Error in console is displayed  with TCL  trace.
 

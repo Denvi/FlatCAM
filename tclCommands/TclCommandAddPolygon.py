@@ -8,7 +8,7 @@ class TclCommandAddPolygon(TclCommand.TclCommand):
     """
 
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
-    aliases = ['add_polygon','add_poly']
+    aliases = ['add_polygon', 'add_poly']
 
     # dictionary of types from Tcl command, needs to be ordered
     arg_names = collections.OrderedDict([
@@ -16,7 +16,7 @@ class TclCommandAddPolygon(TclCommand.TclCommand):
     ])
 
     # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
-    option_types = collections.OrderedDict([])
+    option_types = collections.OrderedDict()
 
     # array of mandatory options for current Tcl command: required = {'name','outname'}
     required = ['name']
@@ -28,7 +28,7 @@ class TclCommandAddPolygon(TclCommand.TclCommand):
             ('name', 'Name of the Geometry object to which to append the polygon.'),
             ('xi, yi', 'Coordinates of points in the polygon.')
         ]),
-        'examples':[
+        'examples': [
             'add_polygon <name> <x0> <y0> <x1> <y1> <x2> <y2> [x3 y3 [...]]'
         ]
     }
@@ -45,19 +45,15 @@ class TclCommandAddPolygon(TclCommand.TclCommand):
 
         name = args['name']
 
-        try:
-            obj = self.app.collection.get_by_name(name)
-        except:
-            self.app.raiseTclError("Could not retrieve object: %s" % name)
-
+        obj = self.app.collection.get_by_name(name)
         if obj is None:
-            self.app.raiseTclError("Object not found: %s" % name)
+            self.raise_tcl_error("Object not found: %s" % name)
 
         if not isinstance(obj, Geometry):
-            self.app.raiseTclError('Expected Geometry, got %s %s.' % (name, type(obj)))
+            self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
         if len(unnamed_args) % 2 != 0:
-            self.app.raiseTclError("Incomplete coordinates.")
+            self.raise_tcl_error("Incomplete coordinates.")
 
         points = [[float(unnamed_args[2*i]), float(unnamed_args[2*i+1])] for i in range(len(unnamed_args)/2)]
 

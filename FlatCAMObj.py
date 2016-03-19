@@ -1040,6 +1040,10 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.app.inform.emit("Saved to: " + filename)
 
+    def get_gcode(self, preamble='', postamble=''):
+        #we need this to beable get_gcode separatelly for shell command export_code
+        return preamble + '\n' + self.gcode + "\n" + postamble
+
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
             return
@@ -1243,7 +1247,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                        outname=None,
                        spindlespeed=None,
                        multidepth=None,
-                       depthperpass=None):
+                       depthperpass=None,
+                       use_thread=True):
         """
         Creates a CNCJob out of this Geometry object. The actual
         work is done by the target FlatCAMCNCjob object's
@@ -1304,18 +1309,22 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             app_obj.progress.emit(80)
 
-        # To be run in separate thread
-        def job_thread(app_obj):
-            with self.app.proc_container.new("Generating CNC Job."):
-                app_obj.new_object("cncjob", outname, job_init)
-                app_obj.inform.emit("CNCjob created: %s" % outname)
-                app_obj.progress.emit(100)
 
-        # Create a promise with the name
-        self.app.collection.promise(outname)
+        if  use_thread:
+            # To be run in separate thread
+            def job_thread(app_obj):
+                with self.app.proc_container.new("Generating CNC Job."):
+                    app_obj.new_object("cncjob", outname, job_init)
+                    app_obj.inform.emit("CNCjob created: %s" % outname)
+                    app_obj.progress.emit(100)
 
-        # Send to worker
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+            # Create a promise with the name
+            self.app.collection.promise(outname)
+
+            # Send to worker
+            self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+        else:
+            self.app.new_object("cncjob", outname, job_init)
 
     def on_plot_cb_click(self, *args):  # TODO: args not needed
         if self.muted_ui:

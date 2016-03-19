@@ -1,6 +1,7 @@
 from ObjectCollection import *
 import TclCommand
 
+
 class TclCommandInteriors(TclCommand.TclCommand):
     """
     Tcl shell command to get interiors of polygons
@@ -29,7 +30,7 @@ class TclCommandInteriors(TclCommand.TclCommand):
             ('name', 'Name of the source Geometry object.'),
             ('outname', 'Name of the resulting Geometry object.')
         ]),
-        'examples':[]
+        'examples': []
     }
 
     def execute(self, args, unnamed_args):
@@ -49,18 +50,14 @@ class TclCommandInteriors(TclCommand.TclCommand):
         else:
             outname = name + "_interiors"
 
-        try:
-            obj = self.app.collection.get_by_name(name)
-        except:
-            self.app.raiseTclError("Could not retrieve object: %s" % name)
-
+        obj = self.app.collection.get_by_name(name)
         if obj is None:
-            self.app.raiseTclError("Object not found: %s" % name)
+            self.raise_tcl_error("Object not found: %s" % name)
 
         if not isinstance(obj, Geometry):
-            self.app.raiseTclError('Expected Geometry, got %s %s.' % (name, type(obj)))
+            self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
-        def geo_init(geo_obj, app_obj):
+        def geo_init(geo_obj):
             geo_obj.solid_geometry = obj_exteriors
 
         obj_exteriors = obj.get_interiors()
