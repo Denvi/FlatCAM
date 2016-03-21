@@ -875,7 +875,7 @@ class Geometry(object):
 
         :return: SVG Element
         """
-        svg_elem = self.solid_geometry.svg()
+        svg_elem = self.solid_geometry.svg(scale_factor=0.05)
         return svg_elem
 
 class ApertureMacro:
@@ -3328,7 +3328,7 @@ class CNCjob(Geometry):
         :return: SVG Element
         """
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
-        svg_elem = self.solid_geometry.svg()
+        svg_elem = self.solid_geometry.svg(scale_factor=0.05)
         return svg_elem
 
 # def get_bounds(geometry_set):

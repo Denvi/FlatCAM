@@ -1714,11 +1714,15 @@ class App(QtCore.QObject):
         except:
             return "Could not retrieve object: %s" % obj_name
 
-        # TODO needs size of board / dpi information
+        # TODO needs size of board determining
+        # TODO needs seperate colours for CNCPath Export
 
         with self.proc_container.new("Exporting SVG") as proc:
-            svg_elem = obj.export_svg()
-            svg_elem = "<svg>" + svg_elem + "</svg>"
+            svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
+            svg_header += 'width="50mm" height="50mm" viewBox="0 -50 50 50">'
+            svg_header += '<g transform="scale(1,-1)">'
+            svg_footer = '</g> </svg>'
+            svg_elem = svg_header + obj.export_svg() + svg_footer
             doc = parse_xml_string(svg_elem)
             with open(filename, 'w') as fp:
                 fp.write(doc.toprettyxml())
