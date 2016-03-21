@@ -869,6 +869,14 @@ class Geometry(object):
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
 
+    def export_svg(self):
+        """
+        Exports the Gemoetry Object as a SVG Element
+
+        :return: SVG Element
+        """
+        svg_elem = self.solid_geometry.svg()
+        return svg_elem
 
 class ApertureMacro:
     """
@@ -3313,6 +3321,15 @@ class CNCjob(Geometry):
 
         self.create_geometry()
 
+    def export_svg(self):
+        """
+        Exports the CNC Job as a SVG Element
+
+        :return: SVG Element
+        """
+        self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
+        svg_elem = self.solid_geometry.svg()
+        return svg_elem
 
 # def get_bounds(geometry_set):
 #     xmin = Inf

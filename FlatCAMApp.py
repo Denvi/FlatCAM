@@ -25,7 +25,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
-
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##                App                 ##
@@ -451,6 +451,7 @@ class App(QtCore.QObject):
         self.ui.menufileopengcode.triggered.connect(self.on_fileopengcode)
         self.ui.menufileopenproject.triggered.connect(self.on_file_openproject)
         self.ui.menufileimportsvg.triggered.connect(self.on_file_importsvg)
+        self.ui.menufileexportsvg.triggered.connect(self.on_file_exportsvg)
         self.ui.menufilesaveproject.triggered.connect(self.on_file_saveproject)
         self.ui.menufilesaveprojectas.triggered.connect(self.on_file_saveprojectas)
         self.ui.menufilesaveprojectcopy.triggered.connect(lambda: self.on_file_saveprojectas(make_copy=True))
@@ -1577,6 +1578,42 @@ class App(QtCore.QObject):
             # thread safe. The new_project()
             self.open_project(filename)
 
+    def on_file_exportsvg(self):
+        """
+        Callback for menu item File->Export SVG.
+
+        :return: None
+        """
+        self.report_usage("on_file_exportsvg")
+        App.log.debug("on_file_exportsvg()")
+
+        obj = self.collection.get_active()
+        if obj is None:
+            self.inform.emit("WARNING: No object selected.")
+            msg = "Please Select a Geometry object to export"
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
+        name = self.collection.get_active().options["name"]
+
+        try:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG",
+                                                         directory=self.get_last_folder(), filter="*.svg")
+        except TypeError:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG")
+
+        filename = str(filename)
+
+        if str(filename) == "":
+            self.inform.emit("Export SVG cancelled.")
+            return
+        else:
+            self.export_svg(name, filename)
+
     def on_file_importsvg(self):
         """
         Callback for menu item File->Import SVG.
@@ -1660,6 +1697,31 @@ class App(QtCore.QObject):
             self.inform.emit("Project saved to: " + self.project_filename)
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
+
+
+    def export_svg(self, obj_name, filename, outname=None):
+        """
+        Exports a Geometry Object to a SVG File
+
+        :param filename: Path to the SVG file to save to.
+        :param outname:
+        :return:
+        """
+        self.log.debug("export_svg()")
+
+        try:
+            obj = self.collection.get_by_name(str(obj_name))
+        except:
+            return "Could not retrieve object: %s" % obj_name
+
+        # TODO needs size of board / dpi information
+
+        with self.proc_container.new("Exporting SVG") as proc:
+            svg_elem = obj.export_svg()
+            svg_elem = "<svg>" + svg_elem + "</svg>"
+            doc = parse_xml_string(svg_elem)
+            with open(filename, 'w') as fp:
+                fp.write(doc.toprettyxml())
 
     def import_svg(self, filename, outname=None):
         """
@@ -2108,6 +2170,10 @@ class App(QtCore.QObject):
                 return str(e)
 
             return str(self.collection.get_names())
+
+        def export_svg(name, filename):
+
+            self.export_svg(str(name), str(filename))
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3224,6 +3290,13 @@ class App(QtCore.QObject):
                 'help': "Import an SVG file as a Geometry Object.\n" +
                         "> import_svg <filename>" +
                         "   filename: Path to the file to import."
+            },
+            'export_svg': {
+                'fcn': export_svg,
+                'help': "Export a Geometry Object as a SVG File\n" +
+                        "> export_svg <name> <filename>\n" +
+                        "   name: Name of the geometry object to export.\n" +
+                        "   filename: Path to the file to export."
             },
             'open_gerber': {
                 'fcn': open_gerber,
