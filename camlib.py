@@ -3327,8 +3327,28 @@ class CNCjob(Geometry):
 
         :return: SVG Element
         """
+
+        # This appears to match up distance wise with inkscape
+        scale = self.options['tooldia'] / 2
+        if scale == 0:
+            scale = 0.05
+
+        cuts = []
+        travels = []
+        for g in self.gcode_parsed:
+            if g['kind'][0] == 'C': cuts.append(g)
+            if g['kind'][0] == 'T': travels.append(g)
+
+        # Used to determine board size
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
-        svg_elem = self.solid_geometry.svg(scale_factor=0.05)
+
+        # Seperate the travels from the cuts for laser cutting under Visicut
+        travelsgeom = cascaded_union([geo['geom'] for geo in travels])
+        cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
+
+        svg_elem = travelsgeom.svg(scale_factor=scale, stroke_color="#F0E24D")
+        svg_elem += cutsgeom.svg(scale_factor=scale, stroke_color="#5E6CFF")
+
         return svg_elem
 
 # def get_bounds(geometry_set):
