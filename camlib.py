@@ -877,9 +877,7 @@ class Geometry(object):
         """
         # Sometimes self.solid_geometry can be a list instead of a Shapely class
         # Make sure we see it as a Shapely Geometry class
-        geom = self.solid_geometry
-        if type(self.solid_geometry) is list:
-            geom = [cascaded_union(self.solid_geometry)][0]
+        geom = cascaded_union(self.flatten())
 
         # Convert to a SVG
         svg_elem = geom.svg(scale_factor=0.05)

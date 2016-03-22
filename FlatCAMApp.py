@@ -1730,22 +1730,17 @@ class App(QtCore.QObject):
 
             # Sometimes obj.solid_geometry can be a list instead of a Shapely class
             # Make sure we see it as a Shapely Geometry class
-            geom = obj.solid_geometry
-            if type(obj.solid_geometry) is list:
-                geom = [cascaded_union(obj.solid_geometry)][0]
-
+            geom = cascaded_union(obj.flatten())
 
             # Determine bounding area for svg export
-            svgwidth = geom.bounds[2] - geom.bounds[0]
-            svgheight = geom.bounds[3] - geom.bounds[1]
-            minx = geom.bounds[0]
-            miny = geom.bounds[1] - svgheight
+            bounds = obj.bounds()
+            size = obj.size()
 
             # Convert everything to strings for use in the xml doc
-            svgwidth = str(svgwidth)
-            svgheight = str(svgheight)
-            minx = str(minx)
-            miny = str(miny)
+            svgwidth = str(size[0])
+            svgheight = str(size[1])
+            minx = str(bounds[0])
+            miny = str(bounds[1] - size[1])
             uom = obj.units.lower()
 
             # Add a SVG Header and footer to the svg output from shapely
