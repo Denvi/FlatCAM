@@ -1710,7 +1710,7 @@ class App(QtCore.QObject):
             self.inform.emit("Project copy saved to: " + self.project_filename)
 
 
-    def export_svg(self, obj_name, filename, outname=None):
+    def export_svg(self, obj_name, filename, scale_factor=0.00):
         """
         Exports a Geometry Object to a SVG File
 
@@ -1726,11 +1726,7 @@ class App(QtCore.QObject):
             return "Could not retrieve object: %s" % obj_name
 
         with self.proc_container.new("Exporting SVG") as proc:
-            exported_svg = obj.export_svg()
-
-            # Sometimes obj.solid_geometry can be a list instead of a Shapely class
-            # Make sure we see it as a Shapely Geometry class
-            geom = cascaded_union(obj.flatten())
+            exported_svg = obj.export_svg(scale_factor=scale_factor)
 
             # Determine bounding area for svg export
             bounds = obj.bounds()
@@ -2206,9 +2202,16 @@ class App(QtCore.QObject):
 
             return str(self.collection.get_names())
 
-        def export_svg(name, filename):
+        def export_svg(name, filename, *args):
+            a, kwa = h(*args)
+            types = {'scale_factor': float}
 
-            self.export_svg(str(name), str(filename))
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.export_svg(str(name), str(filename), **kwa)
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3329,9 +3332,10 @@ class App(QtCore.QObject):
             'export_svg': {
                 'fcn': export_svg,
                 'help': "Export a Geometry Object as a SVG File\n" +
-                        "> export_svg <name> <filename>\n" +
+                        "> export_svg <name> <filename> [-scale_factor <0.0 (float)>]\n" +
                         "   name: Name of the geometry object to export.\n" +
-                        "   filename: Path to the file to export."
+                        "   filename: Path to the file to export.\n" +
+                        "   scale_factor: Multiplication factor used for scaling line widths during export."
             },
             'open_gerber': {
                 'fcn': open_gerber,
