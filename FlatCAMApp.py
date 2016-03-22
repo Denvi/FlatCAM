@@ -1599,9 +1599,8 @@ class App(QtCore.QObject):
             return
 
         # Check for more compatible types and add as required
-        # Excellon not yet supported, there seems to be a list within the Polygon Geometry that shapely's svg export doesn't like
-
-        if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)):
+        if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)
+            and not isinstance(obj, FlatCAMExcellon)):
             msg = "ERROR: Only Geometry, Gerber and CNCJob objects can be used."
             msgbox = QtGui.QMessageBox()
             msgbox.setInformativeText(msg)
@@ -1729,11 +1728,18 @@ class App(QtCore.QObject):
         with self.proc_container.new("Exporting SVG") as proc:
             exported_svg = obj.export_svg()
 
+            # Sometimes obj.solid_geometry can be a list instead of a Shapely class
+            # Make sure we see it as a Shapely Geometry class
+            geom = obj.solid_geometry
+            if type(obj.solid_geometry) is list:
+                geom = [cascaded_union(obj.solid_geometry)][0]
+
+
             # Determine bounding area for svg export
-            svgwidth = obj.solid_geometry.bounds[2] - obj.solid_geometry.bounds[0]
-            svgheight = obj.solid_geometry.bounds[3] - obj.solid_geometry.bounds[1]
-            minx = obj.solid_geometry.bounds[0]
-            miny = obj.solid_geometry.bounds[1] - svgheight
+            svgwidth = geom.bounds[2] - geom.bounds[0]
+            svgheight = geom.bounds[3] - geom.bounds[1]
+            minx = geom.bounds[0]
+            miny = geom.bounds[1] - svgheight
 
             # Convert everything to strings for use in the xml doc
             svgwidth = str(svgwidth)

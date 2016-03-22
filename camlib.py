@@ -875,7 +875,14 @@ class Geometry(object):
 
         :return: SVG Element
         """
-        svg_elem = self.solid_geometry.svg(scale_factor=0.05)
+        # Sometimes self.solid_geometry can be a list instead of a Shapely class
+        # Make sure we see it as a Shapely Geometry class
+        geom = self.solid_geometry
+        if type(self.solid_geometry) is list:
+            geom = [cascaded_union(self.solid_geometry)][0]
+
+        # Convert to a SVG
+        svg_elem = geom.svg(scale_factor=0.05)
         return svg_elem
 
 class ApertureMacro:
@@ -3345,14 +3352,19 @@ class CNCjob(Geometry):
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
         # Convert the cuts and travels into single geometry objects we can render as svg xml
-        travelsgeom = cascaded_union([geo['geom'] for geo in travels])
-        cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
+        if travels:
+            travelsgeom = cascaded_union([geo['geom'] for geo in travels])
+        if cuts:
+            cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
 
         # Render the SVG Xml
         # The scale factor affects the size of the lines, and the stroke color adds different formatting for each set
         # It's better to have the travels sitting underneath the cuts for visicut
-        svg_elem = travelsgeom.svg(scale_factor=scale, stroke_color="#F0E24D")
-        svg_elem += cutsgeom.svg(scale_factor=scale, stroke_color="#5E6CFF")
+        svg_elem = ""
+        if travels:
+            svg_elem = travelsgeom.svg(scale_factor=scale, stroke_color="#F0E24D")
+        if cuts:
+            svg_elem += cutsgeom.svg(scale_factor=scale, stroke_color="#5E6CFF")
 
         return svg_elem
 
