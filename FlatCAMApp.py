@@ -1598,6 +1598,18 @@ class App(QtCore.QObject):
             msgbox.exec_()
             return
 
+        # Check for more compatible types and add as required
+        # Excellon not yet supported, there seems to be a list within the Polygon Geometry that shapely's svg export doesn't like
+
+        if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)):
+            msg = "ERROR: Only Geometry, Gerber and CNCJob objects can be used."
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
         name = self.collection.get_active().options["name"]
 
         try:
@@ -1714,10 +1726,6 @@ class App(QtCore.QObject):
         except:
             return "Could not retrieve object: %s" % obj_name
 
-        # TODO needs seperate colours for CNCPath Export
-        # The line thickness is only affected by the scaling factor not the tool size
-        # Use the tool size to determine the scaling factor for line thickness
-
         with self.proc_container.new("Exporting SVG") as proc:
             exported_svg = obj.export_svg()
 
@@ -1727,12 +1735,15 @@ class App(QtCore.QObject):
             minx = obj.solid_geometry.bounds[0]
             miny = obj.solid_geometry.bounds[1] - svgheight
 
+            # Convert everything to strings for use in the xml doc
             svgwidth = str(svgwidth)
             svgheight = str(svgheight)
             minx = str(minx)
             miny = str(miny)
             uom = obj.units.lower()
-            
+
+            # Add a SVG Header and footer to the svg output from shapely
+            # The transform flips the Y Axis so that everything renders properly within svg apps such as inkscape
             svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
             svg_header += 'width="' + svgwidth + uom + '" '
             svg_header += 'height="' + svgheight + uom + '" '
@@ -1740,6 +1751,8 @@ class App(QtCore.QObject):
             svg_header += '<g transform="scale(1,-1)">'
             svg_footer = '</g> </svg>'
             svg_elem = svg_header + exported_svg + svg_footer
+
+            # Parse the xml through a xml parser just to add line feeds and to make it look more pretty for the output
             doc = parse_xml_string(svg_elem)
             with open(filename, 'w') as fp:
                 fp.write(doc.toprettyxml())

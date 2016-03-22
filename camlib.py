@@ -3333,19 +3333,24 @@ class CNCjob(Geometry):
         if scale == 0:
             scale = 0.05
 
+        # Seperate the list of cuts and travels into 2 distinct lists
+        # This way we can add different formatting / colors to both
         cuts = []
         travels = []
         for g in self.gcode_parsed:
             if g['kind'][0] == 'C': cuts.append(g)
             if g['kind'][0] == 'T': travels.append(g)
 
-        # Used to determine board size
+        # Used to determine the overall board size
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
 
-        # Seperate the travels from the cuts for laser cutting under Visicut
+        # Convert the cuts and travels into single geometry objects we can render as svg xml
         travelsgeom = cascaded_union([geo['geom'] for geo in travels])
         cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
 
+        # Render the SVG Xml
+        # The scale factor affects the size of the lines, and the stroke color adds different formatting for each set
+        # It's better to have the travels sitting underneath the cuts for visicut
         svg_elem = travelsgeom.svg(scale_factor=scale, stroke_color="#F0E24D")
         svg_elem += cutsgeom.svg(scale_factor=scale, stroke_color="#5E6CFF")
 
