@@ -25,7 +25,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
-
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##                App                 ##
@@ -451,6 +451,7 @@ class App(QtCore.QObject):
         self.ui.menufileopengcode.triggered.connect(self.on_fileopengcode)
         self.ui.menufileopenproject.triggered.connect(self.on_file_openproject)
         self.ui.menufileimportsvg.triggered.connect(self.on_file_importsvg)
+        self.ui.menufileexportsvg.triggered.connect(self.on_file_exportsvg)
         self.ui.menufilesaveproject.triggered.connect(self.on_file_saveproject)
         self.ui.menufilesaveprojectas.triggered.connect(self.on_file_saveprojectas)
         self.ui.menufilesaveprojectcopy.triggered.connect(lambda: self.on_file_saveprojectas(make_copy=True))
@@ -1577,6 +1578,53 @@ class App(QtCore.QObject):
             # thread safe. The new_project()
             self.open_project(filename)
 
+    def on_file_exportsvg(self):
+        """
+        Callback for menu item File->Export SVG.
+
+        :return: None
+        """
+        self.report_usage("on_file_exportsvg")
+        App.log.debug("on_file_exportsvg()")
+
+        obj = self.collection.get_active()
+        if obj is None:
+            self.inform.emit("WARNING: No object selected.")
+            msg = "Please Select a Geometry object to export"
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
+        # Check for more compatible types and add as required
+        if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)
+            and not isinstance(obj, FlatCAMExcellon)):
+            msg = "ERROR: Only Geometry, Gerber and CNCJob objects can be used."
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
+        name = self.collection.get_active().options["name"]
+
+        try:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG",
+                                                         directory=self.get_last_folder(), filter="*.svg")
+        except TypeError:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG")
+
+        filename = str(filename)
+
+        if str(filename) == "":
+            self.inform.emit("Export SVG cancelled.")
+            return
+        else:
+            self.export_svg(name, filename)
+
     def on_file_importsvg(self):
         """
         Callback for menu item File->Import SVG.
@@ -1660,6 +1708,51 @@ class App(QtCore.QObject):
             self.inform.emit("Project saved to: " + self.project_filename)
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
+
+
+    def export_svg(self, obj_name, filename, scale_factor=0.00):
+        """
+        Exports a Geometry Object to a SVG File
+
+        :param filename: Path to the SVG file to save to.
+        :param outname:
+        :return:
+        """
+        self.log.debug("export_svg()")
+
+        try:
+            obj = self.collection.get_by_name(str(obj_name))
+        except:
+            return "Could not retrieve object: %s" % obj_name
+
+        with self.proc_container.new("Exporting SVG") as proc:
+            exported_svg = obj.export_svg(scale_factor=scale_factor)
+
+            # Determine bounding area for svg export
+            bounds = obj.bounds()
+            size = obj.size()
+
+            # Convert everything to strings for use in the xml doc
+            svgwidth = str(size[0])
+            svgheight = str(size[1])
+            minx = str(bounds[0])
+            miny = str(bounds[1] - size[1])
+            uom = obj.units.lower()
+
+            # Add a SVG Header and footer to the svg output from shapely
+            # The transform flips the Y Axis so that everything renders properly within svg apps such as inkscape
+            svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
+            svg_header += 'width="' + svgwidth + uom + '" '
+            svg_header += 'height="' + svgheight + uom + '" '
+            svg_header += 'viewBox="' + minx + ' ' + miny + ' ' + svgwidth + ' ' + svgheight + '">' 
+            svg_header += '<g transform="scale(1,-1)">'
+            svg_footer = '</g> </svg>'
+            svg_elem = svg_header + exported_svg + svg_footer
+
+            # Parse the xml through a xml parser just to add line feeds and to make it look more pretty for the output
+            doc = parse_xml_string(svg_elem)
+            with open(filename, 'w') as fp:
+                fp.write(doc.toprettyxml())
 
     def import_svg(self, filename, outname=None):
         """
@@ -2128,6 +2221,17 @@ class App(QtCore.QObject):
 
             except Exception as e:
                 return str(e)
+
+        def export_svg(name, filename, *args):
+            a, kwa = h(*args)
+            types = {'scale_factor': float}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.export_svg(str(name), str(filename), **kwa)
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3248,6 +3352,14 @@ class App(QtCore.QObject):
                 'help': "Import an SVG file as a Geometry Object.\n" +
                         "> import_svg <filename>" +
                         "   filename: Path to the file to import."
+            },
+            'export_svg': {
+                'fcn': export_svg,
+                'help': "Export a Geometry Object as a SVG File\n" +
+                        "> export_svg <name> <filename> [-scale_factor <0.0 (float)>]\n" +
+                        "   name: Name of the geometry object to export.\n" +
+                        "   filename: Path to the file to export.\n" +
+                        "   scale_factor: Multiplication factor used for scaling line widths during export."
             },
             'open_gerber': {
                 'fcn': open_gerber,
