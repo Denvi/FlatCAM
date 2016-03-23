@@ -2107,7 +2107,27 @@ class App(QtCore.QObject):
             except Exception as e:
                 return str(e)
 
-            return str(self.collection.get_names())
+        def mytest2(*args):
+            to = int(args[0])
+
+            try:
+                for rec in self.recent:
+                    if rec['kind'] == 'gerber':
+                        self.open_gerber(str(rec['filename']))
+                        break
+
+                basename = self.collection.get_names()[0]
+                isolate(basename, '-passes', '10', '-combine', '1')
+                iso = self.collection.get_by_name(basename + "_iso")
+
+                with wait_signal(self.new_object_available, to):
+                    1/0  # Force exception
+                    iso.generatecncjob()
+
+                return str(self.collection.get_names())
+
+            except Exception as e:
+                return str(e)
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3213,6 +3233,10 @@ class App(QtCore.QObject):
         commands = {
             'mytest': {
                 'fcn': mytest,
+                'help': "Test function. Only for testing."
+            },
+            'mytest2': {
+                'fcn': mytest2,
                 'help': "Test function. Only for testing."
             },
             'help': {
