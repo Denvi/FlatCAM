@@ -2059,30 +2059,40 @@ class App(QtCore.QObject):
 
             yield
 
+            oeh = sys.excepthook
+            ex = []
+            def exceptHook(type_, value, traceback):
+                ex.append(value)
+                oeh(type_, value, traceback)
+            sys.excepthook = exceptHook
+
             if timeout is not None:
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
             loop.exec_()
+            sys.excepthook = oeh
+            if ex:
+                self.raiseTclError(str(ex[0]))
 
             if status['timed_out']:
                 raise Exception('Timed out!')
 
-        def wait_signal2(signal, timeout=10000):
-            """Block loop until signal emitted, or timeout (ms) elapses."""
-            loop = QtCore.QEventLoop()
-            signal.connect(loop.quit)
-            status = {'timed_out': False}
-
-            def report_quit():
-                status['timed_out'] = True
-                loop.quit()
-
-            if timeout is not None:
-                QtCore.QTimer.singleShot(timeout, report_quit)
-            loop.exec_()
-
-            if status['timed_out']:
-                raise Exception('Timed out!')
+        # def wait_signal2(signal, timeout=10000):
+        #     """Block loop until signal emitted, or timeout (ms) elapses."""
+        #     loop = QtCore.QEventLoop()
+        #     signal.connect(loop.quit)
+        #     status = {'timed_out': False}
+        #
+        #     def report_quit():
+        #         status['timed_out'] = True
+        #         loop.quit()
+        #
+        #     if timeout is not None:
+        #         QtCore.QTimer.singleShot(timeout, report_quit)
+        #     loop.exec_()
+        #
+        #     if status['timed_out']:
+        #         raise Exception('Timed out!')
 
         def mytest(*args):
             to = int(args[0])
@@ -2110,24 +2120,45 @@ class App(QtCore.QObject):
         def mytest2(*args):
             to = int(args[0])
 
-            try:
-                for rec in self.recent:
-                    if rec['kind'] == 'gerber':
-                        self.open_gerber(str(rec['filename']))
-                        break
+            for rec in self.recent:
+                if rec['kind'] == 'gerber':
+                    self.open_gerber(str(rec['filename']))
+                    break
 
-                basename = self.collection.get_names()[0]
-                isolate(basename, '-passes', '10', '-combine', '1')
-                iso = self.collection.get_by_name(basename + "_iso")
+            basename = self.collection.get_names()[0]
+            isolate(basename, '-passes', '10', '-combine', '1')
+            iso = self.collection.get_by_name(basename + "_iso")
 
-                with wait_signal(self.new_object_available, to):
-                    1/0  # Force exception
-                    iso.generatecncjob()
+            with wait_signal(self.new_object_available, to):
+                1/0  # Force exception
+                iso.generatecncjob()
 
-                return str(self.collection.get_names())
+            return str(self.collection.get_names())
 
-            except Exception as e:
-                return str(e)
+        def mytest3(*args):
+            to = int(args[0])
+
+            def sometask(*args):
+                time.sleep(2)
+                self.inform.emit("mytest3")
+
+            with wait_signal(self.inform, to):
+                self.worker_task.emit({'fcn': sometask, 'params': []})
+
+            return "mytest3 done"
+
+        def mytest4(*args):
+            to = int(args[0])
+
+            def sometask(*args):
+                time.sleep(2)
+                1/0  # Force exception
+                self.inform.emit("mytest4")
+
+            with wait_signal(self.inform, to):
+                self.worker_task.emit({'fcn': sometask, 'params': []})
+
+            return "mytest3 done"
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3237,6 +3268,14 @@ class App(QtCore.QObject):
             },
             'mytest2': {
                 'fcn': mytest2,
+                'help': "Test function. Only for testing."
+            },
+            'mytest3': {
+                'fcn': mytest3,
+                'help': "Test function. Only for testing."
+            },
+            'mytest4': {
+                'fcn': mytest4,
                 'help': "Test function. Only for testing."
             },
             'help': {
