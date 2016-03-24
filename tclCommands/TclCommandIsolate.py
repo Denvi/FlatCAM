@@ -2,13 +2,20 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandInteriors(TclCommand.TclCommandSignaled):
+class TclCommandIsolate(TclCommand.TclCommandSignaled):
     """
-    Tcl shell command to get interiors of polygons
+    Tcl shell command to Creates isolation routing geometry for the given Gerber.
+
+    example:
+        set_sys units MM
+        new
+        open_gerber tests/gerber_files/simple1.gbr -outname margin
+        isolate margin -dia 3
+        cncjob margin_iso
     """
 
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
-    aliases = ['interiors']
+    aliases = ['isolate']
 
     # dictionary of types from Tcl command, needs to be ordered
     arg_names = collections.OrderedDict([
@@ -17,7 +24,11 @@ class TclCommandInteriors(TclCommand.TclCommandSignaled):
 
     # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
     option_types = collections.OrderedDict([
-        ('outname', str)
+        ('dia',float),
+        ('passes',int),
+        ('overlap',float),
+        ('combine',int),
+        ('outname',str)
     ])
 
     # array of mandatory options for current Tcl command: required = {'name','outname'}
@@ -25,9 +36,13 @@ class TclCommandInteriors(TclCommand.TclCommandSignaled):
 
     # structured help for current command, args needs to be ordered
     help = {
-        'main': "Get interiors of polygons.",
-        'args':  collections.OrderedDict([
-            ('name', 'Name of the source Geometry object.'),
+        'main': "Creates isolation routing geometry for the given Gerber.",
+        'args': collections.OrderedDict([
+            ('name', 'Name of the source object.'),
+            ('dia', 'Tool diameter.'),
+            ('passes', 'Passes of tool width.'),
+            ('overlap', 'Fraction of tool diameter to overlap passes.'),
+            ('combine', 'Combine all passes into one geometry.'),
             ('outname', 'Name of the resulting Geometry object.')
         ]),
         'examples': []
@@ -45,20 +60,20 @@ class TclCommandInteriors(TclCommand.TclCommandSignaled):
 
         name = args['name']
 
-        if 'outname' in args:
-            outname = args['outname']
+        if 'outname' not in args:
+            args['outname'] = name + "_iso"
+
+        if 'timeout' in args:
+            timeout = args['timeout']
         else:
-            outname = name + "_interiors"
+            timeout = 10000
 
         obj = self.app.collection.get_by_name(name)
         if obj is None:
             self.raise_tcl_error("Object not found: %s" % name)
 
-        if not isinstance(obj, Geometry):
-            self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
+        if not isinstance(obj, FlatCAMGerber):
+            self.raise_tcl_error('Expected FlatCAMGerber, got %s %s.' % (name, type(obj)))
 
-        def geo_init(geo_obj, app_obj):
-            geo_obj.solid_geometry = obj_exteriors
-
-        obj_exteriors = obj.get_interiors()
-        self.app.new_object('geometry', outname, geo_init)
+        del args['name']
+        obj.isolate(**args)

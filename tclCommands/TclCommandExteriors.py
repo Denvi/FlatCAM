@@ -2,7 +2,7 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandExteriors(TclCommand.TclCommand):
+class TclCommandExteriors(TclCommand.TclCommandSignaled):
     """
     Tcl shell command to get exteriors of polygons
     """
@@ -57,7 +57,7 @@ class TclCommandExteriors(TclCommand.TclCommand):
         if not isinstance(obj, Geometry):
             self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
-        def geo_init(geo_obj):
+        def geo_init(geo_obj, app_obj):
             geo_obj.solid_geometry = obj_exteriors
 
         obj_exteriors = obj.get_exteriors()

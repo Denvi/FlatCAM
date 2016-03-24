@@ -10,6 +10,7 @@ import os
 import Tkinter
 from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
+from contextlib import contextmanager
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -25,6 +26,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
+from xml.dom.minidom import parseString as parse_xml_string
 import tclCommands
 
 ########################################
@@ -102,6 +104,9 @@ class App(QtCore.QObject):
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
     new_object_available = QtCore.pyqtSignal(object)
+
+    # Emmited when shell command is finished(one command only)
+    shell_command_finished = QtCore.pyqtSignal(object)
 
     message = QtCore.pyqtSignal(str, str, str)
 
@@ -451,6 +456,7 @@ class App(QtCore.QObject):
         self.ui.menufileopengcode.triggered.connect(self.on_fileopengcode)
         self.ui.menufileopenproject.triggered.connect(self.on_file_openproject)
         self.ui.menufileimportsvg.triggered.connect(self.on_file_importsvg)
+        self.ui.menufileexportsvg.triggered.connect(self.on_file_exportsvg)
         self.ui.menufilesaveproject.triggered.connect(self.on_file_saveproject)
         self.ui.menufilesaveprojectas.triggered.connect(self.on_file_saveprojectas)
         self.ui.menufilesaveprojectcopy.triggered.connect(lambda: self.on_file_saveprojectas(make_copy=True))
@@ -523,8 +529,8 @@ class App(QtCore.QObject):
         self.shell.resize(*self.defaults["shell_shape"])
         self.shell.append_output("FlatCAM %s\n(c) 2014-2015 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
-        self.tcl = Tkinter.Tcl()
-        self.setup_shell()
+
+        self.init_tcl()
 
         if self.cmd_line_shellfile:
             try:
@@ -541,6 +547,17 @@ class App(QtCore.QObject):
             post_gui(self)
 
         App.log.debug("END of constructor. Releasing control.")
+
+    def init_tcl(self):
+        if hasattr(self,'tcl'):
+            # self.tcl = None
+            # TODO  we need  to clean  non default variables and procedures here
+            # new object cannot be used here as it  will not remember values created for next passes,
+            # because tcl  was execudted in old instance of TCL
+            pass
+        else:
+            self.tcl = Tkinter.Tcl()
+            self.setup_shell()
 
     def defaults_read_form(self):
         for option in self.defaults_form_fields:
@@ -676,12 +693,16 @@ class App(QtCore.QObject):
     def exec_command(self, text):
         """
         Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
+        Also handles execution in separated threads
 
         :param text:
         :return: output if there was any
         """
 
-        return self.exec_command_test(text, False)
+        self.report_usage('exec_command')
+
+        result = self.exec_command_test(text, False)
+        return result
 
     def exec_command_test(self, text, reraise=True):
         """
@@ -692,11 +713,10 @@ class App(QtCore.QObject):
         :return: output if there was any
         """
 
-        self.report_usage('exec_command')
-
         text = str(text)
 
         try:
+            self.shell.open_proccessing()
             result = self.tcl.eval(str(text))
             if result!='None':
                 self.shell.append_output(result + '\n')
@@ -708,6 +728,9 @@ class App(QtCore.QObject):
             #show error in console and just return or in test raise exception
             if reraise:
                 raise e
+        finally:
+            self.shell.close_proccessing()
+            pass
         return result
 
         """
@@ -1491,6 +1514,9 @@ class App(QtCore.QObject):
 
         self.plotcanvas.clear()
 
+        # tcl needs to be reinitialized, otherwise  old shell variables etc  remains
+        self.init_tcl()
+
         self.collection.delete_all()
 
         self.setup_component_editor()
@@ -1612,6 +1638,53 @@ class App(QtCore.QObject):
             # thread safe. The new_project()
             self.open_project(filename)
 
+    def on_file_exportsvg(self):
+        """
+        Callback for menu item File->Export SVG.
+
+        :return: None
+        """
+        self.report_usage("on_file_exportsvg")
+        App.log.debug("on_file_exportsvg()")
+
+        obj = self.collection.get_active()
+        if obj is None:
+            self.inform.emit("WARNING: No object selected.")
+            msg = "Please Select a Geometry object to export"
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
+        # Check for more compatible types and add as required
+        if (not isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMCNCjob)
+            and not isinstance(obj, FlatCAMExcellon)):
+            msg = "ERROR: Only Geometry, Gerber and CNCJob objects can be used."
+            msgbox = QtGui.QMessageBox()
+            msgbox.setInformativeText(msg)
+            msgbox.setStandardButtons(QtGui.QMessageBox.Ok)
+            msgbox.setDefaultButton(QtGui.QMessageBox.Ok)
+            msgbox.exec_()
+            return
+
+        name = self.collection.get_active().options["name"]
+
+        try:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG",
+                                                         directory=self.get_last_folder(), filter="*.svg")
+        except TypeError:
+            filename = QtGui.QFileDialog.getSaveFileName(caption="Export SVG")
+
+        filename = str(filename)
+
+        if str(filename) == "":
+            self.inform.emit("Export SVG cancelled.")
+            return
+        else:
+            self.export_svg(name, filename)
+
     def on_file_importsvg(self):
         """
         Callback for menu item File->Import SVG.
@@ -1695,6 +1768,51 @@ class App(QtCore.QObject):
             self.inform.emit("Project saved to: " + self.project_filename)
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
+
+
+    def export_svg(self, obj_name, filename, scale_factor=0.00):
+        """
+        Exports a Geometry Object to a SVG File
+
+        :param filename: Path to the SVG file to save to.
+        :param outname:
+        :return:
+        """
+        self.log.debug("export_svg()")
+
+        try:
+            obj = self.collection.get_by_name(str(obj_name))
+        except:
+            return "Could not retrieve object: %s" % obj_name
+
+        with self.proc_container.new("Exporting SVG") as proc:
+            exported_svg = obj.export_svg(scale_factor=scale_factor)
+
+            # Determine bounding area for svg export
+            bounds = obj.bounds()
+            size = obj.size()
+
+            # Convert everything to strings for use in the xml doc
+            svgwidth = str(size[0])
+            svgheight = str(size[1])
+            minx = str(bounds[0])
+            miny = str(bounds[1] - size[1])
+            uom = obj.units.lower()
+
+            # Add a SVG Header and footer to the svg output from shapely
+            # The transform flips the Y Axis so that everything renders properly within svg apps such as inkscape
+            svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
+            svg_header += 'width="' + svgwidth + uom + '" '
+            svg_header += 'height="' + svgheight + uom + '" '
+            svg_header += 'viewBox="' + minx + ' ' + miny + ' ' + svgwidth + ' ' + svgheight + '">'
+            svg_header += '<g transform="scale(1,-1)">'
+            svg_footer = '</g> </svg>'
+            svg_elem = svg_header + exported_svg + svg_footer
+
+            # Parse the xml through a xml parser just to add line feeds and to make it look more pretty for the output
+            doc = parse_xml_string(svg_elem)
+            with open(filename, 'w') as fp:
+                fp.write(doc.toprettyxml())
 
     def import_svg(self, filename, outname=None):
         """
@@ -2079,7 +2197,7 @@ class App(QtCore.QObject):
 
             return a, kwa
 
-        from contextlib import contextmanager
+
         @contextmanager
         def wait_signal(signal, timeout=10000):
             """Block loop until signal emitted, or timeout (ms) elapses."""
@@ -2094,30 +2212,40 @@ class App(QtCore.QObject):
 
             yield
 
+            oeh = sys.excepthook
+            ex = []
+            def exceptHook(type_, value, traceback):
+                ex.append(value)
+                oeh(type_, value, traceback)
+            sys.excepthook = exceptHook
+
             if timeout is not None:
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
             loop.exec_()
+            sys.excepthook = oeh
+            if ex:
+                self.raiseTclError(str(ex[0]))
 
             if status['timed_out']:
                 raise Exception('Timed out!')
 
-        def wait_signal2(signal, timeout=10000):
-            """Block loop until signal emitted, or timeout (ms) elapses."""
-            loop = QtCore.QEventLoop()
-            signal.connect(loop.quit)
-            status = {'timed_out': False}
-
-            def report_quit():
-                status['timed_out'] = True
-                loop.quit()
-
-            if timeout is not None:
-                QtCore.QTimer.singleShot(timeout, report_quit)
-            loop.exec_()
-
-            if status['timed_out']:
-                raise Exception('Timed out!')
+        # def wait_signal2(signal, timeout=10000):
+        #     """Block loop until signal emitted, or timeout (ms) elapses."""
+        #     loop = QtCore.QEventLoop()
+        #     signal.connect(loop.quit)
+        #     status = {'timed_out': False}
+        #
+        #     def report_quit():
+        #         status['timed_out'] = True
+        #         loop.quit()
+        #
+        #     if timeout is not None:
+        #         QtCore.QTimer.singleShot(timeout, report_quit)
+        #     loop.exec_()
+        #
+        #     if status['timed_out']:
+        #         raise Exception('Timed out!')
 
         def mytest(*args):
             to = int(args[0])
@@ -2142,7 +2270,59 @@ class App(QtCore.QObject):
             except Exception as e:
                 return str(e)
 
+        def mytest2(*args):
+            to = int(args[0])
+
+            for rec in self.recent:
+                if rec['kind'] == 'gerber':
+                    self.open_gerber(str(rec['filename']))
+                    break
+
+            basename = self.collection.get_names()[0]
+            isolate(basename, '-passes', '10', '-combine', '1')
+            iso = self.collection.get_by_name(basename + "_iso")
+
+            with wait_signal(self.new_object_available, to):
+                1/0  # Force exception
+                iso.generatecncjob()
+
             return str(self.collection.get_names())
+
+        def mytest3(*args):
+            to = int(args[0])
+
+            def sometask(*args):
+                time.sleep(2)
+                self.inform.emit("mytest3")
+
+            with wait_signal(self.inform, to):
+                self.worker_task.emit({'fcn': sometask, 'params': []})
+
+            return "mytest3 done"
+
+        def mytest4(*args):
+            to = int(args[0])
+
+            def sometask(*args):
+                time.sleep(2)
+                1/0  # Force exception
+                self.inform.emit("mytest4")
+
+            with wait_signal(self.inform, to):
+                self.worker_task.emit({'fcn': sometask, 'params': []})
+
+            return "mytest3 done"
+
+        def export_svg(name, filename, *args):
+            a, kwa = h(*args)
+            types = {'scale_factor': float}
+
+            for key in kwa:
+                if key not in types:
+                    return 'Unknown parameter: %s' % key
+                kwa[key] = types[key](kwa[key])
+
+            self.export_svg(str(name), str(filename), **kwa)
 
         def import_svg(filename, *args):
             a, kwa = h(*args)
@@ -3274,6 +3454,18 @@ class App(QtCore.QObject):
                 'fcn': mytest,
                 'help': "Test function. Only for testing."
             },
+            'mytest2': {
+                'fcn': mytest2,
+                'help': "Test function. Only for testing."
+            },
+            'mytest3': {
+                'fcn': mytest3,
+                'help': "Test function. Only for testing."
+            },
+            'mytest4': {
+                'fcn': mytest4,
+                'help': "Test function. Only for testing."
+            },
             'help': {
                 'fcn': shelp,
                 'help': "Shows list of commands."
@@ -3283,6 +3475,14 @@ class App(QtCore.QObject):
                 'help': "Import an SVG file as a Geometry Object.\n" +
                         "> import_svg <filename>" +
                         "   filename: Path to the file to import."
+            },
+            'export_svg': {
+                'fcn': export_svg,
+                'help': "Export a Geometry Object as a SVG File\n" +
+                        "> export_svg <name> <filename> [-scale_factor <0.0 (float)>]\n" +
+                        "   name: Name of the geometry object to export.\n" +
+                        "   filename: Path to the file to export.\n" +
+                        "   scale_factor: Multiplication factor used for scaling line widths during export."
             },
             'open_gerber': {
                 'fcn': open_gerber,

@@ -2,12 +2,16 @@ import pkgutil
 import sys
 
 # allowed command modules
-import tclCommands.TclCommandExteriors
-import tclCommands.TclCommandInteriors
 import tclCommands.TclCommandAddPolygon
 import tclCommands.TclCommandAddPolyline
-import tclCommands.TclCommandExportGcode
 import tclCommands.TclCommandCncjob
+import tclCommands.TclCommandExportGcode
+import tclCommands.TclCommandExteriors
+import tclCommands.TclCommandInteriors
+import tclCommands.TclCommandIsolate
+import tclCommands.TclCommandNew
+import tclCommands.TclCommandOpenGerber
+
 
 __all__ = []
 

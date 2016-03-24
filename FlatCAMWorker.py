@@ -1,6 +1,4 @@
 from PyQt4 import QtCore
-#import FlatCAMApp
-
 
 class Worker(QtCore.QObject):
     """
@@ -8,12 +6,33 @@ class Worker(QtCore.QObject):
     in a single independent thread.
     """
 
+    # avoid multiple tests  for debug availability
+    pydef_failed = False
+
     def __init__(self, app, name=None):
         super(Worker, self).__init__()
         self.app = app
         self.name = name
 
+    def allow_debug(self):
+        """
+         allow debuging/breakpoints in this threads
+         should work from PyCharm and PyDev
+        :return:
+        """
+
+        if not self.pydef_failed:
+            try:
+                import pydevd
+                pydevd.settrace(suspend=False, trace_only_current_thread=True)
+            except ImportError:
+                pass
+
     def run(self):
+
+        # allow  debuging/breakpoints in this threads
+        #pydevd.settrace(suspend=False, trace_only_current_thread=True)
+
         # FlatCAMApp.App.log.debug("Worker Started!")
         self.app.log.debug("Worker Started!")
 
@@ -21,8 +40,11 @@ class Worker(QtCore.QObject):
         self.app.worker_task.connect(self.do_worker_task)
 
     def do_worker_task(self, task):
+
         # FlatCAMApp.App.log.debug("Running task: %s" % str(task))
         self.app.log.debug("Running task: %s" % str(task))
+
+        self.allow_debug()
 
         # 'worker_name' property of task allows to target
         # specific worker.

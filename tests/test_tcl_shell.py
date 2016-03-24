@@ -8,7 +8,7 @@ from time import sleep
 import os
 import tempfile
 
-class TclShellCommandTest(unittest.TestCase):
+class TclShellTest(unittest.TestCase):
 
     gerber_files = 'tests/gerber_files'
     copper_bottom_filename = 'detector_copper_bottom.gbr'
@@ -30,11 +30,20 @@ class TclShellCommandTest(unittest.TestCase):
         # user-defined defaults).
         self.fc = App(user_defaults=False)
 
+        self.fc.shell.show()
+        pass
+
     def tearDown(self):
+        self.app.closeAllWindows()
+
         del self.fc
         del self.app
+        pass
 
     def test_set_get_units(self):
+
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
 
         self.fc.exec_command_test('set_sys units IN')
         self.fc.exec_command_test('new')
@@ -45,6 +54,7 @@ class TclShellCommandTest(unittest.TestCase):
         self.fc.exec_command_test('new')
         units=self.fc.exec_command_test('get_sys units')
         self.assertEquals(units, "MM")
+
 
     def test_gerber_flow(self):
 
@@ -139,9 +149,21 @@ class TclShellCommandTest(unittest.TestCase):
 
         # TODO: tests for tcl
 
+    def test_open_gerber(self):
+
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
+
+        self.fc.exec_command_test('open_gerber %s/%s -outname %s' % (self.gerber_files, self.copper_top_filename, self.gerber_top_name))
+        gerber_top_obj = self.fc.collection.get_by_name(self.gerber_top_name)
+        self.assertTrue(isinstance(gerber_top_obj, FlatCAMGerber),
+                        "Expected FlatCAMGerber, instead, %s is %s" %
+                        (self.gerber_top_name, type(gerber_top_obj)))
+
     def test_excellon_flow(self):
 
         self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
         self.fc.exec_command_test('open_excellon %s/%s -outname %s' % (self.gerber_files, self.excellon_filename, self.excellon_name))
         excellon_obj = self.fc.collection.get_by_name(self.excellon_name)
         self.assertTrue(isinstance(excellon_obj, FlatCAMExcellon),

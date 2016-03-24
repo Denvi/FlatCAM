@@ -2,7 +2,7 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandExportGcode(TclCommand.TclCommand):
+class TclCommandExportGcode(TclCommand.TclCommandSignaled):
     """
     Tcl shell command to export gcode as  tcl output for "set X [export_gcode ...]"
 

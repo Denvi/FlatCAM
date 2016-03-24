@@ -2,7 +2,7 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandAddPolyline(TclCommand.TclCommand):
+class TclCommandAddPolyline(TclCommand.TclCommandSignaled):
     """
     Tcl shell command to create a polyline in the given Geometry object
     """

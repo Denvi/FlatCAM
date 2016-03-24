@@ -1,3 +1,4 @@
+import sys
 import re
 import FlatCAMApp
 import abc
@@ -41,6 +42,9 @@ class TclCommand(object):
         'examples': []
     }
 
+    # original incoming arguments into command
+    original_args = None
+
     def __init__(self, app):
         self.app = app
         if self.app is None:
@@ -58,6 +62,18 @@ class TclCommand(object):
         """
 
         self.app.raise_tcl_error(text)
+
+    def get_current_command(self):
+        """
+        get current command, we are not able to get it from TCL we have to reconstruct it
+        :return: current command
+        """
+        command_string = []
+        command_string.append(self.aliases[0])
+        if self.original_args is not None:
+            for arg in self.original_args:
+                command_string.append(arg)
+        return " ".join(command_string)
 
     def get_decorated_help(self):
         """
@@ -176,7 +192,7 @@ class TclCommand(object):
 
         # check options
         for key in options:
-            if key not in self.option_types:
+            if key not in self.option_types and  key is not 'timeout':
                 self.raise_tcl_error('Unknown parameter: %s' % key)
             try:
                 named_args[key] = self.option_types[key](options[key])
@@ -201,8 +217,11 @@ class TclCommand(object):
         :return: None, output text or exception
         """
 
+        #self.worker_task.emit({'fcn': self.exec_command_test, 'params': [text, False]})
+
         try:
             self.log.debug("TCL command '%s' executed." % str(self.__class__))
+            self.original_args=args
             args, unnamed_args = self.check_args(args)
             return self.execute(args, unnamed_args)
         except Exception as unknown:
@@ -239,9 +258,15 @@ class TclCommandSignaled(TclCommand):
         it handles  all neccessary stuff about blocking and passing exeptions
     """
 
-    # default  timeout for operation is  30 sec, but it can be much more
-    default_timeout = 30000
+    # default  timeout for operation is  300 sec, but it can be much more
+    default_timeout = 300000
 
+    output = None
+
+    def execute_call(self, args, unnamed_args):
+
+        self.output = self.execute(args, unnamed_args)
+        self.app.shell_command_finished.emit(self)
 
     def execute_wrapper(self, *args):
         """
@@ -254,7 +279,7 @@ class TclCommandSignaled(TclCommand):
         """
 
         @contextmanager
-        def wait_signal(signal, timeout=30000):
+        def wait_signal(signal, timeout=300000):
             """Block loop until signal emitted, or timeout (ms) elapses."""
             loop = QtCore.QEventLoop()
             signal.connect(loop.quit)
@@ -267,27 +292,43 @@ class TclCommandSignaled(TclCommand):
 
             yield
 
+            oeh = sys.excepthook
+            ex = []
+            def exceptHook(type_, value, traceback):
+                ex.append(value)
+                oeh(type_, value, traceback)
+            sys.excepthook = exceptHook
+
             if timeout is not None:
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
             loop.exec_()
+
+            sys.excepthook = oeh
+            if ex:
+                self.raise_tcl_error(str(ex[0]))
 
             if status['timed_out']:
                 self.app.raise_tcl_unknown_error('Operation timed out!')
 
         try:
             self.log.debug("TCL command '%s' executed." % str(self.__class__))
+            self.original_args=args
             args, unnamed_args = self.check_args(args)
             if 'timeout' in args:
                 passed_timeout=args['timeout']
                 del args['timeout']
             else:
                 passed_timeout=self.default_timeout
-            with wait_signal(self.app.new_object_available, passed_timeout):
+
+            # set detail for processing, it will be there until next open or close
+            self.app.shell.open_proccessing(self.get_current_command())
+
+            with wait_signal(self.app.shell_command_finished, passed_timeout):
                 # every TclCommandNewObject ancestor  support  timeout as parameter,
                 # but it does not mean anything for child itself
                 # when operation  will be  really long is good  to set it higher then defqault 30s
-                return self.execute(args, unnamed_args)
+                self.app.worker_task.emit({'fcn': self.execute_call, 'params': [args, unnamed_args]})
 
         except Exception as unknown:
             self.log.error("TCL command '%s' failed." % str(self))

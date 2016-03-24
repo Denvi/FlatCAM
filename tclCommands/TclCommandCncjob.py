@@ -2,7 +2,7 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandCncjob(TclCommand.TclCommand):
+class TclCommandCncjob(TclCommand.TclCommandSignaled):
     """
     Tcl shell command to Generates a CNC Job from a Geometry Object.
 
@@ -69,11 +69,6 @@ class TclCommandCncjob(TclCommand.TclCommand):
 
         if 'outname' not in args:
             args['outname'] = name + "_cnc"
-
-        if 'timeout' in args:
-            timeout = args['timeout']
-        else:
-            timeout = 10000
 
         obj = self.app.collection.get_by_name(name)
         if obj is None:

@@ -4,7 +4,7 @@ Shows intput and output text. Allows to enter commands. Supports history.
 """
 
 import cgi
-
+from PyQt4 import QtCore
 from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtGui import QColor, QKeySequence, QLineEdit, QPalette, \
                         QSizePolicy, QTextCursor, QTextEdit, \
@@ -112,6 +112,32 @@ class TermWidget(QWidget):
         self._historyIndex = 0
 
         self._edit.setFocus()
+
+    def open_proccessing(self, detail=None):
+        """
+        Open processing and disable using shell commands  again until all commands are finished
+        :return:
+        """
+
+        self._edit.setTextColor(QtCore.Qt.white)
+        self._edit.setTextBackgroundColor(QtCore.Qt.darkGreen)
+        if detail is None:
+            self._edit.setPlainText("...proccessing...")
+        else:
+            self._edit.setPlainText("...proccessing... [%s]" % detail)
+
+        self._edit.setDisabled(True)
+
+    def close_proccessing(self):
+        """
+        Close processing and enable using shell commands  again
+        :return:
+        """
+
+        self._edit.setTextColor(QtCore.Qt.black)
+        self._edit.setTextBackgroundColor(QtCore.Qt.white)
+        self._edit.setPlainText('')
+        self._edit.setDisabled(False)
 
     def _append_to_browser(self, style, text):
         """

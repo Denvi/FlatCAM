@@ -2,7 +2,7 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandAddPolygon(TclCommand.TclCommand):
+class TclCommandAddPolygon(TclCommand.TclCommandSignaled):
     """
     Tcl shell command to create a polygon in the given Geometry object
     """
