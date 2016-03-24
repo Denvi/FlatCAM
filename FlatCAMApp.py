@@ -108,6 +108,10 @@ class App(QtCore.QObject):
     # Emmited when shell command is finished(one command only)
     shell_command_finished = QtCore.pyqtSignal(object)
 
+    # Emitted when an unhandled exception happens
+    # in the worker task.
+    thread_exception = QtCore.pyqtSignal(object)
+
     message = QtCore.pyqtSignal(str, str, str)
 
     def __init__(self, user_defaults=True, post_gui=None):

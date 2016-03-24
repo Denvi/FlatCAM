@@ -1,6 +1,8 @@
 import sys
 import unittest
 from PyQt4 import QtGui
+from PyQt4.QtCore import QThread
+
 from FlatCAMApp import App
 from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry, FlatCAMCNCjob, FlatCAMExcellon
 from ObjectUI import GerberObjectUI, GeometryObjectUI
@@ -9,6 +11,8 @@ import os
 import tempfile
 
 class TclShellTest(unittest.TestCase):
+
+    setup = False
 
     gerber_files = 'tests/gerber_files'
     copper_bottom_filename = 'detector_copper_bottom.gbr'
@@ -24,20 +28,23 @@ class TclShellTest(unittest.TestCase):
     drill_diameter = 0.8
 
     def setUp(self):
-        self.app = QtGui.QApplication(sys.argv)
 
-        # Create App, keep app defaults (do not load
-        # user-defined defaults).
-        self.fc = App(user_defaults=False)
+        if not self.setup:
+            self.setup=True
+            self.app = QtGui.QApplication(sys.argv)
 
-        self.fc.shell.show()
+            # Create App, keep app defaults (do not load
+            # user-defined defaults).
+            self.fc = App(user_defaults=False)
+
+            self.fc.shell.show()
         pass
 
     def tearDown(self):
-        self.app.closeAllWindows()
-
-        del self.fc
-        del self.app
+        #self.fc.tcl=None
+        #self.app.closeAllWindows()
+        #del self.fc
+        #del self.app
         pass
 
     def test_set_get_units(self):
@@ -59,6 +66,7 @@ class TclShellTest(unittest.TestCase):
     def test_gerber_flow(self):
 
         # open  gerber files top, bottom and cutout
+
 
         self.fc.exec_command_test('set_sys units MM')
         self.fc.exec_command_test('new')

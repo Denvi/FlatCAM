@@ -48,12 +48,24 @@ class Worker(QtCore.QObject):
 
         # 'worker_name' property of task allows to target
         # specific worker.
-        if 'worker_name' in task and task['worker_name'] == self.name:
-            task['fcn'](*task['params'])
-            return
+        #if 'worker_name' in task and task['worker_name'] == self.name:
+        #    task['fcn'](*task['params'])
+        #    return
 
-        if 'worker_name' not in task and self.name is None:
-            task['fcn'](*task['params'])
+        #if 'worker_name' not in task and self.name is None:
+        #    task['fcn'](*task['params'])
+        #    return
+
+
+        if ('worker_name' in task and task['worker_name'] == self.name) or \
+            ('worker_name' not in task and self.name is None):
+
+            try:
+                task['fcn'](*task['params'])
+            except Exception as e:
+                self.app.thread_exception.emit(e)
+                raise e
+
             return
 
         # FlatCAMApp.App.log.debug("Task ignored.")

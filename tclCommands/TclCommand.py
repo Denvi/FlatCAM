@@ -258,15 +258,17 @@ class TclCommandSignaled(TclCommand):
         it handles  all neccessary stuff about blocking and passing exeptions
     """
 
-    # default  timeout for operation is  300 sec, but it can be much more
-    default_timeout = 300000
+    # default  timeout for operation is  10 sec, but it can be much more
+    default_timeout = 10000
 
     output = None
 
     def execute_call(self, args, unnamed_args):
 
-        self.output = self.execute(args, unnamed_args)
-        self.app.shell_command_finished.emit(self)
+        try:
+            self.output = self.execute(args, unnamed_args)
+        finally:
+            self.app.shell_command_finished.emit(self)
 
     def execute_wrapper(self, *args):
         """
@@ -279,10 +281,15 @@ class TclCommandSignaled(TclCommand):
         """
 
         @contextmanager
-        def wait_signal(signal, timeout=300000):
+        def wait_signal(signal, timeout=10000):
             """Block loop until signal emitted, or timeout (ms) elapses."""
             loop = QtCore.QEventLoop()
+
+            # Normal termination
             signal.connect(loop.quit)
+
+            # Termination by exception in thread
+            self.app.thread_exception.connect(loop.quit)
 
             status = {'timed_out': False}
 
@@ -292,18 +299,23 @@ class TclCommandSignaled(TclCommand):
 
             yield
 
+            # Temporarily change how exceptions are managed.
             oeh = sys.excepthook
             ex = []
-            def exceptHook(type_, value, traceback):
-                ex.append(value)
-                oeh(type_, value, traceback)
-            sys.excepthook = exceptHook
 
+            def except_hook(type_, value, traceback_):
+                ex.append(value)
+                oeh(type_, value, traceback_)
+            sys.excepthook = except_hook
+
+            # Terminate on timeout
             if timeout is not None:
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
+            # Block
             loop.exec_()
 
+            # Restore exception management
             sys.excepthook = oeh
             if ex:
                 self.raise_tcl_error(str(ex[0]))
@@ -324,11 +336,22 @@ class TclCommandSignaled(TclCommand):
             # set detail for processing, it will be there until next open or close
             self.app.shell.open_proccessing(self.get_current_command())
 
+            self.output = None
+
+            def handle_finished(obj):
+                self.app.shell_command_finished.disconnect(handle_finished)
+                # TODO: handle output
+                pass
+
+            self.app.shell_command_finished.connect(handle_finished)
+
             with wait_signal(self.app.shell_command_finished, passed_timeout):
                 # every TclCommandNewObject ancestor  support  timeout as parameter,
                 # but it does not mean anything for child itself
                 # when operation  will be  really long is good  to set it higher then defqault 30s
                 self.app.worker_task.emit({'fcn': self.execute_call, 'params': [args, unnamed_args]})
+
+            return self.output
 
         except Exception as unknown:
             self.log.error("TCL command '%s' failed." % str(self))
