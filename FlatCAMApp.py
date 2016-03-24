@@ -10,6 +10,7 @@ import os
 import Tkinter
 from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -25,7 +26,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
-from xml.dom.minidom import parseString as parse_xml_string
+
 
 ########################################
 ##                App                 ##
