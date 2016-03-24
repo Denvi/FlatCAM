@@ -11,6 +11,7 @@ import Tkinter
 from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
 from xml.dom.minidom import parseString as parse_xml_string
+from contextlib import contextmanager
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -105,6 +106,10 @@ class App(QtCore.QObject):
     new_object_available = QtCore.pyqtSignal(object)
 
     message = QtCore.pyqtSignal(str, str, str)
+
+    # Emitted when an unhandled exception happens
+    # in the worker task.
+    thread_exception = QtCore.pyqtSignal(object)
 
     def __init__(self, user_defaults=True, post_gui=None):
         """
@@ -2138,12 +2143,21 @@ class App(QtCore.QObject):
 
             return a, kwa
 
-        from contextlib import contextmanager
         @contextmanager
         def wait_signal(signal, timeout=10000):
-            """Block loop until signal emitted, or timeout (ms) elapses."""
+            """
+            Block loop until signal emitted, timeout (ms) elapses
+            or unhandled exception happens in a thread.
+
+            :param signal: Signal to wait for.
+            """
             loop = QtCore.QEventLoop()
+
+            # Normal termination
             signal.connect(loop.quit)
+
+            # Termination by exception in thread
+            self.thread_exception.connect(loop.quit)
 
             status = {'timed_out': False}
 
@@ -2153,17 +2167,23 @@ class App(QtCore.QObject):
 
             yield
 
+            # Temporarily change how exceptions are managed.
             oeh = sys.excepthook
             ex = []
-            def exceptHook(type_, value, traceback):
-                ex.append(value)
-                oeh(type_, value, traceback)
-            sys.excepthook = exceptHook
 
+            def except_hook(type_, value, traceback_):
+                ex.append(value)
+                oeh(type_, value, traceback_)
+            sys.excepthook = except_hook
+
+            # Terminate on timeout
             if timeout is not None:
                 QtCore.QTimer.singleShot(timeout, report_quit)
 
+            #### Block ####
             loop.exec_()
+
+            # Restore exception management
             sys.excepthook = oeh
             if ex:
                 self.raiseTclError(str(ex[0]))
