@@ -7,7 +7,7 @@ class Worker(QtCore.QObject):
     """
 
     # avoid multiple tests  for debug availability
-    pydef_failed = False
+    pydevd_failed = False
 
     def __init__(self, app, name=None):
         super(Worker, self).__init__()
@@ -21,12 +21,12 @@ class Worker(QtCore.QObject):
         :return:
         """
 
-        if not self.pydef_failed:
+        if not self.pydevd_failed:
             try:
                 import pydevd
                 pydevd.settrace(suspend=False, trace_only_current_thread=True)
             except ImportError:
-                pass
+                self.pydevd_failed=True
 
     def run(self):
 
