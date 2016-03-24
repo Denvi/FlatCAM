@@ -869,6 +869,26 @@ class Geometry(object):
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
 
+    def export_svg(self, scale_factor=0.00):
+        """
+        Exports the Gemoetry Object as a SVG Element
+
+        :return: SVG Element
+        """
+        # Make sure we see a Shapely Geometry class and not a list
+        geom = cascaded_union(self.flatten())
+
+        # scale_factor is a multiplication factor for the SVG stroke-width used within shapely's svg export
+
+        # If 0 or less which is invalid then default to 0.05
+        # This value appears to work for zooming, and getting the output svg line width
+        # to match that viewed on screen with FlatCam
+        if scale_factor <= 0:
+            scale_factor = 0.05
+
+        # Convert to a SVG
+        svg_elem = geom.svg(scale_factor=scale_factor)
+        return svg_elem
 
 class ApertureMacro:
     """
@@ -3313,6 +3333,54 @@ class CNCjob(Geometry):
 
         self.create_geometry()
 
+    def export_svg(self, scale_factor=0.00):
+        """
+        Exports the CNC Job as a SVG Element
+
+        :scale_factor: float
+        :return: SVG Element string
+        """
+        # scale_factor is a multiplication factor for the SVG stroke-width used within shapely's svg export
+        # If not specified then try and use the tool diameter
+        # This way what is on screen will match what is outputed for the svg
+        # This is quite a useful feature for svg's used with visicut
+
+        if scale_factor <= 0:
+            scale_factor = self.options['tooldia'] / 2
+
+        # If still 0 then defailt to 0.05
+        # This value appears to work for zooming, and getting the output svg line width
+        # to match that viewed on screen with FlatCam
+        if scale_factor == 0:
+            scale_factor = 0.05
+
+        # Seperate the list of cuts and travels into 2 distinct lists
+        # This way we can add different formatting / colors to both
+        cuts = []
+        travels = []
+        for g in self.gcode_parsed:
+            if g['kind'][0] == 'C': cuts.append(g)
+            if g['kind'][0] == 'T': travels.append(g)
+
+        # Used to determine the overall board size
+        self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
+
+        # Convert the cuts and travels into single geometry objects we can render as svg xml
+        if travels:
+            travelsgeom = cascaded_union([geo['geom'] for geo in travels])
+        if cuts:
+            cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
+
+        # Render the SVG Xml
+        # The scale factor affects the size of the lines, and the stroke color adds different formatting for each set
+        # It's better to have the travels sitting underneath the cuts for visicut
+        svg_elem = ""
+        if travels:
+            svg_elem = travelsgeom.svg(scale_factor=scale_factor, stroke_color="#F0E24D")
+        if cuts:
+            svg_elem += cutsgeom.svg(scale_factor=scale_factor, stroke_color="#5E6CFF")
+
+        return svg_elem
 
 # def get_bounds(geometry_set):
 #     xmin = Inf
