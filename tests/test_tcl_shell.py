@@ -12,8 +12,6 @@ import tempfile
 
 class TclShellTest(unittest.TestCase):
 
-    setup = False
-
     gerber_files = 'tests/gerber_files'
     copper_bottom_filename = 'detector_copper_bottom.gbr'
     copper_top_filename = 'detector_copper_top.gbr'
@@ -27,24 +25,22 @@ class TclShellTest(unittest.TestCase):
     cutout_diameter = 3
     drill_diameter = 0.8
 
-    def setUp(self):
+    @classmethod
+    def setUpClass(self):
 
-        if not self.setup:
-            self.setup=True
-            self.app = QtGui.QApplication(sys.argv)
+        self.setup=True
+        self.app = QtGui.QApplication(sys.argv)
+        # Create App, keep app defaults (do not load
+        # user-defined defaults).
+        self.fc = App(user_defaults=False)
+        self.fc.shell.show()
 
-            # Create App, keep app defaults (do not load
-            # user-defined defaults).
-            self.fc = App(user_defaults=False)
-
-            self.fc.shell.show()
-        pass
-
-    def tearDown(self):
-        #self.fc.tcl=None
-        #self.app.closeAllWindows()
-        #del self.fc
-        #del self.app
+    @classmethod
+    def tearDownClass(self):
+        self.fc.tcl=None
+        self.app.closeAllWindows()
+        del self.fc
+        del self.app
         pass
 
     def test_set_get_units(self):
