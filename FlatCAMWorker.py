@@ -14,24 +14,27 @@ class Worker(QtCore.QObject):
         self.name = name
 
     def run(self):
-        # FlatCAMApp.App.log.debug("Worker Started!")
+
         self.app.log.debug("Worker Started!")
 
         # Tasks are queued in the event listener.
         self.app.worker_task.connect(self.do_worker_task)
 
     def do_worker_task(self, task):
-        # FlatCAMApp.App.log.debug("Running task: %s" % str(task))
+
         self.app.log.debug("Running task: %s" % str(task))
 
         # 'worker_name' property of task allows to target
         # specific worker.
-        if 'worker_name' in task and task['worker_name'] == self.name:
-            task['fcn'](*task['params'])
-            return
+        if ('worker_name' in task and task['worker_name'] == self.name) or \
+                ('worker_name' not in task and self.name is None):
 
-        if 'worker_name' not in task and self.name is None:
-            task['fcn'](*task['params'])
+            try:
+                task['fcn'](*task['params'])
+            except Exception as e:
+                self.app.thread_exception.emit(e)
+                raise e
+
             return
 
         # FlatCAMApp.App.log.debug("Task ignored.")
