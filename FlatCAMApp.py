@@ -531,7 +531,6 @@ class App(QtCore.QObject):
         self.tcl = Tkinter.Tcl()
         self.setup_shell()
 
-
         self.ui.shell_dock = QtGui.QDockWidget("FlatCAM TCL Shell")
         self.ui.shell_dock.setWidget(self.shell)
         self.ui.shell_dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
