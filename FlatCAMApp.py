@@ -476,7 +476,7 @@ class App(QtCore.QObject):
         self.ui.menuviewdisableall.triggered.connect(self.disable_plots)
         self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(except_current=True))
         self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
-        self.ui.menutoolshell.triggered.connect(lambda: self.shell.show())
+        self.ui.menutoolshell.triggered.connect(self.on_toggle_shell)
         self.ui.menuhelp_about.triggered.connect(self.on_about)
         self.ui.menuhelp_home.triggered.connect(lambda: webbrowser.open(self.app_url))
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
@@ -490,7 +490,7 @@ class App(QtCore.QObject):
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
         self.ui.delete_btn.triggered.connect(self.on_delete)
-        self.ui.shell_btn.triggered.connect(lambda: self.shell.show())
+        self.ui.shell_btn.triggered.connect(self.on_toggle_shell)
         # Object list
         self.collection.view.activated.connect(self.on_row_activated)
         # Options
@@ -525,13 +525,24 @@ class App(QtCore.QObject):
         self.shell = FCShell(self)
         self.shell.setWindowIcon(self.ui.app_icon)
         self.shell.setWindowTitle("FlatCAM Shell")
-        if self.defaults["shell_at_startup"]:
-            self.shell.show()
         self.shell.resize(*self.defaults["shell_shape"])
         self.shell.append_output("FlatCAM %s\n(c) 2014-2015 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
         self.tcl = Tkinter.Tcl()
         self.setup_shell()
+
+
+        self.ui.shell_dock = QtGui.QDockWidget("FlatCAM TCL Shell")
+        self.ui.shell_dock.setWidget(self.shell)
+        self.ui.shell_dock.setAllowedAreas(QtCore.Qt.AllDockWidgetAreas)
+        self.ui.shell_dock.setFeatures(QtGui.QDockWidget.DockWidgetMovable |
+                             QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetClosable)
+        self.ui.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.ui.shell_dock)
+
+        if self.defaults["shell_at_startup"]:
+            self.ui.shell_dock.show()
+        else:
+            self.ui.shell_dock.hide()
 
         if self.cmd_line_shellfile:
             try:
@@ -1008,6 +1019,16 @@ class App(QtCore.QObject):
 
         if not silent:
             self.inform.emit("Defaults saved.")
+
+    def on_toggle_shell(self):
+        """
+        toggle shell if is  visible close it if  closed open it
+        :return:
+        """
+        if self.ui.shell_dock.isVisible():
+            self.ui.shell_dock.hide()
+        else:
+            self.ui.shell_dock.show()
 
     def on_edit_join(self):
         """
