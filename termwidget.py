@@ -79,6 +79,10 @@ class _ExpandableTextEdit(QTextEdit):
 
         QTextEdit.keyPressEvent(self, event)
 
+    def insertFromMimeData(self, mime_data):
+        # Paste only plain text.
+        self.insertPlainText(mime_data.text())
+
 
 class TermWidget(QWidget):
     """
