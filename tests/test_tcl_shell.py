@@ -33,7 +33,7 @@ class TclShellTest(unittest.TestCase):
         # Create App, keep app defaults (do not load
         # user-defined defaults).
         self.fc = App(user_defaults=False)
-        self.fc.shell.show()
+        self.fc.ui.shell_dock.show()
 
     @classmethod
     def tearDownClass(self):
