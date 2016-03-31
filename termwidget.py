@@ -4,8 +4,7 @@ Shows intput and output text. Allows to enter commands. Supports history.
 """
 
 import cgi
-
-from PyQt4.QtCore import pyqtSignal
+from PyQt4.QtCore import pyqtSignal, Qt
 from PyQt4.QtGui import QColor, QKeySequence, QLineEdit, QPalette, \
                         QSizePolicy, QTextCursor, QTextEdit, \
                         QVBoxLayout, QWidget
@@ -83,7 +82,6 @@ class _ExpandableTextEdit(QTextEdit):
         # Paste only plain text.
         self.insertPlainText(mime_data.text())
 
-
 class TermWidget(QWidget):
     """
     Widget wich represents terminal. It only displays text and allows to enter text.
@@ -117,6 +115,34 @@ class TermWidget(QWidget):
         self._historyIndex = 0
 
         self._edit.setFocus()
+
+    def open_proccessing(self, detail=None):
+        """
+        Open processing and disable using shell commands  again until all commands are finished
+
+        :param detail: text detail about what is currently called from TCL to python
+        :return: None
+        """
+
+        self._edit.setTextColor(Qt.white)
+        self._edit.setTextBackgroundColor(Qt.darkGreen)
+        if detail is None:
+            self._edit.setPlainText("...proccessing...")
+        else:
+            self._edit.setPlainText("...proccessing... [%s]" % detail)
+
+        self._edit.setDisabled(True)
+
+    def close_proccessing(self):
+        """
+        Close processing and enable using shell commands  again
+        :return:
+        """
+
+        self._edit.setTextColor(Qt.black)
+        self._edit.setTextBackgroundColor(Qt.white)
+        self._edit.setPlainText('')
+        self._edit.setDisabled(False)
 
     def _append_to_browser(self, style, text):
         """
@@ -225,4 +251,3 @@ class TermWidget(QWidget):
             self._historyIndex -= 1
             self._edit.setPlainText(self._history[self._historyIndex])
             self._edit.moveCursor(QTextCursor.End)
-
