@@ -31,18 +31,15 @@ class Worker(QtCore.QObject):
 
     def run(self):
 
-        # allow  debuging/breakpoints in this threads
-        #pydevd.settrace(suspend=False, trace_only_current_thread=True)
-
-        # FlatCAMApp.App.log.debug("Worker Started!")
         self.app.log.debug("Worker Started!")
+
+        self.allow_debug()
 
         # Tasks are queued in the event listener.
         self.app.worker_task.connect(self.do_worker_task)
 
     def do_worker_task(self, task):
 
-        # FlatCAMApp.App.log.debug("Running task: %s" % str(task))
         self.app.log.debug("Running task: %s" % str(task))
 
         self.allow_debug()
@@ -58,5 +55,4 @@ class Worker(QtCore.QObject):
 
             return
 
-        # FlatCAMApp.App.log.debug("Task ignored.")
         self.app.log.debug("Task ignored.")

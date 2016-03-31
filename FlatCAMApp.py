@@ -1079,6 +1079,7 @@ class App(QtCore.QObject):
         toggle shell if is  visible close it if  closed open it
         :return:
         """
+
         if self.ui.shell_dock.isVisible():
             self.ui.shell_dock.hide()
         else:
@@ -1091,6 +1092,7 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
         objs = self.collection.get_selected()
 
         def initialize(obj, app):
@@ -1802,6 +1804,7 @@ class App(QtCore.QObject):
         :param outname:
         :return:
         """
+
         self.log.debug("export_svg()")
 
         try:
