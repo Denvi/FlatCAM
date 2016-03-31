@@ -12,7 +12,7 @@ def debug_trace():
 
 debug_trace()
 
-# all X11 calling should  be thread safe  otherwise we have  strenght issues
+# all X11 calling should  be thread safe otherwise we have strange issues
 QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
 
 app = QtGui.QApplication(sys.argv)

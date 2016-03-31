@@ -1,5 +1,6 @@
 from PyQt4 import QtCore
 
+
 class Worker(QtCore.QObject):
     """
     Implements a queue of tasks to be carried out in order
@@ -45,17 +46,6 @@ class Worker(QtCore.QObject):
         self.app.log.debug("Running task: %s" % str(task))
 
         self.allow_debug()
-
-        # 'worker_name' property of task allows to target
-        # specific worker.
-        #if 'worker_name' in task and task['worker_name'] == self.name:
-        #    task['fcn'](*task['params'])
-        #    return
-
-        #if 'worker_name' not in task and self.name is None:
-        #    task['fcn'](*task['params'])
-        #    return
-
 
         if ('worker_name' in task and task['worker_name'] == self.name) or \
             ('worker_name' not in task and self.name is None):
