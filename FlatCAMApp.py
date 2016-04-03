@@ -1,4 +1,4 @@
-import sys
+import sys, traceback
 import urllib
 import getopt
 import random
@@ -695,6 +695,30 @@ class App(QtCore.QObject):
         else:
             raise unknownException
 
+    def display_tcl_error(self, error, error_info=None):
+        """
+        escape bracket [ with \  otherwise there is error
+        "ERROR: missing close-bracket" instead of real error
+        :param error: it may be text  or exception
+        :return: None
+        """
+
+        if isinstance(error, Exception):
+            exc_type, exc_value, exc_traceback = error_info
+            trc=traceback.format_list(traceback.extract_tb(exc_traceback))
+            trc_formated=[]
+            for a in reversed(trc):
+                trc_formated.append(a.replace("    ", " > ").replace("\n",""))
+            text="%s\nPython traceback: %s\n%s" % (exc_value,
+                             exc_type,
+                             "\n".join(trc_formated))
+        else:
+            text=error
+
+        text = text.replace('[', '\\[').replace('"','\\"')
+
+        self.tcl.eval('return -code error "%s"' % text)
+
     def raise_tcl_error(self, text):
         """
         this method  pass exception from python into TCL as error, so we get stacktrace and reason
@@ -702,7 +726,7 @@ class App(QtCore.QObject):
         :return: raise exception
         """
 
-        self.tcl.eval('return -code error "%s"' % text)
+        self.display_tcl_error(text)
         raise self.TclErrorException(text)
 
     def exec_command(self, text):

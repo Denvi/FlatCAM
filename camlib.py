@@ -2818,24 +2818,26 @@ class CNCjob(Geometry):
 
         for tool in tools:
 
-            # Tool change sequence (optional)
-            if toolchange:
-                gcode += "G00 Z%.4f\n" % toolchangez
-                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
-                gcode += "M5\n"  # Spindle Stop
-                gcode += "M6\n"  # Tool change
-                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
-                gcode += "M0\n"  # Temporary machine stop
-                if self.spindlespeed is not None:
-                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
-                else:
-                    gcode += "M03\n"  # Spindle start
+            # only if tool have some points, otherwise thre may be error and this part is useless
+            if "tool" in points:
+                # Tool change sequence (optional)
+                if toolchange:
+                    gcode += "G00 Z%.4f\n" % toolchangez
+                    gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
+                    gcode += "M5\n"  # Spindle Stop
+                    gcode += "M6\n"  # Tool change
+                    gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
+                    gcode += "M0\n"  # Temporary machine stop
+                    if self.spindlespeed is not None:
+                        gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+                    else:
+                        gcode += "M03\n"  # Spindle start
 
-            # Drillling!
-            for point in points[tool]:
-                x, y = point.coords.xy
-                gcode += t % (x[0], y[0])
-                gcode += down + up
+                # Drillling!
+                for point in points[tool]:
+                    x, y = point.coords.xy
+                    gcode += t % (x[0], y[0])
+                    gcode += down + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
