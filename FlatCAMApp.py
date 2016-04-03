@@ -685,6 +685,7 @@ class App(QtCore.QObject):
     def raise_tcl_unknown_error(self, unknownException):
         """
         raise Exception if is different type  than TclErrorException
+        this is here mainly to show unknown errors inside TCL shell console
         :param unknownException:
         :return:
         """
