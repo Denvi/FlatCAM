@@ -39,7 +39,7 @@ class TclCommandDrillcncjob(TclCommand.TclCommandSignaled):
             ('travelz', 'Travel distance above material (example: 2.0).'),
             ('feedrate', 'Drilling feed rate.'),
             ('spindlespeed', 'Speed of the spindle in rpm (example: 4000).'),
-            ('toolchange', 'Enable tool changes (example: 1).'),
+            ('toolchange', 'Enable tool changes (example: True).'),
             ('outname', 'Name of the resulting Geometry object.')
         ]),
         'examples': []

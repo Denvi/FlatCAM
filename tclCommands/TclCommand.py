@@ -393,5 +393,7 @@ class TclCommandSignaled(TclCommand):
             return self.output
 
         except Exception as unknown:
+            error_info=sys.exc_info()
             self.log.error("TCL command '%s' failed." % str(self))
+            self.app.display_tcl_error(unknown, error_info)
             self.raise_tcl_unknown_error(unknown)
