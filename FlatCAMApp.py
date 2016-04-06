@@ -762,6 +762,11 @@ class App(QtCore.QObject):
         except Tkinter.TclError, e:
             #this will display more precise answer if something in  TCL shell fail
             result = self.tcl.eval("set errorInfo")
+
+            # solve message in special tcl keywords used in wrong context as "unknown"
+            if e.message ==  'invalid command name ""':
+                result=result.replace('""','"%s"' % text.replace("\n",""))
+
             self.log.error("Exec command Exception: %s" % (result + '\n'))
             self.shell.append_error('ERROR: ' + result + '\n')
             #show error in console and just return or in test raise exception
