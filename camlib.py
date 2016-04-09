@@ -2777,7 +2777,7 @@ class CNCjob(Geometry):
         # so we actually are sorting the tools by diameter
         sorted_tools = sorted(exobj.tools.items(), key = lambda x: x[1])
         if tools == "all":
-            tools = str([i[0] for i in sorted_tools])   # we get a string of ordered tools
+            tools = [i[0] for i in sorted_tools]   # we get a array of ordered tools
             log.debug("Tools 'all' and sorted are: %s" % str(tools))
         else:
             selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
@@ -2819,7 +2819,7 @@ class CNCjob(Geometry):
         for tool in tools:
 
             # only if tool have some points, otherwise thre may be error and this part is useless
-            if "tool" in points:
+            if tool in points:
                 # Tool change sequence (optional)
                 if toolchange:
                     gcode += "G00 Z%.4f\n" % toolchangez
