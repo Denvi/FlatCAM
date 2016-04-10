@@ -291,8 +291,8 @@ class TclCommandSignaled(TclCommand):
         it handles  all neccessary stuff about blocking and passing exeptions
     """
 
-    # default  timeout for operation is  10 sec, but it can be much more
-    default_timeout = 10000
+    # default  timeout for operation is  300000 sec, but it can be much more
+    default_timeout = 300000
 
     output = None
 
