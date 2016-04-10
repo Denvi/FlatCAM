@@ -1,4 +1,4 @@
-import sys
+import sys, traceback
 import urllib
 import getopt
 import random
@@ -286,6 +286,8 @@ class App(QtCore.QObject):
             "cncjob_tooldia": 0.016,
             "cncjob_prepend": "",
             "cncjob_append": "",
+            "background_timeout": 300000, #default value is 5 minutes
+            "verbose_error_level": 0, # shell verbosity 0 = default(python trace only for unknown errors), 1 = show trace(show trace allways), 2 = (For the future).
 
             # Persistence
             "last_folder": None,
@@ -679,12 +681,12 @@ class App(QtCore.QObject):
         """
         this exception is deffined here, to be able catch it if we sucessfully handle all errors from shell command
         """
-
         pass
 
     def raise_tcl_unknown_error(self, unknownException):
         """
         raise Exception if is different type  than TclErrorException
+        this is here mainly to show unknown errors inside TCL shell console
         :param unknownException:
         :return:
         """
@@ -694,6 +696,40 @@ class App(QtCore.QObject):
         else:
             raise unknownException
 
+    def display_tcl_error(self, error, error_info=None):
+        """
+        escape bracket [ with \  otherwise there is error
+        "ERROR: missing close-bracket" instead of real error
+        :param error: it may be text  or exception
+        :return: None
+        """
+
+        if isinstance(error, Exception):
+
+            exc_type, exc_value, exc_traceback = error_info
+            if not isinstance(error, self.TclErrorException):
+                show_trace = 1
+            else:
+                show_trace = int(self.defaults['verbose_error_level'])
+
+            if show_trace > 0:
+                trc=traceback.format_list(traceback.extract_tb(exc_traceback))
+                trc_formated=[]
+                for a in reversed(trc):
+                    trc_formated.append(a.replace("    ", " > ").replace("\n",""))
+                text="%s\nPython traceback: %s\n%s" % (exc_value,
+                                 exc_type,
+                                 "\n".join(trc_formated))
+
+            else:
+                text="%s" % error
+        else:
+            text=error
+
+        text = text.replace('[', '\\[').replace('"','\\"')
+
+        self.tcl.eval('return -code error "%s"' % text)
+
     def raise_tcl_error(self, text):
         """
         this method  pass exception from python into TCL as error, so we get stacktrace and reason
@@ -701,7 +737,7 @@ class App(QtCore.QObject):
         :return: raise exception
         """
 
-        self.tcl.eval('return -code error "%s"' % text)
+        self.display_tcl_error(text)
         raise self.TclErrorException(text)
 
     def exec_command(self, text):

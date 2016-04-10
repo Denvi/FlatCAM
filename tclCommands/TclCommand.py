@@ -125,6 +125,10 @@ class TclCommand(object):
         for key, value in self.help['args'].items():
             help_string.append(get_decorated_argument(key, value))
 
+        # timeout is unique for signaled commands (this is not best oop practice, but much easier for now)
+        if isinstance(self, TclCommandSignaled):
+            help_string.append("\t[-timeout <int>: Max wait for job timeout before error.]")
+
         for example in self.help['examples']:
             help_string.append(get_decorated_example(example))
 
@@ -192,10 +196,13 @@ class TclCommand(object):
 
         # check options
         for key in options:
-            if key not in self.option_types and  key is not 'timeout':
+            if key not in self.option_types and key != 'timeout':
                 self.raise_tcl_error('Unknown parameter: %s' % key)
             try:
-                named_args[key] = self.option_types[key](options[key])
+                if key != 'timeout':
+                    named_args[key] = self.option_types[key](options[key])
+                else:
+                    named_args[key] = int(options[key])
             except Exception, e:
                 self.raise_tcl_error("Cannot cast argument '-%s' to type '%s' with exception '%s'."
                                      % (key, self.option_types[key], str(e)))
@@ -206,6 +213,31 @@ class TclCommand(object):
                 self.raise_tcl_error("Missing required argument '%s'." % key)
 
         return named_args, unnamed_args
+
+
+    def raise_tcl_unknown_error(self, unknownException):
+        """
+        raise Exception if is different type  than TclErrorException
+        this is here mainly to show unknown errors inside TCL shell console
+        :param unknownException:
+        :return:
+        """
+
+        #if not isinstance(unknownException, self.TclErrorException):
+        #    self.raise_tcl_error("Unknown error: %s" % str(unknownException))
+        #else:
+        raise unknownException
+
+    def raise_tcl_error(self, text):
+        """
+        this method  pass exception from python into TCL as error, so we get stacktrace and reason
+        :param text: text of error
+        :return: raise exception
+        """
+
+        # becouse of signaling we cannot call error to TCL from here but when task is finished
+        # also nonsiglaned arwe handled here to better exception handling and  diplay after   command is finished
+        raise self.app.TclErrorException(text)
 
     def execute_wrapper(self, *args):
         """
@@ -225,8 +257,10 @@ class TclCommand(object):
             args, unnamed_args = self.check_args(args)
             return self.execute(args, unnamed_args)
         except Exception as unknown:
+            error_info=sys.exc_info()
             self.log.error("TCL command '%s' failed." % str(self))
-            self.app.raise_tcl_unknown_error(unknown)
+            self.app.display_tcl_error(unknown, error_info)
+            self.raise_tcl_unknown_error(unknown)
 
     @abc.abstractmethod
     def execute(self, args, unnamed_args):
@@ -241,7 +275,6 @@ class TclCommand(object):
         """
 
         raise NotImplementedError("Please Implement this method")
-
 
 class TclCommandSignaled(TclCommand):
     """
@@ -258,15 +291,18 @@ class TclCommandSignaled(TclCommand):
         it handles  all neccessary stuff about blocking and passing exeptions
     """
 
-    # default  timeout for operation is  10 sec, but it can be much more
-    default_timeout = 10000
-
     output = None
 
     def execute_call(self, args, unnamed_args):
 
         try:
+            self.output = None
+            self.error=None
+            self.error_info=None
             self.output = self.execute(args, unnamed_args)
+        except Exception as unknown:
+            self.error_info = sys.exc_info()
+            self.error=unknown
         finally:
             self.app.shell_command_finished.emit(self)
 
@@ -281,7 +317,7 @@ class TclCommandSignaled(TclCommand):
         """
 
         @contextmanager
-        def wait_signal(signal, timeout=10000):
+        def wait_signal(signal, timeout=300000):
             """Block loop until signal emitted, or timeout (ms) elapses."""
             loop = QtCore.QEventLoop()
 
@@ -318,10 +354,10 @@ class TclCommandSignaled(TclCommand):
             # Restore exception management
             sys.excepthook = oeh
             if ex:
-                self.raise_tcl_error(str(ex[0]))
+                raise ex[0]
 
             if status['timed_out']:
-                self.app.raise_tcl_unknown_error('Operation timed out!')
+                self.app.raise_tcl_unknown_error("Operation timed outed! Consider increasing option '-timeout <miliseconds>' for command or 'set_sys background_timeout <miliseconds>'.")
 
         try:
             self.log.debug("TCL command '%s' executed." % str(self.__class__))
@@ -331,17 +367,15 @@ class TclCommandSignaled(TclCommand):
                 passed_timeout=args['timeout']
                 del args['timeout']
             else:
-                passed_timeout=self.default_timeout
+                passed_timeout= self.app.defaults['background_timeout']
 
             # set detail for processing, it will be there until next open or close
             self.app.shell.open_proccessing(self.get_current_command())
 
-            self.output = None
-
             def handle_finished(obj):
                 self.app.shell_command_finished.disconnect(handle_finished)
-                # TODO: handle output
-                pass
+                if self.error is not None:
+                    self.raise_tcl_unknown_error(self.error)
 
             self.app.shell_command_finished.connect(handle_finished)
 
@@ -354,5 +388,7 @@ class TclCommandSignaled(TclCommand):
             return self.output
 
         except Exception as unknown:
+            error_info=sys.exc_info()
             self.log.error("TCL command '%s' failed." % str(self))
-            self.app.raise_tcl_unknown_error(unknown)
+            self.app.display_tcl_error(unknown, error_info)
+            self.raise_tcl_unknown_error(unknown)

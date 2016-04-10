@@ -1,10 +1,11 @@
 import pkgutil
 import sys
 
-# allowed command modules
+# allowed command modules (please append them alphabetically ordered)
 import tclCommands.TclCommandAddPolygon
 import tclCommands.TclCommandAddPolyline
 import tclCommands.TclCommandCncjob
+import tclCommands.TclCommandDrillcncjob
 import tclCommands.TclCommandExportGcode
 import tclCommands.TclCommandExteriors
 import tclCommands.TclCommandInteriors
@@ -18,7 +19,6 @@ __all__ = []
 for loader, name, is_pkg in pkgutil.walk_packages(__path__):
     module = loader.find_module(name).load_module(name)
     __all__.append(name)
-
 
 def register_all_commands(app, commands):
     """

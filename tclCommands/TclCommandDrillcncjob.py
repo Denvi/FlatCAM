@@ -2,20 +2,13 @@ from ObjectCollection import *
 import TclCommand
 
 
-class TclCommandCncjob(TclCommand.TclCommandSignaled):
+class TclCommandDrillcncjob(TclCommand.TclCommandSignaled):
     """
-    Tcl shell command to Generates a CNC Job from a Geometry Object.
-
-    example:
-        set_sys units MM
-        new
-        open_gerber tests/gerber_files/simple1.gbr -outname margin
-        isolate margin -dia 3
-        cncjob margin_iso
+    Tcl shell command to Generates a Drill CNC Job from a Excellon Object.
     """
 
     # array of all command aliases, to be able use  old names for backward compatibility (add_poly, add_polygon)
-    aliases = ['cncjob']
+    aliases = ['drillcncjob']
 
     # dictionary of types from Tcl command, needs to be ordered
     arg_names = collections.OrderedDict([
@@ -24,13 +17,12 @@ class TclCommandCncjob(TclCommand.TclCommandSignaled):
 
     # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
     option_types = collections.OrderedDict([
-        ('z_cut',float),
-        ('z_move',float),
+        ('tools',str),
+        ('drillz',float),
+        ('travelz',float),
         ('feedrate',float),
-        ('tooldia',float),
         ('spindlespeed',int),
-        ('multidepth',bool),
-        ('depthperpass',float),
+        ('toolchange',bool),
         ('outname',str)
     ])
 
@@ -39,16 +31,15 @@ class TclCommandCncjob(TclCommand.TclCommandSignaled):
 
     # structured help for current command, args needs to be ordered
     help = {
-        'main': "Generates a CNC Job from a Geometry Object.",
+        'main': "Generates a Drill CNC Job from a Excellon Object.",
         'args': collections.OrderedDict([
             ('name', 'Name of the source object.'),
-            ('z_cut', 'Z-axis cutting position.'),
-            ('z_move', 'Z-axis moving position.'),
-            ('feedrate', 'Moving speed when cutting.'),
-            ('tooldia', 'Tool diameter to show on screen.'),
+            ('tools', 'Comma separated indexes of tools (example: 1,3 or 2) or select all if not specified.'),
+            ('drillz', 'Drill depth into material (example: -2.0).'),
+            ('travelz', 'Travel distance above material (example: 2.0).'),
+            ('feedrate', 'Drilling feed rate.'),
             ('spindlespeed', 'Speed of the spindle in rpm (example: 4000).'),
-            ('multidepth', 'Use or not multidepth cnccut.'),
-            ('depthperpass', 'Height of one layer for multidepth.'),
+            ('toolchange', 'Enable tool changes (example: True).'),
             ('outname', 'Name of the resulting Geometry object.')
         ]),
         'examples': []
@@ -73,8 +64,18 @@ class TclCommandCncjob(TclCommand.TclCommandSignaled):
         if obj is None:
             self.raise_tcl_error("Object not found: %s" % name)
 
-        if not isinstance(obj, FlatCAMGeometry):
-            self.raise_tcl_error('Expected FlatCAMGeometry, got %s %s.' % (name, type(obj)))
+        if not isinstance(obj, FlatCAMExcellon):
+            self.raise_tcl_error('Expected FlatCAMExcellon, got %s %s.' % (name, type(obj)))
 
-        del args['name']
-        obj.generatecncjob(use_thread = False, **args)
+        def job_init(job_obj, app):
+            job_obj.z_cut = args["drillz"]
+            job_obj.z_move = args["travelz"]
+            job_obj.feedrate = args["feedrate"]
+            job_obj.spindlespeed = args["spindlespeed"] if "spindlespeed" in args else None
+            toolchange = True if "toolchange" in args and args["toolchange"] == 1 else False
+            tools = args["tools"] if "tools" in args else 'all'
+            job_obj.generate_from_excellon_by_tool(obj, tools, toolchange)
+            job_obj.gcode_parse()
+            job_obj.create_geometry()
+
+        self.app.new_object("cncjob", args['outname'], job_init)

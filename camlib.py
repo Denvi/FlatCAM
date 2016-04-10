@@ -2777,7 +2777,7 @@ class CNCjob(Geometry):
         # so we actually are sorting the tools by diameter
         sorted_tools = sorted(exobj.tools.items(), key = lambda x: x[1])
         if tools == "all":
-            tools = str([i[0] for i in sorted_tools])   # we get a string of ordered tools
+            tools = [i[0] for i in sorted_tools]   # we get a array of ordered tools
             log.debug("Tools 'all' and sorted are: %s" % str(tools))
         else:
             selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
@@ -2818,24 +2818,26 @@ class CNCjob(Geometry):
 
         for tool in tools:
 
-            # Tool change sequence (optional)
-            if toolchange:
-                gcode += "G00 Z%.4f\n" % toolchangez
-                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
-                gcode += "M5\n"  # Spindle Stop
-                gcode += "M6\n"  # Tool change
-                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
-                gcode += "M0\n"  # Temporary machine stop
-                if self.spindlespeed is not None:
-                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
-                else:
-                    gcode += "M03\n"  # Spindle start
+            # only if tool have some points, otherwise thre may be error and this part is useless
+            if tool in points:
+                # Tool change sequence (optional)
+                if toolchange:
+                    gcode += "G00 Z%.4f\n" % toolchangez
+                    gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
+                    gcode += "M5\n"  # Spindle Stop
+                    gcode += "M6\n"  # Tool change
+                    gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
+                    gcode += "M0\n"  # Temporary machine stop
+                    if self.spindlespeed is not None:
+                        gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+                    else:
+                        gcode += "M03\n"  # Spindle start
 
-            # Drillling!
-            for point in points[tool]:
-                x, y = point.coords.xy
-                gcode += t % (x[0], y[0])
-                gcode += down + up
+                # Drillling!
+                for point in points[tool]:
+                    x, y = point.coords.xy
+                    gcode += t % (x[0], y[0])
+                    gcode += down + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
