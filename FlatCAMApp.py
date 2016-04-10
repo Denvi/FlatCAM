@@ -286,6 +286,8 @@ class App(QtCore.QObject):
             "cncjob_tooldia": 0.016,
             "cncjob_prepend": "",
             "cncjob_append": "",
+            "background_timeout": 300000, #default value is 5 minutes
+            "verbose_error_level": 0, # shell verbosity 0 = default(python trace only for unknown errors), 1 = show trace(show trace allways), 2 = (For the future).
 
             # Persistence
             "last_folder": None,
@@ -679,7 +681,6 @@ class App(QtCore.QObject):
         """
         this exception is deffined here, to be able catch it if we sucessfully handle all errors from shell command
         """
-
         pass
 
     def raise_tcl_unknown_error(self, unknownException):
@@ -704,14 +705,24 @@ class App(QtCore.QObject):
         """
 
         if isinstance(error, Exception):
+
             exc_type, exc_value, exc_traceback = error_info
-            trc=traceback.format_list(traceback.extract_tb(exc_traceback))
-            trc_formated=[]
-            for a in reversed(trc):
-                trc_formated.append(a.replace("    ", " > ").replace("\n",""))
-            text="%s\nPython traceback: %s\n%s" % (exc_value,
-                             exc_type,
-                             "\n".join(trc_formated))
+            if not isinstance(error, self.TclErrorException):
+                show_trace = 1
+            else:
+                show_trace = int(self.defaults['verbose_error_level'])
+
+            if show_trace > 0:
+                trc=traceback.format_list(traceback.extract_tb(exc_traceback))
+                trc_formated=[]
+                for a in reversed(trc):
+                    trc_formated.append(a.replace("    ", " > ").replace("\n",""))
+                text="%s\nPython traceback: %s\n%s" % (exc_value,
+                                 exc_type,
+                                 "\n".join(trc_formated))
+
+            else:
+                text="%s" % error
         else:
             text=error
 

@@ -291,9 +291,6 @@ class TclCommandSignaled(TclCommand):
         it handles  all neccessary stuff about blocking and passing exeptions
     """
 
-    # default  timeout for operation is  300000 sec, but it can be much more
-    default_timeout = 300000
-
     output = None
 
     def execute_call(self, args, unnamed_args):
@@ -320,7 +317,7 @@ class TclCommandSignaled(TclCommand):
         """
 
         @contextmanager
-        def wait_signal(signal, timeout=10000):
+        def wait_signal(signal, timeout=300000):
             """Block loop until signal emitted, or timeout (ms) elapses."""
             loop = QtCore.QEventLoop()
 
@@ -357,10 +354,10 @@ class TclCommandSignaled(TclCommand):
             # Restore exception management
             sys.excepthook = oeh
             if ex:
-                self.raise_tcl_error(str(ex[0]))
+                raise ex[0]
 
             if status['timed_out']:
-                self.app.raise_tcl_unknown_error('Operation timed out!')
+                self.app.raise_tcl_unknown_error("Operation timed outed! Consider increasing option '-timeout <miliseconds>' for command or 'set_sys background_timeout <miliseconds>'.")
 
         try:
             self.log.debug("TCL command '%s' executed." % str(self.__class__))
@@ -370,7 +367,7 @@ class TclCommandSignaled(TclCommand):
                 passed_timeout=args['timeout']
                 del args['timeout']
             else:
-                passed_timeout=self.default_timeout
+                passed_timeout= self.app.defaults['background_timeout']
 
             # set detail for processing, it will be there until next open or close
             self.app.shell.open_proccessing(self.get_current_command())
@@ -378,8 +375,6 @@ class TclCommandSignaled(TclCommand):
             def handle_finished(obj):
                 self.app.shell_command_finished.disconnect(handle_finished)
                 if self.error is not None:
-                    self.log.error("TCL command '%s' failed." % str(self))
-                    self.app.display_tcl_error(self.error, self.error_info)
                     self.raise_tcl_unknown_error(self.error)
 
             self.app.shell_command_finished.connect(handle_finished)
