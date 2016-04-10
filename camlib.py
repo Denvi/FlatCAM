@@ -2782,7 +2782,9 @@ class CNCjob(Geometry):
         else:
             selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
             selected_tools = filter(lambda i: i in selected_tools, selected_tools)
-            tools = [i for i,j in sorted_tools for k in selected_tools if i == k]   # create a sorted list of selected tools from the sorted_tools list
+
+            # Create a sorted list of selected tools from the sorted_tools list
+            tools = [i for i, j in sorted_tools for k in selected_tools if i == k]
             log.debug("Tools selected and sorted are: %s" % str(tools)) 
 
         # Points (Group by tool)
@@ -2800,7 +2802,8 @@ class CNCjob(Geometry):
         # Basic G-Code macros
         t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
-        up = "G01 Z%.4f\n" % self.z_move
+        up = "G00 Z%.4f\n" % self.z_move
+        up_to_zero = "G01 Z0\n"
 
         # Initialization
         gcode = self.unitcode[self.units.upper()] + "\n"
@@ -2810,7 +2813,8 @@ class CNCjob(Geometry):
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
 
         if self.spindlespeed is not None:
-            gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+            # Spindle start with configured speed
+            gcode += "M03 S%d\n" % int(self.spindlespeed)
         else:
             gcode += "M03\n"  # Spindle start
 
@@ -2818,7 +2822,7 @@ class CNCjob(Geometry):
 
         for tool in tools:
 
-            # only if tool have some points, otherwise thre may be error and this part is useless
+            # Only if tool has points.
             if tool in points:
                 # Tool change sequence (optional)
                 if toolchange:
@@ -2829,7 +2833,8 @@ class CNCjob(Geometry):
                     gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
                     gcode += "M0\n"  # Temporary machine stop
                     if self.spindlespeed is not None:
-                        gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+                        # Spindle start with configured speed
+                        gcode += "M03 S%d\n" % int(self.spindlespeed)
                     else:
                         gcode += "M03\n"  # Spindle start
 
@@ -2837,7 +2842,7 @@ class CNCjob(Geometry):
                 for point in points[tool]:
                     x, y = point.coords.xy
                     gcode += t % (x[0], y[0])
-                    gcode += down + up
+                    gcode += down + up_to_zero + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
