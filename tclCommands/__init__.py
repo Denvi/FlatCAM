@@ -8,6 +8,7 @@ import tclCommands.TclCommandCncjob
 import tclCommands.TclCommandDrillcncjob
 import tclCommands.TclCommandExportGcode
 import tclCommands.TclCommandExteriors
+import tclCommands.TclCommandImportSvg
 import tclCommands.TclCommandInteriors
 import tclCommands.TclCommandIsolate
 import tclCommands.TclCommandNew
