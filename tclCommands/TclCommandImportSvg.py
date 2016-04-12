@@ -17,6 +17,7 @@ class TclCommandImportSvg(TclCommand.TclCommandSignaled):
 
     # dictionary of types from Tcl command, needs to be ordered , this  is  for options  like -optionname value
     option_types = collections.OrderedDict([
+        ('type', str),
         ('outname', str)
     ])
 
@@ -28,6 +29,7 @@ class TclCommandImportSvg(TclCommand.TclCommandSignaled):
         'main': "Import an SVG file as a Geometry Object..",
         'args':  collections.OrderedDict([
             ('filename', 'Path to file to open.'),
+            ('type', 'Import as gerber or geometry(default).'),
             ('outname', 'Name of the resulting Geometry object.')
         ]),
         'examples': []
@@ -47,7 +49,7 @@ class TclCommandImportSvg(TclCommand.TclCommandSignaled):
         def obj_init(geo_obj, app_obj):
 
             if not isinstance(geo_obj, Geometry):
-                self.raise_tcl_error('Expected Geometry, got %s %s.' % (outname, type(geo_obj)))
+                self.raise_tcl_error('Expected Geometry or Gerber, got %s %s.' % (outname, type(geo_obj)))
 
             geo_obj.import_svg(filename)
 
@@ -58,10 +60,18 @@ class TclCommandImportSvg(TclCommand.TclCommandSignaled):
         else:
             outname = filename.split('/')[-1].split('\\')[-1]
 
+        if 'type' in args:
+            obj_type = args['type']
+        else:
+            obj_type = 'geometry'
+
+        if obj_type != "geometry" and  obj_type != "gerber":
+            self.raise_tcl_error("Option type can gebe 'geopmetry' or 'gerber' only, got '%s'." % obj_type)
+
         with self.app.proc_container.new("Import SVG"):
 
             # Object creation
-            self.app.new_object("geometry", outname, obj_init)
+            self.app.new_object(obj_type, outname, obj_init)
 
             # Register recent file
             self.app.file_opened.emit("svg", filename)
