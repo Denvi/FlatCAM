@@ -58,14 +58,14 @@ class TclCommandImportSvg(TclCommand.TclCommandSignaled):
         else:
             outname = filename.split('/')[-1].split('\\')[-1]
 
-        with self.app.proc_container.new("Opening Gerber"):
+        with self.app.proc_container.new("Import SVG"):
 
             # Object creation
-            self.app.new_object("gerber", outname, obj_init)
+            self.app.new_object("geometry", outname, obj_init)
 
             # Register recent file
-            self.file_opened.emit("svg", filename)
+            self.app.file_opened.emit("svg", filename)
 
             # GUI feedback
-            self.inform.emit("Opened: " + filename)
+            self.app.inform.emit("Opened: " + filename)
 

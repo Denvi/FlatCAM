@@ -64,6 +64,7 @@ def path2shapely(path, res=1.0):
     :param res: Resolution (minimum step along path)
     :return: Shapely geometry object
     """
+
     points = []
 
     for component in path:
@@ -86,10 +87,15 @@ def path2shapely(path, res=1.0):
             # How many points to use in the dicrete representation.
             length = component.length(res / 10.0)
             steps = int(length / res + 0.5)
-            frac = 1.0 / steps
+
+            # solve error when step is below 1,
+            # it may cause other problems, but LineString needs at least  two points
+            if steps == 0:
+                steps = 1
 
             # print length, steps, frac
             for i in range(steps):
+                frac = 1.0 / steps
                 point = component.point(i * frac)
                 x, y = point.real, point.imag
                 if len(points) == 0 or points[-1] != (x, y):
@@ -117,9 +123,16 @@ def svgrect2shapely(rect, n_points=32):
     """
     w = svgparselength(rect.get('width'))[0]
     h = svgparselength(rect.get('height'))[0]
-    x = svgparselength(rect.get('x'))[0]
-    y = svgparselength(rect.get('y'))[0]
-
+    x_obj = rect.get('x')
+    if x_obj is not None:
+        x = svgparselength(x_obj)[0]
+    else:
+        x = 0
+    y_obj = rect.get('y')
+    if y_obj is not None:
+        y = svgparselength(y_obj)[0]
+    else:
+        y = 0
     rxstr = rect.get('rx')
     rystr = rect.get('ry')
 
@@ -305,29 +318,31 @@ def getsvggeo(node):
         log.warning("Unknown kind: " + kind)
         geo = None
 
-    # Transformations
-    if 'transform' in node.attrib:
-        trstr = node.get('transform')
-        trlist = parse_svg_transform(trstr)
-        #log.debug(trlist)
+    # ignore transformation for unknown kind
+    if geo is not None:
+        # Transformations
+        if 'transform' in node.attrib:
+            trstr = node.get('transform')
+            trlist = parse_svg_transform(trstr)
+            #log.debug(trlist)
 
-        # Transformations are applied in reverse order
-        for tr in trlist[::-1]:
-            if tr[0] == 'translate':
-                geo = [translate(geoi, tr[1], tr[2]) for geoi in geo]
-            elif tr[0] == 'scale':
-                geo = [scale(geoi, tr[0], tr[1], origin=(0, 0))
-                       for geoi in geo]
-            elif tr[0] == 'rotate':
-                geo = [rotate(geoi, tr[1], origin=(tr[2], tr[3]))
-                       for geoi in geo]
-            elif tr[0] == 'skew':
-                geo = [skew(geoi, tr[1], tr[2], origin=(0, 0))
-                       for geoi in geo]
-            elif tr[0] == 'matrix':
-                geo = [affine_transform(geoi, tr[1:]) for geoi in geo]
-            else:
-                raise Exception('Unknown transformation: %s', tr)
+            # Transformations are applied in reverse order
+            for tr in trlist[::-1]:
+                if tr[0] == 'translate':
+                    geo = [translate(geoi, tr[1], tr[2]) for geoi in geo]
+                elif tr[0] == 'scale':
+                    geo = [scale(geoi, tr[0], tr[1], origin=(0, 0))
+                           for geoi in geo]
+                elif tr[0] == 'rotate':
+                    geo = [rotate(geoi, tr[1], origin=(tr[2], tr[3]))
+                           for geoi in geo]
+                elif tr[0] == 'skew':
+                    geo = [skew(geoi, tr[1], tr[2], origin=(0, 0))
+                           for geoi in geo]
+                elif tr[0] == 'matrix':
+                    geo = [affine_transform(geoi, tr[1:]) for geoi in geo]
+                else:
+                    raise Exception('Unknown transformation: %s', tr)
 
     return geo
 
@@ -346,7 +361,7 @@ def parse_svg_point_list(ptliststr):
     pos = 0
     i = 0
 
-    for match in re.finditer(r'(\s*,\s*)|(\s+)', ptliststr):
+    for match in re.finditer(r'(\s*,\s*)|(\s+)', ptliststr.strip(' ')):
 
         val = float(ptliststr[pos:match.start()])
 
@@ -435,7 +450,7 @@ def parse_svg_transform(trstr):
                     r'(?:' + comma_or_space_re_str + \
                     r'(' + number_re_str + r')' + \
                     comma_or_space_re_str + \
-                    r'(' + number_re_str + r'))?\*\)'
+                    r'(' + number_re_str + r'))?\)'
     matrix_re_str = r'matrix\s*\(\s*' + \
                     r'(' + number_re_str + r')' + comma_or_space_re_str + \
                     r'(' + number_re_str + r')' + comma_or_space_re_str + \
