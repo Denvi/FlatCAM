@@ -4,6 +4,8 @@ from PyQt4 import QtGui
 from PyQt4.QtCore import QThread
 
 from FlatCAMApp import App
+from os import listdir
+from os.path import isfile
 from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry, FlatCAMCNCjob, FlatCAMExcellon
 from ObjectUI import GerberObjectUI, GeometryObjectUI
 from time import sleep
@@ -12,11 +14,13 @@ import tempfile
 
 class TclShellTest(unittest.TestCase):
 
+    svg_files = 'tests/svg'
     gerber_files = 'tests/gerber_files'
     copper_bottom_filename = 'detector_copper_bottom.gbr'
     copper_top_filename = 'detector_copper_top.gbr'
     cutout_filename = 'detector_contour.gbr'
     excellon_filename = 'detector_drill.txt'
+    geometry_name = "geometry"
     excellon_name = "excellon"
     gerber_top_name = "top"
     gerber_bottom_name = "bottom"
@@ -178,3 +182,38 @@ class TclShellTest(unittest.TestCase):
         self.fc.exec_command_test('mirror %s -box %s -axis X' % (self.excellon_name, self.gerber_cutout_name))
 
         # TODO: tests for tcl
+
+    def test_import_svg(self):
+        """
+        Test all SVG files inside svg directory.
+        Problematic SVG files shold be put there as test reference.
+        :return:
+        """
+
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
+
+        file_list = listdir(self.svg_files)
+
+        for svg_file in file_list:
+
+            # import  without outname
+            self.fc.exec_command_test('import_svg "%s/%s"' % (self.svg_files, svg_file))
+
+            excellon_obj = self.fc.collection.get_by_name(svg_file)
+            self.assertTrue(isinstance(excellon_obj, FlatCAMGeometry),
+                        "Expected FlatCAMGeometry, instead, %s is %s" %
+                        (self.excellon_name, type(excellon_obj)))
+
+            # import  with outname
+            outname='%s-%s' % (self.geometry_name, svg_file)
+            self.fc.exec_command_test('import_svg "%s/%s" -outname "%s"' % (self.svg_files, svg_file, outname))
+
+            excellon_obj = self.fc.collection.get_by_name(outname)
+            self.assertTrue(isinstance(excellon_obj, FlatCAMGeometry),
+                        "Expected FlatCAMGeometry, instead, %s is %s" %
+                        (self.excellon_name, type(excellon_obj)))
+
+        names = self.fc.collection.get_names()
+        self.assertEqual(len(names), len(file_list)*2,
+                         "Expected %d objects, found %d" % (len(file_list)*2, len(file_list)))
