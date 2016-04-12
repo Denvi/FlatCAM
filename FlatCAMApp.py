@@ -1,4 +1,4 @@
-import sys
+import sys, traceback
 import urllib
 import getopt
 import random
@@ -27,7 +27,7 @@ from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
-
+import tclCommands
 
 ########################################
 ##                App                 ##
@@ -106,6 +106,9 @@ class App(QtCore.QObject):
     new_object_available = QtCore.pyqtSignal(object)
 
     message = QtCore.pyqtSignal(str, str, str)
+
+    # Emmited when shell command is finished(one command only)
+    shell_command_finished = QtCore.pyqtSignal(object)
 
     # Emitted when an unhandled exception happens
     # in the worker task.
@@ -228,6 +231,7 @@ class App(QtCore.QObject):
             "excellon_feedrate": self.defaults_form.excellon_group.feedrate_entry,
             "excellon_spindlespeed": self.defaults_form.excellon_group.spindlespeed_entry,
             "excellon_toolchangez": self.defaults_form.excellon_group.toolchangez_entry,
+            "excellon_tooldia": self.defaults_form.excellon_group.tooldia_entry,
             "geometry_plot": self.defaults_form.geometry_group.plot_cb,
             "geometry_cutz": self.defaults_form.geometry_group.cutz_entry,
             "geometry_travelz": self.defaults_form.geometry_group.travelz_entry,
@@ -283,6 +287,8 @@ class App(QtCore.QObject):
             "cncjob_tooldia": 0.016,
             "cncjob_prepend": "",
             "cncjob_append": "",
+            "background_timeout": 300000, #default value is 5 minutes
+            "verbose_error_level": 0, # shell verbosity 0 = default(python trace only for unknown errors), 1 = show trace(show trace allways), 2 = (For the future).
 
             # Persistence
             "last_folder": None,
@@ -355,6 +361,7 @@ class App(QtCore.QObject):
             "excellon_feedrate": self.options_form.excellon_group.feedrate_entry,
             "excellon_spindlespeed": self.options_form.excellon_group.spindlespeed_entry,
             "excellon_toolchangez": self.options_form.excellon_group.toolchangez_entry,
+            "excellon_tooldia": self.options_form.excellon_group.tooldia_entry,
             "geometry_plot": self.options_form.geometry_group.plot_cb,
             "geometry_cutz": self.options_form.geometry_group.cutz_entry,
             "geometry_travelz": self.options_form.geometry_group.travelz_entry,
@@ -528,8 +535,8 @@ class App(QtCore.QObject):
         self.shell.resize(*self.defaults["shell_shape"])
         self.shell.append_output("FlatCAM %s\n(c) 2014-2015 Juan Pablo Caram\n\n" % self.version)
         self.shell.append_output("Type help to get started.\n\n")
-        self.tcl = Tkinter.Tcl()
-        self.setup_shell()
+
+        self.init_tcl()
 
         self.ui.shell_dock = QtGui.QDockWidget("FlatCAM TCL Shell")
         self.ui.shell_dock.setWidget(self.shell)
@@ -558,6 +565,17 @@ class App(QtCore.QObject):
             post_gui(self)
 
         App.log.debug("END of constructor. Releasing control.")
+
+    def init_tcl(self):
+        if hasattr(self,'tcl'):
+            # self.tcl = None
+            # TODO  we need  to clean  non default variables and procedures here
+            # new object cannot be used here as it  will not remember values created for next passes,
+            # because tcl  was execudted in old instance of TCL
+            pass
+        else:
+            self.tcl = Tkinter.Tcl()
+            self.setup_shell()
 
     def defaults_read_form(self):
         for option in self.defaults_form_fields:
@@ -661,36 +679,111 @@ class App(QtCore.QObject):
         else:
             self.defaults['stats'][resource] = 1
 
-    def raiseTclError(self, text):
+    class TclErrorException(Exception):
+        """
+        this exception is deffined here, to be able catch it if we sucessfully handle all errors from shell command
+        """
+        pass
+
+    def raise_tcl_unknown_error(self, unknownException):
+        """
+        raise Exception if is different type  than TclErrorException
+        this is here mainly to show unknown errors inside TCL shell console
+        :param unknownException:
+        :return:
+        """
+
+        if not isinstance(unknownException, self.TclErrorException):
+            self.raise_tcl_error("Unknown error: %s" % str(unknownException))
+        else:
+            raise unknownException
+
+    def display_tcl_error(self, error, error_info=None):
+        """
+        escape bracket [ with \  otherwise there is error
+        "ERROR: missing close-bracket" instead of real error
+        :param error: it may be text  or exception
+        :return: None
+        """
+
+        if isinstance(error, Exception):
+
+            exc_type, exc_value, exc_traceback = error_info
+            if not isinstance(error, self.TclErrorException):
+                show_trace = 1
+            else:
+                show_trace = int(self.defaults['verbose_error_level'])
+
+            if show_trace > 0:
+                trc=traceback.format_list(traceback.extract_tb(exc_traceback))
+                trc_formated=[]
+                for a in reversed(trc):
+                    trc_formated.append(a.replace("    ", " > ").replace("\n",""))
+                text="%s\nPython traceback: %s\n%s" % (exc_value,
+                                 exc_type,
+                                 "\n".join(trc_formated))
+
+            else:
+                text="%s" % error
+        else:
+            text=error
+
+        text = text.replace('[', '\\[').replace('"','\\"')
+
+        self.tcl.eval('return -code error "%s"' % text)
+
+    def raise_tcl_error(self, text):
         """
         this method  pass exception from python into TCL as error, so we get stacktrace and reason
         :param text: text of error
         :return: raise exception
         """
-        self.tcl.eval('return -code error "%s"' % text)
-        raise Exception(text)
+
+        self.display_tcl_error(text)
+        raise self.TclErrorException(text)
 
     def exec_command(self, text):
         """
         Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
+        Also handles execution in separated threads
+
+        :param text:
+        :return: output if there was any
+        """
+
+        self.report_usage('exec_command')
+
+        result = self.exec_command_test(text, False)
+        return result
+
+    def exec_command_test(self, text, reraise=True):
+        """
+        Handles input from the shell. See FlatCAMApp.setup_shell for shell commands.
 
         :param text: Input command
-        :return: None
+        :param reraise: raise exception and not hide it, used mainly in unittests
+        :return: output if there was any
         """
-        self.report_usage('exec_command')
 
         text = str(text)
 
         try:
+            self.shell.open_proccessing()
             result = self.tcl.eval(str(text))
-            self.shell.append_output(result + '\n')
+            if result!='None':
+                self.shell.append_output(result + '\n')
         except Tkinter.TclError, e:
             #this will display more precise answer if something in  TCL shell fail
             result = self.tcl.eval("set errorInfo")
             self.log.error("Exec command Exception: %s" % (result + '\n'))
             self.shell.append_error('ERROR: ' + result + '\n')
-            #show error in console and just return
-        return
+            #show error in console and just return or in test raise exception
+            if reraise:
+                raise e
+        finally:
+            self.shell.close_proccessing()
+            pass
+        return result
 
         """
         Code below is unsused. Saved for later.
@@ -1024,6 +1117,7 @@ class App(QtCore.QObject):
         toggle shell if is  visible close it if  closed open it
         :return:
         """
+
         if self.ui.shell_dock.isVisible():
             self.ui.shell_dock.hide()
         else:
@@ -1036,6 +1130,7 @@ class App(QtCore.QObject):
 
         :return: None
         """
+
         objs = self.collection.get_selected()
 
         def initialize(obj, app):
@@ -1483,6 +1578,9 @@ class App(QtCore.QObject):
 
         self.plotcanvas.clear()
 
+        # tcl needs to be reinitialized, otherwise  old shell variables etc  remains
+        self.init_tcl()
+
         self.collection.delete_all()
 
         self.setup_component_editor()
@@ -1744,6 +1842,7 @@ class App(QtCore.QObject):
         :param outname:
         :return:
         """
+
         self.log.debug("export_svg()")
 
         try:
@@ -1770,7 +1869,7 @@ class App(QtCore.QObject):
             svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
             svg_header += 'width="' + svgwidth + uom + '" '
             svg_header += 'height="' + svgheight + uom + '" '
-            svg_header += 'viewBox="' + minx + ' ' + miny + ' ' + svgwidth + ' ' + svgheight + '">' 
+            svg_header += 'viewBox="' + minx + ' ' + miny + ' ' + svgwidth + ' ' + svgheight + '">'
             svg_header += '<g transform="scale(1,-1)">'
             svg_footer = '</g> </svg>'
             svg_elem = svg_header + exported_svg + svg_footer
@@ -2409,85 +2508,96 @@ class App(QtCore.QObject):
             return 'Ok'
 
 
-        def geocutout(name, *args):
-            """
+        def geocutout(name=None, *args):
+            '''
+            TCL shell command - see help section
+
             Subtract gaps from geometry, this will not create new object
 
-            :param name:
-            :param args:
-            :return:
-            """
-            a, kwa = h(*args)
-            types = {'dia': float,
-                     'gapsize': float,
-                     'gaps': str}
-
-            # How gaps wil be rendered:
-            # lr    - left + right
-            # tb    - top + bottom
-            # 4     - left + right +top + bottom
-            # 2lr   - 2*left + 2*right
-            # 2tb   - 2*top + 2*bottom
-            # 8     - 2*left + 2*right +2*top + 2*bottom
-
-            for key in kwa:
-                if key not in types:
-                    return 'Unknown parameter: %s' % key
-                kwa[key] = types[key](kwa[key])
+            :param name: name of object
+            :param args: array of arguments
+            :return: "Ok" if completed without errors
+            '''
 
             try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                return "Could not retrieve object: %s" % name
+                a, kwa = h(*args)
+                types = {'dia': float,
+                         'gapsize': float,
+                         'gaps': str}
 
-            # Get min and max data for each object as we just cut rectangles across X or Y
-            xmin, ymin, xmax, ymax = obj.bounds()
-            px = 0.5 * (xmin + xmax)
-            py = 0.5 * (ymin + ymax)
-            lenghtx = (xmax - xmin)
-            lenghty = (ymax - ymin)
-            gapsize = kwa['gapsize'] + kwa['dia'] / 2
-            
-            if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
-                
-                subtract_rectangle(name, 
-                                   xmin - gapsize, 
-                                   py - gapsize + lenghty / 4, 
-                                   xmax + gapsize, 
-                                   py + gapsize + lenghty / 4)
-                subtract_rectangle(name, 
-                                   xmin-gapsize, 
-                                   py - gapsize - lenghty / 4,
-                                   xmax + gapsize,
-                                   py + gapsize - lenghty / 4)
-                
-            if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
-                subtract_rectangle(name, 
-                                   px - gapsize + lenghtx / 4,
-                                   ymin-gapsize, 
-                                   px + gapsize + lenghtx / 4, 
-                                   ymax + gapsize)
-                subtract_rectangle(name,
-                                   px - gapsize - lenghtx / 4, 
-                                   ymin - gapsize,
-                                   px + gapsize - lenghtx / 4,
-                                   ymax + gapsize)
-                
-            if kwa['gaps'] == '4' or kwa['gaps']=='lr':
-                subtract_rectangle(name,
-                                   xmin - gapsize,
-                                   py - gapsize,
-                                   xmax + gapsize,
-                                   py + gapsize)
-                
-            if kwa['gaps'] == '4' or kwa['gaps']=='tb':
-                subtract_rectangle(name,
-                                   px - gapsize,
-                                   ymin - gapsize,
-                                   px + gapsize,
-                                   ymax + gapsize)
-                
-            return 'Ok'
+                # How gaps wil be rendered:
+                # lr    - left + right
+                # tb    - top + bottom
+                # 4     - left + right +top + bottom
+                # 2lr   - 2*left + 2*right
+                # 2tb   - 2*top + 2*bottom
+                # 8     - 2*left + 2*right +2*top + 2*bottom
+
+                if name is None:
+                    self.raise_tcl_error('Argument name is missing.')
+
+                for key in kwa:
+                    if key not in types:
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
+
+                try:
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
+
+                # Get min and max data for each object as we just cut rectangles across X or Y
+                xmin, ymin, xmax, ymax = obj.bounds()
+                px = 0.5 * (xmin + xmax)
+                py = 0.5 * (ymin + ymax)
+                lenghtx = (xmax - xmin)
+                lenghty = (ymax - ymin)
+                gapsize = kwa['gapsize'] + kwa['dia'] / 2
+
+                if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
+
+                    subtract_rectangle(name,
+                                       xmin - gapsize,
+                                       py - gapsize + lenghty / 4,
+                                       xmax + gapsize,
+                                       py + gapsize + lenghty / 4)
+                    subtract_rectangle(name,
+                                       xmin-gapsize,
+                                       py - gapsize - lenghty / 4,
+                                       xmax + gapsize,
+                                       py + gapsize - lenghty / 4)
+
+                if kwa['gaps'] == '8' or kwa['gaps']=='2tb':
+                    subtract_rectangle(name,
+                                       px - gapsize + lenghtx / 4,
+                                       ymin-gapsize,
+                                       px + gapsize + lenghtx / 4,
+                                       ymax + gapsize)
+                    subtract_rectangle(name,
+                                       px - gapsize - lenghtx / 4,
+                                       ymin - gapsize,
+                                       px + gapsize - lenghtx / 4,
+                                       ymax + gapsize)
+
+                if kwa['gaps'] == '4' or kwa['gaps']=='lr':
+                    subtract_rectangle(name,
+                                       xmin - gapsize,
+                                       py - gapsize,
+                                       xmax + gapsize,
+                                       py + gapsize)
+
+                if kwa['gaps'] == '4' or kwa['gaps']=='tb':
+                    subtract_rectangle(name,
+                                       px - gapsize,
+                                       ymin - gapsize,
+                                       px + gapsize,
+                                       ymax + gapsize)
+
+            except Exception as unknown:
+                self.raise_tcl_unknown_error(unknown)
 
         def mirror(name, *args):
             a, kwa = h(*args)
@@ -2761,59 +2871,63 @@ class App(QtCore.QObject):
             :param args: array of arguments
             :return: "Ok" if completed without errors
             '''
-            a, kwa = h(*args)
-            types = {'tools': str,
-                     'outname': str,
-                     'drillz': float,
-                     'travelz': float,
-                     'feedrate': float,
-                     'spindlespeed': int,
-                     'toolchange': int
-                     }
 
-            if name is None:
-                self.raiseTclError('Argument name is missing.')
+            try:
+                a, kwa = h(*args)
+                types = {'tools': str,
+                         'outname': str,
+                         'drillz': float,
+                         'travelz': float,
+                         'feedrate': float,
+                         'spindlespeed': int,
+                         'toolchange': int
+                         }
 
-            for key in kwa:
-                if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+                if name is None:
+                    self.raise_tcl_error('Argument name is missing.')
+
+                for key in kwa:
+                    if key not in types:
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
+
                 try:
-                    kwa[key] = types[key](kwa[key])
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
+
+                if obj is None:
+                    self.raise_tcl_error('Object not found: %s' % name)
+
+                if not isinstance(obj, FlatCAMExcellon):
+                    self.raise_tcl_error('Only Excellon objects can be drilled, got %s %s.' % (name, type(obj)))
+
+                try:
+                    # Get the tools from the list
+                    job_name = kwa["outname"]
+
+                    # Object initialization function for app.new_object()
+                    def job_init(job_obj, app_obj):
+                        job_obj.z_cut = kwa["drillz"]
+                        job_obj.z_move = kwa["travelz"]
+                        job_obj.feedrate = kwa["feedrate"]
+                        job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
+                        toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
+                        job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
+                        job_obj.gcode_parse()
+                        job_obj.create_geometry()
+
+                    obj.app.new_object("cncjob", job_name, job_init)
+
                 except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, str(types[key])))
+                    self.raise_tcl_error("Operation failed: %s" % str(e))
 
-            try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+            except Exception as unknown:
+                self.raise_tcl_unknown_error(unknown)
 
-            if obj is None:
-                self.raiseTclError('Object not found: %s' % name)
-
-            if not isinstance(obj, FlatCAMExcellon):
-                self.raiseTclError('Only Excellon objects can be drilled, got %s %s.' % (name,  type(obj)))
-
-            try:
-                # Get the tools from the list
-                job_name = kwa["outname"]
-
-                # Object initialization function for app.new_object()
-                def job_init(job_obj, app_obj):
-                    job_obj.z_cut = kwa["drillz"]
-                    job_obj.z_move = kwa["travelz"]
-                    job_obj.feedrate = kwa["feedrate"]
-                    job_obj.spindlespeed = kwa["spindlespeed"] if "spindlespeed" in kwa else None
-                    toolchange = True if "toolchange" in kwa and kwa["toolchange"] == 1 else False
-                    job_obj.generate_from_excellon_by_tool(obj, kwa["tools"], toolchange)
-                    job_obj.gcode_parse()
-                    job_obj.create_geometry()
-
-                obj.app.new_object("cncjob", job_name, job_init)
-
-            except Exception, e:
-                self.raiseTclError("Operation failed: %s" % str(e))
-
-            return 'Ok'
 
         def millholes(name=None, *args):
             '''
@@ -2822,48 +2936,51 @@ class App(QtCore.QObject):
             :param args: array of arguments
             :return: "Ok" if completed without errors
             '''
-            a, kwa = h(*args)
-            types = {'tooldia': float,
-                     'tools': str,
-                     'outname': str}
 
-            if name is None:
-                self.raiseTclError('Argument name is missing.')
+            try:
+                a, kwa = h(*args)
+                types = {'tooldia': float,
+                         'tools': str,
+                         'outname': str}
 
-            for key in kwa:
-                if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+                if name is None:
+                    self.raise_tcl_error('Argument name is missing.')
+
+                for key in kwa:
+                    if key not in types:
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
+
                 try:
-                    kwa[key] = types[key](kwa[key])
-                except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    if 'tools' in kwa:
+                        kwa['tools'] = [x.strip() for x in kwa['tools'].split(",")]
+                except Exception as e:
+                    self.raise_tcl_error("Bad tools: %s" % str(e))
 
-            try:
-                if 'tools' in kwa:
-                    kwa['tools'] = [x.strip() for x in kwa['tools'].split(",")]
-            except Exception as e:
-                self.raiseTclError("Bad tools: %s" % str(e))
+                try:
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
-            try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                if obj is None:
+                    self.raise_tcl_error("Object not found: %s" % name)
 
-            if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                if not isinstance(obj, FlatCAMExcellon):
+                    self.raise_tcl_error('Only Excellon objects can be mill drilled, got %s %s.' % (name, type(obj)))
 
-            if not isinstance(obj, FlatCAMExcellon):
-                self.raiseTclError('Only Excellon objects can be mill drilled, got %s %s.' % (name,  type(obj)))
+                try:
+                    success, msg = obj.generate_milling(**kwa)
+                except Exception as e:
+                    self.raise_tcl_error("Operation failed: %s" % str(e))
 
-            try:
-                success, msg = obj.generate_milling(**kwa)
-            except Exception as e:
-                self.raiseTclError("Operation failed: %s" % str(e))
+                if not success:
+                    self.raise_tcl_error(msg)
 
-            if not success:
-                self.raiseTclError(msg)
-
-            return 'Ok'
+            except Exception as unknown:
+                self.raise_tcl_unknown_error(unknown)
 
         def exteriors(name=None, *args):
             '''
@@ -2872,46 +2989,49 @@ class App(QtCore.QObject):
             :param args: array of arguments
             :return: "Ok" if completed without errors
             '''
-            a, kwa = h(*args)
-            types = {'outname': str}
 
-            if name is None:
-                self.raiseTclError('Argument name is missing.')
+            try:
+                a, kwa = h(*args)
+                types = {'outname': str}
 
-            for key in kwa:
-                if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+                if name is None:
+                    self.raise_tcl_error('Argument name is missing.')
+
+                for key in kwa:
+                    if key not in types:
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
+
                 try:
-                    kwa[key] = types[key](kwa[key])
-                except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
-            try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                if obj is None:
+                    self.raise_tcl_error("Object not found: %s" % name)
 
-            if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                if not isinstance(obj, Geometry):
+                    self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
-            if not isinstance(obj, Geometry):
-                self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
+                def geo_init(geo_obj, app_obj):
+                    geo_obj.solid_geometry = obj_exteriors
 
-            def geo_init(geo_obj, app_obj):
-                geo_obj.solid_geometry = obj_exteriors
+                if 'outname' in kwa:
+                    outname = kwa['outname']
+                else:
+                    outname = name + ".exteriors"
 
-            if 'outname' in kwa:
-                outname = kwa['outname']
-            else:
-                outname = name + ".exteriors"
+                try:
+                    obj_exteriors = obj.get_exteriors()
+                    self.new_object('geometry', outname, geo_init)
+                except Exception as e:
+                    self.raise_tcl_error("Failed: %s" % str(e))
 
-            try:
-                obj_exteriors = obj.get_exteriors()
-                self.new_object('geometry', outname, geo_init)
-            except Exception as e:
-                self.raiseTclError("Failed: %s" % str(e))
-
-            return 'Ok'
+            except Exception as unknown:
+                self.raise_tcl_unknown_error(unknown)
 
         def interiors(name=None, *args):
             '''
@@ -2920,46 +3040,49 @@ class App(QtCore.QObject):
             :param args: array of arguments
             :return: "Ok" if completed without errors
             '''
-            a, kwa = h(*args)
-            types = {'outname': str}
 
-            for key in kwa:
-                if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+            try:
+                a, kwa = h(*args)
+                types = {'outname': str}
+
+                for key in kwa:
+                    if key not in types:
+                        self.raise_tcl_error('Unknown parameter: %s' % key)
+                    try:
+                        kwa[key] = types[key](kwa[key])
+                    except Exception, e:
+                        self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
+
+                if name is None:
+                    self.raise_tcl_error('Argument name is missing.')
+
                 try:
-                    kwa[key] = types[key](kwa[key])
-                except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    obj = self.collection.get_by_name(str(name))
+                except:
+                    self.raise_tcl_error("Could not retrieve object: %s" % name)
 
-            if name is None:
-                self.raiseTclError('Argument name is missing.')
+                if obj is None:
+                    self.raise_tcl_error("Object not found: %s" % name)
 
-            try:
-                obj = self.collection.get_by_name(str(name))
-            except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                if not isinstance(obj, Geometry):
+                    self.raise_tcl_error('Expected Geometry, got %s %s.' % (name, type(obj)))
 
-            if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                def geo_init(geo_obj, app_obj):
+                    geo_obj.solid_geometry = obj_interiors
 
-            if not isinstance(obj, Geometry):
-                self.raiseTclError('Expected Geometry, got %s %s.' % (name,  type(obj)))
+                if 'outname' in kwa:
+                    outname = kwa['outname']
+                else:
+                    outname = name + ".interiors"
 
-            def geo_init(geo_obj, app_obj):
-                geo_obj.solid_geometry = obj_interiors
+                try:
+                    obj_interiors = obj.get_interiors()
+                    self.new_object('geometry', outname, geo_init)
+                except Exception as e:
+                    self.raise_tcl_error("Failed: %s" % str(e))
 
-            if 'outname' in kwa:
-                outname = kwa['outname']
-            else:
-                outname = name + ".interiors"
-
-            try:
-                obj_interiors = obj.get_interiors()
-                self.new_object('geometry', outname, geo_init)
-            except Exception as e:
-                self.raiseTclError("Failed: %s" % str(e))
-
-            return 'Ok'
+            except Exception as unknown:
+                self.raise_tcl_unknown_error(unknown)
 
         def isolate(name=None, *args):
             '''
@@ -2977,29 +3100,29 @@ class App(QtCore.QObject):
 
             for key in kwa:
                 if key not in types:
-                    self.raiseTclError('Unknown parameter: %s' % key)
+                    self.raise_tcl_error('Unknown parameter: %s' % key)
                 try:
                     kwa[key] = types[key](kwa[key])
                 except Exception, e:
-                    self.raiseTclError("Cannot cast argument '%s' to type %s." % (key, types[key]))
+                    self.raise_tcl_error("Cannot cast argument '%s' to type %s." % (key, types[key]))
             try:
                 obj = self.collection.get_by_name(str(name))
             except:
-                self.raiseTclError("Could not retrieve object: %s" % name)
+                self.raise_tcl_error("Could not retrieve object: %s" % name)
 
             if obj is None:
-                self.raiseTclError("Object not found: %s" % name)
+                self.raise_tcl_error("Object not found: %s" % name)
 
             assert isinstance(obj, FlatCAMGerber), \
                 "Expected a FlatCAMGerber, got %s" % type(obj)
 
             if not isinstance(obj, FlatCAMGerber):
-                self.raiseTclError('Expected FlatCAMGerber, got %s %s.' % (name,  type(obj)))
+                self.raise_tcl_error('Expected FlatCAMGerber, got %s %s.' % (name, type(obj)))
 
             try:
                 obj.isolate(**kwa)
             except Exception, e:
-                self.raiseTclError("Operation failed: %s" % str(e))
+                self.raise_tcl_error("Operation failed: %s" % str(e))
 
             return 'Ok'
 
@@ -3390,11 +3513,11 @@ class App(QtCore.QObject):
             Test it like this:
             if name is None:
 
-                self.raiseTclError('Argument name is missing.')
+                self.raise_tcl_error('Argument name is missing.')
 
-            When error ocurre, always use raiseTclError, never return "sometext" on error,
+            When error ocurre, always use raise_tcl_error, never return "sometext" on error,
             otherwise we will miss it and processing will silently continue.
-            Method raiseTclError  pass error into TCL interpreter, then raise python exception,
+            Method raise_tcl_error  pass error into TCL interpreter, then raise python exception,
             which is catched in exec_command and displayed in TCL shell console with red background.
             Error in console is displayed  with TCL  trace.
 
@@ -3775,6 +3898,9 @@ class App(QtCore.QObject):
                         '   paramvalue: Value to set.'
             }
         }
+
+        #import/overwrite tcl commands as objects of TclCommand descendants
+        tclCommands.register_all_commands(self, commands)
 
         # Add commands to the tcl interpreter
         for cmd in commands:

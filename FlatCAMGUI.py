@@ -607,6 +607,23 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
         self.spindlespeed_entry = IntEntry(allow_empty=True)
         grid1.addWidget(self.spindlespeed_entry, 4, 1)
 
+        #### Milling Holes ####
+        self.mill_hole_label = QtGui.QLabel('<b>Mill Holes</b>')
+        self.mill_hole_label.setToolTip(
+            "Create Geometry for milling holes."
+        )
+        self.layout.addWidget(self.mill_hole_label)
+
+        grid1 = QtGui.QGridLayout()
+        self.layout.addLayout(grid1)
+        tdlabel = QtGui.QLabel('Tool dia:')
+        tdlabel.setToolTip(
+            "Diameter of the cutting tool."
+        )
+        grid1.addWidget(tdlabel, 0, 0)
+        self.tooldia_entry = LengthEntry()
+        grid1.addWidget(self.tooldia_entry, 0, 1)
+
 
 class GeometryOptionsGroupUI(OptionsGroupUI):
     def __init__(self, parent=None):

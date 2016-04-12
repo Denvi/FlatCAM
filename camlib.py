@@ -136,6 +136,27 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
+    def add_polyline(self, points):
+        """
+        Adds a polyline to the object (by union)
+
+        :param points: The vertices of the polyline.
+        :return: None
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(LineString(points))
+            return
+
+        try:
+            self.solid_geometry = self.solid_geometry.union(LineString(points))
+        except:
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polylines.")
+            raise
+
     def subtract_polygon(self, points):
         """
         Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.
@@ -2756,12 +2777,14 @@ class CNCjob(Geometry):
         # so we actually are sorting the tools by diameter
         sorted_tools = sorted(exobj.tools.items(), key = lambda x: x[1])
         if tools == "all":
-            tools = str([i[0] for i in sorted_tools])   # we get a string of ordered tools
+            tools = [i[0] for i in sorted_tools]   # we get a array of ordered tools
             log.debug("Tools 'all' and sorted are: %s" % str(tools))
         else:
             selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
             selected_tools = filter(lambda i: i in selected_tools, selected_tools)
-            tools = [i for i,j in sorted_tools for k in selected_tools if i == k]   # create a sorted list of selected tools from the sorted_tools list
+
+            # Create a sorted list of selected tools from the sorted_tools list
+            tools = [i for i, j in sorted_tools for k in selected_tools if i == k]
             log.debug("Tools selected and sorted are: %s" % str(tools)) 
 
         # Points (Group by tool)
@@ -2779,7 +2802,8 @@ class CNCjob(Geometry):
         # Basic G-Code macros
         t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
-        up = "G01 Z%.4f\n" % self.z_move
+        up = "G00 Z%.4f\n" % self.z_move
+        up_to_zero = "G01 Z0\n"
 
         # Initialization
         gcode = self.unitcode[self.units.upper()] + "\n"
@@ -2789,7 +2813,8 @@ class CNCjob(Geometry):
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
 
         if self.spindlespeed is not None:
-            gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+            # Spindle start with configured speed
+            gcode += "M03 S%d\n" % int(self.spindlespeed)
         else:
             gcode += "M03\n"  # Spindle start
 
@@ -2797,24 +2822,27 @@ class CNCjob(Geometry):
 
         for tool in tools:
 
-            # Tool change sequence (optional)
-            if toolchange:
-                gcode += "G00 Z%.4f\n" % toolchangez
-                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
-                gcode += "M5\n"  # Spindle Stop
-                gcode += "M6\n"  # Tool change
-                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
-                gcode += "M0\n"  # Temporary machine stop
-                if self.spindlespeed is not None:
-                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
-                else:
-                    gcode += "M03\n"  # Spindle start
+            # Only if tool has points.
+            if tool in points:
+                # Tool change sequence (optional)
+                if toolchange:
+                    gcode += "G00 Z%.4f\n" % toolchangez
+                    gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
+                    gcode += "M5\n"  # Spindle Stop
+                    gcode += "M6\n"  # Tool change
+                    gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
+                    gcode += "M0\n"  # Temporary machine stop
+                    if self.spindlespeed is not None:
+                        # Spindle start with configured speed
+                        gcode += "M03 S%d\n" % int(self.spindlespeed)
+                    else:
+                        gcode += "M03\n"  # Spindle start
 
-            # Drillling!
-            for point in points[tool]:
-                x, y = point.coords.xy
-                gcode += t % (x[0], y[0])
-                gcode += down + up
+                # Drillling!
+                for point in points[tool]:
+                    x, y = point.coords.xy
+                    gcode += t % (x[0], y[0])
+                    gcode += down + up_to_zero + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
