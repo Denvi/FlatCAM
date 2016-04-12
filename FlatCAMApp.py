@@ -274,6 +274,7 @@ class App(QtCore.QObject):
             "excellon_feedrate": 3.0,
             "excellon_spindlespeed": None,
             "excellon_toolchangez": 1.0,
+            "excellon_tooldia": 0.016,
             "geometry_plot": True,
             "geometry_cutz": -0.002,
             "geometry_travelz": 0.1,
@@ -403,6 +404,7 @@ class App(QtCore.QObject):
             "excellon_feedrate": 3.0,
             "excellon_spindlespeed": None,
             "excellon_toolchangez": 1.0,
+            "excellon_tooldia": 0.016,
             "geometry_plot": True,
             "geometry_cutz": -0.002,
             "geometry_travelz": 0.1,
@@ -415,7 +417,9 @@ class App(QtCore.QObject):
             "cncjob_plot": True,
             "cncjob_tooldia": 0.016,
             "cncjob_prepend": "",
-            "cncjob_append": ""
+            "cncjob_append": "",
+            "background_timeout": 300000, #default value is 5 minutes
+            "verbose_error_level": 0, # shell verbosity 0 = default(python trace only for unknown errors), 1 = show trace(show trace allways), 2 = (For the future).
         })
         self.options.update(self.defaults)  # Copy app defaults to project options
         #self.options_write_form()
@@ -1285,7 +1289,7 @@ class App(QtCore.QObject):
         # Options to scale
         dimensions = ['gerber_isotooldia', 'gerber_cutoutmargin', 'gerber_cutoutgapsize',
                       'gerber_noncoppermargin', 'gerber_bboxmargin', 'excellon_drillz',
-                      'excellon_travelz', 'excellon_feedrate', 'excellon_toolchangez', 'cncjob_tooldia',
+                      'excellon_travelz', 'excellon_feedrate', 'excellon_toolchangez', 'excellon_tooldia', 'cncjob_tooldia',
                       'geometry_cutz', 'geometry_travelz', 'geometry_feedrate',
                       'geometry_cnctooldia', 'geometry_painttooldia', 'geometry_paintoverlap',
                       'geometry_paintmargin']
