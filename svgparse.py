@@ -93,9 +93,10 @@ def path2shapely(path, res=1.0):
             if steps == 0:
                 steps = 1
 
+            frac = 1.0 / steps
+
             # print length, steps, frac
             for i in range(steps):
-                frac = 1.0 / steps
                 point = component.point(i * frac)
                 x, y = point.real, point.imag
                 if len(points) == 0 or points[-1] != (x, y):
@@ -450,7 +451,7 @@ def parse_svg_transform(trstr):
                     r'(?:' + comma_or_space_re_str + \
                     r'(' + number_re_str + r')' + \
                     comma_or_space_re_str + \
-                    r'(' + number_re_str + r'))?\)'
+                    r'(' + number_re_str + r'))?\s*\)'
     matrix_re_str = r'matrix\s*\(\s*' + \
                     r'(' + number_re_str + r')' + comma_or_space_re_str + \
                     r'(' + number_re_str + r')' + comma_or_space_re_str + \
