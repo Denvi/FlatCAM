@@ -4,6 +4,8 @@ from PyQt4 import QtGui
 from PyQt4.QtCore import QThread
 
 from FlatCAMApp import App
+from os import listdir
+from os.path import isfile
 from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry, FlatCAMCNCjob, FlatCAMExcellon
 from ObjectUI import GerberObjectUI, GeometryObjectUI
 from time import sleep
@@ -12,11 +14,15 @@ import tempfile
 
 class TclShellTest(unittest.TestCase):
 
+    svg_files = 'tests/svg'
+    svg_filename = 'Arduino Nano3_pcb.svg'
     gerber_files = 'tests/gerber_files'
     copper_bottom_filename = 'detector_copper_bottom.gbr'
     copper_top_filename = 'detector_copper_top.gbr'
     cutout_filename = 'detector_contour.gbr'
     excellon_filename = 'detector_drill.txt'
+    gerber_name = "gerber"
+    geometry_name = "geometry"
     excellon_name = "excellon"
     gerber_top_name = "top"
     gerber_bottom_name = "bottom"
@@ -178,3 +184,64 @@ class TclShellTest(unittest.TestCase):
         self.fc.exec_command_test('mirror %s -box %s -axis X' % (self.excellon_name, self.gerber_cutout_name))
 
         # TODO: tests for tcl
+
+    def test_import_svg(self):
+        """
+        Test all SVG files inside svg directory.
+        Problematic SVG files shold be put there as test reference.
+        :return:
+        """
+
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
+
+        file_list = listdir(self.svg_files)
+
+        for svg_file in file_list:
+
+            # import  without outname
+            self.fc.exec_command_test('import_svg "%s/%s"' % (self.svg_files, svg_file))
+
+            obj = self.fc.collection.get_by_name(svg_file)
+            self.assertTrue(isinstance(obj, FlatCAMGeometry),
+                        "Expected FlatCAMGeometry, instead, %s is %s" %
+                        (svg_file, type(obj)))
+
+            # import  with outname
+            outname='%s-%s' % (self.geometry_name, svg_file)
+            self.fc.exec_command_test('import_svg "%s/%s" -outname "%s"' % (self.svg_files, svg_file, outname))
+
+            obj = self.fc.collection.get_by_name(outname)
+            self.assertTrue(isinstance(obj, FlatCAMGeometry),
+                        "Expected FlatCAMGeometry, instead, %s is %s" %
+                        (outname, type(obj)))
+
+        names = self.fc.collection.get_names()
+        self.assertEqual(len(names), len(file_list)*2,
+                         "Expected %d objects, found %d" % (len(file_list)*2, len(file_list)))
+
+    def test_import_svg_as_geometry(self):
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
+        self.fc.exec_command_test('import_svg "%s/%s" -type geometry -outname "%s"' % (self.svg_files, self.svg_filename, self.geometry_name))
+
+        obj = self.fc.collection.get_by_name(self.geometry_name)
+        self.assertTrue(isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber),
+                    "Expected FlatCAMGeometry, instead, %s is %s" %
+                    (self.geometry_name, type(obj)))
+
+    def test_import_svg_as_gerber(self):
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
+        self.fc.exec_command_test('import_svg "%s/%s" -type gerber -outname "%s"' % (self.svg_files, self.svg_filename, self.gerber_name))
+
+        obj = self.fc.collection.get_by_name(self.gerber_name)
+        self.assertTrue(isinstance(obj, FlatCAMGerber),
+                    "Expected FlatCAMGerber, instead, %s is %s" %
+                    (self.gerber_name, type(obj)))
+
+        self.fc.exec_command_test('isolate "%s"' % self.gerber_name)
+        obj = self.fc.collection.get_by_name(self.gerber_name+'_iso')
+        self.assertTrue(isinstance(obj, FlatCAMGeometry),
+                    "Expected FlatCAMGeometry, instead, %s is %s" %
+                    (self.gerber_name+'_iso', type(obj)))
