@@ -13,5 +13,5 @@ from test_TclCommandImportSvg import *
 # from test_TclCommandIsolate import *
 from test_TclCommandNew import *
 from test_TclCommandNewGeometry  import *
-# from test_TclCommandOpenGerber import *
+from test_TclCommandOpenGerber import *
 from test_TclCommandPaintPolygon import *
