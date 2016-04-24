@@ -73,7 +73,7 @@ class TclShellTest(unittest.TestCase):
         self.assertEquals(units, "MM")
 
 
-    def aatest_gerber_flow(self):
+    def test_gerber_flow(self):
 
         # open  gerber files top, bottom and cutout
 
@@ -163,7 +163,7 @@ class TclShellTest(unittest.TestCase):
 
         # TODO: tests for tcl
 
-    def aatest_open_gerber(self):
+    def test_open_gerber(self):
 
         self.fc.exec_command_test('open_gerber %s/%s -outname %s' % (self.gerber_files, self.copper_top_filename, self.gerber_top_name))
         gerber_top_obj = self.fc.collection.get_by_name(self.gerber_top_name)
@@ -171,7 +171,7 @@ class TclShellTest(unittest.TestCase):
                         "Expected FlatCAMGerber, instead, %s is %s" %
                         (self.gerber_top_name, type(gerber_top_obj)))
 
-    def aatest_excellon_flow(self):
+    def test_excellon_flow(self):
 
         self.fc.exec_command_test('open_excellon %s/%s -outname %s' % (self.gerber_files, self.excellon_filename, self.excellon_name))
         excellon_obj = self.fc.collection.get_by_name(self.excellon_name)
