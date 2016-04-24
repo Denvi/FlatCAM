@@ -1,4 +1,4 @@
-from FlatCAMObj import FlatCAMGerber
+from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry
 
 
 def test_isolate(self):
@@ -16,3 +16,6 @@ def test_isolate(self):
 
     # isolate traces
     self.fc.exec_command_test('isolate %s -dia %f' % (self.gerber_top_name, self.engraver_diameter))
+    geometry_top_obj = self.fc.collection.get_by_name(self.gerber_top_name+'_iso')
+    self.assertTrue(isinstance(geometry_top_obj, FlatCAMGeometry), "Expected FlatCAMGeometry, instead, %s is %s"
+                    % (self.gerber_top_name+'_iso', type(geometry_top_obj)))

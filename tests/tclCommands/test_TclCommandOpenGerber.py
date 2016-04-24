@@ -3,7 +3,7 @@ from FlatCAMObj import FlatCAMGerber
 
 def test_open_gerber(self):
     """
-    Test open gerber project
+    Test open gerber file
     :param self:
     :return:
     """
