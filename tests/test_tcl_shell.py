@@ -31,6 +31,10 @@ class TclShellTest(unittest.TestCase):
     cutout_diameter = 3
     drill_diameter = 0.8
 
+    # load test methods to split huge test file into smaller pieces
+    # reason for this is reuse one test window only,
+    from tests.tclCommands import *
+
     @classmethod
     def setUpClass(self):
 
@@ -40,6 +44,10 @@ class TclShellTest(unittest.TestCase):
         # user-defined defaults).
         self.fc = App(user_defaults=False)
         self.fc.ui.shell_dock.show()
+
+    def setUp(self):
+        self.fc.exec_command_test('set_sys units MM')
+        self.fc.exec_command_test('new')
 
     @classmethod
     def tearDownClass(self):
@@ -68,10 +76,6 @@ class TclShellTest(unittest.TestCase):
     def test_gerber_flow(self):
 
         # open  gerber files top, bottom and cutout
-
-
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
 
         self.fc.exec_command_test('open_gerber %s/%s -outname %s' % (self.gerber_files, self.copper_top_filename, self.gerber_top_name))
         gerber_top_obj = self.fc.collection.get_by_name(self.gerber_top_name)
@@ -161,9 +165,6 @@ class TclShellTest(unittest.TestCase):
 
     def test_open_gerber(self):
 
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
-
         self.fc.exec_command_test('open_gerber %s/%s -outname %s' % (self.gerber_files, self.copper_top_filename, self.gerber_top_name))
         gerber_top_obj = self.fc.collection.get_by_name(self.gerber_top_name)
         self.assertTrue(isinstance(gerber_top_obj, FlatCAMGerber),
@@ -172,8 +173,6 @@ class TclShellTest(unittest.TestCase):
 
     def test_excellon_flow(self):
 
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
         self.fc.exec_command_test('open_excellon %s/%s -outname %s' % (self.gerber_files, self.excellon_filename, self.excellon_name))
         excellon_obj = self.fc.collection.get_by_name(self.excellon_name)
         self.assertTrue(isinstance(excellon_obj, FlatCAMExcellon),
@@ -184,64 +183,3 @@ class TclShellTest(unittest.TestCase):
         self.fc.exec_command_test('mirror %s -box %s -axis X' % (self.excellon_name, self.gerber_cutout_name))
 
         # TODO: tests for tcl
-
-    def test_import_svg(self):
-        """
-        Test all SVG files inside svg directory.
-        Problematic SVG files shold be put there as test reference.
-        :return:
-        """
-
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
-
-        file_list = listdir(self.svg_files)
-
-        for svg_file in file_list:
-
-            # import  without outname
-            self.fc.exec_command_test('import_svg "%s/%s"' % (self.svg_files, svg_file))
-
-            obj = self.fc.collection.get_by_name(svg_file)
-            self.assertTrue(isinstance(obj, FlatCAMGeometry),
-                        "Expected FlatCAMGeometry, instead, %s is %s" %
-                        (svg_file, type(obj)))
-
-            # import  with outname
-            outname='%s-%s' % (self.geometry_name, svg_file)
-            self.fc.exec_command_test('import_svg "%s/%s" -outname "%s"' % (self.svg_files, svg_file, outname))
-
-            obj = self.fc.collection.get_by_name(outname)
-            self.assertTrue(isinstance(obj, FlatCAMGeometry),
-                        "Expected FlatCAMGeometry, instead, %s is %s" %
-                        (outname, type(obj)))
-
-        names = self.fc.collection.get_names()
-        self.assertEqual(len(names), len(file_list)*2,
-                         "Expected %d objects, found %d" % (len(file_list)*2, len(file_list)))
-
-    def test_import_svg_as_geometry(self):
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
-        self.fc.exec_command_test('import_svg "%s/%s" -type geometry -outname "%s"' % (self.svg_files, self.svg_filename, self.geometry_name))
-
-        obj = self.fc.collection.get_by_name(self.geometry_name)
-        self.assertTrue(isinstance(obj, FlatCAMGeometry) and not isinstance(obj, FlatCAMGerber),
-                    "Expected FlatCAMGeometry, instead, %s is %s" %
-                    (self.geometry_name, type(obj)))
-
-    def test_import_svg_as_gerber(self):
-        self.fc.exec_command_test('set_sys units MM')
-        self.fc.exec_command_test('new')
-        self.fc.exec_command_test('import_svg "%s/%s" -type gerber -outname "%s"' % (self.svg_files, self.svg_filename, self.gerber_name))
-
-        obj = self.fc.collection.get_by_name(self.gerber_name)
-        self.assertTrue(isinstance(obj, FlatCAMGerber),
-                    "Expected FlatCAMGerber, instead, %s is %s" %
-                    (self.gerber_name, type(obj)))
-
-        self.fc.exec_command_test('isolate "%s"' % self.gerber_name)
-        obj = self.fc.collection.get_by_name(self.gerber_name+'_iso')
-        self.assertTrue(isinstance(obj, FlatCAMGeometry),
-                    "Expected FlatCAMGeometry, instead, %s is %s" %
-                    (self.gerber_name+'_iso', type(obj)))
