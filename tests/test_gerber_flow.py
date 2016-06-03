@@ -1,12 +1,13 @@
 import sys
 import unittest
 from PyQt4 import QtGui
-from FlatCAMApp import App
+from FlatCAMApp import App, tclCommands
 from FlatCAMObj import FlatCAMGerber, FlatCAMGeometry, FlatCAMCNCjob
 from ObjectUI import GerberObjectUI, GeometryObjectUI
 from time import sleep
 import os
 import tempfile
+
 
 class GerberFlowTestCase(unittest.TestCase):
 
@@ -51,6 +52,36 @@ class GerberFlowTestCase(unittest.TestCase):
                         "Expected FlatCAMGerber, instead, %s is %s" %
                         (gerber_name, type(gerber_obj)))
 
+        #----------------------------------------
+        # Object's GUI matches Object's options
+        #----------------------------------------
+        # TODO: Open GUI with double-click on object.
+        # Opens the Object's GUI, populates it.
+        gerber_obj.build_ui()
+        for option, value in gerber_obj.options.iteritems():
+            try:
+                form_field = gerber_obj.form_fields[option]
+            except KeyError:
+                print ("**********************************************************\n"
+                       "* WARNING: Option '{}' has no form field\n"
+                       "**********************************************************"
+                       "".format(option))
+                continue
+            self.assertEqual(value, form_field.get_value(),
+                             "Option '{}' == {} but form has {}".format(
+                                 option, value, form_field.get_value()
+                             ))
+
+        #--------------------------------------------------
+        # Changes in the GUI should be read in when
+        # running any process. Changing something here.
+        #--------------------------------------------------
+
+        form_field = gerber_obj.form_fields['isotooldia']
+        value = form_field.get_value()
+        form_field.set_value(value * 1.1)  # Increase by 10%
+        print "'isotooldia' == {}".format(value)
+
         #--------------------------------------------------
         # Create isolation routing using default values
         # and by clicking on the button.
@@ -58,10 +89,21 @@ class GerberFlowTestCase(unittest.TestCase):
         # Get the object's GUI and click on "Generate Geometry" under
         # "Isolation Routing"
         assert isinstance(gerber_obj, FlatCAMGerber)  # Just for the IDE
-        gerber_obj.build_ui()  # Open the object's UI.
+        # Changed: UI has been build already
+        #gerber_obj.build_ui()  # Open the object's UI.
         ui = gerber_obj.ui
         assert isinstance(ui, GerberObjectUI)
         ui.generate_iso_button.click()  # Click
+
+        #---------------------------------------------
+        # Check that GUI has been read in.
+        #---------------------------------------------
+        value = gerber_obj.options['isotooldia']
+        form_value = form_field.get_value()
+        self.assertEqual(value, form_value,
+                         "Form value for '{}' == {} was not read into options"
+                         "which has {}".format('isotooldia', form_value, value))
+        print "'isotooldia' == {}".format(value)
 
         #---------------------------------------------
         # Check that only 1 object has been created.

@@ -21,15 +21,16 @@ for loader, name, is_pkg in pkgutil.walk_packages(__path__):
     module = loader.find_module(name).load_module(name)
     __all__.append(name)
 
+
 def register_all_commands(app, commands):
     """
     Static method which register all known commands.
 
-    Command should  be for now in directory tclCommands and module should start with TCLCommand
+    Command should  be for now in directory test_tclCommands and module should start with TCLCommand
     Class  have to follow same  name as module.
 
     we need import all  modules  in top section:
-    import tclCommands.TclCommandExteriors
+    import test_tclCommands.TclCommandExteriors
     at this stage we can include only wanted  commands  with this, auto loading may be implemented in future
     I have no enough knowledge about python's anatomy. Would be nice to include all classes which are descendant etc.
 
@@ -38,10 +39,10 @@ def register_all_commands(app, commands):
     :return: None
     """
 
-    tcl_modules = {k: v for k, v in sys.modules.items() if k.startswith('tclCommands.TclCommand')}
+    tcl_modules = {k: v for k, v in sys.modules.items() if k.startswith('test_tclCommands.TclCommand')}
 
     for key, mod in tcl_modules.items():
-        if key != 'tclCommands.TclCommand':
+        if key != 'test_tclCommands.TclCommand':
             class_name = key.split('.')[1]
             class_type = getattr(mod, class_name)
             command_instance = class_type(app)

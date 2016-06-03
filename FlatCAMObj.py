@@ -327,7 +327,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
-            "combine_passes":self.ui.combine_passes_cb,
+            "combine_passes": self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
             "cutoutgapsize": self.ui.cutout_gap_entry,

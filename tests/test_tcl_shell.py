@@ -12,6 +12,7 @@ from time import sleep
 import os
 import tempfile
 
+
 class TclShellTest(unittest.TestCase):
 
     svg_files = 'tests/svg'
@@ -33,28 +34,30 @@ class TclShellTest(unittest.TestCase):
 
     # load test methods to split huge test file into smaller pieces
     # reason for this is reuse one test window only,
-    from tests.tclCommands import *
+
+    # CANNOT DO THIS HERE!!!
+    #from tests.test_tclCommands import *
 
     @classmethod
-    def setUpClass(self):
+    def setUpClass(cls):
 
-        self.setup=True
-        self.app = QtGui.QApplication(sys.argv)
+        cls.setup = True
+        cls.app = QtGui.QApplication(sys.argv)
         # Create App, keep app defaults (do not load
         # user-defined defaults).
-        self.fc = App(user_defaults=False)
-        self.fc.ui.shell_dock.show()
+        cls.fc = App(user_defaults=False)
+        cls.fc.ui.shell_dock.show()
 
     def setUp(self):
         self.fc.exec_command_test('set_sys units MM')
         self.fc.exec_command_test('new')
 
     @classmethod
-    def tearDownClass(self):
-        self.fc.tcl=None
-        self.app.closeAllWindows()
-        del self.fc
-        del self.app
+    def tearDownClass(cls):
+        cls.fc.tcl = None
+        cls.app.closeAllWindows()
+        del cls.fc
+        del cls.app
         pass
 
     def test_set_get_units(self):
@@ -71,7 +74,6 @@ class TclShellTest(unittest.TestCase):
         self.fc.exec_command_test('new')
         units=self.fc.exec_command_test('get_sys units')
         self.assertEquals(units, "MM")
-
 
     def test_gerber_flow(self):
 
