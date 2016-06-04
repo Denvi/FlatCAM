@@ -1773,7 +1773,10 @@ class Gerber (Geometry):
 
                             ## --- BUFFERED ---
                             if making_region:
-                                geo = Polygon(path)
+                                if follow:
+                                    geo = Polygon()
+                                else:
+                                    geo = Polygon(path)
                             else:
                                 if last_path_aperture is None:
                                     log.warning("No aperture defined for curent path. (%d)" % line_num)
@@ -1783,7 +1786,9 @@ class Gerber (Geometry):
                                     geo = LineString(path)
                                 else:
                                     geo = LineString(path).buffer(width / 2)
-                            if not geo.is_empty: poly_buffer.append(geo)
+
+                            if not geo.is_empty:
+                                poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path
 
@@ -1795,17 +1800,26 @@ class Gerber (Geometry):
                         if len(path) > 1:
                             # --- Buffered ----
                             width = self.apertures[last_path_aperture]["size"]
-                            geo = LineString(path).buffer(width / 2)
-                            if not geo.is_empty: poly_buffer.append(geo)
+
+                            if follow:
+                                geo = LineString(path)
+                            else:
+                                geo = LineString(path).buffer(width / 2)
+
+                            if not geo.is_empty:
+                                poly_buffer.append(geo)
 
                         # Reset path starting point
                         path = [[current_x, current_y]]
 
                         # --- BUFFERED ---
                         # Draw the flash
+                        if follow:
+                            continue
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
-                        if not flash.is_empty: poly_buffer.append(flash)
+                        if not flash.is_empty:
+                            poly_buffer.append(flash)
 
                     continue
 
@@ -1858,8 +1872,13 @@ class Gerber (Geometry):
 
                             # --- BUFFERED ---
                             width = self.apertures[last_path_aperture]["size"]
-                            buffered = LineString(path).buffer(width / 2)
-                            if not buffered.is_empty: poly_buffer.append(buffered)
+
+                            if follow:
+                                buffered = LineString(path)
+                            else:
+                                buffered = LineString(path).buffer(width / 2)
+                            if not buffered.is_empty:
+                                poly_buffer.append(buffered)
 
                         current_x = x
                         current_y = y
@@ -1972,9 +1991,12 @@ class Gerber (Geometry):
                             log.debug("Bare op-code %d." % current_operation_code)
                             # flash = Gerber.create_flash_geometry(Point(path[-1]),
                             #                                      self.apertures[current_aperture])
+                            if follow:
+                                continue
                             flash = Gerber.create_flash_geometry(Point(current_x, current_y),
                                                                  self.apertures[current_aperture])
-                            if not flash.is_empty: poly_buffer.append(flash)
+                            if not flash.is_empty:
+                                poly_buffer.append(flash)
                         except IndexError:
                             log.warning("Line %d: %s -> Nothing there to flash!" % (line_num, gline))
 
@@ -1996,8 +2018,13 @@ class Gerber (Geometry):
 
                         ## --- Buffered ---
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width/2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width/2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -2024,10 +2051,15 @@ class Gerber (Geometry):
                     #                      "aperture": last_path_aperture})
 
                     # --- Buffered ---
-                    region = Polygon(path)
+                    if follow:
+                        region = Polygon()
+                    else:
+                        region = Polygon(path)
                     if not region.is_valid:
-                        region = region.buffer(0)
-                    if not region.is_empty: poly_buffer.append(region)
+                        if not follow:
+                            region = region.buffer(0)
+                    if not region.is_empty:
+                        poly_buffer.append(region)
 
                     path = [[current_x, current_y]]  # Start new path
                     continue
@@ -2060,8 +2092,14 @@ class Gerber (Geometry):
                     if len(path) > 1:
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width / 2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width / 2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
+
                         path = [path[-1]]
 
                     continue
@@ -2076,8 +2114,13 @@ class Gerber (Geometry):
 
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width / 2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width / 2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -2148,10 +2191,18 @@ class Gerber (Geometry):
 
                 ## --- Buffered ---
                 width = self.apertures[last_path_aperture]["size"]
-                geo = LineString(path).buffer(width / 2)
-                if not geo.is_empty: poly_buffer.append(geo)
+                if follow:
+                    geo = LineString(path)
+                else:
+                    geo = LineString(path).buffer(width / 2)
+                if not geo.is_empty:
+                    poly_buffer.append(geo)
 
             # --- Apply buffer ---
+            if follow:
+                self.solid_geometry = poly_buffer
+                return
+
             log.warn("Joining %d polygons." % len(poly_buffer))
             if self.use_buffer_for_union:
                 log.debug("Union by buffer...")
