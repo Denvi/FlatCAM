@@ -245,7 +245,9 @@ class App(QtCore.QObject):
             "cncjob_plot": self.defaults_form.cncjob_group.plot_cb,
             "cncjob_tooldia": self.defaults_form.cncjob_group.tooldia_entry,
             "cncjob_prepend": self.defaults_form.cncjob_group.prepend_text,
-            "cncjob_append": self.defaults_form.cncjob_group.append_text
+            "cncjob_append": self.defaults_form.cncjob_group.append_text,
+            "cncjob_dwell": self.defaults_form.cncjob_group.dwell_cb,
+            "cncjob_dwelltime": self.defaults_form.cncjob_group.dwelltime_cb
         }
 
         self.defaults = LoudDict()
@@ -289,8 +291,13 @@ class App(QtCore.QObject):
             "cncjob_tooldia": 0.016,
             "cncjob_prepend": "",
             "cncjob_append": "",
-            "background_timeout": 300000, #default value is 5 minutes
-            "verbose_error_level": 0, # shell verbosity 0 = default(python trace only for unknown errors), 1 = show trace(show trace allways), 2 = (For the future).
+            "cncjob_dwell": True,
+            "cncjob_dwelltime": 1,
+            "background_timeout": 300000,  # Default value is 5 minutes
+            "verbose_error_level": 0,  # Shell verbosity 0 = default
+                                       # (python trace only for unknown errors),
+                                       # 1 = show trace(show trace allways),
+                                       # 2 = (For the future).
 
             # Persistence
             "last_folder": None,

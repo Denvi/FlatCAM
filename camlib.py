@@ -2720,7 +2720,8 @@ class CNCjob(Geometry):
         self.feedrate = feedrate
         self.tooldia = tooldia
         self.unitcode = {"IN": "G20", "MM": "G21"}
-        self.pausecode = "G04 P1"
+        # TODO: G04 Does not exist. It's G4 and now we are handling in postprocessing.
+        #self.pausecode = "G04 P1"
         self.feedminutecode = "G94"
         self.absolutecode = "G90"
         self.gcode = ""
@@ -2818,7 +2819,7 @@ class CNCjob(Geometry):
         else:
             gcode += "M03\n"  # Spindle start
 
-        gcode += self.pausecode + "\n"
+        #gcode += self.pausecode + "\n"
 
         for tool in tools:
 
@@ -2915,7 +2916,7 @@ class CNCjob(Geometry):
             self.gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
         else:
             self.gcode += "M03\n"  # Spindle start
-        self.gcode += self.pausecode + "\n"
+        #self.gcode += self.pausecode + "\n"
 
         ## Iterate over geometry paths getting the nearest each time.
         log.debug("Starting G-Code...")
@@ -3031,6 +3032,8 @@ class CNCjob(Geometry):
         :param gtext: A single string with g-code
         """
 
+        log.debug("pre_parse()")
+
         # Units: G20-inches, G21-mm
         units_re = re.compile(r'^G2([01])')
 
@@ -3097,7 +3100,8 @@ class CNCjob(Geometry):
         
         # TODO: Merge into single parser?
         gobjs = self.pre_parse(self.gcode)
-        
+
+        log.debug("gcode_parse(): pre_parse() done.")
         # Last known instruction
         current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
 

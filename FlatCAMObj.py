@@ -1,3 +1,4 @@
+from cStringIO import StringIO
 from PyQt4 import QtCore
 from copy import copy
 from ObjectUI import *
@@ -981,7 +982,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "plot": True,
             "tooldia": 0.4 / 25.4,  # 0.4mm in inches
             "append": "",
-            "prepend": ""
+            "prepend": "",
+            "dwell": False,
+            "dwelltime": 1
         })
 
         # Attributes to be included in serialization
@@ -1001,7 +1004,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "plot": self.ui.plot_cb,
             "tooldia": self.ui.tooldia_entry,
             "append": self.ui.append_text,
-            "prepend": self.ui.prepend_text
+            "prepend": self.ui.prepend_text,
+            "dwell": self.ui.dwell_cb,
+            "dwelltime": self.ui.dwelltime_entry
         })
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
@@ -1019,6 +1024,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     def on_exportgcode_button_click(self, *args):
         self.app.report_usage("cncjob_on_exportgcode_button")
 
+        self.read_form()
+
         try:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...",
                                                          directory=self.app.defaults["last_folder"])
@@ -1030,10 +1037,51 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.export_gcode(filename, preamble=preamble, postamble=postamble)
 
+    def dwell_generator(self, lines):
+
+        log.debug("dwell_generator()...")
+
+        m3m4re = re.compile(r'^\s*[mM]0[34]')
+        g4re = re.compile(r'^\s*[gG]4\s+([\d\.\+\-e]+)')
+        bufline = None
+
+        for line in lines:
+            # If the buffer contains a G4, yield that.
+            # If current line is a G4, discard it.
+            if bufline is not None:
+                yield bufline
+                bufline = None
+
+                if not g4re.search(line):
+                    yield line
+
+                continue
+
+            # If start spindle, buffer a G4.
+            if m3m4re.search(line):
+                log.debug("Found M03/4")
+                bufline = "G4 {}\n".format(self.options['dwelltime'])
+
+            yield line
+
+        raise StopIteration
+
     def export_gcode(self, filename, preamble='', postamble=''):
-        f = open(filename, 'w')
-        f.write(preamble + '\n' + self.gcode + "\n" + postamble)
-        f.close()
+
+        lines = StringIO(self.gcode)
+
+        if self.options['dwell']:
+            log.debug("Will add G04!")
+            lines = self.dwell_generator(lines)
+
+        with open(filename, 'w') as f:
+            f.write(preamble + "\n")
+
+            for line in lines:
+
+                f.write(line)
+
+            f.write(postamble)
 
         # Just for adding it to the recent files list.
         self.app.file_opened.emit("cncjob", filename)
@@ -1309,8 +1357,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             app_obj.progress.emit(80)
 
-
-        if  use_thread:
+        if use_thread:
             # To be run in separate thread
             def job_thread(app_obj):
                 with self.app.proc_container.new("Generating CNC Job."):

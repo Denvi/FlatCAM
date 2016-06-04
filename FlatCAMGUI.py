@@ -806,6 +806,26 @@ class CNCJobOptionsGroupUI(OptionsGroupUI):
         self.append_text = FCTextArea()
         self.layout.addWidget(self.append_text)
 
+        # Dwell
+        grid1 = QtGui.QGridLayout()
+        self.layout.addLayout(grid1)
+
+        dwelllabel = QtGui.QLabel('Dwell:')
+        dwelllabel.setToolTip(
+            "Pause to allow the spindle to reach its\n"
+            "speed before cutting."
+        )
+        dwelltime = QtGui.QLabel('Duration [sec.]:')
+        dwelltime.setToolTip(
+            "Number of second to dwell."
+        )
+        self.dwell_cb = FCCheckBox()
+        self.dwelltime_cb = FCEntry()
+        grid1.addWidget(dwelllabel, 0, 0)
+        grid1.addWidget(self.dwell_cb, 0, 1)
+        grid1.addWidget(dwelltime, 1, 0)
+        grid1.addWidget(self.dwelltime_cb, 1, 1)
+
 
 class GlobalOptionsUI(QtGui.QWidget):
     """
