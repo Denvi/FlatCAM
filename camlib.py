@@ -9,6 +9,7 @@
 #from scipy import optimize
 #import traceback
 
+from cStringIO import StringIO
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
 from numpy.linalg import solve, norm
@@ -3024,67 +3025,25 @@ class CNCjob(Geometry):
         self.gcode += "G00 X0Y0\n"
         self.gcode += "M05\n"  # Spindle stop
 
-    def pre_parse(self, gtext):
+    @staticmethod
+    def codes_split(gline):
         """
-        Separates parts of the G-Code text into a list of dictionaries.
-        Used by ``self.gcode_parse()``.
+        Parses a line of G-Code such as "G01 X1234 Y987" into
+        a dictionary: {'G': 1.0, 'X': 1234.0, 'Y': 987.0}
 
-        :param gtext: A single string with g-code
+        :param gline: G-Code line string
+        :return: Dictionary with parsed line.
         """
 
-        log.debug("pre_parse()")
+        command = {}
 
-        # Units: G20-inches, G21-mm
-        units_re = re.compile(r'^G2([01])')
+        match = re.search(r'^\s*([A-Z])\s*([\+\-\.\d\s]+)', gline)
+        while match:
+            command[match.group(1)] = float(match.group(2).replace(" ", ""))
+            gline = gline[match.end():]
+            match = re.search(r'^\s*([A-Z])\s*([\+\-\.\d\s]+)', gline)
 
-        # TODO: This has to be re-done
-        gcmds = []
-        lines = gtext.split("\n")  # TODO: This is probably a lot of work!
-        for line in lines:
-            # Clean up
-            line = line.strip()
-
-            # Remove comments
-            # NOTE: Limited to 1 bracket pair
-            op = line.find("(")
-            cl = line.find(")")
-            #if op > -1 and  cl > op:
-            if cl > op > -1:
-                #comment = line[op+1:cl]
-                line = line[:op] + line[(cl+1):]
-
-            # Units
-            match = units_re.match(line)
-            if match:
-                self.units = {'0': "IN", '1': "MM"}[match.group(1)]
-
-            # Parse GCode
-            # 0   4       12
-            # G01 X-0.007 Y-0.057
-            # --> codes_idx = [0, 4, 12]
-            codes = "NMGXYZIJFPST"
-            codes_idx = []
-            i = 0
-            for ch in line:
-                if ch in codes:
-                    codes_idx.append(i)
-                i += 1
-            n_codes = len(codes_idx)
-            if n_codes == 0:
-                continue
-
-            # Separate codes in line
-            parts = []
-            for p in range(n_codes - 1):
-                parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
-            parts.append(line[codes_idx[-1]:].strip())
-
-            # Separate codes from values
-            cmds = {}
-            for part in parts:
-                cmds[part[0]] = float(part[1:])
-            gcmds.append(cmds)
-        return gcmds
+        return command
 
     def gcode_parse(self):
         """
@@ -3097,11 +3056,7 @@ class CNCjob(Geometry):
 
         # Results go here
         geometry = []        
-        
-        # TODO: Merge into single parser?
-        gobjs = self.pre_parse(self.gcode)
 
-        log.debug("gcode_parse(): pre_parse() done.")
         # Last known instruction
         current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
 
@@ -3110,7 +3065,14 @@ class CNCjob(Geometry):
         path = [(0, 0)]
 
         # Process every instruction
-        for gobj in gobjs:
+        for line in StringIO(self.gcode):
+
+            gobj = self.codes_split(line)
+
+            ## Units
+            if 'G' in gobj and (gobj['G'] == 20.0 or gobj['G'] == 21.0):
+                self.units = {20.0: "IN", 21.0: "MM"}[gobj['G']]
+                continue
 
             ## Changing height
             if 'Z' in gobj:
@@ -3154,7 +3116,7 @@ class CNCjob(Geometry):
                     center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
                     radius = sqrt(gobj['I']**2 + gobj['J']**2)
                     start = arctan2(-gobj['J'], -gobj['I'])
-                    stop = arctan2(-center[1]+y, -center[0]+x)
+                    stop = arctan2(-center[1] + y, -center[0] + x)
                     path += arc(center, radius, start, stop,
                                 arcdir[current['G']],
                                 self.steps_per_circ)

@@ -1038,6 +1038,11 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         self.export_gcode(filename, preamble=preamble, postamble=postamble)
 
     def dwell_generator(self, lines):
+        """
+        Inserts "G4 P..." instructions after spindle-start
+        instructions (M03 or M04).
+
+        """
 
         log.debug("dwell_generator()...")
 
@@ -1060,7 +1065,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             # If start spindle, buffer a G4.
             if m3m4re.search(line):
                 log.debug("Found M03/4")
-                bufline = "G4 {}\n".format(self.options['dwelltime'])
+                bufline = "G4 P{}\n".format(self.options['dwelltime'])
 
             yield line
 
@@ -1070,10 +1075,13 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         lines = StringIO(self.gcode)
 
+        ## Post processing
+        # Dwell?
         if self.options['dwell']:
             log.debug("Will add G04!")
             lines = self.dwell_generator(lines)
 
+        ## Write
         with open(filename, 'w') as f:
             f.write(preamble + "\n")
 
