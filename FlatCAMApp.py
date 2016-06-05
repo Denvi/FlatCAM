@@ -2631,8 +2631,10 @@ class App(QtCore.QObject):
             if obj is None:
                 return "Object not found: %s" % name
 
-            if not isinstance(obj, FlatCAMGerber) and not isinstance(obj, FlatCAMExcellon):
-                return "ERROR: Only Gerber and Excellon objects can be mirrored."
+            if not isinstance(obj, FlatCAMGerber) and \
+                    not isinstance(obj, FlatCAMExcellon) and \
+                    not isinstance(obj, FlatCAMGeometry):
+                return "ERROR: Only Gerber, Excellon and Geometry objects can be mirrored."
 
             # Axis
             try:
@@ -2691,7 +2693,6 @@ class App(QtCore.QObject):
                 if key not in types:
                     return 'Unknown parameter: %s' % key
                 kwa[key] = types[key](kwa[key])
-
 
             if 'columns' not in kwa or 'rows' not in kwa:
                 return "ERROR: Specify -columns and -rows"
