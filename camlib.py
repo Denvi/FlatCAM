@@ -912,6 +912,27 @@ class Geometry(object):
         svg_elem = geom.svg(scale_factor=scale_factor)
         return svg_elem
 
+    def mirror(self, axis, point):
+        """
+        Mirrors the object around a specified axis passign through
+        the given point.
+
+        :param axis: "X" or "Y" indicates around which axis to mirror.
+        :type axis: str
+        :param point: [x, y] point belonging to the mirror axis.
+        :type point: list
+        :return: None
+        """
+
+        px, py = point
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+        ## solid_geometry ???
+        #  It's a cascaded union of objects.
+        self.solid_geometry = affinity.scale(self.solid_geometry,
+                                             xscale, yscale, origin=(px, py))
+
+
 class ApertureMacro:
     """
     Syntax of aperture macros.
@@ -1496,35 +1517,35 @@ class Gerber (Geometry):
         ## Solid geometry
         self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
 
-    def mirror(self, axis, point):
-        """
-        Mirrors the object around a specified axis passign through
-        the given point. What is affected:
-
-        * ``buffered_paths``
-        * ``flash_geometry``
-        * ``solid_geometry``
-        * ``regions``
-
-        NOTE:
-        Does not modify the data used to create these elements. If these
-        are recreated, the scaling will be lost. This behavior was modified
-        because of the complexity reached in this class.
-
-        :param axis: "X" or "Y" indicates around which axis to mirror.
-        :type axis: str
-        :param point: [x, y] point belonging to the mirror axis.
-        :type point: list
-        :return: None
-        """
-
-        px, py = point
-        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
-
-        ## solid_geometry ???
-        #  It's a cascaded union of objects.
-        self.solid_geometry = affinity.scale(self.solid_geometry,
-                                             xscale, yscale, origin=(px, py))
+    # def mirror(self, axis, point):
+    #     """
+    #     Mirrors the object around a specified axis passign through
+    #     the given point. What is affected:
+    #
+    #     * ``buffered_paths``
+    #     * ``flash_geometry``
+    #     * ``solid_geometry``
+    #     * ``regions``
+    #
+    #     NOTE:
+    #     Does not modify the data used to create these elements. If these
+    #     are recreated, the scaling will be lost. This behavior was modified
+    #     because of the complexity reached in this class.
+    #
+    #     :param axis: "X" or "Y" indicates around which axis to mirror.
+    #     :type axis: str
+    #     :param point: [x, y] point belonging to the mirror axis.
+    #     :type point: list
+    #     :return: None
+    #     """
+    #
+    #     px, py = point
+    #     xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+    #
+    #     ## solid_geometry ???
+    #     #  It's a cascaded union of objects.
+    #     self.solid_geometry = affinity.scale(self.solid_geometry,
+    #                                          xscale, yscale, origin=(px, py))
 
     def aperture_parse(self, apertureId, apertureType, apParameters):
         """
