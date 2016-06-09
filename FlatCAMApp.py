@@ -4124,7 +4124,7 @@ class App(QtCore.QObject):
             return
 
         # Write
-        json.dump(d, f, default=to_dict)
+        json.dump(d, f, default=to_dict, indent=2, sort_keys=True)
         # try:
         #     json.dump(d, f, default=to_dict)
         # except Exception, e:
