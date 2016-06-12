@@ -158,6 +158,16 @@ class Geometry(object):
             log.error("Failed to run union on polylines.")
             raise
 
+    def is_empty(self):
+
+        if isinstance(self.solid_geometry, BaseGeometry):
+            return self.solid_geometry.is_empty
+
+        if isinstance(self.solid_geometry, list):
+            return len(self.solid_geometry) == 0
+
+        raise Exception("self.solid_geometry is neither BaseGeometry or list.")
+
     def subtract_polygon(self, points):
         """
         Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.
@@ -389,15 +399,6 @@ class Geometry(object):
         :rtype: Shapely.MultiPolygon or Shapely.Polygon
         """
         return self.solid_geometry.buffer(offset)
-
-    def is_empty(self):
-        if self.solid_geometry is None:
-            return True
-
-        if type(self.solid_geometry) is list and len(self.solid_geometry) == 0:
-            return True
-
-        return False
 
     def import_svg(self, filename, flip=True):
         """

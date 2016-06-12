@@ -691,16 +691,35 @@ class App(QtCore.QObject):
         else:
             self.defaults['stats'][resource] = 1
 
+    # TODO: This shouldn't be here.
     class TclErrorException(Exception):
         """
         this exception is deffined here, to be able catch it if we sucessfully handle all errors from shell command
         """
         pass
 
+    def shell_message(self, msg, show=False, error=False):
+        """
+        Shows a message on the FlatCAM Shell
+
+        :param msg: Message to display.
+        :param show: Opens the shell.
+        :param error: Shows the message as an error.
+        :return: None
+        """
+        if show:
+            self.ui.shell_dock.show()
+
+        if error:
+            self.shell.append_error(msg + "\n")
+        else:
+            self.shell.append_output(msg + "\n")
+
     def raise_tcl_unknown_error(self, unknownException):
         """
-        raise Exception if is different type  than TclErrorException
-        this is here mainly to show unknown errors inside TCL shell console
+        Raise exception if is different type than TclErrorException
+        this is here mainly to show unknown errors inside TCL shell console.
+
         :param unknownException:
         :return:
         """
@@ -727,20 +746,20 @@ class App(QtCore.QObject):
                 show_trace = int(self.defaults['verbose_error_level'])
 
             if show_trace > 0:
-                trc=traceback.format_list(traceback.extract_tb(exc_traceback))
-                trc_formated=[]
+                trc = traceback.format_list(traceback.extract_tb(exc_traceback))
+                trc_formated = []
                 for a in reversed(trc):
-                    trc_formated.append(a.replace("    ", " > ").replace("\n",""))
-                text="%s\nPython traceback: %s\n%s" % (exc_value,
+                    trc_formated.append(a.replace("    ", " > ").replace("\n", ""))
+                text = "%s\nPython traceback: %s\n%s" % (exc_value,
                                  exc_type,
                                  "\n".join(trc_formated))
 
             else:
-                text="%s" % error
+                text = "%s" % error
         else:
-            text=error
+            text = error
 
-        text = text.replace('[', '\\[').replace('"','\\"')
+        text = text.replace('[', '\\[').replace('"', '\\"')
 
         self.tcl.eval('return -code error "%s"' % text)
 
@@ -782,7 +801,7 @@ class App(QtCore.QObject):
         try:
             self.shell.open_proccessing()
             result = self.tcl.eval(str(text))
-            if result!='None':
+            if result != 'None':
                 self.shell.append_output(result + '\n')
         except Tkinter.TclError, e:
             #this will display more precise answer if something in  TCL shell fail
@@ -836,16 +855,27 @@ class App(QtCore.QObject):
 
     def info(self, msg):
         """
-        Writes on the status bar.
+        Informs the user. Normally on the status bar, optionally
+        also on the shell.
 
         :param msg: Text to write.
+        :param toshell: Forward the
         :return: None
         """
+
+        # Type of message in brackets at the begining of the message.
         match = re.search("\[([^\]]+)\](.*)", msg)
         if match:
-            self.ui.fcinfo.set_status(QtCore.QString(match.group(2)), level=match.group(1))
+            level = match.group(1)
+            msg_ = match.group(2)
+            self.ui.fcinfo.set_status(QtCore.QString(msg_), level=level)
+
+            error = level == "error" or level == "warning"
+            self.shell_message(msg, error=error, show=True)
+
         else:
             self.ui.fcinfo.set_status(QtCore.QString(msg), level="info")
+            self.shell_message(msg)
 
     def load_defaults(self):
         """
@@ -1953,6 +1983,17 @@ class App(QtCore.QObject):
                 self.log.error(str(e))
                 raise
 
+            except:
+                msg = "[error] An internal error has ocurred. See shell.\n"
+                msg += traceback.format_exc()
+                app_obj.inform.emit(msg)
+                raise
+
+            if gerber_obj.is_empty():
+                app_obj.inform.emit("[error] No geometry found in file: " + filename)
+                self.collection.set_active(gerber_obj.options["name"])
+                self.collection.delete_active()
+
             # Further parsing
             self.progress.emit(70)  # TODO: Note the mixture of self and app_obj used here
 
@@ -1997,18 +2038,31 @@ class App(QtCore.QObject):
 
             try:
                 excellon_obj.parse_file(filename)
+                
             except IOError:
                 app_obj.inform.emit("[error] Cannot open file: " + filename)
                 self.progress.emit(0)  # TODO: self and app_bjj mixed
                 raise IOError("Cannot open file: " + filename)
 
+            except:
+                msg = "[error] An internal error has ocurred. See shell.\n"
+                msg += traceback.format_exc()
+                app_obj.inform.emit(msg)
+                raise
+
             try:
                 excellon_obj.create_geometry()
-            except Exception as e:
-                app_obj.inform.emit("[error] Failed to create geometry after parsing: " + filename)
-                self.progress.emit(0)
-                raise e
 
+            except:
+                msg = "[error] An internal error has ocurred. See shell.\n"
+                msg += traceback.format_exc()
+                app_obj.inform.emit(msg)
+                raise
+
+            if excellon_obj.is_empty():
+                app_obj.inform.emit("[error] No geometry found in file: " + filename)
+                self.collection.set_active(excellon_obj.options["name"])
+                self.collection.delete_active()
             #self.progress.emit(70)
 
         with self.proc_container.new("Opening Excellon."):
@@ -2479,8 +2533,8 @@ class App(QtCore.QObject):
                 return "Could not retrieve object: %s" % name
 
             def geo_init_me(geo_obj, app_obj):
-                margin = kwa['margin']+kwa['dia']/2
-                gap_size = kwa['dia']+kwa['gapsize']
+                margin = kwa['margin'] + kwa['dia'] / 2
+                gap_size = kwa['dia'] + kwa['gapsize']
                 minx, miny, maxx, maxy = obj.bounds()
                 minx -= margin
                 maxx += margin
@@ -2519,9 +2573,8 @@ class App(QtCore.QObject):
 
             return 'Ok'
 
-
         def geocutout(name=None, *args):
-            '''
+            """
             TCL shell command - see help section
 
             Subtract gaps from geometry, this will not create new object
@@ -2529,7 +2582,7 @@ class App(QtCore.QObject):
             :param name: name of object
             :param args: array of arguments
             :return: "Ok" if completed without errors
-            '''
+            """
 
             try:
                 a, kwa = h(*args)
@@ -2569,7 +2622,7 @@ class App(QtCore.QObject):
                 lenghty = (ymax - ymin)
                 gapsize = kwa['gapsize'] + kwa['dia'] / 2
 
-                if kwa['gaps'] == '8' or kwa['gaps']=='2lr':
+                if kwa['gaps'] == '8' or kwa['gaps'] == '2lr':
 
                     subtract_rectangle(name,
                                        xmin - gapsize,
