@@ -1875,13 +1875,11 @@ class App(QtCore.QObject):
         else:
             self.inform.emit("Project copy saved to: " + self.project_filename)
 
-
     def export_svg(self, obj_name, filename, scale_factor=0.00):
         """
-        Exports a Geometry Object to a SVG File
+        Exports a Geometry Object to an SVG file.
 
         :param filename: Path to the SVG file to save to.
-        :param outname:
         :return:
         """
 
@@ -1890,6 +1888,7 @@ class App(QtCore.QObject):
         try:
             obj = self.collection.get_by_name(str(obj_name))
         except:
+            # TODO: The return behavior has not been established... should raise exception?
             return "Could not retrieve object: %s" % obj_name
 
         with self.proc_container.new("Exporting SVG") as proc:
@@ -1907,8 +1906,10 @@ class App(QtCore.QObject):
             uom = obj.units.lower()
 
             # Add a SVG Header and footer to the svg output from shapely
-            # The transform flips the Y Axis so that everything renders properly within svg apps such as inkscape
-            svg_header = '<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
+            # The transform flips the Y Axis so that everything renders
+            # properly within svg apps such as inkscape
+            svg_header = '<svg xmlns="http://www.w3.org/2000/svg" ' \
+                         'version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" '
             svg_header += 'width="' + svgwidth + uom + '" '
             svg_header += 'height="' + svgheight + uom + '" '
             svg_header += 'viewBox="' + minx + ' ' + miny + ' ' + svgwidth + ' ' + svgheight + '">'
@@ -1916,7 +1917,8 @@ class App(QtCore.QObject):
             svg_footer = '</g> </svg>'
             svg_elem = svg_header + exported_svg + svg_footer
 
-            # Parse the xml through a xml parser just to add line feeds and to make it look more pretty for the output
+            # Parse the xml through a xml parser just to add line feeds
+            # and to make it look more pretty for the output
             doc = parse_xml_string(svg_elem)
             with open(filename, 'w') as fp:
                 fp.write(doc.toprettyxml())
@@ -2038,7 +2040,7 @@ class App(QtCore.QObject):
 
             try:
                 excellon_obj.parse_file(filename)
-                
+
             except IOError:
                 app_obj.inform.emit("[error] Cannot open file: " + filename)
                 self.progress.emit(0)  # TODO: self and app_bjj mixed
@@ -2994,7 +2996,6 @@ class App(QtCore.QObject):
             except Exception as unknown:
                 self.raise_tcl_unknown_error(unknown)
 
-
         def millholes(name=None, *args):
             '''
             TCL shell command - see help section
@@ -3035,10 +3036,13 @@ class App(QtCore.QObject):
                     self.raise_tcl_error("Object not found: %s" % name)
 
                 if not isinstance(obj, FlatCAMExcellon):
-                    self.raise_tcl_error('Only Excellon objects can be mill drilled, got %s %s.' % (name, type(obj)))
+                    self.raise_tcl_error('Only Excellon objects can be mill-drilled, got %s %s.' % (name, type(obj)))
 
                 try:
-                    success, msg = obj.generate_milling(**kwa)
+                    # This runs in the background: Block until done.
+                    with wait_signal(self.new_object_available):
+                        success, msg = obj.generate_milling(**kwa)
+
                 except Exception as e:
                     self.raise_tcl_error("Operation failed: %s" % str(e))
 
