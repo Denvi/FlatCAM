@@ -49,6 +49,23 @@ class FlatCAMObj(QtCore.QObject):
         # self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         # self.ui.scale_button.clicked.connect(self.on_scale_button_click)
 
+    def from_dict(self, d):
+        """
+        This supersedes ``from_dict`` in derived classes. Derived classes
+        must inherit from FlatCAMObj first, then from derivatives of Geometry.
+
+        ``self.options`` is only updated, not overwritten. This ensures that
+        options set by the app do not vanish when reading the objects
+        from a project file.
+        """
+
+        for attr in self.ser_attrs:
+
+            if attr == 'options':
+                self.options.update(d[attr])
+            else:
+                setattr(self, attr, d[attr])
+
     def on_options_change(self, key):
         self.emit(QtCore.SIGNAL("optionChanged"), key)
 
