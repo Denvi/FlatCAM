@@ -10,6 +10,13 @@ import tempfile
 
 
 class GerberFlowTestCase(unittest.TestCase):
+    """
+    This is a top-level test covering the Gerber-to-GCode
+    generation workflow.
+
+    THIS IS A REQUIRED TEST FOR ANY UPDATES.
+
+    """
 
     filename = 'simple1.gbr'
 
@@ -172,7 +179,9 @@ class GerberFlowTestCase(unittest.TestCase):
         assert isinstance(cnc_obj, FlatCAMCNCjob)
         output_filename = ""
         # get system temporary file(try create it and  delete also)
-        with tempfile.NamedTemporaryFile(prefix='unittest.', suffix="." + cnc_name + '.gcode', delete=True) as tmp_file:
+        with tempfile.NamedTemporaryFile(prefix='unittest.',
+                                         suffix="." + cnc_name + '.gcode',
+                                         delete=True) as tmp_file:
             output_filename = tmp_file.name
         cnc_obj.export_gcode(output_filename)
         self.assertTrue(os.path.isfile(output_filename))
