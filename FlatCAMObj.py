@@ -192,6 +192,7 @@ class FlatCAMObj(QtCore.QObject):
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
+
         return True
 
     def serialize(self):

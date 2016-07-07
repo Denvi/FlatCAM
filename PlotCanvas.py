@@ -26,8 +26,7 @@ class PlotCanvas(QtCore.QObject):
     """
 
     app = None
-
-    plots_updated = QtCore.pyqtSignal(object, object)
+    updates_queue = 0
 
     def __init__(self, container):
         """
@@ -101,22 +100,7 @@ class PlotCanvas(QtCore.QObject):
         self.pan_axes = []
         self.panning = False
 
-        self.plots_updated.connect(self.on_plots_updated)
-
-    def on_plots_updated(self, image, box):
-        # Remove previous image if exists
-        try:
-            self.image.remove()
-        except:
-            pass
-
-        # Set new image
-        x1, x2, y1, y2 = box
-
-        print "setting new image", x1, x2, y1, y2
-
-        self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="nearest")
-        self.canvas.draw()
+        # self.plots_updated.connect(self.on_plots_updated)
 
     def on_key_down(self, event):
         """
@@ -256,6 +240,104 @@ class PlotCanvas(QtCore.QObject):
 
         # Sync re-draw to proper paint on form resize
         self.canvas.draw()
+        self.update()
+
+    def update(self):
+
+        # Get bounds
+        margin = 2
+        x1, y1, x2, y2 = self.app.collection.get_bounds()
+        x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
+
+        # Calculate bounds in screen space
+        points = self.axes.transData.transform([(x1, y1), (x2, y2)])
+
+        # Round bounds to integers
+        rounded_points = [(floor(points[0][0]), floor(points[0][1])), (ceil(points[1][0]), ceil(points[1][1]))]
+
+        # Calculate width/height of image
+        w, h = (rounded_points[1][0] - rounded_points[0][0]), (rounded_points[1][1] - rounded_points[0][1])
+
+        # Get bounds back in axes units
+        inverted_transform = self.axes.transData.inverted()
+        bounds = inverted_transform.transform(rounded_points)
+
+        # print "image bounds", x1, x2, y1, y2, points, rounded_points, bounds, w, h, self.axes.transData.transform(bounds)
+
+        x1, x2, y1, y2 = bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
+
+        # print "new image bounds", x1, x2, y1, y2
+
+        pixel = inverted_transform.transform([(0, 0), (1, 1)])
+        pixel_size = pixel[1][0] - pixel[0][0]
+
+        # print "pixel size", pixel, pixel_size
+
+        def update_image(figure):
+
+            # Abort update if next update in queue
+            if self.updates_queue > 1:
+                self.updates_queue -= 1
+                return
+
+            # Rescale axes
+            for ax in figure.get_axes():
+                ax.set_xlim(x1 + pixel_size, x2 + pixel_size)
+                ax.set_ylim(y1, y2)
+                ax.set_xticks([])
+                ax.set_yticks([])
+
+            # Resize figure
+            dpi = figure.dpi
+            figure.set_size_inches(w / dpi, h / dpi)
+
+            try:
+                # Draw to buffer
+                self.updates_queue -= 1
+                offscreen_canvas = FigureOffscreenCanvas(figure)
+                offscreen_canvas.draw()
+
+                # Abort drawing if next update in queue
+                if self.updates_queue > 0:
+                    del offscreen_canvas
+                    return
+
+                buf = offscreen_canvas.buffer_rgba()
+                ncols, nrows = offscreen_canvas.get_width_height()
+                image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
+                del offscreen_canvas
+
+                # Updating canvas
+                # Remove previous image if exists
+                try:
+                    self.image.remove()
+                except:
+                    pass
+
+                # Set new image
+                self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="Nearest")
+                del image
+
+                # Redraw window
+                self.canvas.draw()
+
+            except Exception as e:
+                self.app.log.debug(e.message)
+
+        # Do job in background
+        proc = self.app.proc_container.new("Updating view")
+
+        def job_thread(app_obj, figure):
+            try:
+                update_image(figure)
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        # self.app.inform.emit("View update starting ...")
+        self.updates_queue += 1
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
 
     def auto_adjust_axes(self, *args):
         """
@@ -280,8 +362,6 @@ class PlotCanvas(QtCore.QObject):
         :type center: list
         :return: None
         """
-
-        print "zoom"
 
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
@@ -310,90 +390,9 @@ class PlotCanvas(QtCore.QObject):
             ax.set_ylim((ymin, ymax))
 
         # Async re-draw
-        self.canvas.draw_idle()
+        # self.canvas.draw_idle()
 
-        # Get bounds
-        margin = 2
-        x1, y1, x2, y2 = self.app.collection.get_bounds()
-        x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
-
-        # Calculate bounds in screen space
-        points = self.axes.transData.transform([(x1, y1), (x2, y2)])
-
-        # Round bounds to integers
-        rounded_points = [(floor(points[0][0]), floor(points[0][1])), (ceil(points[1][0]), ceil(points[1][1]))]
-
-        # Calculate width/height of image
-        w, h = (rounded_points[1][0] - rounded_points[0][0]), (rounded_points[1][1] - rounded_points[0][1])
-
-        # Get bounds back in axes units
-        inverted_transform = self.axes.transData.inverted()
-        bounds = inverted_transform.transform(rounded_points)
-
-        print "image bounds", x1, x2, y1, y2, points, rounded_points, bounds, w, h, self.axes.transData.transform(bounds)
-
-        x1, x2, y1, y2 = bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
-
-        print "new image bounds", x1, x2, y1, y2
-
-        pixel = inverted_transform.transform([(0, 0), (1, 1)])
-        pixel_size = pixel[1][0] - pixel[0][0]
-
-        print "pixel size", pixel, pixel_size
-
-        self.abort = True
-
-        def update_image(figure):
-
-            self.abort = False
-
-            # Rescale axes
-            for ax in figure.get_axes():
-                ax.set_xlim(x1 + pixel_size, x2 + pixel_size)
-                ax.set_ylim(y1, y2)
-                ax.set_xticks([])
-                ax.set_yticks([])
-
-            # Resize figure
-            dpi = figure.dpi
-            figure.set_size_inches(w / dpi, h / dpi)
-
-            # Draw to buffer
-            print "plotting"
-            offscreen_canvas = FigureOffscreenCanvas(figure)
-            offscreen_canvas.draw()
-
-            buf = offscreen_canvas.buffer_rgba()
-            ncols, nrows = offscreen_canvas.get_width_height()
-            image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
-            del offscreen_canvas
-            print "image done", ncols, nrows
-
-            if self.abort:
-                print "aborted"
-                return
-
-            print "updating done"
-            # Update canvas
-            # self.canvas.draw()
-            self.plots_updated.emit(copy.deepcopy(image), (x1, x2, y1, y2))
-
-        # Do job in background
-        proc = self.app.proc_container.new("Updating view.")
-
-        def job_thread(app_obj, figure):
-            try:
-                update_image(figure)
-            except Exception as e:
-                proc.done()
-                raise e
-            proc.done()
-
-        self.app.inform.emit("View update starting ...")
-
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
-
-        print "zoom ended"
+        self.update()
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
