@@ -182,7 +182,19 @@ class PlotCanvas(QtCore.QObject):
         ax.set_aspect(1)
 
         # Re-draw
-        self.canvas.draw_idle()
+        self.canvas.draw()
+
+    def auto_adjust_axes(self, *args):
+        """
+        Calls ``adjust_axes()`` using the extents of the base axes.
+
+        :rtype : None
+        :return: None
+        """
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        self.adjust_axes(xmin, ymin, xmax, ymax)
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
@@ -318,11 +330,12 @@ class PlotCanvas(QtCore.QObject):
                 self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="Nearest")
                 del image
 
-                # Redraw window
-                self.canvas.draw()
-
             except Exception as e:
                 self.app.log.debug(e.message)
+
+            finally:
+                # Redraw window
+                self.canvas.draw()
 
         # Do job in background
         proc = self.app.proc_container.new("Updating view")
@@ -338,18 +351,6 @@ class PlotCanvas(QtCore.QObject):
         # self.app.inform.emit("View update starting ...")
         self.updates_queue += 1
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
-
-    def auto_adjust_axes(self, *args):
-        """
-        Calls ``adjust_axes()`` using the extents of the base axes.
-
-        :rtype : None
-        :return: None
-        """
-
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        self.adjust_axes(xmin, ymin, xmax, ymax)
 
     def zoom(self, factor, center=None):
         """
