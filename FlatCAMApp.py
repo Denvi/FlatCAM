@@ -89,6 +89,8 @@ class App(QtCore.QObject):
     new_object_available = QtCore.pyqtSignal(object)
     message = QtCore.pyqtSignal(str, str, str)
 
+    block_plots = False
+
     def __init__(self, user_defaults=True, post_gui=None):
         """
         Starts the application.
@@ -1324,7 +1326,8 @@ class App(QtCore.QObject):
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
-        obj.plot()
+        if not self.block_plots:
+            obj.plot()
 
         # Fit on first added object only
         if len(self.collection.get_list()) == 1:
@@ -1824,6 +1827,7 @@ class App(QtCore.QObject):
         :return: None
         """
         App.log.debug("Opening project: " + filename)
+        self.block_plots = True
 
         ## Open and parse
         try:
@@ -1864,6 +1868,7 @@ class App(QtCore.QObject):
         self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
+        self.block_plots = False
 
     def propagate_defaults(self):
         """

@@ -181,6 +181,12 @@ class PlotCanvas(QtCore.QObject):
             ax.spines[spine].set_visible(False)
         ax.set_aspect(1)
 
+        # Set update bounds
+        self.bx1 = -1000
+        self.bx2 = 1000
+        self.by1 = self.bx1
+        self.by2 = self.bx2
+
         # Re-draw
         self.canvas.draw()
 
@@ -256,10 +262,32 @@ class PlotCanvas(QtCore.QObject):
 
     def update(self):
 
-        # Get bounds
+        # Get objects collection bounds
         margin = 2
         x1, y1, x2, y2 = self.app.collection.get_bounds()
         x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
+
+        # Get visible bounds
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+
+        # Truncate bounds
+        print "Collection bounds", x1, x2, y1, y2
+        print "Viewport", xmin, xmax, ymin, ymax
+        if x1 < xmin or x2 > xmax or y1 < ymin or y2 > ymax:
+            print "Truncating bounds"
+            width = xmax - xmin
+            height = ymax - ymin
+
+            x1 = xmin - width
+            x2 = xmax + width
+            y1 = ymin - height
+            y2 = ymax + height
+
+            self.bx1 = x1
+            self.bx2 = x2
+            self.by1 = y1
+            self.by2 = y2
 
         # Calculate bounds in screen space
         points = self.axes.transData.transform([(x1, y1), (x2, y2)])
@@ -506,8 +534,17 @@ class PlotCanvas(QtCore.QObject):
             for a in self.pan_axes:
                 a.drag_pan(1, event.key, event.x, event.y)
 
-            # Async re-draw (redraws only on thread idle state, uses timer on backend)
-            self.canvas.draw_idle()
+            # Update
+            xmin, xmax = self.axes.get_xlim()
+            ymin, ymax = self.axes.get_ylim()
+
+            if xmin < self.bx1 or xmax > self.bx2 or ymin < self.by1 or ymax > self.by2:
+                # Redraw image
+                print "Redrawing image"
+                self.update()
+            else:
+                # Async re-draw (redraws only on thread idle state, uses timer on backend)
+                self.canvas.draw_idle()
 
     def on_draw(self, renderer):
 
