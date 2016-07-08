@@ -28,6 +28,8 @@ class PlotCanvas(QtCore.QObject):
     app = None
     updates_queue = 0
 
+    image_ready = QtCore.pyqtSignal(object, tuple)
+
     def __init__(self, container):
         """
         The constructor configures the Matplotlib figure that
@@ -99,6 +101,13 @@ class PlotCanvas(QtCore.QObject):
 
         self.pan_axes = []
         self.panning = False
+
+        self.bx1 = -1000
+        self.bx2 = 1000
+        self.by1 = self.bx1
+        self.by2 = self.bx2
+
+        self.image_ready.connect(self.update_canvas)
 
         # self.plots_updated.connect(self.on_plots_updated)
 
@@ -345,25 +354,14 @@ class PlotCanvas(QtCore.QObject):
                 buf = offscreen_canvas.buffer_rgba()
                 ncols, nrows = offscreen_canvas.get_width_height()
                 image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
-                del offscreen_canvas
 
-                # Updating canvas
-                # Remove previous image if exists
-                try:
-                    self.image.remove()
-                except:
-                    pass
+                self.image_ready.emit(copy.deepcopy(image), (x1, x2, y1, y2))
 
-                # Set new image
-                self.image = self.axes.imshow(image, extent=(x1, x2, y1, y2), interpolation="Nearest")
                 del image
+                del offscreen_canvas
 
             except Exception as e:
                 self.app.log.debug(e.message)
-
-            finally:
-                # Redraw window
-                self.canvas.draw()
 
         # Do job in background
         proc = self.app.proc_container.new("Updating view")
@@ -379,6 +377,18 @@ class PlotCanvas(QtCore.QObject):
         # self.app.inform.emit("View update starting ...")
         self.updates_queue += 1
         self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
+
+    def update_canvas(self, image, bounds):
+
+        try:
+            self.image.remove()
+        except:
+            pass
+
+        self.image = self.axes.imshow(image, extent=bounds, interpolation="Nearest")
+        self.canvas.draw_idle()
+
+        del image
 
     def zoom(self, factor, center=None):
         """
@@ -421,6 +431,7 @@ class PlotCanvas(QtCore.QObject):
         # Async re-draw
         # self.canvas.draw_idle()
 
+        self.canvas.draw_idle()
         self.update()
 
     def pan(self, x, y):
