@@ -16,6 +16,7 @@ import FlatCAMApp
 import numpy as np
 import copy
 from math import ceil, floor
+import math
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
@@ -102,10 +103,7 @@ class PlotCanvas(QtCore.QObject):
         self.pan_axes = []
         self.panning = False
 
-        self.bx1 = -1000
-        self.bx2 = 1000
-        self.by1 = self.bx1
-        self.by2 = self.bx2
+        self.reset_nonupdate_bounds()
 
         self.image_ready.connect(self.update_canvas)
 
@@ -161,6 +159,12 @@ class PlotCanvas(QtCore.QObject):
         """
         self.canvas.connect(event_name, callback)
 
+    def reset_nonupdate_bounds(self):
+        self.bx1 = float('-inf')
+        self.bx2 = float('inf')
+        self.by1 = self.bx1
+        self.by2 = self.bx2
+
     def clear(self):
         """
         Clears axes and figure.
@@ -191,10 +195,7 @@ class PlotCanvas(QtCore.QObject):
         ax.set_aspect(1)
 
         # Set update bounds
-        self.bx1 = -1000
-        self.bx2 = 1000
-        self.by1 = self.bx1
-        self.by2 = self.bx2
+        self.reset_nonupdate_bounds()
 
         # Re-draw
         self.canvas.draw()
@@ -288,15 +289,22 @@ class PlotCanvas(QtCore.QObject):
             width = xmax - xmin
             height = ymax - ymin
 
-            x1 = xmin - width
-            x2 = xmax + width
-            y1 = ymin - height
-            y2 = ymax + height
+            x1 = xmin - width * 2
+            x2 = xmax + width * 2
+            y1 = ymin - height * 2
+            y2 = ymax + height * 2
 
-            self.bx1 = x1
-            self.bx2 = x2
-            self.by1 = y1
-            self.by2 = y2
+            # self.bx1 = x1
+            # self.bx2 = x2
+            # self.by1 = y1
+            # self.by2 = y2
+
+            self.bx1 = xmin - width
+            self.bx2 = xmax + width
+            self.by1 = ymin - height
+            self.by2 = ymax + height
+        else:
+            self.reset_nonupdate_bounds()
 
         # Calculate bounds in screen space
         points = self.axes.transData.transform([(x1, y1), (x2, y2)])
