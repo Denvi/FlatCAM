@@ -604,6 +604,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
         if self.options["solid"]:
             for poly in geometry:
+                self.app.plotcanvas.vispy_canvas.shapes.add(poly)
                 # TODO: Too many things hardcoded.
                 try:
                     patch = PolygonPatch(poly,
@@ -1472,6 +1473,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 return
 
             if type(element) == LineString or type(element) == LinearRing:
+                self.app.plotcanvas.vispy_canvas.shapes.add(element)
                 x, y = element.coords.xy
                 self.axes.plot(x, y, 'r-')
                 return

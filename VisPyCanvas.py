@@ -1,7 +1,7 @@
 import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
-from VisPyVisuals import LinesCollection, PolygonCollection
+from VisPyVisuals import LinesCollection, PolygonCollection, ShapeCollection
 
 
 class VisPyCanvas(scene.SceneCanvas):
@@ -37,13 +37,16 @@ class VisPyCanvas(scene.SceneCanvas):
 
         # -------------------------- Tests ----------------------------------------
 
-        data1 = np.empty((4, 2))
+        data1 = np.empty((5, 2))
         data2 = np.empty((4, 2))
 
         data1[0] = 0, -0.0
         data1[1] = 1, -0.
         data1[2] = 1, 1
         data1[3] = 0, 1
+
+        print "test", data1[:1]
+        print "test", np.any(data1[0] != data1[-1])
 
         data2[0] = 2, -0.0
         data2[1] = 3, -0.
@@ -83,6 +86,8 @@ class VisPyCanvas(scene.SceneCanvas):
         self.primitives = {}
         self.primitives['Line'] = LinesCollection(parent=view.scene)
         self.primitives['Poly'] = PolygonCollection(parent=view.scene)
+
+        self.shapes = ShapeCollection(parent=view.scene)
 
         grid1 = scene.GridLines(parent=view.scene, color='gray')
         grid1.set_gl_state(depth_test=False)

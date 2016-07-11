@@ -453,10 +453,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"),
-                     lambda: self.worker_task.emit({'fcn': self.version_check,
-                                                    'params': [],
-                                                    'worker_name': "worker2"}))
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"),
+        #              lambda: self.worker_task.emit({'fcn': self.version_check,
+        #                                             'params': [],
+        #                                             'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###

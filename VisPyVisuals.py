@@ -1,8 +1,10 @@
-from vispy.visuals import LineVisual, PolygonVisual
+from vispy.visuals import LineVisual, PolygonVisual, CompoundVisual, MeshVisual
 from vispy.scene.visuals import create_visual_node
 from vispy.geometry import PolygonData
 from vispy.gloo import set_state
+from vispy.geometry.triangulation import Triangulation
 from matplotlib.colors import ColorConverter
+from shapely.geometry import Polygon, LineString, LinearRing
 import numpy as np
 import abc
 
@@ -42,6 +44,72 @@ class Collection:
     def _translate_data(self, data, form):
         return data
 
+
+class ShapeCollectionVisual(CompoundVisual):
+    def __init__(self, line_width=1, **kwargs):
+        self.shapes = {}
+        self.colors = {}
+        self.face_colors = {}
+        self.last_key = -1
+
+        self._mesh = MeshVisual()
+        self._lines = LineVisual()
+        self._line_width = line_width
+
+        CompoundVisual.__init__(self, [self._mesh, self._lines], **kwargs)
+        self._mesh.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
+        self.freeze()
+
+    def add(self, shape, color=None, face_color=None, redraw=True):
+        self.last_key += 1
+        self.shapes[self.last_key] = shape
+        self.colors[self.last_key] = color
+        self.face_colors[self.last_key] = face_color
+        if redraw:
+            self._update()
+        return self.last_key
+
+    def remove(self, key, redraw=False):
+        del self.shapes[key]
+        del self.colors[key]
+        del self.face_colors[key]
+        if redraw:
+            self._update()
+
+    def _update(self):
+        for shape in self.shapes.values():
+            print 'shape type', type(shape)
+            if type(shape) == LineString:
+                pass
+            elif type(shape) == LinearRing:
+                pass
+            elif type(shape) == Polygon:
+                verts_m = self._open_ring(np.array(shape.simplify(0.01).exterior))
+                edges_m = self._generate_edges(len(verts_m))
+
+                for ints in shape.interiors:
+                    verts = self._open_ring(np.array(ints))
+                    edges_m = np.append(edges_m, self._generate_edges(len(verts)) + len(verts_m), 0)
+                    verts_m = np.append(verts_m, verts, 0)
+
+                print "verts, edges", verts_m, edges_m
+
+                tri = Triangulation(verts_m, edges_m)
+                tri.triangulate()
+
+                self._mesh.set_data(tri.pts, tri.tris, color='yellow')
+
+                print "triangulation", tri.pts, tri.tris
+
+    def _open_ring(self, vertices):
+        return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
+
+    def _generate_edges(self, count):
+        edges = np.empty((count, 2), dtype=np.uint32)
+        edges[:, 0] = np.arange(count)
+        edges[:, 1] = edges[:, 0] + 1
+        edges[-1, 1] = 0
+        return edges
 
 class LinesCollectionVisual(LineVisual, Collection):
 
@@ -179,7 +247,7 @@ class PolygonCollectionVisual(PolygonVisual, Collection):
 def linearring_to_segments(arr):
 
     # Close linear ring
-    if np.any(arr[0] != arr[1]):
+    if np.any(arr[0] != arr[-1]):
         arr = np.concatenate([arr, arr[:1]], axis=0)
 
     return linestring_to_segments(arr)
@@ -196,3 +264,4 @@ def linestring_to_segments(arr):
 
 LinesCollection = create_visual_node(LinesCollectionVisual)
 PolygonCollection = create_visual_node(PolygonCollectionVisual)
+ShapeCollection = create_visual_node(ShapeCollectionVisual)
