@@ -60,7 +60,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self._mesh.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
         self.freeze()
 
-    def add(self, shape, color=None, face_color=None, redraw=True):
+    def add(self, shape, color=None, face_color=None, redraw=False):
         self.last_key += 1
         self.shapes[self.last_key] = shape
         self.colors[self.last_key] = color
@@ -77,29 +77,33 @@ class ShapeCollectionVisual(CompoundVisual):
             self._update()
 
     def _update(self):
+
+        pts_m = np.empty((0, 2))  # Vertices of triangles
+        tris_m = np.empty((0, 3))  # Indexes of vertices of faces
+
         for shape in self.shapes.values():
-            print 'shape type', type(shape)
             if type(shape) == LineString:
                 pass
             elif type(shape) == LinearRing:
                 pass
             elif type(shape) == Polygon:
-                verts_m = self._open_ring(np.array(shape.simplify(0.01).exterior))
+                simple = shape.simplify(0.01)
+                verts_m = self._open_ring(np.array(simple.exterior))
                 edges_m = self._generate_edges(len(verts_m))
 
-                for ints in shape.interiors:
+                for ints in simple.interiors:
                     verts = self._open_ring(np.array(ints))
                     edges_m = np.append(edges_m, self._generate_edges(len(verts)) + len(verts_m), 0)
                     verts_m = np.append(verts_m, verts, 0)
 
-                print "verts, edges", verts_m, edges_m
-
                 tri = Triangulation(verts_m, edges_m)
                 tri.triangulate()
 
-                self._mesh.set_data(tri.pts, tri.tris, color='yellow')
+                tris_m = np.append(tris_m, tri.tris + len(pts_m), 0)
+                pts_m = np.append(pts_m, tri.pts, 0)
 
-                print "triangulation", tri.pts, tri.tris
+        if len(pts_m) > 0:
+            self._mesh.set_data(pts_m, tris_m.astype(np.uint32), color='red')
 
     def _open_ring(self, vertices):
         return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
@@ -110,6 +114,10 @@ class ShapeCollectionVisual(CompoundVisual):
         edges[:, 1] = edges[:, 0] + 1
         edges[-1, 1] = 0
         return edges
+
+    def redraw(self):
+        self._update()
+
 
 class LinesCollectionVisual(LineVisual, Collection):
 

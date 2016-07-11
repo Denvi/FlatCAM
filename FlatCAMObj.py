@@ -624,6 +624,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, linespec)
 
+        self.app.plotcanvas.vispy_canvas.shapes.redraw()
         self.app.plotcanvas.auto_adjust_axes()
 
     def serialize(self):
