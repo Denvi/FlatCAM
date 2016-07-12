@@ -619,17 +619,17 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
                 self.shapes.add(poly, color='#006E20BF', face_color=color)
 
-                # TODO: Too many things hardcoded.
-                try:
-                    patch = PolygonPatch(poly,
-                                         facecolor="#BBF268",
-                                         edgecolor="#006E20",
-                                         alpha=0.75,
-                                         zorder=2)
-                    self.axes.add_patch(patch)
-                except AssertionError:
-                    FlatCAMApp.App.log.warning("A geometry component was not a polygon:")
-                    FlatCAMApp.App.log.warning(str(poly))
+                # # TODO: Too many things hardcoded.
+                # try:
+                #     patch = PolygonPatch(poly,
+                #                          facecolor="#BBF268",
+                #                          edgecolor="#006E20",
+                #                          alpha=0.75,
+                #                          zorder=2)
+                #     self.axes.add_patch(patch)
+                # except AssertionError:
+                #     FlatCAMApp.App.log.warning("A geometry component was not a polygon:")
+                #     FlatCAMApp.App.log.warning(str(poly))
         else:
             for poly in geometry:
                 if self.options["multicolored"]:
@@ -639,14 +639,14 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
                 self.shapes.add(poly, color=color)
 
-                x, y = poly.exterior.xy
-                self.axes.plot(x, y, linespec)
-                for ints in poly.interiors:
-                    x, y = ints.coords.xy
-                    self.axes.plot(x, y, linespec)
+                # x, y = poly.exterior.xy
+                # self.axes.plot(x, y, linespec)
+                # for ints in poly.interiors:
+                #     x, y = ints.coords.xy
+                #     self.axes.plot(x, y, linespec)
 
         self.shapes.redraw()
-        self.app.plotcanvas.auto_adjust_axes()
+        # self.app.plotcanvas.auto_adjust_axes()
 
     def serialize(self):
         return {
@@ -980,21 +980,27 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # Plot excellon (All polygons?)
         if self.options["solid"]:
             for geo in self.solid_geometry:
-                patch = PolygonPatch(geo,
-                                     facecolor="#C40000",
-                                     edgecolor="#750000",
-                                     alpha=0.75,
-                                     zorder=3)
-                self.axes.add_patch(patch)
+                self.shapes.add(geo, color='#750000BF', face_color='#C40000BF')
+
+                # patch = PolygonPatch(geo,
+                #                      facecolor="#C40000",
+                #                      edgecolor="#750000",
+                #                      alpha=0.75,
+                #                      zorder=3)
+                # self.axes.add_patch(patch)
         else:
             for geo in self.solid_geometry:
-                x, y = geo.exterior.coords.xy
-                self.axes.plot(x, y, 'r-')
-                for ints in geo.interiors:
-                    x, y = ints.coords.xy
-                    self.axes.plot(x, y, 'g-')
+                self.shapes.add(geo.exterior, color='red')
 
-        self.app.plotcanvas.auto_adjust_axes()
+                # x, y = geo.exterior.coords.xy
+                # self.axes.plot(x, y, 'r-')
+                for ints in geo.interiors:
+                    self.shapes.add(ints, color='green')
+                    # x, y = ints.coords.xy
+                    # self.axes.plot(x, y, 'g-')
+
+        self.shapes.redraw()
+        # self.app.plotcanvas.auto_adjust_axes()
 
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
@@ -1153,7 +1159,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(self.axes, tooldia=self.options["tooldia"])
+        self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes)
 
         self.app.plotcanvas.auto_adjust_axes()
 
@@ -1486,21 +1492,23 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         except TypeError:  # Element is not iterable...
 
-            if type(element) == Polygon:
-                x, y = element.exterior.coords.xy
-                self.axes.plot(x, y, 'r-')
-                for ints in element.interiors:
-                    x, y = ints.coords.xy
-                    self.axes.plot(x, y, 'r-')
-                return
+            self.shapes.add(element, color='red')
 
-            if type(element) == LineString or type(element) == LinearRing:
-                self.app.plotcanvas.vispy_canvas.shapes.add(element)
-                x, y = element.coords.xy
-                self.axes.plot(x, y, 'r-')
-                return
-
-            FlatCAMApp.App.log.warning("Did not plot:" + str(type(element)))
+            # if type(element) == Polygon:
+            #     x, y = element.exterior.coords.xy
+            #     self.axes.plot(x, y, 'r-')
+            #     for ints in element.interiors:
+            #         x, y = ints.coords.xy
+            #         self.axes.plot(x, y, 'r-')
+            #     return
+            #
+            # if type(element) == LineString or type(element) == LinearRing:
+            #     self.app.plotcanvas.vispy_canvas.shapes.add(element)
+            #     x, y = element.coords.xy
+            #     self.axes.plot(x, y, 'r-')
+            #     return
+            #
+            # FlatCAMApp.App.log.warning("Did not plot:" + str(type(element)))
 
     def plot(self):
         """
@@ -1552,5 +1560,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         #     FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
         self.plot_element(self.solid_geometry)
+        self.shapes.redraw()
 
-        self.app.plotcanvas.auto_adjust_axes()
+        # self.app.plotcanvas.auto_adjust_axes()

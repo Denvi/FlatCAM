@@ -296,6 +296,9 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
         self.beginResetModel()
 
+        for obj in self.object_list:
+            obj.clear_shapes(update=True)
+
         self.object_list = []
         self.checked_indexes = []
 

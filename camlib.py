@@ -45,11 +45,11 @@ import simplejson as json
 #from matplotlib.pyplot import plot, subplot
 
 import xml.etree.ElementTree as ET
-from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+# from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 import itertools
 
 import xml.etree.ElementTree as ET
-from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+# from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 
 
 from svgparse import *
@@ -3245,7 +3245,7 @@ class CNCjob(Geometry):
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
               color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
-              alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005):
+              alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005, shapes=None):
         """
         Plots the G-code job onto the given axes.
 

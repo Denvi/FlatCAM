@@ -55,11 +55,11 @@ class ShapeCollectionVisual(CompoundVisual):
 
             if type(shape) == LineString:
                 # Prepare lines
-                pts = self._linestring_to_segments(np.array(simple.exterior))
+                pts = self._linestring_to_segments(np.array(simple))
 
             elif type(shape) == LinearRing:
                 # Prepare lines
-                pts = self._linearring_to_segments(np.array(simple.exterior))
+                pts = self._linearring_to_segments(np.array(simple))
 
             elif type(shape) == Polygon:
                 # Prepare polygon faces
