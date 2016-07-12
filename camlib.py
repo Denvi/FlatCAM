@@ -3244,7 +3244,7 @@ class CNCjob(Geometry):
     #     return fig
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
-              color={"T": ["#F0E24D", "#B5AB3A"], "C": ["#5E6CFF", "#4650BD"]},
+              color={"T": ["#F0E24D4C", "#B5AB3A4C"], "C": ["#5E6CFFFF", "#4650BDFF"]},
               alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005, shapes=None):
         """
         Plots the G-code job onto the given axes.
@@ -3265,24 +3265,28 @@ class CNCjob(Geometry):
         
         if tooldia == 0:
             for geo in self.gcode_parsed:
-                linespec = '--'
+                # linespec = '--'
                 linecolor = color[geo['kind'][0]][1]
-                if geo['kind'][0] == 'C':
-                    linespec = 'k-'
-                x, y = geo['geom'].coords.xy
-                axes.plot(x, y, linespec, color=linecolor)
+                # if geo['kind'][0] == 'C':
+                #     linespec = 'k-'
+                # x, y = geo['geom'].coords.xy
+                # axes.plot(x, y, linespec, color=linecolor)
+                shapes.add(geo['geom'], color=linecolor)
         else:
             for geo in self.gcode_parsed:
-                path_num += 1
-                axes.annotate(str(path_num), xy=geo['geom'].coords[0],
-                              xycoords='data')
+                # path_num += 1
+                # axes.annotate(str(path_num), xy=geo['geom'].coords[0],
+                #               xycoords='data')
 
-                poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
-                                     edgecolor=color[geo['kind'][0]][1],
-                                     alpha=alpha[geo['kind'][0]], zorder=2)
-                axes.add_patch(patch)
-        
+                if geo['kind'][0] == 'C':
+                    poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
+                    # patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
+                    #                      edgecolor=color[geo['kind'][0]][1],
+                    #                      alpha=alpha[geo['kind'][0]], zorder=2)
+                    # axes.add_patch(patch)
+                    # shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
+                    shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
+
     def create_geometry(self):
         # TODO: This takes forever. Too much data?
         self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])

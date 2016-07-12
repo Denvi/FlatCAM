@@ -1161,7 +1161,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes)
 
-        self.app.plotcanvas.auto_adjust_axes()
+        self.shapes.redraw()
+        # self.app.plotcanvas.auto_adjust_axes()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)

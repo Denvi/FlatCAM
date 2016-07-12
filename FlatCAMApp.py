@@ -100,7 +100,7 @@ class App(QtCore.QObject):
     # Emitted by new_object() and passes the new object as argument.
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
-    object_created = QtCore.pyqtSignal(object)
+    object_created = QtCore.pyqtSignal(object, bool)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -1027,7 +1027,7 @@ class App(QtCore.QObject):
 
         # Move the object to the main thread and let the app know that it is available.
         obj.moveToThread(QtGui.QApplication.instance().thread())
-        self.object_created.emit(obj)
+        self.object_created.emit(obj, plot)
 
         return obj
 
@@ -1482,7 +1482,7 @@ class App(QtCore.QObject):
     def on_row_activated(self, index):
         self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
-    def on_object_created(self, obj):
+    def on_object_created(self, obj, plot):
         """
         Event callback for object creation.
 
@@ -1497,7 +1497,8 @@ class App(QtCore.QObject):
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
-        obj.plot()
+        if plot:
+            obj.plot()
         self.on_zoom_fit(None)
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))

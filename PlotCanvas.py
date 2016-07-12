@@ -152,6 +152,7 @@ class PlotCanvas(QtCore.QObject):
         # Attach to parent
         #self.container.attach(self.canvas, 0, 0, 600, 400)  # TODO: Height and width are num. columns??
         # self.container.addWidget(self.canvas)  # Qt
+        conf = {'samples': 8}
         self.vispy_canvas = VisPyCanvas()
         self.vispy_canvas.create_native()
         self.vispy_canvas.native.setParent(self.app.ui)

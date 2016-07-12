@@ -6,8 +6,8 @@ from vispy.geometry import Rect
 
 class VisPyCanvas(scene.SceneCanvas):
 
-    def __init__(self):
-        scene.SceneCanvas.__init__(self, keys=None)
+    def __init__(self, config=None):
+        scene.SceneCanvas.__init__(self, keys=None, config=config)
         self.unfreeze()
 
         back_color = str(QPalette().color(QPalette.Window).name())
@@ -41,7 +41,11 @@ class VisPyCanvas(scene.SceneCanvas):
         xaxis.link_view(view)
         yaxis.link_view(view)
 
-        # self.shapes = ShapeCollection(parent=view.scene)
+        # shapes = scene.Line(parent=view.scene)
+        # view.add(shapes)
+
+        print "config", self.context.config
+
         self.view = view
         self.freeze()
 

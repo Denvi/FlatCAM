@@ -13,14 +13,33 @@ class ShapeCollectionVisual(CompoundVisual):
         self.last_key = -1
 
         self._mesh = MeshVisual()
-        self._line = LineVisual()
+        self._line = LineVisual(antialias=True)
         self._line_width = line_width
 
         CompoundVisual.__init__(self, [self._mesh, self._line], **kwargs)
         self._mesh.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
+        self._line.set_gl_state(blend=True)
         self.freeze()
 
+    def __del__(self):
+        print "ShapeCollection destructed"
+
     def add(self, shape, color=None, face_color=None, update=False):
+        """Adds geometry object to collection
+
+        Args:
+            shape: shapely.geometry
+                Shapely geometry object
+            color: tuple
+                Line (polygon edge) color
+            face_color: tuple
+                Polygon fill color
+            update: bool
+                Set to redraw collection
+
+        Returns: int
+
+        """
         self.last_key += 1
         self.data[self.last_key] = shape, color, face_color
         if update:
@@ -48,7 +67,7 @@ class ShapeCollectionVisual(CompoundVisual):
         # Creating arrays for mesh and line from all shapes
         for shape, color, face_color in self.data.values():
 
-            simple = shape.simplify(0.01)   # Simplified shape
+            simple = shape.simplify(0.01, preserve_topology=False)   # Simplified shape
             pts = np.empty((0, 2))          # Shape line points
             tri_pts = np.empty((0, 2))      # Mesh vertices
             tri_tris = np.empty((0, 3))     # Mesh faces
@@ -103,6 +122,7 @@ class ShapeCollectionVisual(CompoundVisual):
 
         # Updating line
         if len(line_pts) > 0:
+            set_state(blend=True, blend_func=('src_alpha', 'one_minus_src_alpha'))
             self._line.set_data(line_pts, line_colors, self._line_width, 'segments')
         else:
             self._line._bounds = None
@@ -129,12 +149,10 @@ class ShapeCollectionVisual(CompoundVisual):
         return self._linestring_to_segments(arr)
 
     def _linestring_to_segments(self, arr):
-        lines = []
-        for pnt in range(0, len(arr) - 1):
-            lines.append(arr[pnt])
-            lines.append(arr[pnt + 1])
+        return np.array(np.repeat(arr, 2, axis=0)[1:-1])
 
-        return np.array(lines)
+    def _compute_bounds(self, axis, view):
+        return self._line._compute_bounds(axis, view)
 
     def redraw(self):
         self._update()

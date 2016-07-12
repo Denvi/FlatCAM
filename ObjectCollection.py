@@ -215,6 +215,8 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.beginRemoveRows(QtCore.QModelIndex(), row, row)
 
         self.object_list[row].clear_shapes(update=True)
+        # del self.object_list[row].shapes                    # TODO: Check object deletion
+        # self.object_list[row].shapes = None
         self.object_list.pop(row)
 
         self.endRemoveRows()
