@@ -1521,6 +1521,8 @@ class App(QtCore.QObject):
         ymax += 0.05 * height
         self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
+        self.plotcanvas.vispy_canvas.fit_view()
+
     def on_key_over_plot(self, event):
         """
         Callback for the key pressed event when the canvas is focused. Keyboard

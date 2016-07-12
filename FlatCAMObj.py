@@ -7,6 +7,7 @@ import inspect  # TODO: For debugging only.
 from camlib import *
 from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
+from VisPyVisuals import ShapeCollection
 
 
 ########################################
@@ -41,6 +42,8 @@ class FlatCAMObj(QtCore.QObject):
 
         self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
+
+        self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
 
         self.muted_ui = False
 
@@ -251,11 +254,16 @@ class FlatCAMObj(QtCore.QObject):
         if not self.options["plot"]:
             self.axes.cla()
             self.app.plotcanvas.auto_adjust_axes()
+            self.clear_shapes(update=True)
             return False
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
+        self.clear_shapes()
         return True
+
+    def clear_shapes(self, update=False):
+        self.shapes.clear(update=update)
 
     def serialize(self):
         """
@@ -604,7 +612,13 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
 
         if self.options["solid"]:
             for poly in geometry:
-                self.app.plotcanvas.vispy_canvas.shapes.add(poly)
+                if self.options["multicolored"]:
+                    color = (np.random.sample(1), np.random.sample(1), np.random.sample(1), 0.75)
+                else:
+                    color = '#BBF268BF'
+
+                self.shapes.add(poly, color='#006E20BF', face_color=color)
+
                 # TODO: Too many things hardcoded.
                 try:
                     patch = PolygonPatch(poly,
@@ -618,13 +632,20 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     FlatCAMApp.App.log.warning(str(poly))
         else:
             for poly in geometry:
+                if self.options["multicolored"]:
+                    color = (np.random.sample(1), np.random.sample(1), np.random.sample(1), 1.0)
+                else:
+                    color = 'black'
+
+                self.shapes.add(poly, color=color)
+
                 x, y = poly.exterior.xy
                 self.axes.plot(x, y, linespec)
                 for ints in poly.interiors:
                     x, y = ints.coords.xy
                     self.axes.plot(x, y, linespec)
 
-        self.app.plotcanvas.vispy_canvas.shapes.redraw()
+        self.shapes.redraw()
         self.app.plotcanvas.auto_adjust_axes()
 
     def serialize(self):
