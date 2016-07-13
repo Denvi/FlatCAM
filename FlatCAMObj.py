@@ -119,25 +119,25 @@ class FlatCAMObj(QtCore.QObject):
         :rtype: None
         """
 
-        if self.axes is None:
-            FlatCAMApp.App.log.debug("setup_axes(): New axes")
-            self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
-                                        label=self.options["name"])
-        elif self.axes not in figure.axes:
-            FlatCAMApp.App.log.debug("setup_axes(): Clearing and attaching axes")
-            self.axes.cla()
-            figure.add_axes(self.axes)
-        else:
-            FlatCAMApp.App.log.debug("setup_axes(): Clearing Axes")
-            self.axes.cla()
-
-        # Remove all decoration. The app's axes will have
-        # the ticks and grid.
-        self.axes.set_frame_on(False)  # No frame
-        self.axes.set_xticks([])  # No tick
-        self.axes.set_yticks([])  # No ticks
-        self.axes.patch.set_visible(False)  # No background
-        self.axes.set_aspect(1)
+        # if self.axes is None:
+        #     FlatCAMApp.App.log.debug("setup_axes(): New axes")
+        #     self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
+        #                                 label=self.options["name"])
+        # elif self.axes not in figure.axes:
+        #     FlatCAMApp.App.log.debug("setup_axes(): Clearing and attaching axes")
+        #     self.axes.cla()
+        #     figure.add_axes(self.axes)
+        # else:
+        #     FlatCAMApp.App.log.debug("setup_axes(): Clearing Axes")
+        #     self.axes.cla()
+        #
+        # # Remove all decoration. The app's axes will have
+        # # the ticks and grid.
+        # self.axes.set_frame_on(False)  # No frame
+        # self.axes.set_xticks([])  # No tick
+        # self.axes.set_yticks([])  # No ticks
+        # self.axes.patch.set_visible(False)  # No background
+        # self.axes.set_aspect(1)
 
     def to_form(self):
         """
@@ -249,17 +249,17 @@ class FlatCAMObj(QtCore.QObject):
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
         # Axes must exist and be attached to canvas.
-        if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
-            self.axes = self.app.plotcanvas.new_axes(self.options['name'])
+        # if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
+        #     self.axes = self.app.plotcanvas.new_axes(self.options['name'])
 
         if not self.options["plot"]:
-            self.axes.cla()
-            self.app.plotcanvas.auto_adjust_axes()
+            # self.axes.cla()
+            # self.app.plotcanvas.auto_adjust_axes()
             self.clear_shapes(update=True)
             return False
 
         # Clear axes or we will plot on top of them.
-        self.axes.cla()  # TODO: Thread safe?
+        # self.axes.cla()  # TODO: Thread safe?
         # self.clear_shapes()
         return True
 
@@ -1562,6 +1562,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         #     FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
         self.plot_element(self.solid_geometry)
-        self.shapes.redraw()
+        # self.shapes.redraw()
 
         # self.app.plotcanvas.auto_adjust_axes()
