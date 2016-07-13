@@ -19,7 +19,7 @@ from numpy.linalg import solve
 #from mpl_toolkits.axes_grid.anchored_artists import AnchoredDrawingArea
 
 from rtree import index as rtindex
-
+from VisPyVisuals import ShapeCollection
 
 class BufferSelectionTool(FlatCAMTool):
     """
@@ -697,6 +697,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.active_tool = None
 
         self.storage = FlatCAMDraw.make_storage()
+        self.shapes = ShapeCollection()
+        self.tool_shape = ShapeCollection()
         self.utility = []
 
         ## List of selected shapes.
@@ -749,7 +751,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
 
     def activate(self):
-        pass
+        self.shapes.parent = self.canvas.vispy_canvas.view.scene
+        self.tool_shape.parent = self.canvas.vispy_canvas.view.scene
 
     def connect_canvas_event_handlers(self):
         ## Canvas events
@@ -757,6 +760,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.cid_canvas_move = self.canvas.mpl_connect('motion_notify_event', self.on_canvas_move)
         self.cid_canvas_key = self.canvas.mpl_connect('key_press_event', self.on_canvas_key)
         self.cid_canvas_key_release = self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
+
+        self.canvas.vis_connect('mouse_release', self.on_canvas_click)
+        self.canvas.vis_connect('mouse_move', self.on_canvas_move)
 
     def disconnect_canvas_event_handlers(self):
         self.canvas.mpl_disconnect(self.cid_canvas_click)
@@ -799,6 +805,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.clear()
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
+        self.shapes.parent = None
+        self.tool_shape.parent = None
 
     def delete_utility_geometry(self):
         #for_deletion = [shape for shape in self.shape_buffer if shape.utility]
@@ -847,6 +855,7 @@ class FlatCAMDraw(QtCore.QObject):
             "Expected a Geometry, got %s" % type(fcgeometry)
 
         self.deactivate()
+        self.activate()
 
         self.connect_canvas_event_handlers()
         self.select_tool("select")
@@ -896,10 +905,14 @@ class FlatCAMDraw(QtCore.QObject):
         :param event: Event object dispatched by Matplotlib
         :return: None
         """
+
+        pos = self.canvas.vispy_canvas.translate_coords(event.pos)
+
         # Selection with left mouse button
         if self.active_tool is not None and event.button is 1:
             # Dispatch event to active_tool
-            msg = self.active_tool.click(self.snap(event.xdata, event.ydata))
+            # msg = self.active_tool.click(self.snap(event.xdata, event.ydata))
+            msg = self.active_tool.click(self.snap(pos[0], pos[1]))
             self.app.info(msg)
 
             # If it is a shape generating tool
@@ -921,6 +934,10 @@ class FlatCAMDraw(QtCore.QObject):
         :param event: Event object dispatched by Matplotlib
         :return:
         """
+
+        pos = self.canvas.vispy_canvas.translate_coords(event.pos)
+        event.xdata, event.ydata = pos[0], pos[1]
+
         self.on_canvas_move_effective(event)
         return None
 
@@ -970,30 +987,38 @@ class FlatCAMDraw(QtCore.QObject):
         geo = self.active_tool.utility_geometry(data=(x, y))
 
         if isinstance(geo, DrawToolShape) and geo.geo is not None:
-
             # Remove any previous utility shape
-            self.delete_utility_geometry()
+            # self.delete_utility_geometry()
+            self.tool_shape.clear(update=True)
 
             # Add the new utility shape
-            self.add_shape(geo)
+            # self.add_shape(geo)
 
             # Efficient plotting for fast animation
 
             #self.canvas.canvas.restore_region(self.canvas.background)
-            elements = self.plot_shape(geometry=geo.geo,
-                                       linespec="b--",
-                                       linewidth=1,
-                                       animated=True)
-            for el in elements:
-                self.axes.draw_artist(el)
+            # elements = self.plot_shape(geometry=geo.geo,
+            #                            linespec="b--",
+            #                            linewidth=1,
+            #                            animated=True)
+            try:
+                for el in list(geo.geo):
+                    self.tool_shape.add(el, color='blue', update=False)
+            except TypeError:
+                self.tool_shape.add(geo.geo, color='blue', update=False)
+
+            self.tool_shape.redraw()
+
+            # for el in elements:
+            #     self.axes.draw_artist(el)
             #self.canvas.canvas.blit(self.axes.bbox)
 
         # Pointer (snapped)
-        elements = self.axes.plot(x, y, 'bo', animated=True)
-        for el in elements:
-                self.axes.draw_artist(el)
+        # elements = self.axes.plot(x, y, 'bo', animated=True)
+        # for el in elements:
+        #         self.axes.draw_artist(el)
 
-        self.canvas.canvas.blit(self.axes.bbox)
+        # self.canvas.canvas.blit(self.axes.bbox)
 
     def on_canvas_key(self, event):
         """
@@ -1132,6 +1157,8 @@ class FlatCAMDraw(QtCore.QObject):
                                                  linewidth=linewidth,
                                                  animated=animated)
 
+            self.shapes.add(geometry, color='red')
+
             if type(geometry) == LineString or type(geometry) == LinearRing:
                 x, y = geometry.coords.xy
                 element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
@@ -1154,6 +1181,7 @@ class FlatCAMDraw(QtCore.QObject):
         """
         self.app.log.debug("plot_all()")
         self.axes.cla()
+        self.shapes.clear(update=True)
 
         for shape in self.storage.get_objects():
             if shape.geo is None:  # TODO: This shouldn't have happened
@@ -1169,6 +1197,7 @@ class FlatCAMDraw(QtCore.QObject):
             self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)
             continue
 
+        self.shapes.redraw()
         self.canvas.auto_adjust_axes()
 
     def on_shape_complete(self):
@@ -1179,6 +1208,7 @@ class FlatCAMDraw(QtCore.QObject):
 
         # Remove any utility shapes
         self.delete_utility_geometry()
+        self.tool_shape.clear(update=True)
 
         # Replot and reset tool.
         self.replot()

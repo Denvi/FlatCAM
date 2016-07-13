@@ -211,6 +211,10 @@ class PlotCanvas(QtCore.QObject):
         """
         self.key = None
 
+    def vis_connect(self, event_name, callback):
+
+        return getattr(self.vispy_canvas.events, event_name).connect(callback)
+
     def mpl_connect(self, event_name, callback):
         """
         Attach an event handler to the canvas through the Matplotlib interface.

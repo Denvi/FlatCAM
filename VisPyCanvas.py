@@ -2,6 +2,8 @@ import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
 from vispy.geometry import Rect
+from vispy.app.canvas import MouseEvent
+from VisPyVisuals import ShapeCollection
 
 
 class VisPyCanvas(scene.SceneCanvas):
@@ -44,10 +46,16 @@ class VisPyCanvas(scene.SceneCanvas):
         # shapes = scene.Line(parent=view.scene)
         # view.add(shapes)
 
-        print "config", self.context.config
-
+        self.grid = grid1
         self.view = view
+        self.shapes = ShapeCollection(parent=view.scene)
         self.freeze()
+
+        self.measure_fps()
+
+    def translate_coords(self, pos):
+        tr = self.grid.get_transform('canvas', 'visual')
+        return tr.map(pos)
 
     def fit_view(self):
         rect = Rect()

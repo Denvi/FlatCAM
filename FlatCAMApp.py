@@ -192,6 +192,8 @@ class App(QtCore.QObject):
         self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
         self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
 
+        self.plotcanvas.vis_connect('mouse_move', self.on_mouse_move)
+
         self.ui.splitter.setStretchFactor(1, 2)
 
         ##############
@@ -1608,6 +1610,27 @@ class App(QtCore.QObject):
             self.ui.position_label.setText("")
             self.mouse = None
 
+    def on_mouse_move(self, event):
+        """
+        Callback for the mouse motion event over the plot. This event is generated
+        by the Matplotlib backend and has been registered in ``self.__init__()``.
+        For details, see: http://matplotlib.org/users/event_handling.html
+
+        :param event: Contains information about the event.
+        :return: None
+        """
+
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
+
+        try:  # May fail in case mouse not within axes
+            self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
+                pos[0], pos[1]))
+            self.mouse = [pos[0], pos[1]]
+
+        except:
+            self.ui.position_label.setText("")
+            self.mouse = None
+
     def on_file_new(self):
         """
         Callback for menu item File->New. Returns the application to its
@@ -2202,6 +2225,7 @@ class App(QtCore.QObject):
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
             self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
+        self.plotcanvas.vispy_canvas.shapes.redraw()
         # self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")

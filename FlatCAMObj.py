@@ -43,7 +43,8 @@ class FlatCAMObj(QtCore.QObject):
         self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
 
-        self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
+        # self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
+        self.shapes = self.app.plotcanvas.vispy_canvas.shapes
 
         self.muted_ui = False
 
@@ -259,7 +260,7 @@ class FlatCAMObj(QtCore.QObject):
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
-        self.clear_shapes()
+        # self.clear_shapes()
         return True
 
     def clear_shapes(self, update=False):
@@ -1161,7 +1162,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes)
 
-        self.shapes.redraw()
+        # self.shapes.redraw()
         # self.app.plotcanvas.auto_adjust_axes()
 
     def convert_units(self, units):

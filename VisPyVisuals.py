@@ -5,18 +5,26 @@ from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
 import numpy as np
-from shapely.ops import triangulate
-import Polygon as gpc
 
+try:
+    from shapely.ops import triangulate
+    import Polygon as gpc
+except:
+    pass
 
 class ShapeCollectionVisual(CompoundVisual):
-    def __init__(self, line_width=1, **kwargs):
+
+    total_segments = 0
+    total_tris = 0
+
+    def __init__(self, line_width=1, triangulation='gpc', **kwargs):
         self.data = {}
         self.last_key = -1
 
         self._mesh = MeshVisual()
         self._line = LineVisual(antialias=True)
         self._line_width = line_width
+        self._triangulation = triangulation
 
         CompoundVisual.__init__(self, [self._mesh, self._line], **kwargs)
         self._mesh.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
@@ -68,6 +76,8 @@ class ShapeCollectionVisual(CompoundVisual):
 
         # Creating arrays for mesh and line from all shapes
         for shape, color, face_color in self.data.values():
+            if shape is None or shape.is_empty:
+                continue
 
             simple = shape.simplify(0.01)   # Simplified shape
             pts = np.empty((0, 2))          # Shape line points
@@ -85,43 +95,50 @@ class ShapeCollectionVisual(CompoundVisual):
             elif type(shape) == Polygon:
                 # Prepare polygon faces
                 if face_color is not None:
-                    # Concatenated arrays of external & internal line rings
-                    # vertices = self._open_ring(np.array(simple.exterior))
-                    # edges = self._generate_edges(len(vertices))
-                    #
-                    # print "poly exterior pts:", len(vertices)
-                    #
-                    # for ints in simple.interiors:
-                    #     v = self._open_ring(np.array(ints))
-                    #     edges = np.append(edges, self._generate_edges(len(v)) + len(vertices), 0)
-                    #     vertices = np.append(vertices, v, 0)
-                    #
-                    #     print "poly interior pts:", len(v)
-                    #
-                    # tri = Triangulation(vertices, edges)
-                    # tri.triangulate()
-                    # tri_pts, tri_tris = tri.pts, tri.tris
+
+                    if self._triangulation == 'vispy':
+                        # VisPy triangulation
+                        # Concatenated arrays of external & internal line rings
+                        vertices = self._open_ring(np.array(simple.exterior))
+                        edges = self._generate_edges(len(vertices))
+
+                        print "poly exterior pts:", len(vertices)
+
+                        for ints in simple.interiors:
+                            v = self._open_ring(np.array(ints))
+                            edges = np.append(edges, self._generate_edges(len(v)) + len(vertices), 0)
+                            vertices = np.append(vertices, v, 0)
+
+                            print "poly interior pts:", len(v)
+
+                        tri = Triangulation(vertices, edges)
+                        tri.triangulate()
+                        tri_pts, tri_tris = tri.pts, tri.tris
+                    elif self._triangulation == 'gpc':
+
+                        # GPC triangulation
+                        p = gpc.Polygon(np.asarray(simple.exterior))
+
+                        for ints in simple.interiors:
+                            q = gpc.Polygon(np.asarray(ints))
+                            p -= q
+
+                        tri_pts = np.empty((0, 2))
+                        tri_tris = np.empty((0, 3))
+
+                        for strip in p.triStrip():
+                            # Generate tris indexes for triangle strips
+                            a = np.repeat(np.arange(0, len(strip) - 2), 3).reshape((-1, 3))
+                            a[:, 1] += 1
+                            a[:, 2] += 2
+
+                            # Append vertices & tris
+                            tri_tris = np.append(tri_tris, a + len(tri_pts), 0)
+                            tri_pts = np.append(tri_pts, np.asarray(strip), 0)
 
                     # Shapely triangulation
                     # tri_pts = np.array(map(lambda x: np.array(x.exterior)[:-1], triangulate(shape))).reshape(-1, 2)
                     # tri_tris = np.arange(0, len(tri_pts), dtype=np.uint32).reshape((-1, 3))
-
-                    p = gpc.Polygon(np.asarray(simple.exterior))
-
-                    for ints in simple.interiors:
-                        q = gpc.Polygon(np.asarray(ints))
-                        p -= q
-
-                    tri_pts = np.empty((0, 2))
-                    tri_tris = np.empty((0, 3))
-
-                    for strip in p.triStrip():
-                        a = np.repeat(np.arange(0, len(strip) - 2), 3).reshape((-1, 3))
-                        a[:, 1] += 1
-                        a[:, 2] += 2
-
-                        tri_tris = np.append(tri_tris, a + len(tri_pts), 0)
-                        tri_pts = np.append(tri_pts, np.asarray(strip), 0)
 
                 # Prepare polygon edges
                 if color is not None:
@@ -149,6 +166,9 @@ class ShapeCollectionVisual(CompoundVisual):
         if len(mesh_vertices) > 0:
             set_state(polygon_offset_fill=False)
             self._mesh.set_data(mesh_vertices, mesh_tris.astype(np.uint32), face_colors=mesh_colors)
+
+            self.total_tris += len(mesh_tris)
+
         else:
             self._mesh.set_data()
 
@@ -156,6 +176,9 @@ class ShapeCollectionVisual(CompoundVisual):
         if len(line_pts) > 0:
             set_state(blend=True, blend_func=('src_alpha', 'one_minus_src_alpha'))
             self._line.set_data(line_pts, line_colors, self._line_width, 'segments')
+
+            self.total_segments += len(line_pts) / 2
+
         else:
             self._line._bounds = None
             self._line._pos = None
@@ -173,7 +196,6 @@ class ShapeCollectionVisual(CompoundVisual):
         return edges
 
     def _linearring_to_segments(self, arr):
-
         # Close linear ring
         if np.any(arr[0] != arr[-1]):
             arr = np.concatenate([arr, arr[:1]], axis=0)
@@ -188,6 +210,7 @@ class ShapeCollectionVisual(CompoundVisual):
 
     def redraw(self):
         self._update()
+        print "total:", self.total_segments, self.total_tris
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)
