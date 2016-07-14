@@ -18,7 +18,9 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import FlatCAMApp
 import logging
 from VisPyCanvas import VisPyCanvas
-from VisPyVisuals import ShapeGroup
+from VisPyVisuals import ShapeGroup, ShapeCollection
+from vispy.scene.visuals import Markers
+import numpy as np
 
 log = logging.getLogger('base')
 
@@ -213,8 +215,10 @@ class PlotCanvas(QtCore.QObject):
         self.key = None
 
     def vis_connect(self, event_name, callback):
-
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
+
+    def vis_disconnect(self, event_name, callback):
+        getattr(self.vispy_canvas.events, event_name).disconnect(callback)
 
     def mpl_connect(self, event_name, callback):
         """
@@ -416,6 +420,12 @@ class PlotCanvas(QtCore.QObject):
 
     def new_shape_group(self):
         return ShapeGroup(self.vispy_canvas.shape_collection)
+
+    def new_shape_collection(self):
+        return ShapeCollection()
+
+    def new_cursor(self):
+        return Markers(pos=np.empty((0, 2)))
 
     def on_scroll(self, event):
         """

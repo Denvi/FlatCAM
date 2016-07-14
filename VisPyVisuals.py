@@ -20,7 +20,7 @@ class ShapeGroup(object):
         self._indexes = []
         self._visible = True
 
-    def add(self, shape, color=None, face_color=None, visible=None, update=False):
+    def add(self, shape, color=None, face_color=None, visible=True, update=False):
         self._indexes.append(self._collection.add(shape, color, face_color, visible, update))
 
     def clear(self, update=False):
@@ -263,8 +263,8 @@ class ShapeCollectionVisual(CompoundVisual):
         return self._line._compute_bounds(axis, view)
 
     def redraw(self):
+        print "redrawing collection", len(self.data)
         self._update()
-        print "total:", self.total_segments, self.total_tris
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)

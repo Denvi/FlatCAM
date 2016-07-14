@@ -612,12 +612,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if self.options["solid"]:
             for poly in geometry:
                 if self.options["multicolored"]:
-                    # TODO: Rework random color generation
-                    color = (np.random.sample(1), np.random.sample(1), np.random.sample(1), 0.75)
+                    face_color = np.random.rand(4)
+                    face_color[3] = 1
                 else:
-                    color = '#BBF268BF'
+                    face_color = '#BBF268BF'
 
-                self.shapes.add(poly, color='#006E20BF', face_color=color, visible=self.options['plot'])
+                self.shapes.add(poly, color='#006E20BF', face_color=face_color, visible=self.options['plot'])
 
                 # # TODO: Too many things hardcoded.
                 # try:
@@ -633,7 +633,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         else:
             for poly in geometry:
                 if self.options["multicolored"]:
-                    color = (np.random.sample(1), np.random.sample(1), np.random.sample(1), 1.0)
+                    color = np.random.rand(4)
+                    color[3] = 1
                 else:
                     color = 'black'
 
