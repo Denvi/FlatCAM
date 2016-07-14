@@ -189,7 +189,6 @@ class ShapeCollectionVisual(CompoundVisual):
             self._update()
 
     def _update(self):
-
         mesh_vertices = []                  # Vertices for mesh
         mesh_tris = []                      # Faces for mesh
         mesh_colors = []                    # Face colors

@@ -631,10 +631,12 @@ class App(QtCore.QObject):
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
+
             for obj in self.collection.get_list():
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
-                    obj.plot()
+                    # obj.plot()
+                    obj.shapes.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -1460,8 +1462,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
-        print "plots updated"
         self.plotcanvas.auto_adjust_axes()
+        self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
     def on_toolbar_replot(self):
@@ -1515,7 +1517,6 @@ class App(QtCore.QObject):
         :param event: Ignored.
         :return: None
         """
-        print "on_zoom_fit"
         # xmin, ymin, xmax, ymax = self.collection.get_bounds()
         # width = xmax - xmin
         # height = ymax - ymin
@@ -2224,10 +2225,9 @@ class App(QtCore.QObject):
             def obj_init(obj_inst, app_inst):
                 obj_inst.from_dict(obj)
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
-            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
+            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=False)
 
-        # self.plot_all()
-        self.on_zoom_fit(None)
+        self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
 
@@ -4165,7 +4165,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.options['plot'] = True
-                obj.plot()
+                obj.shapes.visible = True
+                # obj.plot()
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
