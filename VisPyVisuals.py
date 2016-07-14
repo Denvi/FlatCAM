@@ -67,9 +67,6 @@ class ShapeCollectionVisual(CompoundVisual):
         self._line.set_gl_state(blend=True)
         self.freeze()
 
-    def __del__(self):
-        print "ShapeCollection destructed"
-
     def add(self, shape, color=None, face_color=None, visible=True, update=False):
         """Adds geometry object to collection
 
@@ -80,6 +77,8 @@ class ShapeCollectionVisual(CompoundVisual):
                 Line (polygon edge) color
             face_color: tuple
                 Polygon fill color
+            visible: bool
+                Set to draw shape
             update: bool
                 Set to redraw collection
 
@@ -212,7 +211,6 @@ class ShapeCollectionVisual(CompoundVisual):
         # Updating mesh
         if len(mesh_vertices) > 0:
             set_state(polygon_offset_fill=False)
-            print "set mesh data", len(mesh_vertices)
             self._mesh.set_data(np.asarray(mesh_vertices), np.asarray(mesh_tris, dtype=np.uint32),
                                 face_colors=np.asarray(mesh_colors))
 
@@ -230,7 +228,7 @@ class ShapeCollectionVisual(CompoundVisual):
             self._line._changed['pos'] = True
             self._line.update()
 
-        # self._line._bounds_changed()
+        self._line._bounds_changed()
         self._mesh._bounds_changed()
         self._bounds_changed()
 

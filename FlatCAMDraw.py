@@ -754,6 +754,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
 
     def activate(self):
+
+        print "activate"
         parent = self.canvas.vispy_canvas.view.scene
         self.shapes.parent = parent
         self.tool_shape.parent = parent
@@ -819,6 +821,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
         # Hide vispy visuals
+
+        print "deactivate"
+
         if self.shapes.parent is not None:
             self.shapes.parent = None
             self.tool_shape.parent = None

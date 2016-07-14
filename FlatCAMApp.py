@@ -1502,7 +1502,7 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         if plot:
             obj.plot()
-        # self.on_zoom_fit(None)
+        self.on_zoom_fit(None)
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 

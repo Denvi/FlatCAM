@@ -2,13 +2,29 @@ import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
 from vispy.geometry import Rect
-from vispy.app.canvas import MouseEvent
+from vispy.scene.widgets import Widget, Grid
 from VisPyVisuals import ShapeCollection
+
+
+# Patch VisPy Grid to prevent updating layout on PaintGL
+def _prepare_draw(self, view):
+    pass
+
+def _update_clipper(self):
+    super(Grid, self)._update_clipper()
+    try:
+        self._update_child_widget_dim()
+    except Exception as e:
+        print e
+
+Grid._prepare_draw = _prepare_draw
+Grid._update_clipper = _update_clipper
 
 
 class VisPyCanvas(scene.SceneCanvas):
 
     def __init__(self, config=None):
+
         scene.SceneCanvas.__init__(self, keys=None, config=config)
         self.unfreeze()
 
@@ -60,9 +76,8 @@ class VisPyCanvas(scene.SceneCanvas):
     def fit_view(self):
         rect = Rect(-1, -1, 10, 10)
         try:
-            rect.left, rect.right = self.shape_collection.bounds(axis=0, view=self.shape_collection)
-            rect.bottom, rect.top = self.shape_collection.bounds(axis=1, view=self.shape_collection)
+            rect.left, rect.right = self.shape_collection.bounds(axis=0)
+            rect.bottom, rect.top = self.shape_collection.bounds(axis=1)
         except TypeError:
             pass
         self.view.camera.rect = rect
-        print "fit_view", rect
