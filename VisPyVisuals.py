@@ -17,7 +17,7 @@ class ShapeCollectionVisual(CompoundVisual):
     total_segments = 0
     total_tris = 0
 
-    def __init__(self, line_width=1, triangulation='gpc', **kwargs):
+    def __init__(self, line_width=1, triangulation='vispy', **kwargs):
         self.data = {}
         self.last_key = -1
 
@@ -67,17 +67,12 @@ class ShapeCollectionVisual(CompoundVisual):
             self._update()
 
     def _update(self):
-        # mesh_vertices = np.empty((0, 2))    # Vertices for mesh
-        mesh_vertices = []
-        # mesh_tris = np.empty((0, 3))        # Faces for mesh
-        mesh_tris = []
-        # mesh_colors = np.empty((0, 4))      # Face colors
-        mesh_colors = []
+        mesh_vertices = []                  # Vertices for mesh
+        mesh_tris = []                      # Faces for mesh
+        mesh_colors = []                    # Face colors
 
-        # line_pts = np.empty((0, 2))         # Vertices for line
-        line_pts = []
-        # line_colors = np.empty((0, 4))      # Line color
-        line_colors = []
+        line_pts = []                       # Vertices for line
+        line_colors = []                    # Line color
 
         # Creating arrays for mesh and line from all shapes
         for shape, color, face_color in self.data.values():
@@ -85,12 +80,9 @@ class ShapeCollectionVisual(CompoundVisual):
                 continue
 
             simple = shape.simplify(0.01)   # Simplified shape
-            # pts = np.empty((0, 2))          # Shape line points
-            pts = []
-            # tri_pts = np.empty((0, 2))      # Mesh vertices
-            tri_pts = []
-            # tri_tris = np.empty((0, 3))     # Mesh faces
-            tri_tris = []
+            pts = []                        # Shape line points
+            tri_pts = []                    # Mesh vertices
+            tri_tris = []                   # Mesh faces
 
             if type(shape) == LineString:
                 # Prepare lines
@@ -120,7 +112,8 @@ class ShapeCollectionVisual(CompoundVisual):
 
                         tri = Triangulation(vertices, edges)
                         tri.triangulate()
-                        tri_pts, tri_tris = tri.pts, tri.tris
+                        tri_pts, tri_tris = tri.pts.tolist(), tri.tris.tolist()
+
                     elif self._triangulation == 'gpc':
 
                         # GPC triangulation
@@ -132,34 +125,22 @@ class ShapeCollectionVisual(CompoundVisual):
 
                         for strip in p.triStrip():
                             # Generate tris indexes for triangle strips
-                            a = (np.repeat(np.arange(0, len(strip) - 2), 3).reshape((-1, 3)) + (0, 1, 2)).tolist()
-                            # a = [[x + y for x in range(0, 3)] for y in range(0, len(strip) - 2)]
+                            a = [[x + y for x in range(0, 3)] for y in range(0, len(strip) - 2)]
 
                             # Append vertices & tris
-                            # tri_tris = np.append(tri_tris, a + len(tri_pts), 0)
                             tri_tris += [[x + len(tri_pts) for x in y] for y in a]
-                            # tri_pts = np.append(tri_pts, np.asarray(strip), 0)
                             tri_pts += strip
-
-                    # Shapely triangulation
-                    # tri_pts = np.array(map(lambda x: np.array(x.exterior)[:-1], triangulate(shape))).reshape(-1, 2)
-                    # tri_tris = np.arange(0, len(tri_pts), dtype=np.uint32).reshape((-1, 3))
 
                 # Prepare polygon edges
                 if color is not None:
                     pts = self._linearring_to_segments(np.asarray(simple.exterior)).tolist()
-                    # pts = self._linearring_to_segments(np.asarray(simple.exterior))
                     for ints in simple.interiors:
-                        # pts = np.append(pts, self._linearring_to_segments(np.asarray(ints)), 0)
                         pts += self._linearring_to_segments(np.asarray(ints)).tolist()
 
             # Appending data for mesh
             if len(tri_pts) > 0 and len(tri_tris) > 0:
-                # mesh_tris = np.append(mesh_tris, tri_tris + len(mesh_vertices), 0)
                 mesh_tris += [[x + len(mesh_vertices) for x in y] for y in tri_tris]
-                # mesh_vertices = np.append(mesh_vertices, tri_pts, 0)
                 mesh_vertices += tri_pts
-                # mesh_colors = np.append(mesh_colors, np.full((len(tri_tris), 4), Color(face_color).rgba), 0)
                 mesh_colors += [Color(face_color).rgba] * len(tri_tris)
 
                 # Random face colors
@@ -169,18 +150,12 @@ class ShapeCollectionVisual(CompoundVisual):
 
             # Appending data for line
             if len(pts) > 0:
-                # line_pts = np.append(line_pts, pts, 0)
-                try:
-                    line_pts += pts
-                except ValueError as e:
-                    print "exception", pts
-                # line_colors = np.append(line_colors, np.full((len(pts), 4), Color(color).rgba), 0)
+                line_pts += pts
                 line_colors += [Color(color).rgba] * len(pts)
 
         # Updating mesh
         if len(mesh_vertices) > 0:
             set_state(polygon_offset_fill=False)
-            # self._mesh.set_data(mesh_vertices, mesh_tris.astype(np.uint32), face_colors=mesh_colors)
             self._mesh.set_data(np.asarray(mesh_vertices), np.asarray(mesh_tris, dtype=np.uint32),
                                 face_colors=np.asarray(mesh_colors))
 
