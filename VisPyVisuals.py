@@ -35,7 +35,6 @@ class ShapeGroup(object):
     def redraw(self):
         t0 = time.time()
         self._collection.redraw()
-        print "group redraw time:", time.time() - t0
 
     @property
     def visible(self):
@@ -193,9 +192,6 @@ class ShapeCollectionVisual(CompoundVisual):
 
     def _update(self):
 
-        print "updating shape collection"
-        t0 = time.time()
-
         mesh_vertices = []                  # Vertices for mesh
         mesh_tris = []                      # Faces for mesh
         mesh_colors = []                    # Face colors
@@ -228,16 +224,15 @@ class ShapeCollectionVisual(CompoundVisual):
         # Updating line
         if len(line_pts) > 0:
             self._line.set_data(np.asarray(line_pts), np.asarray(line_colors), self._line_width, 'segments')
-
-            self.total_segments += len(line_pts) / 2
-
         else:
             self._line._bounds = None
             self._line._pos = None
             self._line._changed['pos'] = True
             self._line.update()
 
-        print "update completed:", time.time() - t0
+        self._line._bounds_changed()
+        self._mesh._bounds_changed()
+        self._bounds_changed()
 
     def _open_ring(self, vertices):
         return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
@@ -259,11 +254,7 @@ class ShapeCollectionVisual(CompoundVisual):
     def _linestring_to_segments(self, arr):
         return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
 
-    def _compute_bounds(self, axis, view):
-        return self._line._compute_bounds(axis, view)
-
     def redraw(self):
-        print "redrawing collection", len(self.data)
         self._update()
 
 

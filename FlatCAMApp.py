@@ -1460,6 +1460,7 @@ class App(QtCore.QObject):
 
         :return: None
         """
+        print "plots updated"
         self.plotcanvas.auto_adjust_axes()
         self.on_zoom_fit(None)
 
@@ -1501,7 +1502,7 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         if plot:
             obj.plot()
-        self.on_zoom_fit(None)
+        # self.on_zoom_fit(None)
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
@@ -1514,15 +1515,15 @@ class App(QtCore.QObject):
         :param event: Ignored.
         :return: None
         """
-
-        xmin, ymin, xmax, ymax = self.collection.get_bounds()
-        width = xmax - xmin
-        height = ymax - ymin
-        xmin -= 0.05 * width
-        xmax += 0.05 * width
-        ymin -= 0.05 * height
-        ymax += 0.05 * height
-        self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
+        print "on_zoom_fit"
+        # xmin, ymin, xmax, ymax = self.collection.get_bounds()
+        # width = xmax - xmin
+        # height = ymax - ymin
+        # xmin -= 0.05 * width
+        # xmax += 0.05 * width
+        # ymin -= 0.05 * height
+        # ymax += 0.05 * height
+        # self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
         self.plotcanvas.vispy_canvas.fit_view()
 
@@ -2226,6 +2227,7 @@ class App(QtCore.QObject):
             self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
         # self.plot_all()
+        self.on_zoom_fit(None)
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
 
