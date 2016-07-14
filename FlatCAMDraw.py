@@ -819,9 +819,10 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
         # Hide vispy visuals
-        self.shapes.parent = None
-        self.tool_shape.parent = None
-        self.cursor.parent = None
+        if self.shapes.parent is not None:
+            self.shapes.parent = None
+            self.tool_shape.parent = None
+            self.cursor.parent = None
 
     def delete_utility_geometry(self):
         #for_deletion = [shape for shape in self.shape_buffer if shape.utility]
@@ -829,6 +830,9 @@ class FlatCAMDraw(QtCore.QObject):
         for_deletion = [shape for shape in self.utility]
         for shape in for_deletion:
             self.delete_shape(shape)
+
+        self.tool_shape.clear(update=True)
+        self.tool_shape.redraw()
 
     def cutpath(self):
         selected = self.get_selected()
@@ -1044,10 +1048,7 @@ class FlatCAMDraw(QtCore.QObject):
         :param event:
         :return:
         """
-
         self.key = event.key.name
-
-        print "key press", event.key.name
 
         ### Finish the current action. Use with tools that do not
         ### complete automatically, like a polygon or path.
@@ -1208,8 +1209,6 @@ class FlatCAMDraw(QtCore.QObject):
         self.shapes.clear(update=True)
 
         for shape in self.storage.get_objects():
-
-            print "plot shape", shape
 
             if shape.geo is None:  # TODO: This shouldn't have happened
                 continue
