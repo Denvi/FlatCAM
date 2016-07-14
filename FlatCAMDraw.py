@@ -1022,9 +1022,9 @@ class FlatCAMDraw(QtCore.QObject):
             #                            animated=True)
             try:
                 for el in list(geo.geo):
-                    self.tool_shape.add(el, color='blue', update=False)
+                    self.tool_shape.add(el, color='#00000080', update=False)
             except TypeError:
-                self.tool_shape.add(geo.geo, color='blue', update=False)
+                self.tool_shape.add(geo.geo, color='#00000080', update=False)
 
             self.tool_shape.redraw()
 

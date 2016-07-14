@@ -53,6 +53,9 @@ class FlatCAMObj(QtCore.QObject):
         # self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         # self.ui.scale_button.clicked.connect(self.on_scale_button_click)
 
+    def __del__(self):
+        pass
+
     def from_dict(self, d):
         """
         This supersedes ``from_dict`` in derived classes. Derived classes

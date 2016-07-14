@@ -60,8 +60,9 @@ class VisPyCanvas(scene.SceneCanvas):
     def fit_view(self):
         rect = Rect(-1, -1, 10, 10)
         try:
-            rect.left, rect.right = self.shape_collection.bounds(axis=0)
-            rect.bottom, rect.top = self.shape_collection.bounds(axis=1)
+            rect.left, rect.right = self.shape_collection.bounds(axis=0, view=self.shape_collection)
+            rect.bottom, rect.top = self.shape_collection.bounds(axis=1, view=self.shape_collection)
         except TypeError:
             pass
         self.view.camera.rect = rect
+        print "fit_view", rect

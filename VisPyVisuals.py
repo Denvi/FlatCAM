@@ -27,13 +27,12 @@ class ShapeGroup(object):
         for i in self._indexes:
             self._collection.remove(i, False)
 
-        self._indexes = []
+        del self._indexes[:]
 
         if update:
             self._collection.redraw()
 
     def redraw(self):
-        t0 = time.time()
         self._collection.redraw()
 
     @property
@@ -54,7 +53,7 @@ class ShapeCollectionVisual(CompoundVisual):
     total_segments = 0
     total_tris = 0
 
-    def __init__(self, line_width=1, triangulation='vispy', **kwargs):
+    def __init__(self, line_width=1, triangulation='gpc', **kwargs):
         self.data = {}
         self.last_key = -1
 
@@ -181,12 +180,12 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key]['mesh_colors'] = mesh_colors
 
     def remove(self, key, update=False):
-        del self.data[key]
+        self.data.pop(key)
         if update:
             self._update()
 
     def clear(self, update=False):
-        self.data = {}
+        self.data.clear()
         if update:
             self._update()
 
@@ -213,6 +212,7 @@ class ShapeCollectionVisual(CompoundVisual):
         # Updating mesh
         if len(mesh_vertices) > 0:
             set_state(polygon_offset_fill=False)
+            print "set mesh data", len(mesh_vertices)
             self._mesh.set_data(np.asarray(mesh_vertices), np.asarray(mesh_tris, dtype=np.uint32),
                                 face_colors=np.asarray(mesh_colors))
 
@@ -230,7 +230,7 @@ class ShapeCollectionVisual(CompoundVisual):
             self._line._changed['pos'] = True
             self._line.update()
 
-        self._line._bounds_changed()
+        # self._line._bounds_changed()
         self._mesh._bounds_changed()
         self._bounds_changed()
 
