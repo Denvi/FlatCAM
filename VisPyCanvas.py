@@ -48,7 +48,7 @@ class VisPyCanvas(scene.SceneCanvas):
 
         self.grid = grid1
         self.view = view
-        self.shapes = ShapeCollection(parent=view.scene)
+        self.shape_collection = ShapeCollection(parent=view.scene)
         self.freeze()
 
         self.measure_fps()

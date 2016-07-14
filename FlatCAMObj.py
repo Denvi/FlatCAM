@@ -44,7 +44,7 @@ class FlatCAMObj(QtCore.QObject):
         self.kind = None  # Override with proper name
 
         # self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
-        self.shapes = self.app.plotcanvas.vispy_canvas.shapes
+        self.shapes = self.app.plotcanvas.new_shape_group()
 
         self.muted_ui = False
 
@@ -252,19 +252,16 @@ class FlatCAMObj(QtCore.QObject):
         # if self.axes is None or self.axes not in self.app.plotcanvas.figure.axes:
         #     self.axes = self.app.plotcanvas.new_axes(self.options['name'])
 
-        if not self.options["plot"]:
-            # self.axes.cla()
-            # self.app.plotcanvas.auto_adjust_axes()
-            self.clear_shapes(update=True)
-            return False
+        # if not self.options["plot"]:
+        #     # self.axes.cla()
+        #     # self.app.plotcanvas.auto_adjust_axes()
+        #     self.clear_shapes(update=True)
+        #     return False
 
         # Clear axes or we will plot on top of them.
         # self.axes.cla()  # TODO: Thread safe?
-        # self.clear_shapes()
+        self.shapes.clear()
         return True
-
-    def clear_shapes(self, update=False):
-        self.shapes.clear(update=update)
 
     def serialize(self):
         """
@@ -556,7 +553,8 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.plot()
+        self.shapes.visible = self.options['plot']
+        # self.plot()
 
     def on_solid_cb_click(self, *args):
         if self.muted_ui:
@@ -606,19 +604,20 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         except TypeError:
             geometry = [geometry]
 
-        if self.options["multicolored"]:
-            linespec = '-'
-        else:
-            linespec = 'k-'
+        # if self.options["multicolored"]:
+        #     linespec = '-'
+        # else:
+        #     linespec = 'k-'
 
         if self.options["solid"]:
             for poly in geometry:
                 if self.options["multicolored"]:
+                    # TODO: Rework random color generation
                     color = (np.random.sample(1), np.random.sample(1), np.random.sample(1), 0.75)
                 else:
                     color = '#BBF268BF'
 
-                self.shapes.add(poly, color='#006E20BF', face_color=color)
+                self.shapes.add(poly, color='#006E20BF', face_color=color, visible=self.options['plot'])
 
                 # # TODO: Too many things hardcoded.
                 # try:
@@ -638,7 +637,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 else:
                     color = 'black'
 
-                self.shapes.add(poly, color=color)
+                self.shapes.add(poly, color=color, visible=self.options['plot'])
 
                 # x, y = poly.exterior.xy
                 # self.axes.plot(x, y, linespec)
@@ -951,7 +950,8 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.plot()
+        self.shapes.visible = self.options['plot']
+        # self.plot()
 
     def on_solid_cb_click(self, *args):
         if self.muted_ui:
@@ -981,7 +981,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # Plot excellon (All polygons?)
         if self.options["solid"]:
             for geo in self.solid_geometry:
-                self.shapes.add(geo, color='#750000BF', face_color='#C40000BF')
+                self.shapes.add(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'])
 
                 # patch = PolygonPatch(geo,
                 #                      facecolor="#C40000",
@@ -991,12 +991,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
                 # self.axes.add_patch(patch)
         else:
             for geo in self.solid_geometry:
-                self.shapes.add(geo.exterior, color='red')
+                self.shapes.add(geo.exterior, color='red', visible=self.options['plot'])
 
                 # x, y = geo.exterior.coords.xy
                 # self.axes.plot(x, y, 'r-')
                 for ints in geo.interiors:
-                    self.shapes.add(ints, color='green')
+                    self.shapes.add(ints, color='green', visible=self.options['plot'])
                     # x, y = ints.coords.xy
                     # self.axes.plot(x, y, 'g-')
 
@@ -1151,7 +1151,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.plot()
+        self.shapes.visible = self.options['plot']
+        # self.plot()
 
     def plot(self):
 
@@ -1160,9 +1161,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes)
+        self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes, visible=self.options['plot'])
 
-        # self.shapes.redraw()
+        self.shapes.redraw()
         # self.app.plotcanvas.auto_adjust_axes()
 
     def convert_units(self, units):
@@ -1433,7 +1434,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.plot()
+        self.shapes.visible = self.options['plot']
+        # self.plot()
 
     def scale(self, factor):
         """
@@ -1494,7 +1496,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         except TypeError:  # Element is not iterable...
 
-            self.shapes.add(element, color='#5E6CFFFF')
+            self.shapes.add(element, color='#5E6CFFFF', visible=self.options['plot'])
 
             # if type(element) == Polygon:
             #     x, y = element.exterior.coords.xy
@@ -1562,6 +1564,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         #     FlatCAMApp.App.log.warning("Did not plot:", str(type(geo)))
 
         self.plot_element(self.solid_geometry)
-        # self.shapes.redraw()
+        self.shapes.redraw()
 
         # self.app.plotcanvas.auto_adjust_axes()

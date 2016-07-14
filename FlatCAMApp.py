@@ -1442,7 +1442,7 @@ class App(QtCore.QObject):
             return
 
         # Remove plot
-        self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
+        # self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
         self.plotcanvas.auto_adjust_axes()
 
         # Clear form
@@ -2225,7 +2225,6 @@ class App(QtCore.QObject):
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
             self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
-        self.plotcanvas.vispy_canvas.shapes.redraw()
         # self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")

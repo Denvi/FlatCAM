@@ -5,12 +5,50 @@ from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
 import numpy as np
+import time
 
 try:
     from shapely.ops import triangulate
     import Polygon as gpc
 except:
     pass
+
+
+class ShapeGroup(object):
+    def __init__(self, collection):
+        self._collection = collection
+        self._indexes = []
+        self._visible = True
+
+    def add(self, shape, color=None, face_color=None, visible=None, update=False):
+        self._indexes.append(self._collection.add(shape, color, face_color, visible, update))
+
+    def clear(self, update=False):
+        for i in self._indexes:
+            self._collection.remove(i, False)
+
+        self._indexes = []
+
+        if update:
+            self._collection.redraw()
+
+    def redraw(self):
+        t0 = time.time()
+        self._collection.redraw()
+        print "group redraw time:", time.time() - t0
+
+    @property
+    def visible(self):
+        return self._visible
+
+    @visible.setter
+    def visible(self, value):
+        self._visible = value
+        for i in self._indexes:
+            self._collection.data[i]['visible'] = value
+
+        self._collection.redraw()
+
 
 class ShapeCollectionVisual(CompoundVisual):
 
@@ -34,7 +72,7 @@ class ShapeCollectionVisual(CompoundVisual):
     def __del__(self):
         print "ShapeCollection destructed"
 
-    def add(self, shape, color=None, face_color=None, update=False):
+    def add(self, shape, color=None, face_color=None, visible=True, update=False):
         """Adds geometry object to collection
 
         Args:
@@ -51,64 +89,52 @@ class ShapeCollectionVisual(CompoundVisual):
 
         """
         self.last_key += 1
-        self.data[self.last_key] = shape, color, face_color
+
+        self.data[self.last_key] = {'geometry': shape, 'color': color, 'face_color': face_color, 'visible': visible}
+        self.update_shape_buffers(self.last_key)
+
         if update:
             self._update()
+
         return self.last_key
 
-    def remove(self, key, update=False):
-        del self.data[key]
-        if update:
-            self._update()
+    def update_shape_buffers(self, key):
+        mesh_vertices = []                      # Vertices for mesh
+        mesh_tris = []                          # Faces for mesh
+        mesh_colors = []                        # Face colors
+        line_pts = []                           # Vertices for line
+        line_colors = []                        # Line color
 
-    def clear(self, update=False):
-        self.data = {}
-        if update:
-            self._update()
+        geo, color, face_color = self.data[key]['geometry'], self.data[key]['color'], self.data[key]['face_color']
 
-    def _update(self):
-        mesh_vertices = []                  # Vertices for mesh
-        mesh_tris = []                      # Faces for mesh
-        mesh_colors = []                    # Face colors
+        if geo is not None and not geo.is_empty:
+            simple = geo.simplify(0.01)         # Simplified shape
+            pts = []                            # Shape line points
+            tri_pts = []                        # Mesh vertices
+            tri_tris = []                       # Mesh faces
 
-        line_pts = []                       # Vertices for line
-        line_colors = []                    # Line color
-
-        # Creating arrays for mesh and line from all shapes
-        for shape, color, face_color in self.data.values():
-            if shape is None or shape.is_empty:
-                continue
-
-            simple = shape.simplify(0.01)   # Simplified shape
-            pts = []                        # Shape line points
-            tri_pts = []                    # Mesh vertices
-            tri_tris = []                   # Mesh faces
-
-            if type(shape) == LineString:
+            if type(geo) == LineString:
                 # Prepare lines
                 pts = self._linestring_to_segments(np.asarray(simple)).tolist()
 
-            elif type(shape) == LinearRing:
+            elif type(geo) == LinearRing:
                 # Prepare lines
                 pts = self._linearring_to_segments(np.asarray(simple)).tolist()
 
-            elif type(shape) == Polygon:
+            elif type(geo) == Polygon:
                 # Prepare polygon faces
                 if face_color is not None:
+
                     if self._triangulation == 'vispy':
                         # VisPy triangulation
                         # Concatenated arrays of external & internal line rings
                         vertices = self._open_ring(np.asarray(simple.exterior))
                         edges = self._generate_edges(len(vertices))
 
-                        print "poly exterior pts:", len(vertices)
-
                         for ints in simple.interiors:
                             v = self._open_ring(np.asarray(ints))
                             edges = np.append(edges, self._generate_edges(len(v)) + len(vertices), 0)
                             vertices = np.append(vertices, v, 0)
-
-                            print "poly interior pts:", len(v)
 
                         tri = Triangulation(vertices, edges)
                         tri.triangulate()
@@ -139,19 +165,54 @@ class ShapeCollectionVisual(CompoundVisual):
 
             # Appending data for mesh
             if len(tri_pts) > 0 and len(tri_tris) > 0:
-                mesh_tris += [[x + len(mesh_vertices) for x in y] for y in tri_tris]
+                mesh_tris += tri_tris
                 mesh_vertices += tri_pts
                 mesh_colors += [Color(face_color).rgba] * len(tri_tris)
-
-                # Random face colors
-                # rc = np.random.rand(len(tri_tris), 4)
-                # rc[:, 3] = 1.0
-                # mesh_colors = np.append(mesh_colors, rc, 0)
 
             # Appending data for line
             if len(pts) > 0:
                 line_pts += pts
                 line_colors += [Color(color).rgba] * len(pts)
+
+        # Store buffers
+        self.data[key]['line_pts'] = line_pts
+        self.data[key]['line_colors'] = line_colors
+        self.data[key]['mesh_vertices'] = mesh_vertices
+        self.data[key]['mesh_tris'] = mesh_tris
+        self.data[key]['mesh_colors'] = mesh_colors
+
+    def remove(self, key, update=False):
+        del self.data[key]
+        if update:
+            self._update()
+
+    def clear(self, update=False):
+        self.data = {}
+        if update:
+            self._update()
+
+    def _update(self):
+
+        print "updating shape collection"
+        t0 = time.time()
+
+        mesh_vertices = []                  # Vertices for mesh
+        mesh_tris = []                      # Faces for mesh
+        mesh_colors = []                    # Face colors
+        line_pts = []                       # Vertices for line
+        line_colors = []                    # Line color
+
+        # Merge shapes buffers
+        for data in self.data.values():
+            if data['visible']:
+                try:
+                    line_pts += data['line_pts']
+                    line_colors += data['line_colors']
+                    mesh_tris += [[x + len(mesh_vertices) for x in y] for y in data['mesh_tris']]
+                    mesh_vertices += data['mesh_vertices']
+                    mesh_colors += data['mesh_colors']
+                except Exception as e:
+                    print "Data error", e
 
         # Updating mesh
         if len(mesh_vertices) > 0:
@@ -166,7 +227,6 @@ class ShapeCollectionVisual(CompoundVisual):
 
         # Updating line
         if len(line_pts) > 0:
-            set_state(blend=True, blend_func=('src_alpha', 'one_minus_src_alpha'))
             self._line.set_data(np.asarray(line_pts), np.asarray(line_colors), self._line_width, 'segments')
 
             self.total_segments += len(line_pts) / 2
@@ -176,6 +236,8 @@ class ShapeCollectionVisual(CompoundVisual):
             self._line._pos = None
             self._line._changed['pos'] = True
             self._line.update()
+
+        print "update completed:", time.time() - t0
 
     def _open_ring(self, vertices):
         return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices

@@ -214,7 +214,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
         self.beginRemoveRows(QtCore.QModelIndex(), row, row)
 
-        self.object_list[row].shapes.parent = None
+        self.object_list[row].shapes.clear(True)
         self.object_list.pop(row)
 
         self.endRemoveRows()
@@ -297,7 +297,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
         self.beginResetModel()
 
         for obj in self.object_list:
-            obj.shapes.parent = None
+            obj.shapes.clear(True)
 
         self.object_list = []
         self.checked_indexes = []

@@ -3245,7 +3245,7 @@ class CNCjob(Geometry):
         
     def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
               color={"T": ["#F0E24D4C", "#B5AB3A4C"], "C": ["#5E6CFFFF", "#4650BDFF"]},
-              alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005, shapes=None):
+              alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005, shapes=None, visible=False):
         """
         Plots the G-code job onto the given axes.
 
@@ -3271,7 +3271,7 @@ class CNCjob(Geometry):
                 #     linespec = 'k-'
                 # x, y = geo['geom'].coords.xy
                 # axes.plot(x, y, linespec, color=linecolor)
-                shapes.add(geo['geom'], color=linecolor)
+                shapes.add(geo['geom'], color=linecolor, visible=visible)
         else:
             for geo in self.gcode_parsed:
                 # path_num += 1
@@ -3285,7 +3285,8 @@ class CNCjob(Geometry):
                     #                      alpha=alpha[geo['kind'][0]], zorder=2)
                     # axes.add_patch(patch)
                     # shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
-                    shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
+                    shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
+                               visible=visible)
 
     def create_geometry(self):
         # TODO: This takes forever. Too much data?

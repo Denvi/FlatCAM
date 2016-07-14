@@ -18,6 +18,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import FlatCAMApp
 import logging
 from VisPyCanvas import VisPyCanvas
+from VisPyVisuals import ShapeGroup
 
 log = logging.getLogger('base')
 
@@ -412,6 +413,9 @@ class PlotCanvas(QtCore.QObject):
         """
 
         return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
+
+    def new_shape_group(self):
+        return ShapeGroup(self.vispy_canvas.shape_collection)
 
     def on_scroll(self, event):
         """
