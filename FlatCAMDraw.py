@@ -501,7 +501,7 @@ class FCSelect(DrawTool):
         except StopIteration:
             return ""
 
-        if self.draw_app.key != 'control':
+        if self.draw_app.key != 'Control':
             self.draw_app.selected = []
 
         self.draw_app.set_selected(closest_shape)
@@ -761,23 +761,26 @@ class FlatCAMDraw(QtCore.QObject):
 
     def connect_canvas_event_handlers(self):
         ## Canvas events
-        self.cid_canvas_click = self.canvas.mpl_connect('button_press_event', self.on_canvas_click)
-        self.cid_canvas_move = self.canvas.mpl_connect('motion_notify_event', self.on_canvas_move)
-        self.cid_canvas_key = self.canvas.mpl_connect('key_press_event', self.on_canvas_key)
-        self.cid_canvas_key_release = self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
+        # self.cid_canvas_click = self.canvas.mpl_connect('button_press_event', self.on_canvas_click)
+        # self.cid_canvas_move = self.canvas.mpl_connect('motion_notify_event', self.on_canvas_move)
+        # self.cid_canvas_key = self.canvas.mpl_connect('key_press_event', self.on_canvas_key)
+        # self.cid_canvas_key_release = self.canvas.mpl_connect('key_release_event', self.on_canvas_key_release)
 
-        # TODO: Create disconnects
         self.canvas.vis_connect('mouse_release', self.on_canvas_click)
         self.canvas.vis_connect('mouse_move', self.on_canvas_move)
+        self.canvas.vis_connect('key_press', self.on_canvas_key)
+        self.canvas.vis_connect('key_release', self.on_canvas_key_release)
 
     def disconnect_canvas_event_handlers(self):
-        self.canvas.mpl_disconnect(self.cid_canvas_click)
-        self.canvas.mpl_disconnect(self.cid_canvas_move)
-        self.canvas.mpl_disconnect(self.cid_canvas_key)
-        self.canvas.mpl_disconnect(self.cid_canvas_key_release)
+        # self.canvas.mpl_disconnect(self.cid_canvas_click)
+        # self.canvas.mpl_disconnect(self.cid_canvas_move)
+        # self.canvas.mpl_disconnect(self.cid_canvas_key)
+        # self.canvas.mpl_disconnect(self.cid_canvas_key_release)
 
         self.canvas.vis_disconnect('mouse_release', self.on_canvas_click)
         self.canvas.vis_disconnect('mouse_move', self.on_canvas_move)
+        self.canvas.vis_disconnect('key_press', self.on_canvas_key)
+        self.canvas.vis_disconnect('key_release', self.on_canvas_key_release)
 
     def add_shape(self, shape):
         """
@@ -1041,11 +1044,14 @@ class FlatCAMDraw(QtCore.QObject):
         :param event:
         :return:
         """
-        self.key = event.key
+
+        self.key = event.key.name
+
+        print "key press", event.key.name
 
         ### Finish the current action. Use with tools that do not
         ### complete automatically, like a polygon or path.
-        if event.key == ' ':
+        if event.key.name == 'Space':
             if isinstance(self.active_tool, FCShapeTool):
                 self.active_tool.click(self.snap(event.xdata, event.ydata))
                 self.active_tool.make()
@@ -1055,7 +1061,7 @@ class FlatCAMDraw(QtCore.QObject):
             return
 
         ### Abort the current action
-        if event.key == 'escape':
+        if event.key.name == 'Escape':
             # TODO: ...?
             #self.on_tool_select("select")
             self.app.info("Cancelled.")
@@ -1069,32 +1075,32 @@ class FlatCAMDraw(QtCore.QObject):
             return
 
         ### Delete selected object
-        if event.key == '-':
+        if event.key.name == '-':
             self.delete_selected()
             self.replot()
 
         ### Move
-        if event.key == 'm':
+        if event.key.name == 'M':
             self.move_btn.setChecked(True)
             self.on_tool_select('move')
             self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
             self.app.info("Click on target point.")
 
         ### Copy
-        if event.key == 'c':
+        if event.key.name == 'C':
             self.copy_btn.setChecked(True)
             self.on_tool_select('copy')
             self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
             self.app.info("Click on target point.")
 
         ### Snap
-        if event.key == 'g':
+        if event.key.name == 'G':
             self.grid_snap_btn.trigger()
-        if event.key == 'k':
+        if event.key.name == 'K':
             self.corner_snap_btn.trigger()
 
         ### Buffer
-        if event.key == 'b':
+        if event.key.name == 'B':
             self.on_buffer_tool()
 
         ### Propagate to tool
