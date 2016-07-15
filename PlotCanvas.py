@@ -12,26 +12,103 @@ from PyQt4 import QtGui, QtCore
 from matplotlib import use as mpl_use
 mpl_use("Qt4Agg")
 
-import FlatCAMApp
-import numpy as np
-import copy
-from math import ceil, floor
-import math
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureOffscreenCanvas
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+import FlatCAMApp
+import logging
+
+log = logging.getLogger('base')
+
+
+class CanvasCache(QtCore.QObject):
+    """
+
+    Case story #1:
+
+    1) No objects in the project.
+    2) Object is created (new_object() emits object_created(obj)).
+       on_object_created() adds (i) object to collection and emits
+       (ii) new_object_available() then calls (iii) object.plot()
+    3) object.plot() creates axes if necessary on
+       app.collection.figure. Then plots on it.
+    4) Plots on a cache-size canvas (in background).
+    5) Plot completes. Bitmap is generated.
+    6) Visible canvas is painted.
+
+    """
+
+    # Signals:
+    # A bitmap is ready to be displayed.
+    new_screen = QtCore.pyqtSignal()
+
+    def __init__(self, plotcanvas, app, dpi=50):
+
+        super(CanvasCache, self).__init__()
+
+        self.app = app
+
+        self.plotcanvas = plotcanvas
+        self.dpi = dpi
+
+        self.figure = Figure(dpi=dpi)
+
+        self.axes = self.figure.add_axes([0.0, 0.0, 1.0, 1.0], alpha=1.0)
+        self.axes.set_frame_on(False)
+        self.axes.set_xticks([])
+        self.axes.set_yticks([])
+
+        self.canvas = FigureCanvasAgg(self.figure)
+
+        self.cache = None
+
+    def run(self):
+
+        log.debug("CanvasCache Thread Started!")
+
+        self.plotcanvas.update_screen_request.connect(self.on_update_req)
+
+        self.app.new_object_available.connect(self.on_new_object_available)
+
+    def on_update_req(self, extents):
+        """
+        Event handler for an updated display request.
+
+        :param extents: [xmin, xmax, ymin, ymax, zoom(optional)]
+        """
+
+        log.debug("Canvas update requested: %s" % str(extents))
+
+        # Note: This information below might be out of date. Establish
+        # a protocol regarding when to change the canvas in the main
+        # thread and when to check these values here in the background,
+        # or pass this data in the signal (safer).
+        log.debug("Size: %s [px]" % str(self.plotcanvas.get_axes_pixelsize()))
+        log.debug("Density: %s [units/px]" % str(self.plotcanvas.get_density()))
+
+        # Move the requested screen portion to the main thread
+        # and inform about the update:
+
+        self.new_screen.emit()
+
+        # Continue to update the cache.
+
+    def on_new_object_available(self):
+
+        log.debug("A new object is available. Should plot it!")
+
 
 class PlotCanvas(QtCore.QObject):
     """
     Class handling the plotting area in the application.
     """
 
-    app = None
-    updates_queue = 0
+    # Signals:
+    # Request for new bitmap to display. The parameter
+    # is a list with [xmin, xmax, ymin, ymax, zoom(optional)]
+    update_screen_request = QtCore.pyqtSignal(list)
 
-    image_ready = QtCore.pyqtSignal(object, tuple)
-
-    def __init__(self, container):
+    def __init__(self, container, app):
         """
         The constructor configures the Matplotlib figure that
         will contain all plots, creates the base axes and connects
@@ -42,6 +119,8 @@ class PlotCanvas(QtCore.QObject):
         """
 
         super(PlotCanvas, self).__init__()
+
+        self.app = app
 
         # Options
         self.x_margin = 15  # pixels
@@ -54,23 +133,16 @@ class PlotCanvas(QtCore.QObject):
         self.figure = Figure(dpi=50)  # TODO: dpi needed?
         self.figure.patch.set_visible(False)
 
-        # Offscreen figure
-        self.offscreen_figure = Figure(dpi=50)
-        self.offscreen_figure.patch.set_visible(False)
-
         # These axes show the ticks and grid. No plotting done here.
         # New axes must have a label, otherwise mpl returns an existing one.
         self.axes = self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label="base", alpha=0.0)
         self.axes.set_aspect(1)
         self.axes.grid(True)
 
-        # The canvas is the top level container (Gtk.DrawingArea)
+        # The canvas is the top level container (FigureCanvasQTAgg)
         self.canvas = FigureCanvas(self.figure)
         # self.canvas.setFocusPolicy(QtCore.Qt.ClickFocus)
         # self.canvas.setFocus()
-
-        # Image
-        self.image = None
 
         #self.canvas.set_hexpand(1)
         #self.canvas.set_vexpand(1)
@@ -83,6 +155,15 @@ class PlotCanvas(QtCore.QObject):
         # Copy a bitmap of the canvas for quick animation.
         # Update every time the canvas is re-drawn.
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+        ### Bitmap Cache
+        self.cache = CanvasCache(self, self.app)
+        self.cache_thread = QtCore.QThread()
+        self.cache.moveToThread(self.cache_thread)
+        super(PlotCanvas, self).connect(self.cache_thread, QtCore.SIGNAL("started()"), self.cache.run)
+        # self.connect()
+        self.cache_thread.start()
+        self.cache.new_screen.connect(self.on_new_screen)
 
         # Events
         self.canvas.mpl_connect('button_press_event', self.on_mouse_press)
@@ -103,11 +184,9 @@ class PlotCanvas(QtCore.QObject):
         self.pan_axes = []
         self.panning = False
 
-        self.reset_nonupdate_bounds()
+    def on_new_screen(self):
 
-        self.image_ready.connect(self.update_canvas)
-
-        # self.plots_updated.connect(self.on_plots_updated)
+        log.debug("Cache updated the screen!")
 
     def on_key_down(self, event):
         """
@@ -149,7 +228,7 @@ class PlotCanvas(QtCore.QObject):
 
     def connect(self, event_name, callback):
         """
-        Attach an event handler to the canvas through the native GTK interface.
+        Attach an event handler to the canvas through the native Qt interface.
 
         :param event_name: Name of the event
         :type event_name: str
@@ -158,12 +237,6 @@ class PlotCanvas(QtCore.QObject):
         :return: Nothing
         """
         self.canvas.connect(event_name, callback)
-
-    def reset_nonupdate_bounds(self):
-        self.bx1 = float('-inf')
-        self.bx2 = float('inf')
-        self.by1 = self.bx1
-        self.by2 = self.bx2
 
     def clear(self):
         """
@@ -176,7 +249,6 @@ class PlotCanvas(QtCore.QObject):
         self.axes.cla()
         try:
             self.figure.clf()
-            self.offscreen_figure.clf()
         except KeyError:
             FlatCAMApp.App.log.warning("KeyError in MPL figure.clf()")
 
@@ -185,32 +257,8 @@ class PlotCanvas(QtCore.QObject):
         self.axes.set_aspect(1)
         self.axes.grid(True)
 
-        # Prepare offscreen base axes
-        ax = self.offscreen_figure.add_axes([0.0, 0.0, 1.0, 1.0], label='base')
-        ax.set_frame_on(True)
-        ax.patch.set_color("white")
-        # Hide frame edge
-        for spine in ax.spines:
-            ax.spines[spine].set_visible(False)
-        ax.set_aspect(1)
-
-        # Set update bounds
-        self.reset_nonupdate_bounds()
-
         # Re-draw
-        self.canvas.draw()
-
-    def auto_adjust_axes(self, *args):
-        """
-        Calls ``adjust_axes()`` using the extents of the base axes.
-
-        :rtype : None
-        :return: None
-        """
-
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        self.adjust_axes(xmin, ymin, xmax, ymax)
+        self.canvas.draw_idle()
 
     def adjust_axes(self, xmin, ymin, xmax, ymax):
         """
@@ -268,135 +316,21 @@ class PlotCanvas(QtCore.QObject):
 
         # Sync re-draw to proper paint on form resize
         self.canvas.draw()
-        self.update()
 
-    def update(self):
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
-        # Get objects collection bounds
-        margin = 2
-        x1, y1, x2, y2 = self.app.collection.get_bounds()
-        x1, y1, x2, y2 = x1 - margin, y1 - margin, x2 + margin, y2 + margin
+    def auto_adjust_axes(self, *args):
+        """
+        Calls ``adjust_axes()`` using the extents of the base axes.
 
-        # Get visible bounds
+        :rtype : None
+        :return: None
+        """
+
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
-
-        # Truncate bounds
-        print "Collection bounds", x1, x2, y1, y2
-        print "Viewport", xmin, xmax, ymin, ymax
-        if x1 < xmin or x2 > xmax or y1 < ymin or y2 > ymax:
-            print "Truncating bounds"
-            width = xmax - xmin
-            height = ymax - ymin
-
-            x1 = xmin - width * 2
-            x2 = xmax + width * 2
-            y1 = ymin - height * 2
-            y2 = ymax + height * 2
-
-            # self.bx1 = x1
-            # self.bx2 = x2
-            # self.by1 = y1
-            # self.by2 = y2
-
-            self.bx1 = xmin - width
-            self.bx2 = xmax + width
-            self.by1 = ymin - height
-            self.by2 = ymax + height
-        else:
-            self.reset_nonupdate_bounds()
-
-        # Calculate bounds in screen space
-        points = self.axes.transData.transform([(x1, y1), (x2, y2)])
-
-        # Round bounds to integers
-        rounded_points = [(floor(points[0][0]), floor(points[0][1])), (ceil(points[1][0]), ceil(points[1][1]))]
-
-        # Calculate width/height of image
-        w, h = (rounded_points[1][0] - rounded_points[0][0]), (rounded_points[1][1] - rounded_points[0][1])
-
-        # Get bounds back in axes units
-        inverted_transform = self.axes.transData.inverted()
-        bounds = inverted_transform.transform(rounded_points)
-
-        # print "image bounds", x1, x2, y1, y2, points, rounded_points, bounds, w, h, self.axes.transData.transform(bounds)
-
-        x1, x2, y1, y2 = bounds[0][0], bounds[1][0], bounds[0][1], bounds[1][1]
-
-        # print "new image bounds", x1, x2, y1, y2
-
-        pixel = inverted_transform.transform([(0, 0), (1, 1)])
-        pixel_size = pixel[1][0] - pixel[0][0]
-
-        # print "pixel size", pixel, pixel_size
-
-        def update_image(figure):
-
-            # Abort update if next update in queue
-            if self.updates_queue > 1:
-                self.updates_queue -= 1
-                return
-
-            # Rescale axes
-            for ax in figure.get_axes():
-                ax.set_xlim(x1 + pixel_size, x2 + pixel_size)
-                ax.set_ylim(y1, y2)
-                ax.set_xticks([])
-                ax.set_yticks([])
-
-            # Resize figure
-            dpi = figure.dpi
-            figure.set_size_inches(w / dpi, h / dpi)
-
-            try:
-                # Draw to buffer
-                self.updates_queue -= 1
-                offscreen_canvas = FigureOffscreenCanvas(figure)
-                offscreen_canvas.draw()
-
-                # Abort drawing if next update in queue
-                if self.updates_queue > 0:
-                    del offscreen_canvas
-                    return
-
-                buf = offscreen_canvas.buffer_rgba()
-                ncols, nrows = offscreen_canvas.get_width_height()
-                image = np.frombuffer(buf, dtype=np.uint8).reshape(nrows, ncols, 4)
-
-                self.image_ready.emit(copy.deepcopy(image), (x1, x2, y1, y2))
-
-                del image
-                del offscreen_canvas
-
-            except Exception as e:
-                self.app.log.debug(e.message)
-
-        # Do job in background
-        proc = self.app.proc_container.new("Updating view")
-
-        def job_thread(app_obj, figure):
-            try:
-                update_image(figure)
-            except Exception as e:
-                proc.done()
-                raise e
-            proc.done()
-
-        # self.app.inform.emit("View update starting ...")
-        self.updates_queue += 1
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app, self.offscreen_figure]})
-
-    def update_canvas(self, image, bounds):
-
-        try:
-            self.image.remove()
-        except:
-            pass
-
-        self.image = self.axes.imshow(image, extent=bounds, interpolation="Nearest")
-        self.canvas.draw_idle()
-
-        del image
+        self.adjust_axes(xmin, ymin, xmax, ymax)
 
     def zoom(self, factor, center=None):
         """
@@ -412,7 +346,6 @@ class PlotCanvas(QtCore.QObject):
 
         xmin, xmax = self.axes.get_xlim()
         ymin, ymax = self.axes.get_ylim()
-
         width = xmax - xmin
         height = ymax - ymin
 
@@ -437,10 +370,10 @@ class PlotCanvas(QtCore.QObject):
             ax.set_ylim((ymin, ymax))
 
         # Async re-draw
-        # self.canvas.draw_idle()
-
         self.canvas.draw_idle()
-        self.update()
+
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -456,6 +389,9 @@ class PlotCanvas(QtCore.QObject):
         # Re-draw
         self.canvas.draw_idle()
 
+        ##### Temporary place-holder for cached update #####
+        self.update_screen_request.emit([0, 0, 0, 0, 0])
+
     def new_axes(self, name):
         """
         Creates and returns an Axes object attached to this object's Figure.
@@ -465,13 +401,7 @@ class PlotCanvas(QtCore.QObject):
         :rtype: Axes
         """
 
-        ax = self.offscreen_figure.add_axes([0.0, 0.0, 1.0, 1.0], label=name)
-
-        ax.set_frame_on(False)  # No frame
-        ax.patch.set_visible(False)  # No background
-        ax.set_aspect(1)
-
-        return ax
+        return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
 
     def on_scroll(self, event):
         """
@@ -526,8 +456,7 @@ class PlotCanvas(QtCore.QObject):
                     self.pan_axes.append(a)
 
             # Set pan view flag
-            if len(self.pan_axes) > 0:
-                self.panning = True;
+            if len(self.pan_axes) > 0: self.panning = True;
 
     def on_mouse_release(self, event):
 
@@ -553,19 +482,43 @@ class PlotCanvas(QtCore.QObject):
             for a in self.pan_axes:
                 a.drag_pan(1, event.key, event.x, event.y)
 
-            # Update
-            xmin, xmax = self.axes.get_xlim()
-            ymin, ymax = self.axes.get_ylim()
+            # Async re-draw (redraws only on thread idle state, uses timer on backend)
+            self.canvas.draw_idle()
 
-            if xmin < self.bx1 or xmax > self.bx2 or ymin < self.by1 or ymax > self.by2:
-                # Redraw image
-                print "Redrawing image"
-                self.update()
-            else:
-                # Async re-draw (redraws only on thread idle state, uses timer on backend)
-                self.canvas.draw_idle()
+            ##### Temporary place-holder for cached update #####
+            self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def on_draw(self, renderer):
 
         # Store background on canvas redraw
         self.background = self.canvas.copy_from_bbox(self.axes.bbox)
+
+    def get_axes_pixelsize(self):
+        """
+        Axes size in pixels.
+
+        :return: Pixel width and height
+        :rtype: tuple
+        """
+        bbox = self.axes.get_window_extent().transformed(self.figure.dpi_scale_trans.inverted())
+        width, height = bbox.width, bbox.height
+        width *= self.figure.dpi
+        height *= self.figure.dpi
+        return width, height
+
+    def get_density(self):
+        """
+        Returns unit length per pixel on horizontal
+        and vertical axes.
+
+        :return: X and Y density
+        :rtype: tuple
+        """
+        xpx, ypx = self.get_axes_pixelsize()
+
+        xmin, xmax = self.axes.get_xlim()
+        ymin, ymax = self.axes.get_ylim()
+        width = xmax - xmin
+        height = ymax - ymin
+
+        return width / xpx, height / ypx

@@ -4,8 +4,7 @@ Shows intput and output text. Allows to enter commands. Supports history.
 """
 
 import cgi
-
-from PyQt4.QtCore import pyqtSignal
+from PyQt4.QtCore import pyqtSignal, Qt
 from PyQt4.QtGui import QColor, QKeySequence, QLineEdit, QPalette, \
                         QSizePolicy, QTextCursor, QTextEdit, \
                         QVBoxLayout, QWidget
@@ -19,13 +18,13 @@ class _ExpandableTextEdit(QTextEdit):
     historyNext = pyqtSignal()
     historyPrev = pyqtSignal()
 
-    def __init__(self, termWidget, *args):
+    def __init__(self, termwidget, *args):
         QTextEdit.__init__(self, *args)
         self.setStyleSheet("font: 9pt \"Courier\";")
         self._fittedHeight = 1
         self.textChanged.connect(self._fit_to_document)
         self._fit_to_document()
-        self._termWidget = termWidget
+        self._termWidget = termwidget
 
     def sizeHint(self):
         """
@@ -39,10 +38,10 @@ class _ExpandableTextEdit(QTextEdit):
         """
         Update widget height to fit all text
         """
-        documentSize = self.document().size().toSize()
-        self._fittedHeight = documentSize.height() + (self.height() - self.viewport().height())
+        documentsize = self.document().size().toSize()
+        self._fittedHeight = documentsize.height() + (self.height() - self.viewport().height())
         self.setMaximumHeight(self._fittedHeight)
-        self.updateGeometry();
+        self.updateGeometry()
 
     def keyPressEvent(self, event):
         """
@@ -55,30 +54,33 @@ class _ExpandableTextEdit(QTextEdit):
                 return
         elif event.matches(QKeySequence.MoveToNextLine):
             text = self.toPlainText()
-            cursorPos = self.textCursor().position()
-            textBeforeEnd = text[cursorPos:]
+            cursor_pos = self.textCursor().position()
+            textBeforeEnd = text[cursor_pos:]
             # if len(textBeforeEnd.splitlines()) <= 1:
             if len(textBeforeEnd.split('\n')) <= 1:
                 self.historyNext.emit()
                 return
         elif event.matches(QKeySequence.MoveToPreviousLine):
             text = self.toPlainText()
-            cursorPos = self.textCursor().position()
-            textBeforeStart = text[:cursorPos]
+            cursor_pos = self.textCursor().position()
+            text_before_start = text[:cursor_pos]
             # lineCount = len(textBeforeStart.splitlines())
-            lineCount = len(textBeforeStart.split('\n'))
-            if len(textBeforeStart) > 0 and \
-                    (textBeforeStart[-1] == '\n' or textBeforeStart[-1] == '\r'):
-                lineCount += 1
-            if lineCount <= 1:
+            line_count = len(text_before_start.split('\n'))
+            if len(text_before_start) > 0 and \
+                    (text_before_start[-1] == '\n' or text_before_start[-1] == '\r'):
+                line_count += 1
+            if line_count <= 1:
                 self.historyPrev.emit()
                 return
         elif event.matches(QKeySequence.MoveToNextPage) or \
-             event.matches(QKeySequence.MoveToPreviousPage):
+                event.matches(QKeySequence.MoveToPreviousPage):
             return self._termWidget.browser().keyPressEvent(event)
 
         QTextEdit.keyPressEvent(self, event)
 
+    def insertFromMimeData(self, mime_data):
+        # Paste only plain text.
+        self.insertPlainText(mime_data.text())
 
 class TermWidget(QWidget):
     """
@@ -94,8 +96,9 @@ class TermWidget(QWidget):
         self._browser = QTextEdit(self)
         self._browser.setStyleSheet("font: 9pt \"Courier\";")
         self._browser.setReadOnly(True)
-        self._browser.document().setDefaultStyleSheet(self._browser.document().defaultStyleSheet() +
-                                                      "span {white-space:pre;}")
+        self._browser.document().setDefaultStyleSheet(
+            self._browser.document().defaultStyleSheet() +
+            "span {white-space:pre;}")
 
         self._edit = _ExpandableTextEdit(self, self)
         self._edit.historyNext.connect(self._on_history_next)
@@ -113,6 +116,34 @@ class TermWidget(QWidget):
 
         self._edit.setFocus()
 
+    def open_proccessing(self, detail=None):
+        """
+        Open processing and disable using shell commands  again until all commands are finished
+
+        :param detail: text detail about what is currently called from TCL to python
+        :return: None
+        """
+
+        self._edit.setTextColor(Qt.white)
+        self._edit.setTextBackgroundColor(Qt.darkGreen)
+        if detail is None:
+            self._edit.setPlainText("...proccessing...")
+        else:
+            self._edit.setPlainText("...proccessing... [%s]" % detail)
+
+        self._edit.setDisabled(True)
+
+    def close_proccessing(self):
+        """
+        Close processing and enable using shell commands  again
+        :return:
+        """
+
+        self._edit.setTextColor(Qt.black)
+        self._edit.setTextBackgroundColor(Qt.white)
+        self._edit.setPlainText('')
+        self._edit.setDisabled(False)
+
     def _append_to_browser(self, style, text):
         """
         Convert text to HTML for inserting it to browser
@@ -120,30 +151,12 @@ class TermWidget(QWidget):
         assert style in ('in', 'out', 'err')
 
         text = cgi.escape(text)
-
         text = text.replace('\n', '<br/>')
 
-        if style != 'out':
-            def_bg = self._browser.palette().color(QPalette.Base)
-            h, s, v, a = def_bg.getHsvF()
-
-            if style == 'in':
-                if v > 0.5:  # white background
-                    v = v - (v / 8)  # make darker
-                else:
-                    v = v + ((1 - v) / 4)  # make ligher
-            else:  # err
-                if v < 0.5:
-                    v = v + ((1 - v) / 4)  # make ligher
-
-                if h == -1:  # make red
-                    h = 0
-                    s = .4
-                else:
-                    h = h + ((1 - h) * 0.5)  # make more red
-
-            bg = QColor.fromHsvF(h, s, v).name()
-            text = '<span style="background-color: %s; font-weight: bold;">%s</span>' % (str(bg), text)
+        if style == 'in':
+            text = '<span style="font-weight: bold;">%s</span>' % text
+        elif style == 'err':
+            text = '<span style="font-weight: bold; color: red;">%s</span>' % text
         else:
             text = '<span>%s</span>' % text  # without span <br/> is ignored!!!
 
@@ -238,4 +251,3 @@ class TermWidget(QWidget):
             self._historyIndex -= 1
             self._edit.setPlainText(self._history[self._historyIndex])
             self._edit.moveCursor(QTextCursor.End)
-

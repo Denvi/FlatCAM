@@ -221,6 +221,9 @@ class FCCheckBox(QtGui.QCheckBox):
     def set_value(self, val):
         self.setChecked(val)
 
+    def toggle(self):
+        self.set_value(not self.get_value())
+
 
 class FCTextArea(QtGui.QPlainTextEdit):
     def __init__(self, parent=None):

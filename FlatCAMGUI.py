@@ -23,54 +23,53 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # New
         self.menufilenew = QtGui.QAction(QtGui.QIcon('share/file16.png'), '&New', self)
         self.menufile.addAction(self.menufilenew)
+        # Open recent
+
+        # Recent
+        self.recent = self.menufile.addMenu(QtGui.QIcon('share/folder16.png'), "Open recent ...")
+
+        # Open gerber ...
+        self.menufileopengerber = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Gerber ...', self)
+        self.menufile.addAction(self.menufileopengerber)
+
+        # Open Excellon ...
+        self.menufileopenexcellon = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Excellon ...', self)
+        self.menufile.addAction(self.menufileopenexcellon)
+
+        # Open G-Code ...
+        self.menufileopengcode = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open G-&Code ...', self)
+        self.menufile.addAction(self.menufileopengcode)
 
         # Open Project ...
         self.menufileopenproject = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Open &Project ...', self)
         self.menufile.addAction(self.menufileopenproject)
 
-        # Open gerber
-        self.menufileopengerber = QtGui.QAction('Open &Gerber ...', self)
-        self.menufile.addAction(self.menufileopengerber)
+        # Import SVG ...
+        self.menufileimportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Import &SVG ...', self)
+        self.menufile.addAction(self.menufileimportsvg)
 
-        # Open Excellon ...
-        self.menufileopenexcellon = QtGui.QAction('Open &Excellon ...', self)
-        self.menufile.addAction(self.menufileopenexcellon)
-
-        # Open G-Code ...
-        self.menufileopengcode = QtGui.QAction('Open G-&Code ...', self)
-        self.menufile.addAction(self.menufileopengcode)
-
-        # Open recent
-        # Recent
-        self.recent = self.menufile.addMenu("Recent files")
-
-        # Separator
-        self.menufile.addSeparator()
-
-        # Save Defaults
-        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
-        self.menufile.addAction(self.menufilesavedefaults)
-
-        # Separator
-        self.menufile.addSeparator()
+        # Export SVG ...
+        self.menufileexportsvg = QtGui.QAction(QtGui.QIcon('share/folder16.png'), 'Export &SVG ...', self)
+        self.menufile.addAction(self.menufileexportsvg)
 
         # Save Project
         self.menufilesaveproject = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), '&Save Project', self)
         self.menufile.addAction(self.menufilesaveproject)
 
         # Save Project As ...
-        self.menufilesaveprojectas = QtGui.QAction('Save Project &As ...', self)
+        self.menufilesaveprojectas = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save Project &As ...', self)
         self.menufile.addAction(self.menufilesaveprojectas)
 
         # Save Project Copy ...
-        self.menufilesaveprojectcopy = QtGui.QAction('Save Project C&opy ...', self)
+        self.menufilesaveprojectcopy = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save Project C&opy ...', self)
         self.menufile.addAction(self.menufilesaveprojectcopy)
 
-        # Separator
-        self.menufile.addSeparator()
+        # Save Defaults
+        self.menufilesavedefaults = QtGui.QAction(QtGui.QIcon('share/floppy16.png'), 'Save &Defaults', self)
+        self.menufile.addAction(self.menufilesavedefaults)
 
         # Quit
-        exit_action = QtGui.QAction(QtGui.QIcon('share/power16.png'), 'E&xit', self)
+        exit_action = QtGui.QAction(QtGui.QIcon('share/power16.png'), '&Exit', self)
         # exitAction.setShortcut('Ctrl+Q')
         # exitAction.setStatusTip('Exit application')
         exit_action.triggered.connect(QtGui.qApp.quit)
@@ -145,9 +144,11 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ### Notebook ###
         ################
         self.notebook = QtGui.QTabWidget()
+        # self.notebook.setMinimumWidth(250)
 
         ### Projet ###
         project_tab = QtGui.QWidget()
+        project_tab.setMinimumWidth(250)  # Hack
         self.project_tab_layout = QtGui.QVBoxLayout(project_tab)
         self.project_tab_layout.setContentsMargins(2, 2, 2, 2)
         self.notebook.addTab(project_tab, "Project")
@@ -247,7 +248,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.setWindowIcon(self.app_icon)
 
         self.setGeometry(100, 100, 1024, 650)
-        self.setWindowTitle('FlatCAM %s' % version)
+        self.setWindowTitle('FlatCAM %s - Development Version' % version)
         self.show()
 
     def closeEvent(self, event):
@@ -421,41 +422,6 @@ class GerberOptionsGroupUI(OptionsGroupUI):
         )
         grid1.addWidget(self.combine_passes_cb, 3, 0)
 
-        ## Clear non-copper regions
-        self.clearcopper_label = QtGui.QLabel("<b>Clear non-copper:</b>")
-        self.clearcopper_label.setToolTip(
-            "Create a Geometry object with\n"
-            "toolpaths to cut all non-copper regions."
-        )
-        self.layout.addWidget(self.clearcopper_label)
-
-        grid5 = QtGui.QGridLayout()
-        self.layout.addLayout(grid5)
-        ncctdlabel = QtGui.QLabel('Tools dia:')
-        ncctdlabel.setToolTip(
-            "Diameters of the cutting tools, separated by ','"
-        )
-        grid5.addWidget(ncctdlabel, 0, 0)
-        self.ncc_tool_dia_entry = FCEntry()
-        grid5.addWidget(self.ncc_tool_dia_entry, 0, 1)
-
-        nccoverlabel = QtGui.QLabel('Overlap:')
-        nccoverlabel.setToolTip(
-            "How much (fraction of tool width)\n"
-            "to overlap each pass."
-        )
-        grid5.addWidget(nccoverlabel, 1, 0)
-        self.ncc_overlap_entry = FloatEntry()
-        grid5.addWidget(self.ncc_overlap_entry, 1, 1)
-
-        nccmarginlabel = QtGui.QLabel('Margin:')
-        nccmarginlabel.setToolTip(
-            "Bounding box margin."
-        )
-        grid5.addWidget(nccmarginlabel, 2, 0)
-        self.ncc_margin_entry = FloatEntry()
-        grid5.addWidget(self.ncc_margin_entry, 2, 1)
-
         ## Board cuttout
         self.board_cutout_label = QtGui.QLabel("<b>Board cutout:</b>")
         self.board_cutout_label.setToolTip(
@@ -624,14 +590,39 @@ class ExcellonOptionsGroupUI(OptionsGroupUI):
         self.feedrate_entry = LengthEntry()
         grid1.addWidget(self.feedrate_entry, 2, 1)
 
+        toolchangezlabel = QtGui.QLabel('Toolchange Z:')
+        toolchangezlabel.setToolTip(
+            "Tool Z where user can change drill bit\n"
+        )
+        grid1.addWidget(toolchangezlabel, 3, 0)
+        self.toolchangez_entry = LengthEntry()
+        grid1.addWidget(self.toolchangez_entry, 3, 1)
+
         spdlabel = QtGui.QLabel('Spindle speed:')
         spdlabel.setToolTip(
             "Speed of the spindle\n"
             "in RPM (optional)"
         )
-        grid1.addWidget(spdlabel, 3, 0)
+        grid1.addWidget(spdlabel, 4, 0)
         self.spindlespeed_entry = IntEntry(allow_empty=True)
-        grid1.addWidget(self.spindlespeed_entry, 3, 1)
+        grid1.addWidget(self.spindlespeed_entry, 4, 1)
+
+        #### Milling Holes ####
+        self.mill_hole_label = QtGui.QLabel('<b>Mill Holes</b>')
+        self.mill_hole_label.setToolTip(
+            "Create Geometry for milling holes."
+        )
+        self.layout.addWidget(self.mill_hole_label)
+
+        grid1 = QtGui.QGridLayout()
+        self.layout.addLayout(grid1)
+        tdlabel = QtGui.QLabel('Tool dia:')
+        tdlabel.setToolTip(
+            "Diameter of the cutting tool."
+        )
+        grid1.addWidget(tdlabel, 0, 0)
+        self.tooldia_entry = LengthEntry()
+        grid1.addWidget(self.tooldia_entry, 0, 1)
 
 
 class GeometryOptionsGroupUI(OptionsGroupUI):
@@ -814,6 +805,26 @@ class CNCJobOptionsGroupUI(OptionsGroupUI):
 
         self.append_text = FCTextArea()
         self.layout.addWidget(self.append_text)
+
+        # Dwell
+        grid1 = QtGui.QGridLayout()
+        self.layout.addLayout(grid1)
+
+        dwelllabel = QtGui.QLabel('Dwell:')
+        dwelllabel.setToolTip(
+            "Pause to allow the spindle to reach its\n"
+            "speed before cutting."
+        )
+        dwelltime = QtGui.QLabel('Duration [sec.]:')
+        dwelltime.setToolTip(
+            "Number of second to dwell."
+        )
+        self.dwell_cb = FCCheckBox()
+        self.dwelltime_cb = FCEntry()
+        grid1.addWidget(dwelllabel, 0, 0)
+        grid1.addWidget(self.dwell_cb, 0, 1)
+        grid1.addWidget(dwelltime, 1, 0)
+        grid1.addWidget(self.dwelltime_cb, 1, 1)
 
 
 class GlobalOptionsUI(QtGui.QWidget):

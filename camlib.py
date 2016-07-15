@@ -9,6 +9,7 @@
 #from scipy import optimize
 #import traceback
 
+from cStringIO import StringIO
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
 from numpy.linalg import solve, norm
@@ -16,6 +17,7 @@ from matplotlib.figure import Figure
 import re
 import sys
 import traceback
+from decimal import Decimal
 
 import collections
 import numpy as np
@@ -41,6 +43,16 @@ from descartes.patch import PolygonPatch
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
 #from matplotlib.pyplot import plot, subplot
+
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+import itertools
+
+import xml.etree.ElementTree as ET
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+
+
+from svgparse import *
 
 import logging
 
@@ -125,6 +137,60 @@ class Geometry(object):
             log.error("Failed to run union on polygons.")
             raise
 
+    def add_polyline(self, points):
+        """
+        Adds a polyline to the object (by union)
+
+        :param points: The vertices of the polyline.
+        :return: None
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(LineString(points))
+            return
+
+        try:
+            self.solid_geometry = self.solid_geometry.union(LineString(points))
+        except:
+            #print "Failed to run union on polygons."
+            log.error("Failed to run union on polylines.")
+            raise
+
+    def is_empty(self):
+
+        if isinstance(self.solid_geometry, BaseGeometry):
+            return self.solid_geometry.is_empty
+
+        if isinstance(self.solid_geometry, list):
+            return len(self.solid_geometry) == 0
+
+        raise Exception("self.solid_geometry is neither BaseGeometry or list.")
+
+    def subtract_polygon(self, points):
+        """
+        Subtract polygon from the given object. This only operates on the paths in the original geometry, i.e. it converts polygons into paths.
+
+        :param points: The vertices of the polygon.
+        :return: none
+        """
+        if self.solid_geometry is None:
+            self.solid_geometry = []
+
+        #pathonly should be allways True, otherwise polygons are not subtracted
+        flat_geometry = self.flatten(pathonly=True)
+        log.debug("%d paths" % len(flat_geometry))
+        polygon=Polygon(points)
+        toolgeo=cascaded_union(polygon)
+        diffs=[]
+        for target in flat_geometry:
+            if type(target) == LineString or type(target) == LinearRing:
+                diffs.append(target.difference(toolgeo))
+            else:
+                log.warning("Not implemented.")
+        self.solid_geometry=cascaded_union(diffs)
+
     def bounds(self):
         """
         Returns coordinates of rectangular bounds
@@ -192,7 +258,6 @@ class Geometry(object):
                 interiors.extend(geometry.interiors)
 
         return interiors
-
 
     def get_exteriors(self, geometry=None):
         """
@@ -335,14 +400,39 @@ class Geometry(object):
         """
         return self.solid_geometry.buffer(offset)
 
-    def is_empty(self):
+    def import_svg(self, filename, flip=True):
+        """
+        Imports shapes from an SVG file into the object's geometry.
+
+        :param filename: Path to the SVG file.
+        :type filename: str
+        :return: None
+        """
+
+        # Parse into list of shapely objects
+        svg_tree = ET.parse(filename)
+        svg_root = svg_tree.getroot()
+
+        # Change origin to bottom left
+        # h = float(svg_root.get('height'))
+        # w = float(svg_root.get('width'))
+        h = svgparselength(svg_root.get('height'))[0]  # TODO: No units support yet
+        geos = getsvggeo(svg_root)
+
+        if flip:
+            geos = [translate(scale(g, 1.0, -1.0, origin=(0, 0)), yoff=h) for g in geos]
+
+        # Add to object
         if self.solid_geometry is None:
-            return True
+            self.solid_geometry = []
 
-        if type(self.solid_geometry) is list and len(self.solid_geometry) == 0:
-            return True
+        if type(self.solid_geometry) is list:
+            self.solid_geometry.append(cascaded_union(geos))
+        else:  # It's shapely geometry
+            self.solid_geometry = cascaded_union([self.solid_geometry,
+                                                  cascaded_union(geos)])
 
-        return False
+        return
 
     def size(self):
         """
@@ -802,6 +892,47 @@ class Geometry(object):
         """
         self.solid_geometry = [cascaded_union(self.solid_geometry)]
 
+    def export_svg(self, scale_factor=0.00):
+        """
+        Exports the Gemoetry Object as a SVG Element
+
+        :return: SVG Element
+        """
+        # Make sure we see a Shapely Geometry class and not a list
+        geom = cascaded_union(self.flatten())
+
+        # scale_factor is a multiplication factor for the SVG stroke-width used within shapely's svg export
+
+        # If 0 or less which is invalid then default to 0.05
+        # This value appears to work for zooming, and getting the output svg line width
+        # to match that viewed on screen with FlatCam
+        if scale_factor <= 0:
+            scale_factor = 0.05
+
+        # Convert to a SVG
+        svg_elem = geom.svg(scale_factor=scale_factor)
+        return svg_elem
+
+    def mirror(self, axis, point):
+        """
+        Mirrors the object around a specified axis passign through
+        the given point.
+
+        :param axis: "X" or "Y" indicates around which axis to mirror.
+        :type axis: str
+        :param point: [x, y] point belonging to the mirror axis.
+        :type point: list
+        :return: None
+        """
+
+        px, py = point
+        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+
+        ## solid_geometry ???
+        #  It's a cascaded union of objects.
+        self.solid_geometry = affinity.scale(self.solid_geometry,
+                                             xscale, yscale, origin=(px, py))
+
 
 class ApertureMacro:
     """
@@ -1125,6 +1256,8 @@ class ApertureMacro:
 
         :param modifiers: Modifiers (parameters) for this macro
         :type modifiers: list
+        :return: Shapely geometry
+        :rtype: shapely.geometry.polygon
         """
 
         ## Primitive makers
@@ -1145,11 +1278,11 @@ class ApertureMacro:
         modifiers = [float(m) for m in modifiers]
         self.locvars = {}
         for i in range(0, len(modifiers)):
-            self.locvars[str(i+1)] = modifiers[i]
+            self.locvars[str(i + 1)] = modifiers[i]
 
         ## Parse
         self.primitives = []  # Cleanup
-        self.geometry = None
+        self.geometry = Polygon()
         self.parse_content()
 
         ## Make the geometry
@@ -1158,9 +1291,9 @@ class ApertureMacro:
             prim_geo = makers[str(int(primitive[0]))](primitive[1:])
 
             # Add it (according to polarity)
-            if self.geometry is None and prim_geo['pol'] == 1:
-                self.geometry = prim_geo['geometry']
-                continue
+            # if self.geometry is None and prim_geo['pol'] == 1:
+            #     self.geometry = prim_geo['geometry']
+            #     continue
             if prim_geo['pol'] == 1:
                 self.geometry = self.geometry.union(prim_geo['geometry'])
                 continue
@@ -1263,7 +1396,9 @@ class Gerber (Geometry):
         self.comm_re = re.compile(r'^G0?4(.*)$')
 
         # AD - Aperture definition
-        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.]*)(?:,(.*))?\*%$')
+        # Aperture Macro names: Name = [a-zA-Z_.$]{[a-zA-Z_.0-9]+}
+        # NOTE: Adding "-" to support output from Upverter.
+        self.ad_re = re.compile(r'^%ADD(\d\d+)([a-zA-Z_$\.][a-zA-Z0-9_$\.\-]*)(?:,(.*))?\*%$')
 
         # AM - Aperture Macro
         # Beginning of macro (Ends with *%):
@@ -1383,35 +1518,35 @@ class Gerber (Geometry):
         ## Solid geometry
         self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
 
-    def mirror(self, axis, point):
-        """
-        Mirrors the object around a specified axis passign through
-        the given point. What is affected:
-
-        * ``buffered_paths``
-        * ``flash_geometry``
-        * ``solid_geometry``
-        * ``regions``
-
-        NOTE:
-        Does not modify the data used to create these elements. If these
-        are recreated, the scaling will be lost. This behavior was modified
-        because of the complexity reached in this class.
-
-        :param axis: "X" or "Y" indicates around which axis to mirror.
-        :type axis: str
-        :param point: [x, y] point belonging to the mirror axis.
-        :type point: list
-        :return: None
-        """
-
-        px, py = point
-        xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
-
-        ## solid_geometry ???
-        #  It's a cascaded union of objects.
-        self.solid_geometry = affinity.scale(self.solid_geometry,
-                                             xscale, yscale, origin=(px, py))
+    # def mirror(self, axis, point):
+    #     """
+    #     Mirrors the object around a specified axis passign through
+    #     the given point. What is affected:
+    #
+    #     * ``buffered_paths``
+    #     * ``flash_geometry``
+    #     * ``solid_geometry``
+    #     * ``regions``
+    #
+    #     NOTE:
+    #     Does not modify the data used to create these elements. If these
+    #     are recreated, the scaling will be lost. This behavior was modified
+    #     because of the complexity reached in this class.
+    #
+    #     :param axis: "X" or "Y" indicates around which axis to mirror.
+    #     :type axis: str
+    #     :param point: [x, y] point belonging to the mirror axis.
+    #     :type point: list
+    #     :return: None
+    #     """
+    #
+    #     px, py = point
+    #     xscale, yscale = {"X": (1.0, -1.0), "Y": (-1.0, 1.0)}[axis]
+    #
+    #     ## solid_geometry ???
+    #     #  It's a cascaded union of objects.
+    #     self.solid_geometry = affinity.scale(self.solid_geometry,
+    #                                          xscale, yscale, origin=(px, py))
 
     def aperture_parse(self, apertureId, apertureType, apParameters):
         """
@@ -1521,7 +1656,8 @@ class Gerber (Geometry):
 
                         # Otherwise leave as is.
                         else:
-                            yield cleanline
+                            # yield cleanline
+                            yield line
                             break
 
             self.parse_lines(line_generator(), follow=follow)
@@ -1602,7 +1738,7 @@ class Gerber (Geometry):
                     match = self.am1_re.search(gline)
                     # Start macro if match, else not an AM, carry on.
                     if match:
-                        log.info("Starting macro. Line %d: %s" % (line_num, gline))
+                        log.debug("Starting macro. Line %d: %s" % (line_num, gline))
                         current_macro = match.group(1)
                         self.aperture_macros[current_macro] = ApertureMacro(name=current_macro)
                         if match.group(2):  # Append
@@ -1610,13 +1746,13 @@ class Gerber (Geometry):
                         if match.group(3):  # Finish macro
                             #self.aperture_macros[current_macro].parse_content()
                             current_macro = None
-                            log.info("Macro complete in 1 line.")
+                            log.debug("Macro complete in 1 line.")
                         continue
                 else:  # Continue macro
-                    log.info("Continuing macro. Line %d." % line_num)
+                    log.debug("Continuing macro. Line %d." % line_num)
                     match = self.am2_re.search(gline)
                     if match:  # Finish macro
-                        log.info("End of macro. Line %d." % line_num)
+                        log.debug("End of macro. Line %d." % line_num)
                         self.aperture_macros[current_macro].append(match.group(1))
                         #self.aperture_macros[current_macro].parse_content()
                         current_macro = None
@@ -1659,7 +1795,10 @@ class Gerber (Geometry):
 
                             ## --- BUFFERED ---
                             if making_region:
-                                geo = Polygon(path)
+                                if follow:
+                                    geo = Polygon()
+                                else:
+                                    geo = Polygon(path)
                             else:
                                 if last_path_aperture is None:
                                     log.warning("No aperture defined for curent path. (%d)" % line_num)
@@ -1669,7 +1808,9 @@ class Gerber (Geometry):
                                     geo = LineString(path)
                                 else:
                                     geo = LineString(path).buffer(width / 2)
-                            if not geo.is_empty: poly_buffer.append(geo)
+
+                            if not geo.is_empty:
+                                poly_buffer.append(geo)
 
                         path = [[current_x, current_y]]  # Start new path
 
@@ -1681,17 +1822,26 @@ class Gerber (Geometry):
                         if len(path) > 1:
                             # --- Buffered ----
                             width = self.apertures[last_path_aperture]["size"]
-                            geo = LineString(path).buffer(width / 2)
-                            if not geo.is_empty: poly_buffer.append(geo)
+
+                            if follow:
+                                geo = LineString(path)
+                            else:
+                                geo = LineString(path).buffer(width / 2)
+
+                            if not geo.is_empty:
+                                poly_buffer.append(geo)
 
                         # Reset path starting point
                         path = [[current_x, current_y]]
 
                         # --- BUFFERED ---
                         # Draw the flash
+                        if follow:
+                            continue
                         flash = Gerber.create_flash_geometry(Point([current_x, current_y]),
                                                              self.apertures[current_aperture])
-                        if not flash.is_empty: poly_buffer.append(flash)
+                        if not flash.is_empty:
+                            poly_buffer.append(flash)
 
                     continue
 
@@ -1744,8 +1894,13 @@ class Gerber (Geometry):
 
                             # --- BUFFERED ---
                             width = self.apertures[last_path_aperture]["size"]
-                            buffered = LineString(path).buffer(width / 2)
-                            if not buffered.is_empty: poly_buffer.append(buffered)
+
+                            if follow:
+                                buffered = LineString(path)
+                            else:
+                                buffered = LineString(path).buffer(width / 2)
+                            if not buffered.is_empty:
+                                poly_buffer.append(buffered)
 
                         current_x = x
                         current_y = y
@@ -1858,9 +2013,12 @@ class Gerber (Geometry):
                             log.debug("Bare op-code %d." % current_operation_code)
                             # flash = Gerber.create_flash_geometry(Point(path[-1]),
                             #                                      self.apertures[current_aperture])
+                            if follow:
+                                continue
                             flash = Gerber.create_flash_geometry(Point(current_x, current_y),
                                                                  self.apertures[current_aperture])
-                            if not flash.is_empty: poly_buffer.append(flash)
+                            if not flash.is_empty:
+                                poly_buffer.append(flash)
                         except IndexError:
                             log.warning("Line %d: %s -> Nothing there to flash!" % (line_num, gline))
 
@@ -1882,8 +2040,13 @@ class Gerber (Geometry):
 
                         ## --- Buffered ---
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width/2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width/2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -1910,10 +2073,15 @@ class Gerber (Geometry):
                     #                      "aperture": last_path_aperture})
 
                     # --- Buffered ---
-                    region = Polygon(path)
+                    if follow:
+                        region = Polygon()
+                    else:
+                        region = Polygon(path)
                     if not region.is_valid:
-                        region = region.buffer(0)
-                    if not region.is_empty: poly_buffer.append(region)
+                        if not follow:
+                            region = region.buffer(0)
+                    if not region.is_empty:
+                        poly_buffer.append(region)
 
                     path = [[current_x, current_y]]  # Start new path
                     continue
@@ -1946,8 +2114,14 @@ class Gerber (Geometry):
                     if len(path) > 1:
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width / 2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width / 2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
+
                         path = [path[-1]]
 
                     continue
@@ -1962,8 +2136,13 @@ class Gerber (Geometry):
 
                         # --- Buffered ----
                         width = self.apertures[last_path_aperture]["size"]
-                        geo = LineString(path).buffer(width / 2)
-                        if not geo.is_empty: poly_buffer.append(geo)
+
+                        if follow:
+                            geo = LineString(path)
+                        else:
+                            geo = LineString(path).buffer(width / 2)
+                        if not geo.is_empty:
+                            poly_buffer.append(geo)
 
                         path = [path[-1]]
 
@@ -2034,10 +2213,18 @@ class Gerber (Geometry):
 
                 ## --- Buffered ---
                 width = self.apertures[last_path_aperture]["size"]
-                geo = LineString(path).buffer(width / 2)
-                if not geo.is_empty: poly_buffer.append(geo)
+                if follow:
+                    geo = LineString(path)
+                else:
+                    geo = LineString(path).buffer(width / 2)
+                if not geo.is_empty:
+                    poly_buffer.append(geo)
 
             # --- Apply buffer ---
+            if follow:
+                self.solid_geometry = poly_buffer
+                return
+
             log.warn("Joining %d polygons." % len(poly_buffer))
             if self.use_buffer_for_union:
                 log.debug("Union by buffer...")
@@ -2117,8 +2304,11 @@ class Gerber (Geometry):
         if aperture['type'] == 'AM':  # Aperture Macro
             loc = location.coords[0]
             flash_geo = aperture['macro'].make_geometry(aperture['modifiers'])
+            if flash_geo.is_empty:
+                log.warning("Empty geometry for Aperture Macro: %s" % str(aperture['macro'].name))
             return affinity.translate(flash_geo, xoff=loc[0], yoff=loc[1])
 
+        log.warning("Unknown aperture type: %s" % aperture['type'])
         return None
     
     def create_geometry(self):
@@ -2604,7 +2794,8 @@ class CNCjob(Geometry):
         self.feedrate = feedrate
         self.tooldia = tooldia
         self.unitcode = {"IN": "G20", "MM": "G21"}
-        self.pausecode = "G04 P1"
+        # TODO: G04 Does not exist. It's G4 and now we are handling in postprocessing.
+        #self.pausecode = "G04 P1"
         self.feedminutecode = "G94"
         self.absolutecode = "G90"
         self.gcode = ""
@@ -2656,12 +2847,20 @@ class CNCjob(Geometry):
         log.debug("Creating CNC Job from Excellon...")
 
         # Tools
+        
+        # sort the tools list by the second item in tuple (here we have a dict with diameter of the tool)
+        # so we actually are sorting the tools by diameter
+        sorted_tools = sorted(exobj.tools.items(), key = lambda x: x[1])
         if tools == "all":
-            tools = [tool for tool in exobj.tools]
+            tools = [i[0] for i in sorted_tools]   # we get a array of ordered tools
+            log.debug("Tools 'all' and sorted are: %s" % str(tools))
         else:
-            tools = [x.strip() for x in tools.split(",")]
-            tools = filter(lambda i: i in exobj.tools, tools)
-        log.debug("Tools are: %s" % str(tools))
+            selected_tools = [x.strip() for x in tools.split(",")]  # we strip spaces and also separate the tools by ','
+            selected_tools = filter(lambda i: i in selected_tools, selected_tools)
+
+            # Create a sorted list of selected tools from the sorted_tools list
+            tools = [i for i, j in sorted_tools for k in selected_tools if i == k]
+            log.debug("Tools selected and sorted are: %s" % str(tools)) 
 
         # Points (Group by tool)
         points = {}
@@ -2678,7 +2877,8 @@ class CNCjob(Geometry):
         # Basic G-Code macros
         t = "G00 " + CNCjob.defaults["coordinate_format"] + "\n"
         down = "G01 Z%.4f\n" % self.z_cut
-        up = "G01 Z%.4f\n" % self.z_move
+        up = "G00 Z%.4f\n" % self.z_move
+        up_to_zero = "G01 Z0\n"
 
         # Initialization
         gcode = self.unitcode[self.units.upper()] + "\n"
@@ -2688,32 +2888,36 @@ class CNCjob(Geometry):
         gcode += "G00 Z%.4f\n" % self.z_move  # Move to travel height
 
         if self.spindlespeed is not None:
-            gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
+            # Spindle start with configured speed
+            gcode += "M03 S%d\n" % int(self.spindlespeed)
         else:
             gcode += "M03\n"  # Spindle start
 
-        gcode += self.pausecode + "\n"
+        #gcode += self.pausecode + "\n"
 
-        for tool in points:
+        for tool in tools:
 
-            # Tool change sequence (optional)
-            if toolchange:
-                gcode += "G00 Z%.4f\n" % toolchangez
-                gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
-                gcode += "M5\n"  # Spindle Stop
-                gcode += "M6\n"  # Tool change
-                gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
-                gcode += "M0\n"  # Temporary machine stop
-                if self.spindlespeed is not None:
-                    gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
-                else:
-                    gcode += "M03\n"  # Spindle start
+            # Only if tool has points.
+            if tool in points:
+                # Tool change sequence (optional)
+                if toolchange:
+                    gcode += "G00 Z%.4f\n" % toolchangez
+                    gcode += "T%d\n" % int(tool)  # Indicate tool slot (for automatic tool changer)
+                    gcode += "M5\n"  # Spindle Stop
+                    gcode += "M6\n"  # Tool change
+                    gcode += "(MSG, Change to tool dia=%.4f)\n" % exobj.tools[tool]["C"]
+                    gcode += "M0\n"  # Temporary machine stop
+                    if self.spindlespeed is not None:
+                        # Spindle start with configured speed
+                        gcode += "M03 S%d\n" % int(self.spindlespeed)
+                    else:
+                        gcode += "M03\n"  # Spindle start
 
-            # Drillling!
-            for point in points[tool]:
-                x, y = point.coords.xy
-                gcode += t % (x[0], y[0])
-                gcode += down + up
+                # Drillling!
+                for point in points[tool]:
+                    x, y = point.coords.xy
+                    gcode += t % (x[0], y[0])
+                    gcode += down + up_to_zero + up
 
         gcode += t % (0, 0)
         gcode += "M05\n"  # Spindle stop
@@ -2786,7 +2990,7 @@ class CNCjob(Geometry):
             self.gcode += "M03 S%d\n" % int(self.spindlespeed)  # Spindle start with configured speed
         else:
             self.gcode += "M03\n"  # Spindle start
-        self.gcode += self.pausecode + "\n"
+        #self.gcode += self.pausecode + "\n"
 
         ## Iterate over geometry paths getting the nearest each time.
         log.debug("Starting G-Code...")
@@ -2822,17 +3026,24 @@ class CNCjob(Geometry):
 
                 #--------- Multi-pass ---------
                 else:
+                    if isinstance(self.z_cut, Decimal):
+                        z_cut = self.z_cut
+                    else:
+                        z_cut = Decimal(self.z_cut).quantize(Decimal('0.000000001'))
+
                     if depthpercut is None:
-                        depthpercut = self.z_cut
+                        depthpercut = z_cut
+                    elif not isinstance(depthpercut, Decimal):
+                        depthpercut = Decimal(depthpercut).quantize(Decimal('0.000000001'))
 
                     depth = 0
                     reverse = False
-                    while depth > self.z_cut:
+                    while depth > z_cut:
 
                         # Increase depth. Limit to z_cut.
                         depth -= depthpercut
-                        if depth < self.z_cut:
-                            depth = self.z_cut
+                        if depth < z_cut:
+                            depth = z_cut
 
                         # Cut at specific depth and do not lift the tool.
                         # Note: linear2gcode() will use G00 to move to the
@@ -2887,65 +3098,25 @@ class CNCjob(Geometry):
         self.gcode += "G00 X0Y0\n"
         self.gcode += "M05\n"  # Spindle stop
 
-    def pre_parse(self, gtext):
+    @staticmethod
+    def codes_split(gline):
         """
-        Separates parts of the G-Code text into a list of dictionaries.
-        Used by ``self.gcode_parse()``.
+        Parses a line of G-Code such as "G01 X1234 Y987" into
+        a dictionary: {'G': 1.0, 'X': 1234.0, 'Y': 987.0}
 
-        :param gtext: A single string with g-code
+        :param gline: G-Code line string
+        :return: Dictionary with parsed line.
         """
 
-        # Units: G20-inches, G21-mm
-        units_re = re.compile(r'^G2([01])')
+        command = {}
 
-        # TODO: This has to be re-done
-        gcmds = []
-        lines = gtext.split("\n")  # TODO: This is probably a lot of work!
-        for line in lines:
-            # Clean up
-            line = line.strip()
+        match = re.search(r'^\s*([A-Z])\s*([\+\-\.\d\s]+)', gline)
+        while match:
+            command[match.group(1)] = float(match.group(2).replace(" ", ""))
+            gline = gline[match.end():]
+            match = re.search(r'^\s*([A-Z])\s*([\+\-\.\d\s]+)', gline)
 
-            # Remove comments
-            # NOTE: Limited to 1 bracket pair
-            op = line.find("(")
-            cl = line.find(")")
-            #if op > -1 and  cl > op:
-            if cl > op > -1:
-                #comment = line[op+1:cl]
-                line = line[:op] + line[(cl+1):]
-
-            # Units
-            match = units_re.match(line)
-            if match:
-                self.units = {'0': "IN", '1': "MM"}[match.group(1)]
-
-            # Parse GCode
-            # 0   4       12
-            # G01 X-0.007 Y-0.057
-            # --> codes_idx = [0, 4, 12]
-            codes = "NMGXYZIJFPST"
-            codes_idx = []
-            i = 0
-            for ch in line:
-                if ch in codes:
-                    codes_idx.append(i)
-                i += 1
-            n_codes = len(codes_idx)
-            if n_codes == 0:
-                continue
-
-            # Separate codes in line
-            parts = []
-            for p in range(n_codes - 1):
-                parts.append(line[codes_idx[p]:codes_idx[p+1]].strip())
-            parts.append(line[codes_idx[-1]:].strip())
-
-            # Separate codes from values
-            cmds = {}
-            for part in parts:
-                cmds[part[0]] = float(part[1:])
-            gcmds.append(cmds)
-        return gcmds
+        return command
 
     def gcode_parse(self):
         """
@@ -2958,10 +3129,7 @@ class CNCjob(Geometry):
 
         # Results go here
         geometry = []        
-        
-        # TODO: Merge into single parser?
-        gobjs = self.pre_parse(self.gcode)
-        
+
         # Last known instruction
         current = {'X': 0.0, 'Y': 0.0, 'Z': 0.0, 'G': 0}
 
@@ -2970,7 +3138,14 @@ class CNCjob(Geometry):
         path = [(0, 0)]
 
         # Process every instruction
-        for gobj in gobjs:
+        for line in StringIO(self.gcode):
+
+            gobj = self.codes_split(line)
+
+            ## Units
+            if 'G' in gobj and (gobj['G'] == 20.0 or gobj['G'] == 21.0):
+                self.units = {20.0: "IN", 21.0: "MM"}[gobj['G']]
+                continue
 
             ## Changing height
             if 'Z' in gobj:
@@ -3014,7 +3189,7 @@ class CNCjob(Geometry):
                     center = [gobj['I'] + current['X'], gobj['J'] + current['Y']]
                     radius = sqrt(gobj['I']**2 + gobj['J']**2)
                     start = arctan2(-gobj['J'], -gobj['I'])
-                    stop = arctan2(-center[1]+y, -center[0]+x)
+                    stop = arctan2(-center[1] + y, -center[0] + x)
                     path += arc(center, radius, start, stop,
                                 arcdir[current['G']],
                                 self.steps_per_circ)
@@ -3226,6 +3401,54 @@ class CNCjob(Geometry):
 
         self.create_geometry()
 
+    def export_svg(self, scale_factor=0.00):
+        """
+        Exports the CNC Job as a SVG Element
+
+        :scale_factor: float
+        :return: SVG Element string
+        """
+        # scale_factor is a multiplication factor for the SVG stroke-width used within shapely's svg export
+        # If not specified then try and use the tool diameter
+        # This way what is on screen will match what is outputed for the svg
+        # This is quite a useful feature for svg's used with visicut
+
+        if scale_factor <= 0:
+            scale_factor = self.options['tooldia'] / 2
+
+        # If still 0 then defailt to 0.05
+        # This value appears to work for zooming, and getting the output svg line width
+        # to match that viewed on screen with FlatCam
+        if scale_factor == 0:
+            scale_factor = 0.05
+
+        # Seperate the list of cuts and travels into 2 distinct lists
+        # This way we can add different formatting / colors to both
+        cuts = []
+        travels = []
+        for g in self.gcode_parsed:
+            if g['kind'][0] == 'C': cuts.append(g)
+            if g['kind'][0] == 'T': travels.append(g)
+
+        # Used to determine the overall board size
+        self.solid_geometry = cascaded_union([geo['geom'] for geo in self.gcode_parsed])
+
+        # Convert the cuts and travels into single geometry objects we can render as svg xml
+        if travels:
+            travelsgeom = cascaded_union([geo['geom'] for geo in travels])
+        if cuts:
+            cutsgeom = cascaded_union([geo['geom'] for geo in cuts])
+
+        # Render the SVG Xml
+        # The scale factor affects the size of the lines, and the stroke color adds different formatting for each set
+        # It's better to have the travels sitting underneath the cuts for visicut
+        svg_elem = ""
+        if travels:
+            svg_elem = travelsgeom.svg(scale_factor=scale_factor, stroke_color="#F0E24D")
+        if cuts:
+            svg_elem += cutsgeom.svg(scale_factor=scale_factor, stroke_color="#5E6CFF")
+
+        return svg_elem
 
 # def get_bounds(geometry_set):
 #     xmin = Inf

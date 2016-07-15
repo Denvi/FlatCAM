@@ -1,3 +1,4 @@
+from cStringIO import StringIO
 from PyQt4 import QtCore
 from copy import copy
 from ObjectUI import *
@@ -6,9 +7,7 @@ import inspect  # TODO: For debugging only.
 from camlib import *
 from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
-from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
-TOLERANCE = 0.01
 
 ########################################
 ##            FlatCAMObj              ##
@@ -43,14 +42,29 @@ class FlatCAMObj(QtCore.QObject):
         self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
 
-        self.item = None  # Link with project view item
-
         self.muted_ui = False
 
         # assert isinstance(self.ui, ObjectUI)
         # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
         # self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         # self.ui.scale_button.clicked.connect(self.on_scale_button_click)
+
+    def from_dict(self, d):
+        """
+        This supersedes ``from_dict`` in derived classes. Derived classes
+        must inherit from FlatCAMObj first, then from derivatives of Geometry.
+
+        ``self.options`` is only updated, not overwritten. This ensures that
+        options set by the app do not vanish when reading the objects
+        from a project file.
+        """
+
+        for attr in self.ser_attrs:
+
+            if attr == 'options':
+                self.options.update(d[attr])
+            else:
+                setattr(self, attr, d[attr])
 
     def on_options_change(self, key):
         self.emit(QtCore.SIGNAL("optionChanged"), key)
@@ -61,19 +75,18 @@ class FlatCAMObj(QtCore.QObject):
         self.form_fields = {"name": self.ui.name_entry}
 
         assert isinstance(self.ui, ObjectUI)
-        self.ui.name_entry.editingFinished.connect(self.on_name_editing_finished)
+        self.ui.name_entry.returnPressed.connect(self.on_name_activate)
         self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         self.ui.scale_button.clicked.connect(self.on_scale_button_click)
 
     def __str__(self):
         return "<FlatCAMObj({:12s}): {:20s}>".format(self.kind, self.options["name"])
 
-    def on_name_editing_finished(self):
+    def on_name_activate(self):
         old_name = copy(self.options["name"])
         new_name = self.ui.name_entry.get_value()
-        if new_name != old_name:
-            self.options["name"] = new_name
-            self.app.info("Name changed from %s to %s" % (old_name, new_name))
+        self.options["name"] = self.ui.name_entry.get_value()
+        self.app.info("Name changed from %s to %s" % (old_name, new_name))
 
     def on_offset_button_click(self):
         self.app.report_usage("obj_on_offset_button")
@@ -90,14 +103,50 @@ class FlatCAMObj(QtCore.QObject):
         self.scale(factor)
         self.plot()
 
+    def setup_axes(self, figure):
+        """
+        1) Creates axes if they don't exist. 2) Clears axes. 3) Attaches
+        them to figure if not part of the figure. 4) Sets transparent
+        background. 5) Sets 1:1 scale aspect ratio.
+
+        :param figure: A Matplotlib.Figure on which to add/configure axes.
+        :type figure: matplotlib.figure.Figure
+        :return: None
+        :rtype: None
+        """
+
+        if self.axes is None:
+            FlatCAMApp.App.log.debug("setup_axes(): New axes")
+            self.axes = figure.add_axes([0.05, 0.05, 0.9, 0.9],
+                                        label=self.options["name"])
+        elif self.axes not in figure.axes:
+            FlatCAMApp.App.log.debug("setup_axes(): Clearing and attaching axes")
+            self.axes.cla()
+            figure.add_axes(self.axes)
+        else:
+            FlatCAMApp.App.log.debug("setup_axes(): Clearing Axes")
+            self.axes.cla()
+
+        # Remove all decoration. The app's axes will have
+        # the ticks and grid.
+        self.axes.set_frame_on(False)  # No frame
+        self.axes.set_xticks([])  # No tick
+        self.axes.set_yticks([])  # No ticks
+        self.axes.patch.set_visible(False)  # No background
+        self.axes.set_aspect(1)
+
     def to_form(self):
         """
         Copies options to the UI form.
 
         :return: None
         """
+        FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.to_form()")
         for option in self.options:
-            self.set_form_item(option)
+            try:
+                self.set_form_item(option)
+            except:
+                self.app.log.warning("Unexpected error:", sys.exc_info())
 
     def read_form(self):
         """
@@ -108,7 +157,10 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> FlatCAMObj.read_form()")
         for option in self.options:
-            self.read_form_item(option)
+            try:
+                self.read_form_item(option)
+            except:
+                self.app.log.warning("Unexpected error:", sys.exc_info())
 
     def build_ui(self):
         """
@@ -137,8 +189,8 @@ class FlatCAMObj(QtCore.QObject):
             self.app.ui.selected_scroll_area.takeWidget()
         except:
             self.app.log.debug("Nothing to remove")
-
         self.app.ui.selected_scroll_area.setWidget(self.ui)
+        self.to_form()
 
         self.muted_ui = False
 
@@ -170,6 +222,17 @@ class FlatCAMObj(QtCore.QObject):
         except KeyError:
             self.app.log.warning("Failed to read option from field: %s" % option)
 
+        # #try read field only when option have equivalent in form_fields
+        # if option in self.form_fields:
+        #     option_type=type(self.options[option])
+        #     try:
+        #         value=self.form_fields[option].get_value()
+        #     #catch per option as it was ignored anyway, also when syntax error (probably uninitialized field),don't read either.
+        #     except (KeyError,SyntaxError):
+        #         self.app.log.warning("Failed to read option from field: %s" % option)
+        # else:
+        #     self.app.log.warning("Form fied does not exists: %s" % option)
+
     def plot(self):
         """
         Plot this object (Extend this method to implement the actual plotting).
@@ -192,7 +255,6 @@ class FlatCAMObj(QtCore.QObject):
 
         # Clear axes or we will plot on top of them.
         self.axes.cla()  # TODO: Thread safe?
-
         return True
 
     def serialize(self):
@@ -238,9 +300,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
-            "ncctools": "1.0, 0.5",
-            "nccoverlap": 0.4,
-            "nccmargin": 1,
             "combine_passes": True,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
@@ -286,9 +345,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
-            "ncctools": self.ui.ncc_tool_dia_entry,
-            "nccoverlap": self.ui.ncc_overlap_entry,
-            "nccmargin": self.ui.ncc_margin_entry,
             "combine_passes": self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
@@ -300,15 +356,11 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "bboxrounded": self.ui.bbrounded_cb
         })
 
-        # Fill form fields only on object create
-        self.to_form()
-
         assert isinstance(self.ui, GerberObjectUI)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
         self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
-        self.ui.generate_ncc_button.clicked.connect(self.on_ncc_button_click)
         self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
         self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
@@ -351,7 +403,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         name = self.options["name"] + "_cutout"
 
         def geo_init(geo_obj, app_obj):
-            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"] / 2
+            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"]/2
             gap_size = self.options["cutoutgapsize"] + self.options["cutouttooldia"]
             minx, miny, maxx, maxy = self.bounds()
             minx -= margin
@@ -391,89 +443,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.report_usage("gerber_on_iso_button")
         self.read_form()
         self.isolate()
-
-    def on_ncc_button_click(self, *args):
-        self.app.report_usage("gerber_on_ncc_button")
-
-        # Prepare parameters
-        try:
-            tools = [float(eval(dia)) for dia in self.ui.ncc_tool_dia_entry.get_value().split(",")]
-        except:
-            FlatCAMApp.App.log.error("At least one tool diameter needed")
-            return
-
-        over = self.ui.ncc_overlap_entry.get_value()
-        margin = self.ui.ncc_margin_entry.get_value()
-
-        if over is None or margin is None:
-            FlatCAMApp.App.log.error("Overlap and margin values needed")
-            return
-
-        print "non-copper clear button clicked", tools, over, margin
-
-        # Sort tools in descending order
-        tools.sort(reverse=True)
-
-        # Prepare non-copper polygons
-        bounding_box = self.solid_geometry.envelope.buffer(distance=margin, join_style=JOIN_STYLE.mitre)
-        empty = self.get_empty_area(bounding_box)
-        if type(empty) is Polygon:
-            empty = MultiPolygon([empty])
-
-        # Main procedure
-        def clear_non_copper():
-
-            # Already cleared area
-            cleared = MultiPolygon()
-
-            # Geometry object creating callback
-            def geo_init(geo_obj, app_obj):
-                geo_obj.options["cnctooldia"] = tool
-                geo_obj.solid_geometry = []
-                for p in area.geoms:
-                    try:
-                        cp = self.clear_polygon(p, tool, over)
-                        geo_obj.solid_geometry.append(list(cp.get_objects()))
-                    except:
-                        FlatCAMApp.App.log.warning("Polygon is ommited")
-
-            # Generate area for each tool
-            offset = sum(tools)
-            for tool in tools:
-                # Get remaining tools offset
-                offset -= tool
-
-                # Area to clear
-                area = empty.buffer(-offset).difference(cleared)
-
-                # Transform area to MultiPolygon
-                if type(area) is Polygon:
-                    area = MultiPolygon([area])
-
-                # Check if area not empty
-                if len(area.geoms) > 0:
-                    # Overall cleared area
-                    cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
-
-                    # Create geometry object
-                    name = self.options["name"] + "_ncc_" + repr(tool) + "D"
-                    self.app.new_object("geometry", name, geo_init)
-                else:
-                    return
-
-        # Do job in background
-        proc = self.app.proc_container.new("Clearing non-copper areas.")
-
-        def job_thread(app_obj):
-            try:
-                clear_non_copper()
-            except Exception as e:
-                proc.done()
-                raise e
-            proc.done()
-
-        self.app.inform.emit("Clear non-copper areas started ...")
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def follow(self, outname=None):
         """
@@ -548,7 +517,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 geo_obj.solid_geometry = []
                 for i in range(passes):
                     offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
-                    geom = generate_envelope(offset, i == 0)
+                    geom = generate_envelope (offset, i == 0)
                     geo_obj.solid_geometry.append(geom)
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
@@ -558,7 +527,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         else:
             for i in range(passes):
 
-                offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
+                offset = (2 * i + 1) / 2.0 * dia - i * overlap  * dia
                 if passes > 1:
                     iso_name = base_name + str(i + 1)
                 else:
@@ -568,7 +537,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 def iso_init(geo_obj, app_obj):
                     # Propagate options
                     geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-                    geo_obj.solid_geometry = generate_envelope(offset, i == 0)
+                    geo_obj.solid_geometry = generate_envelope (offset, i == 0)
                     app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
                 # TODO: Do something if this is None. Offer changing name?
@@ -637,7 +606,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             for poly in geometry:
                 # TODO: Too many things hardcoded.
                 try:
-                    poly = poly.simplify(TOLERANCE)
                     patch = PolygonPatch(poly,
                                          facecolor="#BBF268",
                                          edgecolor="#006E20",
@@ -649,7 +617,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                     FlatCAMApp.App.log.warning(str(poly))
         else:
             for poly in geometry:
-                poly = poly.simplify(TOLERANCE)
                 x, y = poly.exterior.xy
                 self.axes.plot(x, y, linespec)
                 for ints in poly.interiors:
@@ -699,6 +666,76 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
+    @staticmethod
+    def merge(exc_list, exc_final):
+        """
+        Merge excellons in exc_list into exc_final.
+        Options are allways copied from source .
+
+        Tools are also merged, if  name for  tool is same and   size differs, then as name is used next available  number from both lists
+
+        if only one object is  specified in exc_list then this acts  as copy only
+
+        :param exc_list: List or one object of FlatCAMExcellon Objects to join.
+        :param exc_final: Destination FlatCAMExcellon object.
+        :return: None
+        """
+
+        if type(exc_list) is not list:
+            exc_list_real= list()
+            exc_list_real.append(exc_list)
+        else:
+            exc_list_real=exc_list
+
+        for exc in exc_list_real:
+            # Expand lists
+            if type(exc) is list:
+                FlatCAMExcellon.merge(exc, exc_final)
+            # If not list, merge excellons
+            else:
+
+                #    TODO: I realize forms does not save values into options , when  object is deselected
+                #    leave this  here for future use
+                #    this  reinitialize options based on forms, all steps may not be necessary
+                #    exc.app.collection.set_active(exc.options['name'])
+                #    exc.to_form()
+                #    exc.read_form()
+                for option in exc.options:
+                    if option is not 'name':
+                        try:
+                            exc_final.options[option] = exc.options[option]
+                        except:
+                            exc.app.log.warning("Failed to copy option.",option)
+
+                #deep copy of all drills,to avoid any references
+                for drill in exc.drills:
+                    point = Point(drill['point'].x,drill['point'].y)
+                    exc_final.drills.append({"point": point, "tool": drill['tool']})
+                toolsrework=dict()
+                max_numeric_tool=0
+                for toolname in exc.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc.tools[toolname]['C']]=toolname
+
+                #exc_final as last because names from final tools will be used
+                for toolname in exc_final.tools.iterkeys():
+                    numeric_tool=int(toolname)
+                    if numeric_tool>max_numeric_tool:
+                        max_numeric_tool=numeric_tool
+                    toolsrework[exc_final.tools[toolname]['C']]=toolname
+
+                for toolvalues in toolsrework.iterkeys():
+                    if toolsrework[toolvalues] in exc_final.tools:
+                        if exc_final.tools[toolsrework[toolvalues]]!={"C": toolvalues}:
+                            exc_final.tools[str(max_numeric_tool+1)]={"C": toolvalues}
+                    else:
+                        exc_final.tools[toolsrework[toolvalues]]={"C": toolvalues}
+                #this value  was not co
+                exc_final.zeros=exc.zeros
+                exc_final.create_geometry()
+
     def build_ui(self):
         FlatCAMObj.build_ui(self)
 
@@ -717,6 +754,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             dia.setFlags(QtCore.Qt.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 1, dia)  # Diameter
             i += 1
+        
+        # sort the tool diameter column
+        self.ui.tools_table.sortItems(1)
+        # all the tools are selected by default
+        self.ui.tools_table.selectColumn(0)
+        
         self.ui.tools_table.resizeColumnsToContents()
         self.ui.tools_table.resizeRowsToContents()
         self.ui.tools_table.horizontalHeader().setStretchLastSection(True)
@@ -747,9 +790,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "toolchangez": self.ui.toolchangez_entry,
             "spindlespeed": self.ui.spindlespeed_entry
         })
-
-        # Fill form fields
-        self.to_form()
 
         assert isinstance(self.ui, ExcellonObjectUI), \
             "Expected a ExcellonObjectUI, got %s" % type(self.ui)
@@ -959,7 +999,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "plot": True,
             "tooldia": 0.4 / 25.4,  # 0.4mm in inches
             "append": "",
-            "prepend": ""
+            "prepend": "",
+            "dwell": False,
+            "dwelltime": 1
         })
 
         # Attributes to be included in serialization
@@ -979,11 +1021,10 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "plot": self.ui.plot_cb,
             "tooldia": self.ui.tooldia_entry,
             "append": self.ui.append_text,
-            "prepend": self.ui.prepend_text
+            "prepend": self.ui.prepend_text,
+            "dwell": self.ui.dwell_cb,
+            "dwelltime": self.ui.dwelltime_entry
         })
-
-        # Fill form fields only on object create
-        self.to_form()
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.updateplot_button.clicked.connect(self.on_updateplot_button_click)
@@ -1000,6 +1041,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     def on_exportgcode_button_click(self, *args):
         self.app.report_usage("cncjob_on_exportgcode_button")
 
+        self.read_form()
+
         try:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Export G-Code ...",
                                                          directory=self.app.defaults["last_folder"])
@@ -1011,15 +1054,68 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
 
         self.export_gcode(filename, preamble=preamble, postamble=postamble)
 
+    def dwell_generator(self, lines):
+        """
+        Inserts "G4 P..." instructions after spindle-start
+        instructions (M03 or M04).
+
+        """
+
+        log.debug("dwell_generator()...")
+
+        m3m4re = re.compile(r'^\s*[mM]0[34]')
+        g4re = re.compile(r'^\s*[gG]4\s+([\d\.\+\-e]+)')
+        bufline = None
+
+        for line in lines:
+            # If the buffer contains a G4, yield that.
+            # If current line is a G4, discard it.
+            if bufline is not None:
+                yield bufline
+                bufline = None
+
+                if not g4re.search(line):
+                    yield line
+
+                continue
+
+            # If start spindle, buffer a G4.
+            if m3m4re.search(line):
+                log.debug("Found M03/4")
+                bufline = "G4 P{}\n".format(self.options['dwelltime'])
+
+            yield line
+
+        raise StopIteration
+
     def export_gcode(self, filename, preamble='', postamble=''):
-        f = open(filename, 'w')
-        f.write(preamble + '\n' + self.gcode + "\n" + postamble)
-        f.close()
+
+        lines = StringIO(self.gcode)
+
+        ## Post processing
+        # Dwell?
+        if self.options['dwell']:
+            log.debug("Will add G04!")
+            lines = self.dwell_generator(lines)
+
+        ## Write
+        with open(filename, 'w') as f:
+            f.write(preamble + "\n")
+
+            for line in lines:
+
+                f.write(line)
+
+            f.write(postamble)
 
         # Just for adding it to the recent files list.
         self.app.file_opened.emit("cncjob", filename)
 
         self.app.inform.emit("Saved to: " + filename)
+
+    def get_gcode(self, preamble='', postamble=''):
+        #we need this to beable get_gcode separatelly for shell command export_code
+        return preamble + '\n' + self.gcode + "\n" + postamble
 
     def on_plot_cb_click(self, *args):
         if self.muted_ui:
@@ -1034,7 +1130,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(self.axes, tooldia=self.options["tooldia"], tool_tolerance=TOLERANCE)
+        self.plot2(self.axes, tooldia=self.options["tooldia"])
 
         self.app.plotcanvas.auto_adjust_axes()
 
@@ -1078,12 +1174,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             else:
                 geo_final.solid_geometry.append(geo.solid_geometry)
 
-                # try:  # Iterable
-                #     for shape in geo.solid_geometry:
-                #         geo_final.solid_geometry.append(shape)
-                #
-                # except TypeError:  # Non-iterable
-                #     geo_final.solid_geometry.append(geo.solid_geometry)
+            # try:  # Iterable
+            #     for shape in geo.solid_geometry:
+            #         geo_final.solid_geometry.append(shape)
+            #
+            # except TypeError:  # Non-iterable
+            #     geo_final.solid_geometry.append(geo.solid_geometry)
 
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)
@@ -1137,15 +1233,11 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "depthperpass": self.ui.maxdepth_entry
         })
 
-        # Fill form fields only on object create
-        self.to_form()
-
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.generate_cnc_button.clicked.connect(self.on_generatecnc_button_click)
         self.ui.generate_paint_button.clicked.connect(self.on_paint_button_click)
 
     def on_paint_button_click(self, *args):
-
         self.app.report_usage("geometry_on_paint_button")
 
         self.app.info("Click inside the desired polygon.")
@@ -1168,7 +1260,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     def paint_poly(self, inside_pt, tooldia, overlap):
 
         # Which polygon.
-        # poly = find_polygon(self.solid_geometry, inside_pt)
+        #poly = find_polygon(self.solid_geometry, inside_pt)
         poly = self.find_polygon(inside_pt)
 
         # No polygon?
@@ -1185,7 +1277,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry), \
                 "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
-            # assert isinstance(app_obj, App)
+            #assert isinstance(app_obj, App)
 
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]),
@@ -1228,7 +1320,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                        outname=None,
                        spindlespeed=None,
                        multidepth=None,
-                       depthperpass=None):
+                       depthperpass=None,
+                       use_thread=True):
         """
         Creates a CNCJob out of this Geometry object. The actual
         work is done by the target FlatCAMCNCjob object's
@@ -1289,18 +1382,21 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
             app_obj.progress.emit(80)
 
-        # To be run in separate thread
-        def job_thread(app_obj):
-            with self.app.proc_container.new("Generating CNC Job."):
-                app_obj.new_object("cncjob", outname, job_init)
-                app_obj.inform.emit("CNCjob created: %s" % outname)
-                app_obj.progress.emit(100)
+        if use_thread:
+            # To be run in separate thread
+            def job_thread(app_obj):
+                with self.app.proc_container.new("Generating CNC Job."):
+                    app_obj.new_object("cncjob", outname, job_init)
+                    app_obj.inform.emit("CNCjob created: %s" % outname)
+                    app_obj.progress.emit(100)
 
-        # Create a promise with the name
-        self.app.collection.promise(outname)
+            # Create a promise with the name
+            self.app.collection.promise(outname)
 
-        # Send to worker
-        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+            # Send to worker
+            self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
+        else:
+            self.app.new_object("cncjob", outname, job_init)
 
     def on_plot_cb_click(self, *args):  # TODO: args not needed
         if self.muted_ui:
@@ -1337,11 +1433,16 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         dx, dy = vect
 
-        if type(self.solid_geometry) == list:
-            self.solid_geometry = [affinity.translate(g, xoff=dx, yoff=dy)
-                                   for g in self.solid_geometry]
-        else:
-            self.solid_geometry = affinity.translate(self.solid_geometry, xoff=dx, yoff=dy)
+        def translate_recursion(geom):
+            if type(geom) == list:
+                geoms=list()
+                for local_geom in geom:
+                    geoms.append(translate_recursion(local_geom))
+                return geoms
+            else:
+                return  affinity.translate(geom, xoff=dx, yoff=dy)
+
+        self.solid_geometry=translate_recursion(self.solid_geometry)
 
     def convert_units(self, units):
         factor = Geometry.convert_units(self, units)
@@ -1363,7 +1464,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         except TypeError:  # Element is not iterable...
 
             if type(element) == Polygon:
-                x, y = element.simplify(TOLERANCE).exterior.coords.xy
+                x, y = element.exterior.coords.xy
                 self.axes.plot(x, y, 'r-')
                 for ints in element.interiors:
                     x, y = ints.coords.xy
@@ -1371,7 +1472,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 return
 
             if type(element) == LineString or type(element) == LinearRing:
-                x, y = element.simplify(TOLERANCE).coords.xy
+                x, y = element.coords.xy
                 self.axes.plot(x, y, 'r-')
                 return
 

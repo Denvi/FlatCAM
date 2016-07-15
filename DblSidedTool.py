@@ -169,8 +169,10 @@ class DblSidedTool(FlatCAMTool):
 
         # For now, lets limit to Gerbers and Excellons.
         # assert isinstance(gerb, FlatCAMGerber)
-        if not isinstance(fcobj, FlatCAMGerber) and not isinstance(fcobj, FlatCAMExcellon):
-            self.info("ERROR: Only Gerber and Excellon objects can be mirrored.")
+        if not isinstance(fcobj, FlatCAMGerber) and \
+                not isinstance(fcobj, FlatCAMExcellon) and \
+                not isinstance(fcobj, FlatCAMGeometry):
+            self.info("ERROR: Only Gerber, Excellon and Geometry objects can be mirrored.")
             return
 
         axis = self.mirror_axis.get_value()
