@@ -62,7 +62,7 @@ class ShapeCollectionVisual(CompoundVisual):
     total_segments = 0
     total_tris = 0
 
-    def __init__(self, line_width=1, triangulation='gpc', layers=2, **kwargs):
+    def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
         self.data = {}
         self.last_key = -1
 

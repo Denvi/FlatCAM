@@ -3278,15 +3278,14 @@ class CNCjob(Geometry):
                 # axes.annotate(str(path_num), xy=geo['geom'].coords[0],
                 #               xycoords='data')
 
-                if geo['kind'][0] == 'C':
-                    poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                    # patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
-                    #                      edgecolor=color[geo['kind'][0]][1],
-                    #                      alpha=alpha[geo['kind'][0]], zorder=2)
-                    # axes.add_patch(patch)
-                    # shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
-                    shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
-                               visible=visible)
+                poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
+                # patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
+                #                      edgecolor=color[geo['kind'][0]][1],
+                #                      alpha=alpha[geo['kind'][0]], zorder=2)
+                # axes.add_patch(patch)
+                # shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
+                shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
+                           visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
 
     def create_geometry(self):
         # TODO: This takes forever. Too much data?
