@@ -180,11 +180,11 @@ class ShapeCollectionVisual(CompoundVisual):
 
             if type(geo) == LineString:
                 # Prepare lines
-                pts = self._linestring_to_segments(np.asarray(simple)).tolist()
+                pts = self._linestring_to_segments(list(simple.coords))
 
             elif type(geo) == LinearRing:
                 # Prepare lines
-                pts = self._linearring_to_segments(np.asarray(simple)).tolist()
+                pts = self._linearring_to_segments(list(simple.coords))
 
             elif type(geo) == Polygon:
                 # Prepare polygon faces
@@ -208,11 +208,11 @@ class ShapeCollectionVisual(CompoundVisual):
                     elif self._triangulation == 'gpc':
 
                         # GPC triangulation
-                        p = gpc.Polygon(np.asarray(simple.exterior))
+                        p = gpc.Polygon(list(simple.exterior.coords))
 
                         # Exclude all internal rings from polygon
                         for ints in simple.interiors:
-                            q = gpc.Polygon(np.asarray(ints))
+                            q = gpc.Polygon(list(ints.coords))
                             p -= q
 
                         # Triangulate polygon
@@ -226,9 +226,9 @@ class ShapeCollectionVisual(CompoundVisual):
 
                 # Prepare polygon edges
                 if color is not None:
-                    pts = self._linearring_to_segments(np.asarray(simple.exterior)).tolist()
+                    pts = self._linearring_to_segments(list(simple.exterior.coords))
                     for ints in simple.interiors:
-                        pts += self._linearring_to_segments(np.asarray(ints)).tolist()
+                        pts += self._linearring_to_segments(list(ints.coords))
 
             # Appending data for mesh
             if len(tri_pts) > 0 and len(tri_tris) > 0:
@@ -330,7 +330,7 @@ class ShapeCollectionVisual(CompoundVisual):
         :return: numpy.array
             Opened line strip
         """
-        return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
+        return vertices[:-1] if not vertices[0] != vertices[-1] else vertices
 
     @staticmethod
     def _generate_edges(count):
@@ -357,8 +357,8 @@ class ShapeCollectionVisual(CompoundVisual):
         :return: numpy.array
             Line segments
         """
-        if np.any(arr[0] != arr[-1]):
-            arr = np.concatenate([arr, arr[:1]], axis=0)
+        if arr[0] != arr[-1]:
+            arr.append(arr[0])
 
         return ShapeCollection._linestring_to_segments(arr)
 
@@ -371,7 +371,7 @@ class ShapeCollectionVisual(CompoundVisual):
         :return: numpy.array
             Line segments
         """
-        return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
+        return [arr[i / 2] for i in range(0, len(arr) * 2)][1:-1]
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)

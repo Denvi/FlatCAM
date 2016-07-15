@@ -1189,7 +1189,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.storage.remove(shape)
 
         if shape in self.selected:
-            self.selected.remove(shape)
+            self.selected.remove(shape)     # TODO: Check performance
 
     def replot(self):
         self.plot_all()
