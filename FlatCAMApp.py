@@ -189,11 +189,13 @@ class App(QtCore.QObject):
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
         self.plotcanvas = PlotCanvas(self.ui.right_layout, self)
-        self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
-        self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
-        self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+        # self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
+        # self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
+        # self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
 
-        self.plotcanvas.vis_connect('mouse_move', self.on_mouse_move)
+        self.plotcanvas.vis_connect('mouse_move', self.on_mouse_move_over_plot)
+        self.plotcanvas.vis_connect('mouse_release', self.on_click_over_plot)
+        self.plotcanvas.vis_connect('key_press', self.on_key_over_plot)
 
         self.ui.splitter.setStretchFactor(1, 2)
 
@@ -1585,38 +1587,23 @@ class App(QtCore.QObject):
         """
 
         # So it can receive key presses
-        self.plotcanvas.canvas.setFocus()
+        self.plotcanvas.vispy_canvas.native.setFocus()
+
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
 
         try:
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-                event.button, event.x, event.y, event.xdata, event.ydata))
+                event.button, event.pos[0], event.pos[1], pos[0], pos[1]))
+            # App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+            #     event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.xdata, event.ydata))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.pos[0], event.pos[1]))
 
         except Exception, e:
             App.log.debug("Outside plot?")
             App.log.debug(str(e))
 
     def on_mouse_move_over_plot(self, event):
-        """
-        Callback for the mouse motion event over the plot. This event is generated
-        by the Matplotlib backend and has been registered in ``self.__init__()``.
-        For details, see: http://matplotlib.org/users/event_handling.html
-
-        :param event: Contains information about the event.
-        :return: None
-        """
-
-        try:  # May fail in case mouse not within axes
-            self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
-                event.xdata, event.ydata))
-            self.mouse = [event.xdata, event.ydata]
-
-        except:
-            self.ui.position_label.setText("")
-            self.mouse = None
-
-    def on_mouse_move(self, event):
         """
         Callback for the mouse motion event over the plot. This event is generated
         by the Matplotlib backend and has been registered in ``self.__init__()``.
@@ -1636,6 +1623,15 @@ class App(QtCore.QObject):
         except:
             self.ui.position_label.setText("")
             self.mouse = None
+
+        # try:  # May fail in case mouse not within axes
+        #     self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
+        #         event.xdata, event.ydata))
+        #     self.mouse = [event.xdata, event.ydata]
+        #
+        # except:
+        #     self.ui.position_label.setText("")
+        #     self.mouse = None
 
     def on_file_new(self):
         """

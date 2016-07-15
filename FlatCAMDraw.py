@@ -592,7 +592,6 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.app = app
         self.canvas = app.plotcanvas
-        self.fcgeometry = None
         # self.axes = self.canvas.new_axes("draw")
 
         ### Drawing Toolbar ###
@@ -701,6 +700,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.utility = []
 
         # VisPy visuals
+        self.fcgeometry = None
         self.shapes = self.app.plotcanvas.new_shape_collection()
         self.tool_shape = self.app.plotcanvas.new_shape_collection()
         self.cursor = self.app.plotcanvas.new_cursor()
@@ -712,6 +712,8 @@ class FlatCAMDraw(QtCore.QObject):
         self.move_timer.setSingleShot(True)
 
         self.key = None  # Currently pressed key
+        self.x = None    # Current mouse cursor pos
+        self.y = None
 
         def make_callback(thetool):
             def f():
@@ -968,6 +970,9 @@ class FlatCAMDraw(QtCore.QObject):
         pos = self.canvas.vispy_canvas.translate_coords(event.pos)
         event.xdata, event.ydata = pos[0], pos[1]
 
+        self.x = event.xdata
+        self.y = event.ydata
+
         self.on_canvas_move_effective(event)
         return None
 
@@ -1065,7 +1070,7 @@ class FlatCAMDraw(QtCore.QObject):
         ### complete automatically, like a polygon or path.
         if event.key.name == 'Space':
             if isinstance(self.active_tool, FCShapeTool):
-                self.active_tool.click(self.snap(event.xdata, event.ydata)) # TODO: Get coordinates
+                self.active_tool.click(self.snap(self.x, self.y)) # TODO: Get coordinates
                 self.active_tool.make()
                 if self.active_tool.complete:
                     self.on_shape_complete()
@@ -1095,14 +1100,14 @@ class FlatCAMDraw(QtCore.QObject):
         if event.key.name == 'M':
             self.move_btn.setChecked(True)
             self.on_tool_select('move')
-            self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
+            self.active_tool.set_origin(self.snap(self.x, self.y))
             self.app.info("Click on target point.")
 
         ### Copy
         if event.key.name == 'C':
             self.copy_btn.setChecked(True)
             self.on_tool_select('copy')
-            self.active_tool.set_origin(self.snap(event.xdata, event.ydata))
+            self.active_tool.set_origin(self.snap(self.x, self.y))
             self.app.info("Click on target point.")
 
         ### Snap
