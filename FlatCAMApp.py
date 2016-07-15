@@ -526,8 +526,8 @@ class App(QtCore.QObject):
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
         # Toolbar
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
-        self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
+        self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
+        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
         self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(except_current=True))
         self.ui.replot_btn.triggered.connect(self.enable_all_plots)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
