@@ -45,6 +45,8 @@ class FlatCAMObj(QtCore.QObject):
         # self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
         self.shapes = self.app.plotcanvas.new_shape_group()
 
+        self.item = None  # Link with project view item
+
         self.muted_ui = False
 
         # assert isinstance(self.ui, ObjectUI)
@@ -81,14 +83,14 @@ class FlatCAMObj(QtCore.QObject):
         self.form_fields = {"name": self.ui.name_entry}
 
         assert isinstance(self.ui, ObjectUI)
-        self.ui.name_entry.returnPressed.connect(self.on_name_activate)
+        self.ui.name_entry.editingFinished.connect(self.on_name_editing_finished)
         self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         self.ui.scale_button.clicked.connect(self.on_scale_button_click)
 
     def __str__(self):
         return "<FlatCAMObj({:12s}): {:20s}>".format(self.kind, self.options["name"])
 
-    def on_name_activate(self):
+    def on_name_editing_finished(self):
         old_name = copy(self.options["name"])
         new_name = self.ui.name_entry.get_value()
         self.options["name"] = self.ui.name_entry.get_value()

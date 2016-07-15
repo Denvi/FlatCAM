@@ -1488,7 +1488,9 @@ class App(QtCore.QObject):
         self.plot_all()
 
     def on_row_activated(self, index):
-        self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
+        if index.isValid():
+            if index.internalPointer().parent_item != self.collection.root_item:
+                self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
     def on_object_created(self, obj, plot):
         """
@@ -1507,6 +1509,10 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         if plot:
             obj.plot()
+            self.on_zoom_fit(None)
+
+        # Fit on first added object only
+        if len(self.collection.get_list()) == 1:
             self.on_zoom_fit(None)
 
         t1 = time.time()  # DEBUG
@@ -2802,17 +2808,17 @@ class App(QtCore.QObject):
             def aligndrillgrid_init_me(init_obj, app_obj):
                 drills = []
                 currenty=0
-                
+
                 for row in range(kwa['rows']):
                     currentx=0
-                    
+
                     for col in range(kwa['columns']):
                         point = Point(currentx + gridoffsetx, currenty + gridoffsety)
                         drills.append({"point": point, "tool": "1"})
                         currentx = currentx + kwa['gridx']
-                    
+
                     currenty = currenty + kwa['gridy']
-                
+
                 init_obj.tools = tools
                 init_obj.drills = drills
                 init_obj.create_geometry()
@@ -2889,28 +2895,28 @@ class App(QtCore.QObject):
                     # This will align hole to given aligngridoffset and minimal offset from pcb, based on selected axis
                     if axis == "X":
                         firstpoint = kwa['gridoffset']
-                        
+
                         while (xmin - kwa['minoffset']) < firstpoint:
                             firstpoint = firstpoint - kwa['grid']
-                        
+
                         lastpoint = kwa['gridoffset']
-                        
+
                         while (xmax + kwa['minoffset']) > lastpoint:
                             lastpoint = lastpoint + kwa['grid']
-                        
+
                         localHoles = (firstpoint, axisoffset), (lastpoint, axisoffset)
-                    
+
                     else:
                         firstpoint = kwa['gridoffset']
-                        
+
                         while (ymin - kwa['minoffset']) < firstpoint:
                             firstpoint = firstpoint - kwa['grid']
-                        
+
                         lastpoint = kwa['gridoffset']
-                        
+
                         while (ymax + kwa['minoffset']) > lastpoint:
                             lastpoint=lastpoint+kwa['grid']
-                        
+
                         localHoles = (axisoffset, firstpoint), (axisoffset, lastpoint)
 
                     for hole in localHoles:
@@ -4096,6 +4102,7 @@ class App(QtCore.QObject):
         :return: None
         """
         FlatCAMObj.app = self
+        ObjectCollection.app = self
 
         FCProcess.app = self
         FCProcessContainer.app = self
