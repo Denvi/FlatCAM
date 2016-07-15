@@ -2,7 +2,7 @@ import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
 from vispy.geometry import Rect
-from vispy.scene.widgets import Widget, Grid
+from vispy.scene.widgets import Grid
 from VisPyVisuals import ShapeCollection
 
 

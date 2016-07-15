@@ -14,14 +14,23 @@ except:
     pass
 
 
+# Patch LineVisual
+def clear_data(self):
+    self._bounds = None
+    self._pos = None
+    self._changed['pos'] = True
+    self.update()
+
+LineVisual.clear_data = clear_data
+
 class ShapeGroup(object):
     def __init__(self, collection):
         self._collection = collection
         self._indexes = []
         self._visible = True
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False):
-        self._indexes.append(self._collection.add(shape, color, face_color, visible, update))
+    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1, order=0):
+        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer, order))
 
     def clear(self, update=False):
         for i in self._indexes:
@@ -53,41 +62,33 @@ class ShapeCollectionVisual(CompoundVisual):
     total_segments = 0
     total_tris = 0
 
-    def __init__(self, line_width=1, triangulation='gpc', **kwargs):
+    def __init__(self, line_width=1, triangulation='gpc', layers=2, **kwargs):
         self.data = {}
         self.last_key = -1
 
-        self._mesh = MeshVisual()
-        self._line = LineVisual(antialias=True)
+        self._meshes = [MeshVisual() for _ in range(0, layers)]
+        self._lines = [LineVisual(antialias=True) for _ in range(0, layers)]
+
         self._line_width = line_width
         self._triangulation = triangulation
 
-        CompoundVisual.__init__(self, [self._mesh, self._line], **kwargs)
-        self._mesh.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
-        self._line.set_gl_state(blend=True)
+        visuals = [self._lines[i / 2] if i % 2 else self._meshes[i / 2] for i in range(0, layers * 2)]
+
+        CompoundVisual.__init__(self, visuals, **kwargs)
+
+        for m in self._meshes:
+            m.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
+
+        for l in self._lines:
+            l.set_gl_state(blend=True)
+
         self.freeze()
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False):
-        """Adds geometry object to collection
-
-        Args:
-            shape: shapely.geometry
-                Shapely geometry object
-            color: tuple
-                Line (polygon edge) color
-            face_color: tuple
-                Polygon fill color
-            visible: bool
-                Set to draw shape
-            update: bool
-                Set to redraw collection
-
-        Returns: int
-
-        """
+    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1, order=0):
         self.last_key += 1
 
-        self.data[self.last_key] = {'geometry': shape, 'color': color, 'face_color': face_color, 'visible': visible}
+        self.data[self.last_key] = {'geometry': shape, 'color': color, 'face_color': face_color,
+                                    'visible': visible, 'layer': layer, 'order': order}
         self.update_shape_buffers(self.last_key)
 
         if update:
@@ -189,46 +190,54 @@ class ShapeCollectionVisual(CompoundVisual):
             self._update()
 
     def _update(self):
-        mesh_vertices = []                  # Vertices for mesh
-        mesh_tris = []                      # Faces for mesh
-        mesh_colors = []                    # Face colors
-        line_pts = []                       # Vertices for line
-        line_colors = []                    # Line color
+        mesh_vertices = [[] for _ in range(0, len(self._meshes))]       # Vertices for mesh
+        mesh_tris = [[] for _ in range(0, len(self._meshes))]           # Faces for mesh
+        mesh_colors = [[] for _ in range(0, len(self._meshes))]         # Face colors
+        line_pts = [[] for _ in range(0, len(self._lines))]             # Vertices for line
+        line_colors = [[] for _ in range(0, len(self._lines))]          # Line color
 
         # Merge shapes buffers
         for data in self.data.values():
             if data['visible']:
                 try:
-                    line_pts += data['line_pts']
-                    line_colors += data['line_colors']
-                    mesh_tris += [[x + len(mesh_vertices) for x in y] for y in data['mesh_tris']]
-                    mesh_vertices += data['mesh_vertices']
-                    mesh_colors += data['mesh_colors']
+                    line_pts[data['layer']] += data['line_pts']
+                    line_colors[data['layer']] += data['line_colors']
+                    mesh_tris[data['layer']] += [[x + len(mesh_vertices[data['layer']])
+                                                  for x in y] for y in data['mesh_tris']]
+                    mesh_vertices[data['layer']] += data['mesh_vertices']
+                    mesh_colors[data['layer']] += data['mesh_colors']
                 except Exception as e:
                     print "Data error", e
 
-        # Updating mesh
-        if len(mesh_vertices) > 0:
-            set_state(polygon_offset_fill=False)
-            self._mesh.set_data(np.asarray(mesh_vertices), np.asarray(mesh_tris, dtype=np.uint32),
-                                face_colors=np.asarray(mesh_colors))
+        # Updating meshes
+        for i, mesh in enumerate(self._meshes):
+            if len(mesh_vertices[i]) > 0:
+                set_state(polygon_offset_fill=False)
+                mesh.set_data(np.asarray(mesh_vertices[i]), np.asarray(mesh_tris[i], dtype=np.uint32),
+                              face_colors=np.asarray(mesh_colors[i]))
+            else:
+                mesh.set_data()
 
-            self.total_tris += len(mesh_tris)
+            mesh._bounds_changed()
 
-        else:
-            self._mesh.set_data()
+        # Updating lines
+        for i, line in enumerate(self._lines):
+            if len(line_pts[i]) > 0:
+                line.set_data(np.asarray(line_pts[i]), np.asarray(line_colors[i]), self._line_width, 'segments')
+            else:
+                line.clear_data()
 
-        # Updating line
-        if len(line_pts) > 0:
-            self._line.set_data(np.asarray(line_pts), np.asarray(line_colors), self._line_width, 'segments')
-        else:
-            self._line._bounds = None
-            self._line._pos = None
-            self._line._changed['pos'] = True
-            self._line.update()
+            line._bounds_changed()
 
-        self._line._bounds_changed()
-        self._mesh._bounds_changed()
+        # if len(line_pts) > 0:
+        #     self._line.set_data(np.asarray(line_pts), np.asarray(line_colors), self._line_width, 'segments')
+        # else:
+        #     self._line._bounds = None
+        #     self._line._pos = None
+        #     self._line._changed['pos'] = True
+        #     self._line.update()
+
+        # self._line._bounds_changed()
         self._bounds_changed()
 
     def _open_ring(self, vertices):

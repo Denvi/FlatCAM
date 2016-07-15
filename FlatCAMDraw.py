@@ -1027,9 +1027,9 @@ class FlatCAMDraw(QtCore.QObject):
             #                            animated=True)
             try:
                 for el in list(geo.geo):
-                    self.tool_shape.add(el, color='#00000080', update=False)
+                    self.tool_shape.add(el, color='#FF000080', update=False)
             except TypeError:
-                self.tool_shape.add(geo.geo, color='#00000080', update=False)
+                self.tool_shape.add(geo.geo, color='#FF000080', update=False)
 
             self.tool_shape.redraw()
 
@@ -1219,10 +1219,10 @@ class FlatCAMDraw(QtCore.QObject):
                 continue
 
             if shape in self.selected:
-                self.plot_shape(geometry=shape.geo, color='red', linespec='k-', linewidth=2)
+                self.plot_shape(geometry=shape.geo, color='darkblue', linespec='k-', linewidth=2)
                 continue
 
-            self.plot_shape(geometry=shape.geo, color='blue')
+            self.plot_shape(geometry=shape.geo, color='red')
 
         for shape in self.utility:
             self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)

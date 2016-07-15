@@ -1500,7 +1500,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
 
         except TypeError:  # Element is not iterable...
 
-            self.shapes.add(element, color='#5E6CFFFF', visible=self.options['plot'])
+            self.shapes.add(element, color='red', visible=self.options['plot'], layer=0)
 
             # if type(element) == Polygon:
             #     x, y = element.exterior.coords.xy
