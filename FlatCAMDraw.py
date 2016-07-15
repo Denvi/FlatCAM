@@ -592,6 +592,7 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.app = app
         self.canvas = app.plotcanvas
+        self.fcgeometry = None
         # self.axes = self.canvas.new_axes("draw")
 
         ### Drawing Toolbar ###
@@ -821,13 +822,14 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
         # Hide vispy visuals
-
-        print "deactivate"
-
         if self.shapes.parent is not None:
             self.shapes.parent = None
             self.tool_shape.parent = None
             self.cursor.parent = None
+
+        # Show original geometry
+        if self.fcgeometry:
+            self.fcgeometry.visible = True
 
     def delete_utility_geometry(self):
         #for_deletion = [shape for shape in self.shape_buffer if shape.utility]
@@ -880,6 +882,10 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.deactivate()
         self.activate()
+
+        # Hide original geometry
+        self.fcgeometry = fcgeometry
+        fcgeometry.visible = False
 
         self.connect_canvas_event_handlers()
         self.select_tool("select")
@@ -1059,7 +1065,7 @@ class FlatCAMDraw(QtCore.QObject):
         ### complete automatically, like a polygon or path.
         if event.key.name == 'Space':
             if isinstance(self.active_tool, FCShapeTool):
-                self.active_tool.click(self.snap(event.xdata, event.ydata))
+                self.active_tool.click(self.snap(event.xdata, event.ydata)) # TODO: Get coordinates
                 self.active_tool.make()
                 if self.active_tool.complete:
                     self.on_shape_complete()
@@ -1219,7 +1225,7 @@ class FlatCAMDraw(QtCore.QObject):
                 continue
 
             if shape in self.selected:
-                self.plot_shape(geometry=shape.geo, color='darkblue', linespec='k-', linewidth=2)
+                self.plot_shape(geometry=shape.geo, color='blue', linespec='k-', linewidth=2)
                 continue
 
             self.plot_shape(geometry=shape.geo, color='red')

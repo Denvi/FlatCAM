@@ -286,6 +286,18 @@ class FlatCAMObj(QtCore.QObject):
         """
         return
 
+    @property
+    def visible(self):
+        return self.shapes.visible
+
+    @visible.setter
+    def visible(self, value):
+        self.shapes.visible = value
+        try:
+            self.annotation.parent = self.app.plotcanvas.vispy_canvas.view.scene \
+                if (value and not self.annotation.parent) else None
+        except:
+            pass
 
 class FlatCAMGerber(FlatCAMObj, Gerber):
     """
@@ -556,7 +568,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.shapes.visible = self.options['plot']
+        self.visible = self.options['plot']
         # self.plot()
 
     def on_solid_cb_click(self, *args):
@@ -954,7 +966,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.shapes.visible = self.options['plot']
+        self.visible = self.options['plot']
         # self.plot()
 
     def on_solid_cb_click(self, *args):
@@ -1042,6 +1054,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         # Always append to it because it carries contents
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
+
+        # self.annotation = self.app.plotcanvas.new_annotation()
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)
@@ -1155,7 +1169,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.shapes.visible = self.options['plot']
+        self.visible = self.options['plot']
         # self.plot()
 
     def plot(self):
@@ -1165,7 +1179,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(self.axes, tooldia=self.options["tooldia"], shapes=self.shapes, visible=self.options['plot'])
+        self.plot2(self.axes, tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
 
         self.shapes.redraw()
         # self.app.plotcanvas.auto_adjust_axes()
@@ -1438,7 +1452,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.shapes.visible = self.options['plot']
+        self.visible = self.options['plot']
         # self.plot()
 
     def scale(self, factor):

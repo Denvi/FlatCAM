@@ -19,8 +19,9 @@ import FlatCAMApp
 import logging
 from VisPyCanvas import VisPyCanvas
 from VisPyVisuals import ShapeGroup, ShapeCollection
-from vispy.scene.visuals import Markers
+from vispy.scene.visuals import Markers, Text
 import numpy as np
+from vispy.geometry import Rect
 
 log = logging.getLogger('base')
 
@@ -160,6 +161,13 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.create_native()
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
+
+        self.shape_collection = self.new_shape_collection()
+        self.shape_collection.parent = self.vispy_canvas.view.scene
+        # self.annotation = self.new_annotation()
+        # self.annotation.text = ['test1', 'test2']
+        # self.annotation.pos = [(0, 0), (10, 10)]
+
 
         # Copy a bitmap of the canvas for quick animation.
         # Update every time the canvas is re-drawn.
@@ -359,36 +367,38 @@ class PlotCanvas(QtCore.QObject):
         :return: None
         """
 
-        xmin, xmax = self.axes.get_xlim()
-        ymin, ymax = self.axes.get_ylim()
-        width = xmax - xmin
-        height = ymax - ymin
+        self.vispy_canvas.view.camera.zoom(factor, center)
 
-        if center is None or center == [None, None]:
-            center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
-
-        # For keeping the point at the pointer location
-        relx = (xmax - center[0]) / width
-        rely = (ymax - center[1]) / height
-
-        new_width = width / factor
-        new_height = height / factor
-
-        xmin = center[0] - new_width * (1 - relx)
-        xmax = center[0] + new_width * relx
-        ymin = center[1] - new_height * (1 - rely)
-        ymax = center[1] + new_height * rely
-
-        # Adjust axes
-        for ax in self.figure.get_axes():
-            ax.set_xlim((xmin, xmax))
-            ax.set_ylim((ymin, ymax))
-
-        # Async re-draw
-        self.canvas.draw_idle()
-
-        ##### Temporary place-holder for cached update #####
-        self.update_screen_request.emit([0, 0, 0, 0, 0])
+        # xmin, xmax = self.axes.get_xlim()
+        # ymin, ymax = self.axes.get_ylim()
+        # width = xmax - xmin
+        # height = ymax - ymin
+        #
+        # if center is None or center == [None, None]:
+        #     center = [(xmin + xmax) / 2.0, (ymin + ymax) / 2.0]
+        #
+        # # For keeping the point at the pointer location
+        # relx = (xmax - center[0]) / width
+        # rely = (ymax - center[1]) / height
+        #
+        # new_width = width / factor
+        # new_height = height / factor
+        #
+        # xmin = center[0] - new_width * (1 - relx)
+        # xmax = center[0] + new_width * relx
+        # ymin = center[1] - new_height * (1 - rely)
+        # ymax = center[1] + new_height * rely
+        #
+        # # Adjust axes
+        # for ax in self.figure.get_axes():
+        #     ax.set_xlim((xmin, xmax))
+        #     ax.set_ylim((ymin, ymax))
+        #
+        # # Async re-draw
+        # self.canvas.draw_idle()
+        #
+        # ##### Temporary place-holder for cached update #####
+        # self.update_screen_request.emit([0, 0, 0, 0, 0])
 
     def pan(self, x, y):
         xmin, xmax = self.axes.get_xlim()
@@ -419,13 +429,16 @@ class PlotCanvas(QtCore.QObject):
         return self.figure.add_axes([0.05, 0.05, 0.9, 0.9], label=name)
 
     def new_shape_group(self):
-        return ShapeGroup(self.vispy_canvas.shape_collection)
+        return ShapeGroup(self.shape_collection)   # TODO: Make local shape collection
 
     def new_shape_collection(self):
         return ShapeCollection()
 
     def new_cursor(self):
         return Markers(pos=np.empty((0, 2)))
+
+    def new_annotation(self):
+        return Text(parent=self.vispy_canvas.view.scene)
 
     def on_scroll(self, event):
         """
@@ -546,3 +559,14 @@ class PlotCanvas(QtCore.QObject):
         height = ymax - ymin
 
         return width / xpx, height / ypx
+
+    def fit_view(self, rect=None):
+        if not rect:
+            rect = Rect(0, 0, 10, 10)
+            try:
+                rect.left, rect.right = self.shape_collection.bounds(axis=0)
+                rect.bottom, rect.top = self.shape_collection.bounds(axis=1)
+            except TypeError:
+                pass
+
+        self.vispy_canvas.view.camera.rect = rect

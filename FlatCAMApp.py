@@ -12,6 +12,7 @@ from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
 from xml.dom.minidom import parseString as parse_xml_string
 from contextlib import contextmanager
+from vispy.geometry import Rect
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -636,7 +637,7 @@ class App(QtCore.QObject):
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
                     # obj.plot()
-                    obj.shapes.visible = False
+                    obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -1504,7 +1505,8 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         if plot:
             obj.plot()
-        self.on_zoom_fit(None)
+            self.on_zoom_fit(None)
+
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
@@ -1526,8 +1528,9 @@ class App(QtCore.QObject):
         # ymax += 0.05 * height
         # self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
-        self.plotcanvas.vispy_canvas.fit_view()
+        self.plotcanvas.fit_view()
 
+    # TODO: Rewrite for VisPy event
     def on_key_over_plot(self, event):
         """
         Callback for the key pressed event when the canvas is focused. Keyboard
@@ -1565,6 +1568,7 @@ class App(QtCore.QObject):
         #         self.inform.emit("Measuring tool OFF")
         #     return
 
+    # TODO: Rewrite for VisPy event
     def on_click_over_plot(self, event):
         """
         Callback for the mouse click event over the plot. This event is generated
@@ -2293,6 +2297,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.plot()
+                self.plotcanvas.fit_view()              # Fit in proper thread
+
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -4165,7 +4171,7 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.options['plot'] = True
-                obj.shapes.visible = True
+                obj.visible = True
                 # obj.plot()
                 percentage += delta
                 self.progress.emit(int(percentage*100))
