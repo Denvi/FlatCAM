@@ -13,7 +13,6 @@ from cStringIO import StringIO
 from numpy import arctan2, Inf, array, sqrt, pi, ceil, sin, cos, dot, float32, \
     transpose
 from numpy.linalg import solve, norm
-from matplotlib.figure import Figure
 import re
 import sys
 import traceback
@@ -21,8 +20,6 @@ from decimal import Decimal
 
 import collections
 import numpy as np
-import matplotlib
-#import matplotlib.pyplot as plt
 #from scipy.spatial import Delaunay, KDTree
 
 from rtree import index as rtindex
@@ -3243,13 +3240,12 @@ class CNCjob(Geometry):
     #
     #     return fig
         
-    def plot2(self, axes, tooldia=None, dpi=75, margin=0.1,
+    def plot2(self, tooldia=None, dpi=75, margin=0.1,
               color={"T": ["#F0E24D4C", "#B5AB3A4C"], "C": ["#5E6CFFFF", "#4650BDFF"]},
               alpha={"T": 0.3, "C": 1.0}, tool_tolerance=0.0005, obj=None, visible=False):
         """
         Plots the G-code job onto the given axes.
 
-        :param axes: Matplotlib axes on which to plot.
         :param tooldia: Tool diameter.
         :param dpi: Not used!
         :param margin: Not used!
@@ -3265,30 +3261,17 @@ class CNCjob(Geometry):
         
         if tooldia == 0:
             for geo in self.gcode_parsed:
-                # linespec = '--'
-                linecolor = color[geo['kind'][0]][1]
-                # if geo['kind'][0] == 'C':
-                #     linespec = 'k-'
-                # x, y = geo['geom'].coords.xy
-                # axes.plot(x, y, linespec, color=linecolor)
-                obj.shapes.add(geo['geom'], color=linecolor, visible=visible)
+                obj.shapes.add(geo['geom'], color=color[geo['kind'][0]][1], visible=visible)
         else:
             text = []
             pos = []
             for geo in self.gcode_parsed:
                 path_num += 1
-                # axes.annotate(str(path_num), xy=geo['geom'].coords[0],
-                #               xycoords='data')
 
                 text.append(str(path_num))
                 pos.append(geo['geom'].coords[0])
 
                 poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                # patch = PolygonPatch(poly, facecolor=color[geo['kind'][0]][0],
-                #                      edgecolor=color[geo['kind'][0]][1],
-                #                      alpha=alpha[geo['kind'][0]], zorder=2)
-                # axes.add_patch(patch)
-                # shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0])
                 obj.shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
                                visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
 

@@ -592,7 +592,6 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.app = app
         self.canvas = app.plotcanvas
-        # self.axes = self.canvas.new_axes("draw")
 
         ### Drawing Toolbar ###
         self.drawing_toolbar = QtGui.QToolBar()
@@ -960,39 +959,6 @@ class FlatCAMDraw(QtCore.QObject):
 
     def on_canvas_move(self, event):
         """
-        event.x and .y have canvas coordinates
-        event.xdaya and .ydata have plot coordinates
-
-        :param event: Event object dispatched by Matplotlib
-        :return:
-        """
-
-        pos = self.canvas.vispy_canvas.translate_coords(event.pos)
-        event.xdata, event.ydata = pos[0], pos[1]
-
-        self.x = event.xdata
-        self.y = event.ydata
-
-        self.on_canvas_move_effective(event)
-        return None
-
-        # self.move_timer.stop()
-        #
-        # if self.active_tool is None:
-        #     return
-        #
-        # # Make a function to avoid late evaluation
-        # def make_callback():
-        #     def f():
-        #         self.on_canvas_move_effective(event)
-        #     return f
-        # callback = make_callback()
-        #
-        # self.move_timer.timeout.connect(callback)
-        # self.move_timer.start(500)  # Stops if aready running
-
-    def on_canvas_move_effective(self, event):
-        """
         Is called after timeout on timer set in on_canvas_move.
 
         For details on animating on MPL see:
@@ -1004,6 +970,12 @@ class FlatCAMDraw(QtCore.QObject):
         :param event: Event object dispatched by Matplotlib
         :return: None
         """
+
+        pos = self.canvas.vispy_canvas.translate_coords(event.pos)
+        event.xdata, event.ydata = pos[0], pos[1]
+
+        self.x = event.xdata
+        self.y = event.ydata
 
         try:
             x = float(event.xdata)
@@ -1018,44 +990,22 @@ class FlatCAMDraw(QtCore.QObject):
         x, y = self.snap(x, y)
 
         ### Utility geometry (animated)
-        self.canvas.canvas.restore_region(self.canvas.background)
         geo = self.active_tool.utility_geometry(data=(x, y))
 
         if isinstance(geo, DrawToolShape) and geo.geo is not None:
             # Remove any previous utility shape
-            # self.delete_utility_geometry()
             self.tool_shape.clear(update=True)
 
             # Add the new utility shape
-            # self.add_shape(geo)
-
-            # Efficient plotting for fast animation
-
-            #self.canvas.canvas.restore_region(self.canvas.background)
-            # elements = self.plot_shape(geometry=geo.geo,
-            #                            linespec="b--",
-            #                            linewidth=1,
-            #                            animated=True)
             try:
                 for el in list(geo.geo):
                     self.tool_shape.add(el, color='#FF000080', update=False)
             except TypeError:
                 self.tool_shape.add(geo.geo, color='#FF000080', update=False)
-
             self.tool_shape.redraw()
 
-            # for el in elements:
-            #     self.axes.draw_artist(el)
-            #self.canvas.canvas.blit(self.axes.bbox)
-
-        # Pointer (snapped)
-        # elements = self.axes.plot(x, y, 'bo', animated=True)
-        # for el in elements:
-        #         self.axes.draw_artist(el)
-
+        # Update cursor
         self.cursor.set_data(np.asarray([(x, y)]), symbol='s', edge_color='red', size=5)
-
-        # self.canvas.canvas.blit(self.axes.bbox)
 
     def on_canvas_key(self, event):
         """
@@ -1150,7 +1100,7 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.selected = []
 
-    def plot_shape(self, geometry=None, color='black', linespec='b-', linewidth=1, animated=False):
+    def plot_shape(self, geometry=None, color='black',linewidth=1):
         """
         Plots a geometric object or list of objects without rendering. Plotted objects
         are returned as a list. This allows for efficient/animated rendering.
@@ -1158,7 +1108,6 @@ class FlatCAMDraw(QtCore.QObject):
         :param geometry: Geometry to be plotted (Any Shapely.geom kind or list of such)
         :param linespec: Matplotlib linespec string.
         :param linewidth: Width of lines in # of pixels.
-        :param animated: If geometry is to be animated. (See MPL plot())
         :return: List of plotted elements.
         """
         plot_elements = []
@@ -1168,60 +1117,36 @@ class FlatCAMDraw(QtCore.QObject):
 
         try:
             for geo in geometry:
-                plot_elements += self.plot_shape(geometry=geo,
-                                                 color=color,
-                                                 linespec=linespec,
-                                                 linewidth=linewidth,
-                                                 animated=animated)
+                plot_elements += self.plot_shape(geometry=geo, color=color, linewidth=linewidth)
 
         ## Non-iterable
         except TypeError:
 
             ## DrawToolShape
             if isinstance(geometry, DrawToolShape):
-                plot_elements += self.plot_shape(geometry=geometry.geo,
-                                                 color=color,
-                                                 linespec=linespec,
-                                                 linewidth=linewidth,
-                                                 animated=animated)
+                plot_elements += self.plot_shape(geometry=geometry.geo, color=color, linewidth=linewidth)
 
-            ## Polygon: Dscend into exterior and each interior.
+            ## Polygon: Descend into exterior and each interior.
             if type(geometry) == Polygon:
-                plot_elements += self.plot_shape(geometry=geometry.exterior,
-                                                 color=color,
-                                                 linespec=linespec,
-                                                 linewidth=linewidth,
-                                                 animated=animated)
-                plot_elements += self.plot_shape(geometry=geometry.interiors,
-                                                 color=color,
-                                                 linespec=linespec,
-                                                 linewidth=linewidth,
-                                                 animated=animated)
+                plot_elements += self.plot_shape(geometry=geometry.exterior, color=color, linewidth=linewidth)
+                plot_elements += self.plot_shape(geometry=geometry.interiors, color=color, linewidth=linewidth)
 
             if type(geometry) == LineString or type(geometry) == LinearRing:
-                # x, y = geometry.coords.xy
-                # element, = self.axes.plot(x, y, linespec, linewidth=linewidth, animated=animated)
-                self.shapes.add(geometry, color=color)
-                # plot_elements.append(element)
+                plot_elements.append(self.shapes.add(geometry, color=color))
 
             if type(geometry) == Point:
                 pass
-                # x, y = geometry.coords.xy
-                # element, = self.axes.plot(x, y, 'bo', linewidth=linewidth, animated=animated)
-                # plot_elements.append(element)
 
         return plot_elements
 
     def plot_all(self):
         """
         Plots all shapes in the editor.
-        Clears the axes, plots, and call self.canvas.auto_adjust_axes.
 
         :return: None
         :rtype: None
         """
         self.app.log.debug("plot_all()")
-        # self.axes.cla()
         self.shapes.clear(update=True)
 
         for shape in self.storage.get_objects():
@@ -1230,17 +1155,16 @@ class FlatCAMDraw(QtCore.QObject):
                 continue
 
             if shape in self.selected:
-                self.plot_shape(geometry=shape.geo, color='blue', linespec='k-', linewidth=2)
+                self.plot_shape(geometry=shape.geo, color='blue', linewidth=2)
                 continue
 
             self.plot_shape(geometry=shape.geo, color='red')
 
         for shape in self.utility:
-            self.plot_shape(geometry=shape.geo, linespec='k--', linewidth=1)
+            self.plot_shape(geometry=shape.geo, linewidth=1)
             continue
 
         self.shapes.redraw()
-        # self.canvas.auto_adjust_axes()
 
     def on_shape_complete(self):
         self.app.log.debug("on_shape_complete()")
@@ -1268,7 +1192,6 @@ class FlatCAMDraw(QtCore.QObject):
             self.selected.remove(shape)
 
     def replot(self):
-        # self.axes = self.canvas.new_axes("draw")
         self.plot_all()
 
     @staticmethod

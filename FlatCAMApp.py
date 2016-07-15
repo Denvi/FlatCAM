@@ -1448,7 +1448,7 @@ class App(QtCore.QObject):
 
         # Remove plot
         # self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.auto_adjust_axes()
 
         # Clear form
         self.setup_component_editor()
@@ -1465,7 +1465,7 @@ class App(QtCore.QObject):
 
         :return: None
         """
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.auto_adjust_axes()
         self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
