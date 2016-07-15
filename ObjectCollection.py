@@ -435,8 +435,14 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         :param name: Name of the FlatCAM Object
         :return: None
         """
-        iobj = self.createIndex(self.get_names().index(name), 0)  # Column 0
-        self.view.selectionModel().select(iobj, QtGui.QItemSelectionModel.Deselect)
+        obj = self.get_by_name(name)
+        item = obj.item
+        group = self.group_items[obj.kind]
+
+        group_index = self.index(group.row(), 0, Qt.QModelIndex())
+        item_index = self.index(item.row(), 0, group_index)
+
+        self.view.selectionModel().select(item_index, QtGui.QItemSelectionModel.Deselect)
 
     def set_all_inactive(self):
         """
