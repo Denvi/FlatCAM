@@ -41,12 +41,8 @@ import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
 
 import xml.etree.ElementTree as ET
-# from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 import itertools
-
-import xml.etree.ElementTree as ET
-# from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
-
 
 from svgparse import *
 

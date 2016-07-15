@@ -22,7 +22,7 @@
 import xml.etree.ElementTree as ET
 import re
 import itertools
-# from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
+from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 from shapely.geometry import LinearRing, LineString, Point
 from shapely.affinity import translate, rotate, scale, skew, affine_transform
 import numpy as np

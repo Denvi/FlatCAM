@@ -32,41 +32,42 @@ class Measurement(FlatCAMTool):
     def install(self):
         FlatCAMTool.install(self)
         self.app.ui.right_layout.addWidget(self)
-        # TODO: Translate to vis
-        # self.app.plotcanvas.mpl_connect('key_press_event', self.on_key_press)
+        self.app.plotcanvas.vis_connect('key_press', self.on_key_press)
 
     def run(self):
         self.toggle()
 
     def on_click(self, event):
+        pos = self.app.plotcanvas.vispy_canvas.translate_coords(event.pos)
         if self.point1 is None:
-            self.point1 = (event.xdata, event.ydata)
+            self.point1 = pos
         else:
             self.point2 = copy(self.point1)
-            self.point1 = (event.xdata, event.ydata)
+            self.point1 = pos
         self.on_move(event)
 
     def on_key_press(self, event):
-        if event.key == 'r':
+        if event.key == 'R':
             self.toggle()
 
     def toggle(self):
         if self.isVisible():
             self.setVisible(False)
-            self.app.plotcanvas.mpl_disconnect(self.move_subscription)
-            self.app.plotcanvas.mpl_disconnect(self.click_subscription)
+            self.app.plotcanvas.vis_disconnect('mouse_move', self.on_move)
+            self.app.plotcanvas.vis_disconnect('mouse_release', self.on_click)
         else:
             self.setVisible(True)
-            self.move_subscription = self.app.plotcanvas.mpl_connect('motion_notify_event', self.on_move)
-            self.click_subscription = self.app.plotcanvas.mpl_connect('button_press_event', self.on_click)
+            self.app.plotcanvas.vis_connect('mouse_move', self.on_move)
+            self.app.plotcanvas.vis_connect('mouse_release', self.on_click)
 
     def on_move(self, event):
         if self.point1 is None:
             self.label.setText("Click on a reference point...")
         else:
             try:
-                dx = event.xdata - self.point1[0]
-                dy = event.ydata - self.point1[1]
+                pos = self.app.plotcanvas.vispy_canvas.translate_coords(event.pos)
+                dx = pos[0] - self.point1[0]
+                dy = pos[1] - self.point1[1]
                 d = sqrt(dx**2 + dy**2)
                 self.label.setText("D = %.4f  D(x) = %.4f  D(y) = %.4f" % (d, dx, dy))
             except TypeError:
