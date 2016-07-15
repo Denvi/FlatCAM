@@ -106,7 +106,6 @@ class App(QtCore.QObject):
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
     new_object_available = QtCore.pyqtSignal(object)
-
     message = QtCore.pyqtSignal(str, str, str)
 
     # Emmited when shell command is finished(one command only)
@@ -173,6 +172,11 @@ class App(QtCore.QObject):
         self.app_home = os.path.dirname(os.path.realpath(__file__))
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
+
+        # cx_freeze workaround
+        if os.path.isfile(self.app_home):
+            self.app_home = os.path.dirname(self.app_home)
+
         os.chdir(self.app_home)
 
         ####################
@@ -221,6 +225,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.defaults_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.defaults_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.defaults_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.defaults_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.defaults_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.defaults_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.defaults_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.defaults_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.defaults_form.gerber_group.cutout_margin_entry,
@@ -267,6 +274,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
             "gerber_cutoutgapsize": 0.15,
@@ -359,6 +369,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.options_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.options_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.options_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.options_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.options_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.options_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.options_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.options_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.options_form.gerber_group.cutout_margin_entry,
@@ -401,6 +414,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_combine_passes": True,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
@@ -442,6 +458,10 @@ class App(QtCore.QObject):
         self.ui.project_tab_layout.addWidget(self.collection.view)
         #### End of Data ####
 
+        #### Adjust tabs width ####
+        self.collection.view.setMinimumWidth(self.ui.options_scroll_area.widget().sizeHint().width() +
+            self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
+
         #### Worker ####
         App.log.info("Starting Worker...")
         self.worker = Worker(self)
@@ -458,10 +478,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        # self.connect(self.thr2, QtCore.SIGNAL("started()"),
-        #              lambda: self.worker_task.emit({'fcn': self.version_check,
-        #                                             'params': [],
-        #                                             'worker_name': "worker2"}))
+        self.connect(self.thr2, QtCore.SIGNAL("started()"),
+                     lambda: self.worker_task.emit({'fcn': self.version_check,
+                                                    'params': [],
+                                                    'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###
@@ -638,7 +658,6 @@ class App(QtCore.QObject):
             for obj in self.collection.get_list():
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
-                    # obj.plot()
                     obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
@@ -1880,6 +1899,9 @@ class App(QtCore.QObject):
                                                          directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
+
+        if filename == "":
+            return
 
         try:
             f = open(filename, 'r')
