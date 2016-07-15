@@ -32,7 +32,8 @@ class Measurement(FlatCAMTool):
     def install(self):
         FlatCAMTool.install(self)
         self.app.ui.right_layout.addWidget(self)
-        self.app.plotcanvas.mpl_connect('key_press_event', self.on_key_press)
+        # TODO: Translate to vis
+        # self.app.plotcanvas.mpl_connect('key_press_event', self.on_key_press)
 
     def run(self):
         self.toggle()

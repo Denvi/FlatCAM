@@ -214,6 +214,7 @@ class ObjectCollection(QtCore.QAbstractListModel):
 
         self.beginRemoveRows(QtCore.QModelIndex(), row, row)
 
+        self.object_list[row].shapes.clear(True)
         self.object_list.pop(row)
 
         self.endRemoveRows()
@@ -294,6 +295,9 @@ class ObjectCollection(QtCore.QAbstractListModel):
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + "--> OC.delete_all()")
 
         self.beginResetModel()
+
+        for obj in self.object_list:
+            obj.shapes.clear(obj == self.object_list[-1])
 
         self.object_list = []
         self.checked_indexes = []

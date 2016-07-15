@@ -12,6 +12,7 @@ from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
 from xml.dom.minidom import parseString as parse_xml_string
 from contextlib import contextmanager
+from vispy.geometry import Rect
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -100,7 +101,7 @@ class App(QtCore.QObject):
     # Emitted by new_object() and passes the new object as argument.
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
-    object_created = QtCore.pyqtSignal(object)
+    object_created = QtCore.pyqtSignal(object, bool)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -188,9 +189,13 @@ class App(QtCore.QObject):
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
         self.plotcanvas = PlotCanvas(self.ui.right_layout, self)
-        self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
-        self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
-        self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+        # self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
+        # self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
+        # self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+
+        self.plotcanvas.vis_connect('mouse_move', self.on_mouse_move_over_plot)
+        self.plotcanvas.vis_connect('mouse_release', self.on_click_over_plot)
+        self.plotcanvas.vis_connect('key_press', self.on_key_over_plot)
 
         self.ui.splitter.setStretchFactor(1, 2)
 
@@ -453,10 +458,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"),
-                     lambda: self.worker_task.emit({'fcn': self.version_check,
-                                                    'params': [],
-                                                    'worker_name': "worker2"}))
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"),
+        #              lambda: self.worker_task.emit({'fcn': self.version_check,
+        #                                             'params': [],
+        #                                             'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###
@@ -629,10 +634,12 @@ class App(QtCore.QObject):
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
+
             for obj in self.collection.get_list():
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
-                    obj.plot()
+                    # obj.plot()
+                    obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -1027,7 +1034,7 @@ class App(QtCore.QObject):
 
         # Move the object to the main thread and let the app know that it is available.
         obj.moveToThread(QtGui.QApplication.instance().thread())
-        self.object_created.emit(obj)
+        self.object_created.emit(obj, plot)
 
         return obj
 
@@ -1440,8 +1447,8 @@ class App(QtCore.QObject):
             return
 
         # Remove plot
-        self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
+        # self.plotcanvas.auto_adjust_axes()
 
         # Clear form
         self.setup_component_editor()
@@ -1458,7 +1465,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.auto_adjust_axes()
+        self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
     def on_toolbar_replot(self):
@@ -1482,7 +1490,7 @@ class App(QtCore.QObject):
     def on_row_activated(self, index):
         self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
-    def on_object_created(self, obj):
+    def on_object_created(self, obj, plot):
         """
         Event callback for object creation.
 
@@ -1497,8 +1505,10 @@ class App(QtCore.QObject):
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
-        obj.plot()
-        self.on_zoom_fit(None)
+        if plot:
+            obj.plot()
+            self.on_zoom_fit(None)
+
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
@@ -1511,15 +1521,16 @@ class App(QtCore.QObject):
         :param event: Ignored.
         :return: None
         """
+        # xmin, ymin, xmax, ymax = self.collection.get_bounds()
+        # width = xmax - xmin
+        # height = ymax - ymin
+        # xmin -= 0.05 * width
+        # xmax += 0.05 * width
+        # ymin -= 0.05 * height
+        # ymax += 0.05 * height
+        # self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
-        xmin, ymin, xmax, ymax = self.collection.get_bounds()
-        width = xmax - xmin
-        height = ymax - ymin
-        xmin -= 0.05 * width
-        xmax += 0.05 * width
-        ymin -= 0.05 * height
-        ymax += 0.05 * height
-        self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
+        self.plotcanvas.fit_view()
 
     def on_key_over_plot(self, event):
         """
@@ -1574,13 +1585,17 @@ class App(QtCore.QObject):
         """
 
         # So it can receive key presses
-        self.plotcanvas.canvas.setFocus()
+        self.plotcanvas.vispy_canvas.native.setFocus()
+
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
 
         try:
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-                event.button, event.x, event.y, event.xdata, event.ydata))
+                event.button, event.pos[0], event.pos[1], pos[0], pos[1]))
+            # App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+            #     event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.xdata, event.ydata))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.pos[0], event.pos[1]))
 
         except Exception, e:
             App.log.debug("Outside plot?")
@@ -1596,14 +1611,25 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
+
         try:  # May fail in case mouse not within axes
             self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
-                event.xdata, event.ydata))
-            self.mouse = [event.xdata, event.ydata]
+                pos[0], pos[1]))
+            self.mouse = [pos[0], pos[1]]
 
         except:
             self.ui.position_label.setText("")
             self.mouse = None
+
+        # try:  # May fail in case mouse not within axes
+        #     self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
+        #         event.xdata, event.ydata))
+        #     self.mouse = [event.xdata, event.ydata]
+        #
+        # except:
+        #     self.ui.position_label.setText("")
+        #     self.mouse = None
 
     def on_file_new(self):
         """
@@ -2265,6 +2291,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.plot()
+                self.plotcanvas.fit_view()              # Fit in proper thread
+
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -4137,7 +4165,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.options['plot'] = True
-                obj.plot()
+                obj.visible = True
+                # obj.plot()
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
