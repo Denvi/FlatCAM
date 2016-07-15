@@ -1025,7 +1025,8 @@ class App(QtCore.QObject):
         obj = classdict[kind](name)
         obj.units = self.options["units"]  # TODO: The constructor should look at defaults.
 
-        # Set default options from self.options
+        # Set options from "Project options" form
+        self.options_read_form()
         for option in self.options:
             if option.find(kind + "_") == 0:
                 oname = option[len(kind) + 1:]
