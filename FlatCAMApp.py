@@ -12,6 +12,7 @@ from PyQt4 import QtCore
 import time  # Just used for debugging. Double check before removing.
 from xml.dom.minidom import parseString as parse_xml_string
 from contextlib import contextmanager
+from vispy.geometry import Rect
 
 ########################################
 ##      Imports part of FlatCAM       ##
@@ -100,12 +101,11 @@ class App(QtCore.QObject):
     # Emitted by new_object() and passes the new object as argument.
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
-    object_created = QtCore.pyqtSignal(object)
+    object_created = QtCore.pyqtSignal(object, bool)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
     new_object_available = QtCore.pyqtSignal(object)
-
     message = QtCore.pyqtSignal(str, str, str)
 
     # Emmited when shell command is finished(one command only)
@@ -172,6 +172,11 @@ class App(QtCore.QObject):
         self.app_home = os.path.dirname(os.path.realpath(__file__))
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
+
+        # cx_freeze workaround
+        if os.path.isfile(self.app_home):
+            self.app_home = os.path.dirname(self.app_home)
+
         os.chdir(self.app_home)
 
         ####################
@@ -188,9 +193,13 @@ class App(QtCore.QObject):
         #### Plot Area ####
         # self.plotcanvas = PlotCanvas(self.ui.splitter)
         self.plotcanvas = PlotCanvas(self.ui.right_layout, self)
-        self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
-        self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
-        self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+        # self.plotcanvas.mpl_connect('button_press_event', self.on_click_over_plot)
+        # self.plotcanvas.mpl_connect('motion_notify_event', self.on_mouse_move_over_plot)
+        # self.plotcanvas.mpl_connect('key_press_event', self.on_key_over_plot)
+
+        self.plotcanvas.vis_connect('mouse_move', self.on_mouse_move_over_plot)
+        self.plotcanvas.vis_connect('mouse_release', self.on_click_over_plot)
+        self.plotcanvas.vis_connect('key_press', self.on_key_over_plot)
 
         self.ui.splitter.setStretchFactor(1, 2)
 
@@ -216,6 +225,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.defaults_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.defaults_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.defaults_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.defaults_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.defaults_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.defaults_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.defaults_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.defaults_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.defaults_form.gerber_group.cutout_margin_entry,
@@ -262,6 +274,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
             "gerber_cutoutgapsize": 0.15,
@@ -354,6 +369,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.options_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.options_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.options_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.options_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.options_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.options_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.options_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.options_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.options_form.gerber_group.cutout_margin_entry,
@@ -396,6 +414,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_combine_passes": True,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
@@ -436,6 +457,10 @@ class App(QtCore.QObject):
         self.collection = ObjectCollection()
         self.ui.project_tab_layout.addWidget(self.collection.view)
         #### End of Data ####
+
+        #### Adjust tabs width ####
+        self.collection.view.setMinimumWidth(self.ui.options_scroll_area.widget().sizeHint().width() +
+            self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
 
         #### Worker ####
         App.log.info("Starting Worker...")
@@ -629,10 +654,11 @@ class App(QtCore.QObject):
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
+
             for obj in self.collection.get_list():
                 if obj != self.collection.get_active() or not except_current:
                     obj.options['plot'] = False
-                    obj.plot()
+                    obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -862,7 +888,6 @@ class App(QtCore.QObject):
         :param toshell: Forward the
         :return: None
         """
-
         # Type of message in brackets at the begining of the message.
         match = re.search("\[([^\]]+)\](.*)", msg)
         if match:
@@ -999,7 +1024,8 @@ class App(QtCore.QObject):
         obj = classdict[kind](name)
         obj.units = self.options["units"]  # TODO: The constructor should look at defaults.
 
-        # Set default options from self.options
+        # Set options from "Project options" form
+        self.options_read_form()
         for option in self.options:
             if option.find(kind + "_") == 0:
                 oname = option[len(kind) + 1:]
@@ -1027,7 +1053,7 @@ class App(QtCore.QObject):
 
         # Move the object to the main thread and let the app know that it is available.
         obj.moveToThread(QtGui.QApplication.instance().thread())
-        self.object_created.emit(obj)
+        self.object_created.emit(obj, plot)
 
         return obj
 
@@ -1440,8 +1466,8 @@ class App(QtCore.QObject):
             return
 
         # Remove plot
-        self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.figure.delaxes(self.collection.get_active().axes)
+        # self.plotcanvas.auto_adjust_axes()
 
         # Clear form
         self.setup_component_editor()
@@ -1458,7 +1484,8 @@ class App(QtCore.QObject):
 
         :return: None
         """
-        self.plotcanvas.auto_adjust_axes()
+        # self.plotcanvas.auto_adjust_axes()
+        self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
     def on_toolbar_replot(self):
@@ -1480,9 +1507,11 @@ class App(QtCore.QObject):
         self.plot_all()
 
     def on_row_activated(self, index):
-        self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
+        if index.isValid():
+            if index.internalPointer().parent_item != self.collection.root_item:
+                self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
-    def on_object_created(self, obj):
+    def on_object_created(self, obj, plot):
         """
         Event callback for object creation.
 
@@ -1497,8 +1526,14 @@ class App(QtCore.QObject):
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
-        obj.plot()
-        self.on_zoom_fit(None)
+        if plot:
+            obj.plot()
+            self.on_zoom_fit(None)
+
+        # Fit on first added object only
+        if len(self.collection.get_list()) == 1:
+            self.on_zoom_fit(None)
+
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
@@ -1511,15 +1546,16 @@ class App(QtCore.QObject):
         :param event: Ignored.
         :return: None
         """
+        # xmin, ymin, xmax, ymax = self.collection.get_bounds()
+        # width = xmax - xmin
+        # height = ymax - ymin
+        # xmin -= 0.05 * width
+        # xmax += 0.05 * width
+        # ymin -= 0.05 * height
+        # ymax += 0.05 * height
+        # self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
 
-        xmin, ymin, xmax, ymax = self.collection.get_bounds()
-        width = xmax - xmin
-        height = ymax - ymin
-        xmin -= 0.05 * width
-        xmax += 0.05 * width
-        ymin -= 0.05 * height
-        ymax += 0.05 * height
-        self.plotcanvas.adjust_axes(xmin, ymin, xmax, ymax)
+        self.plotcanvas.fit_view()
 
     def on_key_over_plot(self, event):
         """
@@ -1574,13 +1610,17 @@ class App(QtCore.QObject):
         """
 
         # So it can receive key presses
-        self.plotcanvas.canvas.setFocus()
+        self.plotcanvas.vispy_canvas.native.setFocus()
+
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
 
         try:
             App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
-                event.button, event.x, event.y, event.xdata, event.ydata))
+                event.button, event.pos[0], event.pos[1], pos[0], pos[1]))
+            # App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
+            #     event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.xdata, event.ydata))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.pos[0], event.pos[1]))
 
         except Exception, e:
             App.log.debug("Outside plot?")
@@ -1596,14 +1636,25 @@ class App(QtCore.QObject):
         :return: None
         """
 
+        pos = self.plotcanvas.vispy_canvas.translate_coords(event.pos)
+
         try:  # May fail in case mouse not within axes
             self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
-                event.xdata, event.ydata))
-            self.mouse = [event.xdata, event.ydata]
+                pos[0], pos[1]))
+            self.mouse = [pos[0], pos[1]]
 
         except:
             self.ui.position_label.setText("")
             self.mouse = None
+
+        # try:  # May fail in case mouse not within axes
+        #     self.ui.position_label.setText("X: %.4f   Y: %.4f" % (
+        #         event.xdata, event.ydata))
+        #     self.mouse = [event.xdata, event.ydata]
+        #
+        # except:
+        #     self.ui.position_label.setText("")
+        #     self.mouse = None
 
     def on_file_new(self):
         """
@@ -1848,6 +1899,9 @@ class App(QtCore.QObject):
                                                          directory=self.get_last_folder())
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
+
+        if filename == "":
+            return
 
         try:
             f = open(filename, 'r')
@@ -2265,6 +2319,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.plot()
+                self.plotcanvas.fit_view()              # Fit in proper thread
+
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -2774,17 +2830,17 @@ class App(QtCore.QObject):
             def aligndrillgrid_init_me(init_obj, app_obj):
                 drills = []
                 currenty=0
-                
+
                 for row in range(kwa['rows']):
                     currentx=0
-                    
+
                     for col in range(kwa['columns']):
                         point = Point(currentx + gridoffsetx, currenty + gridoffsety)
                         drills.append({"point": point, "tool": "1"})
                         currentx = currentx + kwa['gridx']
-                    
+
                     currenty = currenty + kwa['gridy']
-                
+
                 init_obj.tools = tools
                 init_obj.drills = drills
                 init_obj.create_geometry()
@@ -2861,28 +2917,28 @@ class App(QtCore.QObject):
                     # This will align hole to given aligngridoffset and minimal offset from pcb, based on selected axis
                     if axis == "X":
                         firstpoint = kwa['gridoffset']
-                        
+
                         while (xmin - kwa['minoffset']) < firstpoint:
                             firstpoint = firstpoint - kwa['grid']
-                        
+
                         lastpoint = kwa['gridoffset']
-                        
+
                         while (xmax + kwa['minoffset']) > lastpoint:
                             lastpoint = lastpoint + kwa['grid']
-                        
+
                         localHoles = (firstpoint, axisoffset), (lastpoint, axisoffset)
-                    
+
                     else:
                         firstpoint = kwa['gridoffset']
-                        
+
                         while (ymin - kwa['minoffset']) < firstpoint:
                             firstpoint = firstpoint - kwa['grid']
-                        
+
                         lastpoint = kwa['gridoffset']
-                        
+
                         while (ymax + kwa['minoffset']) > lastpoint:
                             lastpoint=lastpoint+kwa['grid']
-                        
+
                         localHoles = (axisoffset, firstpoint), (axisoffset, lastpoint)
 
                     for hole in localHoles:
@@ -4068,6 +4124,7 @@ class App(QtCore.QObject):
         :return: None
         """
         FlatCAMObj.app = self
+        ObjectCollection.app = self
 
         FCProcess.app = self
         FCProcessContainer.app = self
@@ -4137,7 +4194,8 @@ class App(QtCore.QObject):
                 return
             for obj in self.collection.get_list():
                 obj.options['plot'] = True
-                obj.plot()
+                obj.visible = True
+                # obj.plot()
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
