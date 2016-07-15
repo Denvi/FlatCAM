@@ -198,3 +198,7 @@ class DblSidedTool(FlatCAMTool):
         else:
             self.point.hide()
             self.box_combo.show()
+
+    def reset_fields(self):
+        self.object_combo.setRootModelIndex(self.app.collection.index(0, 0, QtCore.QModelIndex()))
+        self.box_combo.setRootModelIndex(self.app.collection.index(0, 0, QtCore.QModelIndex()))
