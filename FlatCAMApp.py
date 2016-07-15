@@ -1532,7 +1532,6 @@ class App(QtCore.QObject):
 
         self.plotcanvas.fit_view()
 
-    # TODO: Rewrite for VisPy event
     def on_key_over_plot(self, event):
         """
         Callback for the key pressed event when the canvas is focused. Keyboard
@@ -1570,7 +1569,6 @@ class App(QtCore.QObject):
         #         self.inform.emit("Measuring tool OFF")
         #     return
 
-    # TODO: Rewrite for VisPy event
     def on_click_over_plot(self, event):
         """
         Callback for the mouse click event over the plot. This event is generated

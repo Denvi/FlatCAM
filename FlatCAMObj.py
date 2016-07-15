@@ -40,7 +40,7 @@ class FlatCAMObj(QtCore.QObject):
 
         self.form_fields = {}
 
-        self.axes = None  # Matplotlib axes
+        # self.axes = None  # Matplotlib axes
         self.kind = None  # Override with proper name
 
         # self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)

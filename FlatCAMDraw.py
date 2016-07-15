@@ -1070,7 +1070,7 @@ class FlatCAMDraw(QtCore.QObject):
         ### complete automatically, like a polygon or path.
         if event.key.name == 'Space':
             if isinstance(self.active_tool, FCShapeTool):
-                self.active_tool.click(self.snap(self.x, self.y)) # TODO: Get coordinates
+                self.active_tool.click(self.snap(self.x, self.y))
                 self.active_tool.make()
                 if self.active_tool.complete:
                     self.on_shape_complete()

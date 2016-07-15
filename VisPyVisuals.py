@@ -5,7 +5,6 @@ from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
 import numpy as np
-import time
 
 try:
     from shapely.ops import triangulate
@@ -14,7 +13,7 @@ except:
     pass
 
 
-# Patch LineVisual
+# Add clear_data method to LineVisual
 def clear_data(self):
     self._bounds = None
     self._pos = None
@@ -22,6 +21,7 @@ def clear_data(self):
     self.update()
 
 LineVisual.clear_data = clear_data
+
 
 class ShapeGroup(object):
     def __init__(self, collection):
@@ -229,39 +229,34 @@ class ShapeCollectionVisual(CompoundVisual):
 
             line._bounds_changed()
 
-        # if len(line_pts) > 0:
-        #     self._line.set_data(np.asarray(line_pts), np.asarray(line_colors), self._line_width, 'segments')
-        # else:
-        #     self._line._bounds = None
-        #     self._line._pos = None
-        #     self._line._changed['pos'] = True
-        #     self._line.update()
-
-        # self._line._bounds_changed()
         self._bounds_changed()
 
-    def _open_ring(self, vertices):
+    def redraw(self):
+        self._update()
+
+    @staticmethod
+    def _open_ring(vertices):
         return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
 
-    def _generate_edges(self, count):
+    @staticmethod
+    def _generate_edges(count):
         edges = np.empty((count, 2), dtype=np.uint32)
         edges[:, 0] = np.arange(count)
         edges[:, 1] = edges[:, 0] + 1
         edges[-1, 1] = 0
         return edges
 
-    def _linearring_to_segments(self, arr):
+    @staticmethod
+    def _linearring_to_segments(arr):
         # Close linear ring
         if np.any(arr[0] != arr[-1]):
             arr = np.concatenate([arr, arr[:1]], axis=0)
 
-        return self._linestring_to_segments(arr)
+        return ShapeCollection._linestring_to_segments(arr)
 
-    def _linestring_to_segments(self, arr):
+    @staticmethod
+    def _linestring_to_segments(arr):
         return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
-
-    def redraw(self):
-        self._update()
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)
