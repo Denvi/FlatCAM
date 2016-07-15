@@ -25,14 +25,39 @@ LineVisual.clear_data = clear_data
 
 class ShapeGroup(object):
     def __init__(self, collection):
+        """
+        Represents group of shapes in collection
+        :param collection: ShapeCollection
+            Collection to work with
+        """
         self._collection = collection
         self._indexes = []
         self._visible = True
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1, order=0):
-        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer, order))
+    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+        """
+        Adds shape to collection and store index in group
+        :param shape: shapely.geometry
+            Shapely geometry object
+        :param color: str, tuple
+            Line/edge color
+        :param face_color: str, tuple
+            Polygon face color
+        :param visible: bool
+            Shape visibility
+        :param update: bool
+            Set True to redraw collection
+        :param layer: int
+            Layer number. 0 - lowest.
+        """
+        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer))
 
     def clear(self, update=False):
+        """
+        Removes group shapes from collection, clear indexes
+        :param update: bool
+            Set True to redraw collection
+        """
         for i in self._indexes:
             self._collection.remove(i, False)
 
@@ -42,14 +67,25 @@ class ShapeGroup(object):
             self._collection.redraw()
 
     def redraw(self):
+        """
+        Redraws shape collection
+        """
         self._collection.redraw()
 
     @property
     def visible(self):
+        """
+        Visibility of group
+        :return: bool
+        """
         return self._visible
 
     @visible.setter
     def visible(self, value):
+        """
+        Visibility of group
+        :param value: bool
+        """
         self._visible = value
         for i in self._indexes:
             self._collection.data[i]['visible'] = value
@@ -58,11 +94,20 @@ class ShapeGroup(object):
 
 
 class ShapeCollectionVisual(CompoundVisual):
-
-    total_segments = 0
-    total_tris = 0
-
     def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
+        """
+        Represents collection of shapes to draw on VisPy scene
+        :param line_width: float
+            Width of lines/edges
+        :param triangulation: str
+            Triangulation method used for polygons translation
+            'vispy' - VisPy lib triangulation
+            'gpc' - Polygon2 lib
+        :param layers: int
+            Layers count
+            Each layer adds 2 visuals on VisPy scene. Be careful: more layers cause less fps
+        :param kwargs:
+        """
         self.data = {}
         self.last_key = -1
 
@@ -84,11 +129,28 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self.freeze()
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1, order=0):
+    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+        """
+        Adds shape to collection
+        :param shape: shapely.geometry
+            Shapely geometry object
+        :param color: str, tuple
+            Line/edge color
+        :param face_color: str, tuple
+            Polygon face color
+        :param visible: bool
+            Shape visibility
+        :param update: bool
+            Set True to redraw collection
+        :param layer: int
+            Layer number. 0 - lowest.
+        :return: int
+            Index of shape
+        """
         self.last_key += 1
 
         self.data[self.last_key] = {'geometry': shape, 'color': color, 'face_color': face_color,
-                                    'visible': visible, 'layer': layer, 'order': order}
+                                    'visible': visible, 'layer': layer}
         self.update_shape_buffers(self.last_key)
 
         if update:
@@ -97,6 +159,11 @@ class ShapeCollectionVisual(CompoundVisual):
         return self.last_key
 
     def update_shape_buffers(self, key):
+        """
+        Translates Shapely geometry to internal buffers for speedup redraws
+        :param key: int
+            Shape index
+        """
         mesh_vertices = []                      # Vertices for mesh
         mesh_tris = []                          # Faces for mesh
         mesh_colors = []                        # Face colors
@@ -143,16 +210,18 @@ class ShapeCollectionVisual(CompoundVisual):
                         # GPC triangulation
                         p = gpc.Polygon(np.asarray(simple.exterior))
 
+                        # Exclude all internal rings from polygon
                         for ints in simple.interiors:
                             q = gpc.Polygon(np.asarray(ints))
                             p -= q
 
+                        # Triangulate polygon
                         for strip in p.triStrip():
-                            # Generate tris indexes for triangle strips
-                            a = [[x + y for x in range(0, 3)] for y in range(0, len(strip) - 2)]
+                            # Generate tris indexes for triangle strip [[0, 1, 2], [1, 2, 3], [2, 3, 4], ... ]
+                            ti = [[x + y + len(tri_pts) for x in range(0, 3)] for y in range(0, len(strip) - 2)]
 
                             # Append vertices & tris
-                            tri_tris += [[x + len(tri_pts) for x in y] for y in a]
+                            tri_tris += ti
                             tri_pts += strip
 
                 # Prepare polygon edges
@@ -180,16 +249,31 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key]['mesh_colors'] = mesh_colors
 
     def remove(self, key, update=False):
+        """
+        Removes shape from collection
+        :param key: int
+            Shape index to remove
+        :param update:
+            Set True to redraw collection
+        """
         self.data.pop(key)
         if update:
             self._update()
 
     def clear(self, update=False):
+        """
+        Removes all shapes from colleciton
+        :param update: bool
+            Set True to redraw collection
+        """
         self.data.clear()
         if update:
             self._update()
 
     def _update(self):
+        """
+        Merges internal buffers, sets data to visuals, redraws collection on scene
+        """
         mesh_vertices = [[] for _ in range(0, len(self._meshes))]       # Vertices for mesh
         mesh_tris = [[] for _ in range(0, len(self._meshes))]           # Faces for mesh
         mesh_colors = [[] for _ in range(0, len(self._meshes))]         # Face colors
@@ -232,14 +316,31 @@ class ShapeCollectionVisual(CompoundVisual):
         self._bounds_changed()
 
     def redraw(self):
+        """
+        Redraws collection
+        """
         self._update()
 
     @staticmethod
     def _open_ring(vertices):
+        """
+        Make lines ring open
+        :param vertices: numpy.array
+            Array of lines vertices
+        :return: numpy.array
+            Opened line strip
+        """
         return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
 
     @staticmethod
     def _generate_edges(count):
+        """
+        Generates edges indexes in form: [[0, 1], [1, 2], [2, 3], ... ]
+        :param count: int
+            Edges count
+        :return: numpy.array
+            Edges
+        """
         edges = np.empty((count, 2), dtype=np.uint32)
         edges[:, 0] = np.arange(count)
         edges[:, 1] = edges[:, 0] + 1
@@ -249,6 +350,13 @@ class ShapeCollectionVisual(CompoundVisual):
     @staticmethod
     def _linearring_to_segments(arr):
         # Close linear ring
+        """
+        Translates linear ring to line segments
+        :param arr: numpy.array
+            Array of linear ring vertices
+        :return: numpy.array
+            Line segments
+        """
         if np.any(arr[0] != arr[-1]):
             arr = np.concatenate([arr, arr[:1]], axis=0)
 
@@ -256,6 +364,13 @@ class ShapeCollectionVisual(CompoundVisual):
 
     @staticmethod
     def _linestring_to_segments(arr):
+        """
+        Translates line strip to segments
+        :param arr: numpy.array
+            Array of line strip vertices
+        :return: numpy.array
+            Line segments
+        """
         return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
 
 
