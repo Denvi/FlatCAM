@@ -959,15 +959,11 @@ class FlatCAMDraw(QtCore.QObject):
 
     def on_canvas_move(self, event):
         """
-        Is called after timeout on timer set in on_canvas_move.
+        Called on 'mouse_move' event
 
-        For details on animating on MPL see:
-        http://wiki.scipy.org/Cookbook/Matplotlib/Animations
+        event.pos have canvas screen coordinates
 
-        event.x and .y have canvas coordinates
-        event.xdaya and .ydata have plot coordinates
-
-        :param event: Event object dispatched by Matplotlib
+        :param event: Event object dispatched by VisPy SceneCavas
         :return: None
         """
 
@@ -976,6 +972,10 @@ class FlatCAMDraw(QtCore.QObject):
 
         self.x = event.xdata
         self.y = event.ydata
+
+        # Prevent updates on pan
+        if len(event.buttons) > 0:
+            return
 
         try:
             x = float(event.xdata)
