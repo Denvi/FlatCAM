@@ -888,7 +888,6 @@ class App(QtCore.QObject):
         :param toshell: Forward the
         :return: None
         """
-
         # Type of message in brackets at the begining of the message.
         match = re.search("\[([^\]]+)\](.*)", msg)
         if match:
