@@ -508,8 +508,8 @@ class App(QtCore.QObject):
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
-        self.ui.clear_plot_btn.triggered.connect(self.plotcanvas.clear)
-        self.ui.replot_btn.triggered.connect(self.on_toolbar_replot)
+        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(except_current=True))
+        self.ui.replot_btn.triggered.connect(self.enable_all_plots)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -1469,6 +1469,7 @@ class App(QtCore.QObject):
         self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
+    # TODO: Rework toolbar 'clear', 'replot' functions
     def on_toolbar_replot(self):
         """
         Callback for toolbar button. Re-plots all objects.
@@ -1643,8 +1644,6 @@ class App(QtCore.QObject):
 
         # Remove everything from memory
         App.log.debug("on_file_new()")
-
-        self.plotcanvas.clear()
 
         # tcl needs to be reinitialized, otherwise  old shell variables etc  remains
         self.init_tcl()
@@ -2279,7 +2278,6 @@ class App(QtCore.QObject):
         """
         self.log.debug("plot_all()")
 
-        self.plotcanvas.clear()
         self.progress.emit(10)
 
         def worker_task(app_obj):
@@ -4154,8 +4152,6 @@ class App(QtCore.QObject):
         )
 
     def enable_all_plots(self, *args):
-        self.plotcanvas.clear()
-
         def worker_task(app_obj):
             percentage = 0.1
             try:
