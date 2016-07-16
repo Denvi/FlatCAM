@@ -1543,7 +1543,8 @@ class App(QtCore.QObject):
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
-        self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
+        if plot:
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
     def on_zoom_fit(self, event):
         """
@@ -2323,8 +2324,9 @@ class App(QtCore.QObject):
                 self.progress.emit(0)
                 return
             for obj in self.collection.get_list():
-                obj.plot()
-                self.plotcanvas.fit_view()              # Fit in proper thread
+                with self.proc_container.new("Plotting"):
+                    obj.plot()
+                    self.plotcanvas.fit_view()              # Fit in proper thread
 
                 percentage += delta
                 self.progress.emit(int(percentage*100))
