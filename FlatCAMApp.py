@@ -531,7 +531,7 @@ class App(QtCore.QObject):
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(except_current=True))
+        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
         self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
@@ -658,7 +658,6 @@ class App(QtCore.QObject):
                 return
 
             for obj in objects:
-                obj.options['plot'] = False     # TODO: Checkboxes
                 obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
@@ -4190,9 +4189,7 @@ class App(QtCore.QObject):
                 self.progress.emit(0)
                 return
             for obj in objects:
-                obj.options['plot'] = True
                 obj.visible = True
-                # obj.plot()
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 

@@ -245,6 +245,13 @@ class ObjectCollection(QtCore.QAbstractItemModel):
             else:
                 return index.internalPointer().data(index.column())
 
+        if role == Qt.Qt.ForegroundRole:
+            obj = index.internalPointer().obj
+            if obj:
+                return Qt.QBrush(QtCore.Qt.black) if obj.options["plot"] else Qt.QBrush(QtCore.Qt.darkGray)
+            else:
+                return index.internalPointer().data(index.column())
+
         elif role == Qt.Qt.DecorationRole:
             icon = index.internalPointer().icon
             if icon:

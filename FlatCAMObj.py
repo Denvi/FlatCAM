@@ -250,6 +250,8 @@ class FlatCAMObj(QtCore.QObject):
 
     @visible.setter
     def visible(self, value):
+        self.options['plot'] = value
+        self.set_form_item('plot')
         self.shapes.visible = value
         try:
             self.annotation.parent = self.app.plotcanvas.vispy_canvas.view.scene \
