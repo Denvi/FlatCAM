@@ -1509,7 +1509,7 @@ class App(QtCore.QObject):
         self.new_object_available.emit(obj)
         if plot:
             obj.plot()
-            self.obect_plotted.emit(None)
+            self.object_plotted.emit()
 
         t1 = time.time()  # DEBUG
         self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
