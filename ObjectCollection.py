@@ -538,3 +538,6 @@ class ObjectCollection(QtCore.QAbstractItemModel):
                 obj_list.append(item.obj)
 
         return obj_list
+
+    def update_view(self):
+        self.dataChanged.emit(Qt.QModelIndex(), Qt.QModelIndex())

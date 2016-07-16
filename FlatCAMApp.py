@@ -658,12 +658,14 @@ class App(QtCore.QObject):
                 return
 
             for obj in objects:
-                obj.visible = False
+                obj.options['plot'] = False
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
@@ -4189,12 +4191,14 @@ class App(QtCore.QObject):
                 self.progress.emit(0)
                 return
             for obj in objects:
-                obj.visible = True
+                obj.options['plot'] = True
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
