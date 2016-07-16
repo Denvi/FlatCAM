@@ -188,6 +188,11 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         self.app.ui.menuprojectdisable.setEnabled(sel)
         self.app.ui.menuprojectdelete.setEnabled(sel)
 
+        self.app.ui.menuprojectgeneratecnc.setVisible(True)
+        for obj in self.get_selected():
+            if type(obj) != FlatCAMGeometry:
+                self.app.ui.menuprojectgeneratecnc.setVisible(False)
+
         self.app.ui.menuproject.popup(self.view.mapToGlobal(pos))
 
     def index(self, row, column=0, parent=None, *args, **kwargs):

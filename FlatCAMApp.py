@@ -526,6 +526,7 @@ class App(QtCore.QObject):
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
         self.ui.menuprojectenable.triggered.connect(lambda: self.enable_plots(self.collection.get_selected()))
         self.ui.menuprojectdisable.triggered.connect(lambda: self.disable_plots(self.collection.get_selected()))
+        self.ui.menuprojectgeneratecnc.triggered.connect(lambda: self.generate_cnc_job(self.collection.get_selected()))
         self.ui.menuprojectdelete.triggered.connect(self.on_delete)
         # Toolbar
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
@@ -1529,16 +1530,17 @@ class App(QtCore.QObject):
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
         self.new_object_available.emit(obj)
-        if plot:
-            obj.plot()
-            self.on_zoom_fit(None)
 
-        # Fit on first added object only
-        if len(self.collection.get_list()) == 1:
-            self.on_zoom_fit(None)
+        def worker_task(obj):
+            with self.proc_container.new("Plotting"):
+                obj.plot()
+                self.on_zoom_fit(None)
+                t1 = time.time()  # DEBUG
+                self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
 
-        t1 = time.time()  # DEBUG
-        self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
+        # Send to worker
+        # self.worker.add_task(worker_task, [self])
+        self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
     def on_zoom_fit(self, event):
         """
@@ -4203,6 +4205,10 @@ class App(QtCore.QObject):
         # Send to worker
         # self.worker.add_task(worker_task, [self])
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def generate_cnc_job(self, objects):
+        for obj in objects:
+            obj.generatecncjob()
 
     def save_project(self, filename):
         """

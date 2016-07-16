@@ -133,6 +133,8 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menuprojectenable = self.menuproject.addAction('Enable')
         self.menuprojectdisable = self.menuproject.addAction('Disable')
         self.menuproject.addSeparator()
+        self.menuprojectgeneratecnc = self.menuproject.addAction('Generate CNC')
+        self.menuproject.addSeparator()
         self.menuprojectdelete = self.menuproject.addAction('Delete')
 
         ###############
@@ -142,7 +144,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.addToolBar(self.toolbargeo)
 
         self.newgeo_btn = self.toolbargeo.addAction(QtGui.QIcon('share/new_geo32.png'), "New Blank Geometry")
-        self.delete_btn = self.toolbargeo.addAction(QtGui.QIcon('share/delete32.png'), "&Delete")
+        self.delete_btn = self.toolbargeo.addAction(QtGui.QIcon('share/cancel_edit32.png'), "&Delete")
         self.editgeo_btn = self.toolbargeo.addAction(QtGui.QIcon('share/edit32.png'), "Edit Geometry")
         self.updategeo_btn = self.toolbargeo.addAction(QtGui.QIcon('share/edit_ok32.png'), "Update Geometry")
         self.updategeo_btn.setEnabled(False)
