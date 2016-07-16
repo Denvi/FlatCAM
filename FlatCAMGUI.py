@@ -108,10 +108,10 @@ class FlatCAMGUI(QtGui.QMainWindow):
 
         ### View ###
         self.menuview = self.menu.addMenu('&View')
+        self.menuviewenable = self.menuview.addAction(QtGui.QIcon('share/replot16.png'), 'Enable all plots')
         self.menuviewdisableall = self.menuview.addAction(QtGui.QIcon('share/clear_plot16.png'), 'Disable all plots')
         self.menuviewdisableother = self.menuview.addAction(QtGui.QIcon('share/clear_plot16.png'),
-                                                            'Disable all plots but this one')
-        self.menuviewenable = self.menuview.addAction(QtGui.QIcon('share/replot16.png'), 'Enable all plots')
+                                                            'Disable non-selected')
 
         ### Tool ###
         #self.menutool = self.menu.addMenu('&Tool')
@@ -124,6 +124,16 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.menuhelp_about = self.menuhelp.addAction(QtGui.QIcon('share/tv16.png'), 'About FlatCAM')
         self.menuhelp_home = self.menuhelp.addAction(QtGui.QIcon('share/home16.png'), 'Home')
         self.menuhelp_manual = self.menuhelp.addAction(QtGui.QIcon('share/globe16.png'), 'Manual')
+
+        ####################
+        ### Context menu ###
+        ####################
+
+        self.menuproject = QtGui.QMenu()
+        self.menuprojectenable = self.menuproject.addAction('Enable')
+        self.menuprojectdisable = self.menuproject.addAction('Disable')
+        self.menuproject.addSeparator()
+        self.menuprojectdelete = self.menuproject.addAction('Delete')
 
         ###############
         ### Toolbar ###

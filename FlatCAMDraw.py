@@ -814,7 +814,7 @@ class FlatCAMDraw(QtCore.QObject):
         if isinstance(shape, DrawToolUtilityShape):
             self.utility.append(shape)
         else:
-            self.storage.insert(shape)
+            self.storage.insert(shape)      # TODO: Check performance
 
     def deactivate(self):
         self.disconnect_canvas_event_handlers()

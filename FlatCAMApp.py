@@ -478,10 +478,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"),
-                     lambda: self.worker_task.emit({'fcn': self.version_check,
-                                                    'params': [],
-                                                    'worker_name': "worker2"}))
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"),
+        #              lambda: self.worker_task.emit({'fcn': self.version_check,
+        #                                             'params': [],
+        #                                             'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###
@@ -517,19 +517,22 @@ class App(QtCore.QObject):
         self.ui.menuoptions_transfer_p2a.triggered.connect(self.on_options_project2app)
         self.ui.menuoptions_transfer_o2p.triggered.connect(self.on_options_object2project)
         self.ui.menuoptions_transfer_p2o.triggered.connect(self.on_options_project2object)
-        self.ui.menuviewdisableall.triggered.connect(self.disable_plots)
-        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(except_current=True))
-        self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
+        self.ui.menuviewdisableall.triggered.connect(lambda: self.disable_plots(self.collection.get_list()))
+        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        self.ui.menuviewenable.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.menutoolshell.triggered.connect(self.on_toggle_shell)
         self.ui.menuhelp_about.triggered.connect(self.on_about)
         self.ui.menuhelp_home.triggered.connect(lambda: webbrowser.open(self.app_url))
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
+        self.ui.menuprojectenable.triggered.connect(lambda: self.enable_plots(self.collection.get_selected()))
+        self.ui.menuprojectdisable.triggered.connect(lambda: self.disable_plots(self.collection.get_selected()))
+        self.ui.menuprojectdelete.triggered.connect(self.on_delete)
         # Toolbar
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
         self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(except_current=True))
-        self.ui.replot_btn.triggered.connect(self.enable_all_plots)
+        self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -636,29 +639,27 @@ class App(QtCore.QObject):
             # TODO: Rethink this?
             pass
 
-    def disable_plots(self, except_current=False):
-        """
-        Disables all plots with exception of the current object if specified.
-
-        :param except_current: Wether to skip the current object.
-        :rtype except_current: boolean
-        :return: None
-        """
+    def disable_plots(self, objects):
         # TODO: This method is very similar to replot_all. Try to merge.
+        """
+        Disables plots
+        :param objects: list
+            Objects to be disabled
+        :return:
+        """
         self.progress.emit(10)
 
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
 
-            for obj in self.collection.get_list():
-                if obj != self.collection.get_active() or not except_current:
-                    obj.options['plot'] = False
-                    obj.visible = False
+            for obj in objects:
+                obj.options['plot'] = False     # TODO: Checkboxes
+                obj.visible = False
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -4180,15 +4181,15 @@ class App(QtCore.QObject):
             "info"
         )
 
-    def enable_all_plots(self, *args):
+    def enable_plots(self, objects):
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
-            for obj in self.collection.get_list():
+            for obj in objects:
                 obj.options['plot'] = True
                 obj.visible = True
                 # obj.plot()

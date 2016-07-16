@@ -1,4 +1,4 @@
-#from PyQt4.QtCore import QModelIndex
+# from PyQt4.QtCore import QModelIndex
 from FlatCAMObj import *
 import inspect  # TODO: Remove
 import FlatCAMApp
@@ -10,7 +10,7 @@ class KeySensitiveListView(QtGui.QTreeView):
     QtGui.QListView extended to emit a signal on key press.
     """
 
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         super(KeySensitiveListView, self).__init__(parent)
         self.setHeaderHidden(True)
         self.setEditTriggers(QtGui.QTreeView.SelectedClicked)
@@ -28,12 +28,13 @@ class TreeItem:
     """
     Item of a tree model
     """
-    def __init__(self, data, icon = None, obj = None, parent_item = None):
+
+    def __init__(self, data, icon=None, obj=None, parent_item=None):
 
         self.parent_item = parent_item
-        self.item_data = data                   # Columns string data
-        self.icon = icon                        # Decoration
-        self.obj = obj                          # FlatCAMObj
+        self.item_data = data  # Columns string data
+        self.icon = icon  # Decoration
+        self.obj = obj  # FlatCAMObj
 
         self.child_items = []
 
@@ -78,6 +79,7 @@ class TreeItem:
         del self.obj
         del self.icon
 
+
 class ObjectCollection(QtCore.QAbstractItemModel):
     """
     Object storage and management.
@@ -109,7 +111,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
     def __init__(self, parent=None):
 
-        QtCore.QAbstractItemModel.__init__(self, parent=parent)
+        QtCore.QAbstractItemModel.__init__(self)
 
         ### Icons for the list view
         self.icons = {}
@@ -145,6 +147,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         self.view = KeySensitiveListView()
         self.view.setSelectionMode(Qt.QAbstractItemView.ExtendedSelection)
         self.view.setModel(self)
+        self.view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
 
         self.click_modifier = None
 
@@ -153,6 +156,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         self.view.activated.connect(self.on_item_activated)
         self.view.keyPressed.connect(self.on_key)
         self.view.clicked.connect(self.on_mouse_down)
+        self.view.customContextMenuRequested.connect(self.on_menu_request)
 
     def promise(self, obj_name):
         FlatCAMApp.App.log.debug("Object %s has been promised." % obj_name)
@@ -177,7 +181,16 @@ class ObjectCollection(QtCore.QAbstractItemModel):
     def on_mouse_down(self, event):
         FlatCAMApp.App.log.debug("Mouse button pressed on list")
 
-    def index(self, row, column = 0, parent = None, *args, **kwargs):
+    def on_menu_request(self, pos):
+
+        sel = len(self.view.selectedIndexes()) > 0
+        self.app.ui.menuprojectenable.setEnabled(sel)
+        self.app.ui.menuprojectdisable.setEnabled(sel)
+        self.app.ui.menuprojectdelete.setEnabled(sel)
+
+        self.app.ui.menuproject.popup(self.view.mapToGlobal(pos))
+
+    def index(self, row, column=0, parent=None, *args, **kwargs):
         if not self.hasIndex(row, column, parent):
             return QtCore.QModelIndex()
 
@@ -193,7 +206,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         else:
             return QtCore.QModelIndex()
 
-    def parent(self, index = None):
+    def parent(self, index=None):
         if not index.isValid():
             return QtCore.QModelIndex()
 
@@ -204,7 +217,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         return self.createIndex(parent_item.row(), 0, parent_item)
 
-    def rowCount(self, index = None, *args, **kwargs):
+    def rowCount(self, index=None, *args, **kwargs):
         if index.column() > 0:
             return 0
 
@@ -215,13 +228,13 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         return parent_item.child_count()
 
-    def columnCount(self, index = None, *args, **kwargs):
+    def columnCount(self, index=None, *args, **kwargs):
         if index.isValid():
             return index.internalPointer().column_count()
         else:
             return self.root_item.column_count()
 
-    def data(self, index, role = None):
+    def data(self, index, role=None):
         if not index.isValid():
             return QtCore.QVariant()
 
@@ -241,7 +254,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         else:
             return QtCore.QVariant()
 
-    def setData(self, index, data, role = None):
+    def setData(self, index, data, role=None):
         if index.isValid():
             obj = index.internalPointer().obj
             if obj:
@@ -409,6 +422,20 @@ class ObjectCollection(QtCore.QAbstractItemModel):
         :return: List of objects
         """
         return [sel.internalPointer().obj for sel in self.view.selectedIndexes()]
+
+    def get_non_selected(self):
+        """
+        Returns list of objects non-selected in the view.
+
+        :return: List of objects
+        """
+
+        l = self.get_list()
+
+        for sel in self.get_selected():
+            l.remove(sel)
+
+        return l
 
     def set_active(self, name):
         """
