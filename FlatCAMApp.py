@@ -529,6 +529,9 @@ class App(QtCore.QObject):
         self.ui.menuprojectgeneratecnc.triggered.connect(lambda: self.generate_cnc_job(self.collection.get_selected()))
         self.ui.menuprojectdelete.triggered.connect(self.on_delete)
         # Toolbar
+        self.ui.file_new_btn.triggered.connect(self.on_file_new)
+        self.ui.file_open_btn.triggered.connect(self.on_file_openproject)
+        self.ui.file_save_btn.triggered.connect(self.on_file_saveproject)
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))

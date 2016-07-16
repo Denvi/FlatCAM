@@ -140,6 +140,12 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ###############
         ### Toolbar ###
         ###############
+        self.toolbarfile = QtGui.QToolBar()
+        self.addToolBar(self.toolbarfile)
+        self.file_new_btn = self.toolbarfile.addAction(QtGui.QIcon('share/file32.png'), "New project")
+        self.file_open_btn = self.toolbarfile.addAction(QtGui.QIcon('share/folder32.png'), "Open project")
+        self.file_save_btn = self.toolbarfile.addAction(QtGui.QIcon('share/floppy32.png'), "Save project")
+
         self.toolbargeo = QtGui.QToolBar()
         self.addToolBar(self.toolbargeo)
 
