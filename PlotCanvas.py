@@ -95,7 +95,6 @@ class PlotCanvas(QtCore.QObject):
                 pass
 
         self.vispy_canvas.view.camera.rect = rect
-        self.vispy_canvas.update()
 
     def clear(self):
         pass
