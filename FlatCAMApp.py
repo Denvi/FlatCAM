@@ -102,6 +102,7 @@ class App(QtCore.QObject):
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object, bool)
+    object_plotted = QtCore.pyqtSignal()
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -490,6 +491,7 @@ class App(QtCore.QObject):
         self.message.connect(self.message_dialog)
         self.progress.connect(self.set_progress_bar)
         self.object_created.connect(self.on_object_created)
+        self.object_plotted.connect(self.on_object_plotted)
         self.plots_updated.connect(self.on_plots_updated)
         self.file_opened.connect(self.register_recent)
         self.file_opened.connect(lambda kind, filename: self.register_folder(filename))
@@ -1532,19 +1534,21 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
-        self.new_object_available.emit(obj)
 
         def worker_task(obj):
             with self.proc_container.new("Plotting"):
                 obj.plot()
-                self.on_zoom_fit(None)
                 t1 = time.time()  # DEBUG
                 self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
+                self.object_plotted.emit()
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
         if plot:
             self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
+
+    def on_object_plotted(self):
+        self.on_zoom_fit(None)
 
     def on_zoom_fit(self, event):
         """
@@ -2326,7 +2330,7 @@ class App(QtCore.QObject):
             for obj in self.collection.get_list():
                 with self.proc_container.new("Plotting"):
                     obj.plot()
-                    self.plotcanvas.fit_view()              # Fit in proper thread
+                    app_obj.object_plotted.emit()
 
                 percentage += delta
                 self.progress.emit(int(percentage*100))
