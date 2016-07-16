@@ -48,11 +48,13 @@ class TreeItem:
     def remove_child(self, item):
         child = self.child_items.pop(self.child_items.index(item))
         child.obj.shapes.clear(True)
+        child.obj.deleted = True
         del child
 
     def remove_children(self):
         for child in self.child_items:
             child.obj.shapes.clear()
+            child.obj.deleted = True
             del child
 
         self.child_items = []

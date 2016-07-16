@@ -102,7 +102,7 @@ class App(QtCore.QObject):
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object, bool)
-    object_plotted = QtCore.pyqtSignal()
+    object_plotted = QtCore.pyqtSignal(object)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -1540,14 +1540,14 @@ class App(QtCore.QObject):
                 obj.plot()
                 t1 = time.time()  # DEBUG
                 self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
-                self.object_plotted.emit()
+                self.object_plotted.emit(obj)
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
         if plot:
             self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
-    def on_object_plotted(self):
+    def on_object_plotted(self, obj):
         self.on_zoom_fit(None)
 
     def on_zoom_fit(self, event):
@@ -2330,7 +2330,7 @@ class App(QtCore.QObject):
             for obj in self.collection.get_list():
                 with self.proc_container.new("Plotting"):
                     obj.plot()
-                    app_obj.object_plotted.emit()
+                    app_obj.object_plotted.emit(obj)
 
                 percentage += delta
                 self.progress.emit(int(percentage*100))

@@ -1132,7 +1132,7 @@ class FlatCAMDraw(QtCore.QObject):
                 plot_elements += self.plot_shape(geometry=geometry.interiors, color=color, linewidth=linewidth)
 
             if type(geometry) == LineString or type(geometry) == LinearRing:
-                plot_elements.append(self.shapes.add(geometry, color=color))
+                plot_elements.append(self.add_shape(geometry, color=color))
 
             if type(geometry) == Point:
                 pass
