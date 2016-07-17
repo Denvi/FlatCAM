@@ -54,6 +54,10 @@ class PlotCanvas(QtCore.QObject):
         self.shape_collection = self.new_shape_collection(processes=multiprocessing.cpu_count())
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
+        self.origin = self.new_cursor()
+        self.origin.set_data(np.asarray([(0, 0)]), symbol='+', face_color=None, edge_color='black', size=14)
+        self.origin.parent = self.vispy_canvas.view.scene
+
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
 
