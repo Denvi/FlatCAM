@@ -1633,7 +1633,7 @@ class App(QtCore.QObject):
             # App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
             #     event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.pos[0], event.pos[1]))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (pos[0], pos[1]))
 
         except Exception, e:
             App.log.debug("Outside plot?")
