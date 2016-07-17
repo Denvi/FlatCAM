@@ -1,23 +1,16 @@
-import sys, traceback
-import urllib
-import getopt
-import random
-import logging
-import simplejson as json
-import re
-import webbrowser
-import os
 import Tkinter
-from PyQt4 import QtCore
+import getopt
+import os
+import random
 import time  # Just used for debugging. Double check before removing.
-from xml.dom.minidom import parseString as parse_xml_string
+import urllib
+import webbrowser
 from contextlib import contextmanager
-from vispy.geometry import Rect
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##      Imports part of FlatCAM       ##
 ########################################
-from FlatCAMWorker import Worker
 from ObjectCollection import *
 from FlatCAMObj import *
 from PlotCanvas import *
@@ -26,6 +19,7 @@ from FlatCAMCommon import LoudDict
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
+from FlatCAMWorkerStack import WorkerStack
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
 import tclCommands
@@ -464,26 +458,34 @@ class App(QtCore.QObject):
             self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
 
         #### Worker ####
-        App.log.info("Starting Worker...")
-        self.worker = Worker(self)
-        self.thr1 = QtCore.QThread()
-        self.worker.moveToThread(self.thr1)
-        self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
-        self.thr1.start()
+        # App.log.info("Starting Worker...")
+        # self.worker = Worker(self)
+        # self.thr1 = QtCore.QThread()
+        # self.worker.moveToThread(self.thr1)
+        # self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
+        # self.thr1.start()
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
+        # App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
-        self.worker2 = Worker(self, name="worker2")
-        self.thr2 = QtCore.QThread()
-        self.worker2.moveToThread(self.thr2)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
+        # self.worker2 = Worker(self, name="worker2")
+        # self.thr2 = QtCore.QThread()
+        # self.worker2.moveToThread(self.thr2)
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
         # self.connect(self.thr2, QtCore.SIGNAL("started()"),
         #              lambda: self.worker_task.emit({'fcn': self.version_check,
         #                                             'params': [],
         #                                             'worker_name': "worker2"}))
-        self.thr2.start()
+        # self.thr2.start()
+
+        # Create multiprocess pool
+        # self.pool = WorkerPool()
+        # self.worker_task.connect(self.pool.add_task)
+
+        self.workers = WorkerStack()
+        self.worker_task.connect(self.workers.add_task)
+
 
         ### Signal handling ###
         ## Custom signals
@@ -2262,9 +2264,9 @@ class App(QtCore.QObject):
             def obj_init(obj_inst, app_inst):
                 obj_inst.from_dict(obj)
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
-            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=False)
+            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
-        self.plot_all()
+        # self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
 
@@ -2318,29 +2320,33 @@ class App(QtCore.QObject):
         """
         self.log.debug("plot_all()")
 
-        self.progress.emit(10)
+        for obj in self.collection.get_list():
+            self.object_created.emit(obj, True)
 
-        def worker_task(app_obj):
-            percentage = 0.1
-            try:
-                delta = 0.9 / len(self.collection.get_list())
-            except ZeroDivisionError:
-                self.progress.emit(0)
-                return
-            for obj in self.collection.get_list():
-                with self.proc_container.new("Plotting"):
-                    obj.plot()
-                    app_obj.object_plotted.emit(obj)
-
-                percentage += delta
-                self.progress.emit(int(percentage*100))
-
-            self.progress.emit(0)
-            self.plots_updated.emit()
-
-        # Send to worker
-        #self.worker.add_task(worker_task, [self])
-        self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+        # self.progress.emit(10)
+        #
+        # def worker_task(app_obj):
+        #     print "worker task"
+        #     percentage = 0.1
+        #     try:
+        #         delta = 0.9 / len(self.collection.get_list())
+        #     except ZeroDivisionError:
+        #         self.progress.emit(0)
+        #         return
+        #     for obj in self.collection.get_list():
+        #         with self.proc_container.new("Plotting"):
+        #             obj.plot()
+        #             app_obj.object_plotted.emit(obj)
+        #
+        #         percentage += delta
+        #         self.progress.emit(int(percentage*100))
+        #
+        #     self.progress.emit(0)
+        #     self.plots_updated.emit()
+        #
+        # # Send to worker
+        # #self.worker.add_task(worker_task, [self])
+        # self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
     def register_folder(self, filename):
         self.defaults["last_folder"] = os.path.split(str(filename))[0]

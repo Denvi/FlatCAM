@@ -1,5 +1,5 @@
 import sys
-from PyQt4 import QtGui
+from PyQt4 import QtGui, QtCore
 from FlatCAMApp import App
 
 
@@ -19,6 +19,8 @@ debug_trace()
 # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
 # NOTE: Never talk to the GUI from threads! This is why I commented the above.
 
-app = QtGui.QApplication(sys.argv)
-fc = App()
-sys.exit(app.exec_())
+if __name__ == '__main__':
+    app = QtGui.QApplication(sys.argv)
+    fc = App()
+    sys.exit(app.exec_())
+

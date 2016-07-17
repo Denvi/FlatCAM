@@ -9,6 +9,7 @@ class Worker(QtCore.QObject):
 
     # avoid multiple tests  for debug availability
     pydevd_failed = False
+    task_completed = QtCore.pyqtSignal(str)
 
     def __init__(self, app, name=None):
         super(Worker, self).__init__()
@@ -31,7 +32,7 @@ class Worker(QtCore.QObject):
 
     def run(self):
 
-        self.app.log.debug("Worker Started!")
+        # self.app.log.debug("Worker Started!")
 
         self.allow_debug()
 
@@ -40,19 +41,19 @@ class Worker(QtCore.QObject):
 
     def do_worker_task(self, task):
 
-        self.app.log.debug("Running task: %s" % str(task))
+        # self.app.log.debug("Running task: %s" % str(task))
 
         self.allow_debug()
 
         if ('worker_name' in task and task['worker_name'] == self.name) or \
-            ('worker_name' not in task and self.name is None):
+                ('worker_name' not in task and self.name is None):
 
             try:
                 task['fcn'](*task['params'])
             except Exception as e:
                 self.app.thread_exception.emit(e)
                 raise e
+            finally:
+                self.task_completed.emit(self.name)
 
-            return
-
-        self.app.log.debug("Task ignored.")
+        # self.app.log.debug("Task ignored.")
