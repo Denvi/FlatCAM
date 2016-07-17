@@ -700,8 +700,8 @@ class FlatCAMDraw(QtCore.QObject):
 
         # VisPy visuals
         self.fcgeometry = None
-        # self.shapes = self.app.plotcanvas.new_shape_collection(processes=1)
-        # self.tool_shape = self.app.plotcanvas.new_shape_collection(processes=1)
+        self.shapes = self.app.plotcanvas.new_shape_collection(processes=1)
+        self.tool_shape = self.app.plotcanvas.new_shape_collection(processes=1)
         self.cursor = self.app.plotcanvas.new_cursor()
 
         ## List of selected shapes.
