@@ -4,6 +4,7 @@ from vispy.gloo import set_state
 from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
+import threading
 import numpy as np
 
 try:
@@ -110,6 +111,7 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         self.data = {}
         self.last_key = -1
+        self.lock = threading.Lock()
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
         self._lines = [LineVisual(antialias=True) for _ in range(0, layers)]
@@ -147,16 +149,21 @@ class ShapeCollectionVisual(CompoundVisual):
         :return: int
             Index of shape
         """
+        self.lock.acquire(True)
         self.last_key += 1
+        key = self.last_key
+        self.lock.release()
 
-        self.data[self.last_key] = {'geometry': shape, 'color': color, 'face_color': face_color,
+        self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
                                     'visible': visible, 'layer': layer}
-        self.update_shape_buffers(self.last_key)
+
+        # TODO: Make in separate process -> data[key] (dict)
+        self.update_shape_buffers(key)
 
         if update:
             self._update()
 
-        return self.last_key
+        return key
 
     def update_shape_buffers(self, key):
         """
