@@ -4,7 +4,7 @@ from vispy.gloo import set_state
 from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
-from multiprocessing import Queue, Process, Pool
+from multiprocessing import Pool
 import threading
 import numpy as np
 
@@ -25,7 +25,7 @@ def clear_data(self):
 LineVisual.clear_data = clear_data
 
 
-def update_shape_buffers(data, triangulation='gpc'):
+def _update_shape_buffers(data, triangulation='gpc'):
     """
     Translates Shapely geometry to internal buffers for speedup redraws
     :param data: dict
@@ -117,9 +117,6 @@ def update_shape_buffers(data, triangulation='gpc'):
     data['mesh_tris'] = mesh_tris
     data['mesh_colors'] = mesh_colors
 
-    # print "data updated", data
-
-    # queue.put(data)
     return data
 
 
@@ -187,8 +184,6 @@ class ShapeGroup(object):
         self._results = {}
         self._visible = True
 
-        self.pool = Pool()
-
     def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
         """
         Adds shape to collection and store index in group
@@ -205,10 +200,7 @@ class ShapeGroup(object):
         :param layer: int
             Layer number. 0 - lowest.
         """
-        key = self._collection.add(shape, color, face_color, visible, update, layer)
-        self._indexes.append(key)
-
-        self._results[key] = self.pool.apply_async(update_shape_buffers, [self._collection.data[key]])
+        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer))
 
     def clear(self, update=False):
         """
@@ -222,22 +214,20 @@ class ShapeGroup(object):
         del self._indexes[:]
 
         if update:
-            self._collection.redraw()
+            self._collection._update()
 
     def redraw(self):
         """
         Redraws shape collection
         """
-        self.pool.close()
-
         for i in self._indexes:
             try:
-                self._results[i].wait()
-                self._collection.data[i] = self._results[i].get()
+                self._collection.results[i].wait()
+                self._collection.data[i] = self._collection.results[i].get()
             except Exception as e:
                 print e
 
-        self._collection.redraw()
+        self._collection._update()
 
     @property
     def visible(self):
@@ -278,7 +268,8 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
-        # self.pool = Pool()
+        self.pool = Pool(processes=4)
+        self.results = {}
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
         self._lines = [LineVisual(antialias=True) for _ in range(0, layers)]
@@ -324,12 +315,10 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
                                     'visible': visible, 'layer': layer}
 
-        # self.data[key]['res'] = self.pool.apply_async(update_shape_buffers, [self.data[key]])
-        # self.pool.close()
-        # self.data[key] = self.pool.apply(update_shape_buffers, [self.data[key]])
+        self.results[key] = self.pool.apply_async(_update_shape_buffers, [self.data[key]])
 
-        # if update:
-        #     self._update()
+        if update:
+            self.redraw()                       # redraw() waits for pool process end
 
         return key
 
@@ -405,9 +394,14 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         Redraws collection
         """
-        self.lock.acquire(True)
+        for i in self.data.keys():
+            try:
+                self.results[i].wait()
+                self.data[i] = self.results[i].get()
+            except Exception as e:
+                print e
+
         self._update()
-        self.lock.release()
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)
