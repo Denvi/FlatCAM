@@ -13,7 +13,6 @@ site_dir = site.getsitepackages()[1]
 
 include_files = []
 include_files.append((os.path.join(site_dir, "shapely"), "shapely"))
-include_files.append((os.path.join(site_dir, "matplotlib"), "matplotlib"))
 include_files.append((os.path.join(site_dir, "svg"), "svg"))
 include_files.append((os.path.join(site_dir, "vispy"), "vispy"))
 include_files.append((os.path.join(site_dir, "polygon"), "polygon"))

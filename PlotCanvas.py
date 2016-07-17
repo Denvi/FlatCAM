@@ -14,6 +14,7 @@ from VisPyVisuals import ShapeGroup, ShapeCollection
 from vispy.scene.visuals import Markers, Text
 import numpy as np
 from vispy.geometry import Rect
+import multiprocessing
 
 log = logging.getLogger('base')
 
@@ -50,7 +51,7 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
 
-        self.shape_collection = self.new_shape_collection()
+        self.shape_collection = self.new_shape_collection(processes=multiprocessing.cpu_count())
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
     def vis_connect(self, event_name, callback):
@@ -76,8 +77,8 @@ class PlotCanvas(QtCore.QObject):
     def new_shape_group(self):
         return ShapeGroup(self.shape_collection)   # TODO: Make local shape collection
 
-    def new_shape_collection(self):
-        return ShapeCollection()
+    def new_shape_collection(self, **kwargs):
+        return ShapeCollection(**kwargs)
 
     def new_cursor(self):
         return Markers(pos=np.empty((0, 2)))

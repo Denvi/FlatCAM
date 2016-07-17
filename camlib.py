@@ -35,7 +35,7 @@ from shapely.wkt import dumps as sdumps
 from shapely.geometry.base import BaseGeometry
 
 # Used for solid polygons in Matplotlib
-from descartes.patch import PolygonPatch
+# from descartes.patch import PolygonPatch
 
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
@@ -3607,46 +3607,46 @@ def dict2obj(d):
         return d
 
 
-def plotg(geo, solid_poly=False, color="black"):
-    try:
-        _ = iter(geo)
-    except:
-        geo = [geo]
-
-    for g in geo:
-        if type(g) == Polygon:
-            if solid_poly:
-                patch = PolygonPatch(g,
-                                     facecolor="#BBF268",
-                                     edgecolor="#006E20",
-                                     alpha=0.75,
-                                     zorder=2)
-                ax = subplot(111)
-                ax.add_patch(patch)
-            else:
-                x, y = g.exterior.coords.xy
-                plot(x, y, color=color)
-                for ints in g.interiors:
-                    x, y = ints.coords.xy
-                    plot(x, y, color=color)
-                continue
-
-        if type(g) == LineString or type(g) == LinearRing:
-            x, y = g.coords.xy
-            plot(x, y, color=color)
-            continue
-
-        if type(g) == Point:
-            x, y = g.coords.xy
-            plot(x, y, 'o')
-            continue
-
-        try:
-            _ = iter(g)
-            plotg(g, color=color)
-        except:
-            log.error("Cannot plot: " + str(type(g)))
-            continue
+# def plotg(geo, solid_poly=False, color="black"):
+#     try:
+#         _ = iter(geo)
+#     except:
+#         geo = [geo]
+#
+#     for g in geo:
+#         if type(g) == Polygon:
+#             if solid_poly:
+#                 patch = PolygonPatch(g,
+#                                      facecolor="#BBF268",
+#                                      edgecolor="#006E20",
+#                                      alpha=0.75,
+#                                      zorder=2)
+#                 ax = subplot(111)
+#                 ax.add_patch(patch)
+#             else:
+#                 x, y = g.exterior.coords.xy
+#                 plot(x, y, color=color)
+#                 for ints in g.interiors:
+#                     x, y = ints.coords.xy
+#                     plot(x, y, color=color)
+#                 continue
+#
+#         if type(g) == LineString or type(g) == LinearRing:
+#             x, y = g.coords.xy
+#             plot(x, y, color=color)
+#             continue
+#
+#         if type(g) == Point:
+#             x, y = g.coords.xy
+#             plot(x, y, 'o')
+#             continue
+#
+#         try:
+#             _ = iter(g)
+#             plotg(g, color=color)
+#         except:
+#             log.error("Cannot plot: " + str(type(g)))
+#             continue
 
 
 def parse_gerber_number(strnumber, frac_digits):

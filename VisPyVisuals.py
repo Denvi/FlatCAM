@@ -251,7 +251,7 @@ class ShapeGroup(object):
 
 
 class ShapeCollectionVisual(CompoundVisual):
-    def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
+    def __init__(self, line_width=1, triangulation='gpc', layers=3, processes=1, **kwargs):
         """
         Represents collection of shapes to draw on VisPy scene
         :param line_width: float
@@ -268,7 +268,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
-        self.pool = Pool(processes=4)
+        self.pool = Pool(processes=processes)
         self.results = {}
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
