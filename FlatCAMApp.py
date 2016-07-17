@@ -2321,7 +2321,14 @@ class App(QtCore.QObject):
         self.log.debug("plot_all()")
 
         for obj in self.collection.get_list():
-            self.object_created.emit(obj, True)
+            def worker_task(obj):
+                with self.proc_container.new("Plotting"):
+                    obj.plot()
+                    self.object_plotted.emit(obj)
+
+            # Send to worker
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
+
 
         # self.progress.emit(10)
         #
