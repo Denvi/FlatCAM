@@ -102,6 +102,7 @@ class App(QtCore.QObject):
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object, bool)
+    object_plotted = QtCore.pyqtSignal(object)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -478,10 +479,10 @@ class App(QtCore.QObject):
         self.thr2 = QtCore.QThread()
         self.worker2.moveToThread(self.thr2)
         self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"),
-                     lambda: self.worker_task.emit({'fcn': self.version_check,
-                                                    'params': [],
-                                                    'worker_name': "worker2"}))
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"),
+        #              lambda: self.worker_task.emit({'fcn': self.version_check,
+        #                                             'params': [],
+        #                                             'worker_name': "worker2"}))
         self.thr2.start()
 
         ### Signal handling ###
@@ -490,6 +491,7 @@ class App(QtCore.QObject):
         self.message.connect(self.message_dialog)
         self.progress.connect(self.set_progress_bar)
         self.object_created.connect(self.on_object_created)
+        self.object_plotted.connect(self.on_object_plotted)
         self.plots_updated.connect(self.on_plots_updated)
         self.file_opened.connect(self.register_recent)
         self.file_opened.connect(lambda kind, filename: self.register_folder(filename))
@@ -517,19 +519,26 @@ class App(QtCore.QObject):
         self.ui.menuoptions_transfer_p2a.triggered.connect(self.on_options_project2app)
         self.ui.menuoptions_transfer_o2p.triggered.connect(self.on_options_object2project)
         self.ui.menuoptions_transfer_p2o.triggered.connect(self.on_options_project2object)
-        self.ui.menuviewdisableall.triggered.connect(self.disable_plots)
-        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(except_current=True))
-        self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
+        self.ui.menuviewdisableall.triggered.connect(lambda: self.disable_plots(self.collection.get_list()))
+        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        self.ui.menuviewenable.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.menutoolshell.triggered.connect(self.on_toggle_shell)
         self.ui.menuhelp_about.triggered.connect(self.on_about)
         self.ui.menuhelp_home.triggered.connect(lambda: webbrowser.open(self.app_url))
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
+        self.ui.menuprojectenable.triggered.connect(lambda: self.enable_plots(self.collection.get_selected()))
+        self.ui.menuprojectdisable.triggered.connect(lambda: self.disable_plots(self.collection.get_selected()))
+        self.ui.menuprojectgeneratecnc.triggered.connect(lambda: self.generate_cnc_job(self.collection.get_selected()))
+        self.ui.menuprojectdelete.triggered.connect(self.on_delete)
         # Toolbar
+        self.ui.file_new_btn.triggered.connect(self.on_file_new)
+        self.ui.file_open_btn.triggered.connect(self.on_file_openproject)
+        self.ui.file_save_btn.triggered.connect(self.on_file_saveproject)
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
-        self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
-        self.ui.clear_plot_btn.triggered.connect(self.plotcanvas.clear)
-        self.ui.replot_btn.triggered.connect(self.on_toolbar_replot)
+        self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
+        self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
+        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -636,34 +645,33 @@ class App(QtCore.QObject):
             # TODO: Rethink this?
             pass
 
-    def disable_plots(self, except_current=False):
-        """
-        Disables all plots with exception of the current object if specified.
-
-        :param except_current: Wether to skip the current object.
-        :rtype except_current: boolean
-        :return: None
-        """
+    def disable_plots(self, objects):
         # TODO: This method is very similar to replot_all. Try to merge.
+        """
+        Disables plots
+        :param objects: list
+            Objects to be disabled
+        :return:
+        """
         self.progress.emit(10)
 
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
 
-            for obj in self.collection.get_list():
-                if obj != self.collection.get_active() or not except_current:
-                    obj.options['plot'] = False
-                    obj.visible = False
+            for obj in objects:
+                obj.options['plot'] = False
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
@@ -1488,6 +1496,7 @@ class App(QtCore.QObject):
         self.plotcanvas.vispy_canvas.update()
         self.on_zoom_fit(None)
 
+    # TODO: Rework toolbar 'clear', 'replot' functions
     def on_toolbar_replot(self):
         """
         Callback for toolbar button. Re-plots all objects.
@@ -1525,17 +1534,21 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
-        self.new_object_available.emit(obj)
+
+        def worker_task(obj):
+            with self.proc_container.new("Plotting"):
+                obj.plot()
+                t1 = time.time()  # DEBUG
+                self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
+                self.object_plotted.emit(obj)
+
+        # Send to worker
+        # self.worker.add_task(worker_task, [self])
         if plot:
-            obj.plot()
-            self.on_zoom_fit(None)
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
-        # Fit on first added object only
-        if len(self.collection.get_list()) == 1:
-            self.on_zoom_fit(None)
-
-        t1 = time.time()  # DEBUG
-        self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
+    def on_object_plotted(self, obj):
+        self.on_zoom_fit(None)
 
     def on_zoom_fit(self, event):
         """
@@ -1620,7 +1633,7 @@ class App(QtCore.QObject):
             # App.log.debug('button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % (
             #     event.button, event.x, event.y, event.xdata, event.ydata))
 
-            self.clipboard.setText(self.defaults["point_clipboard_format"] % (event.pos[0], event.pos[1]))
+            self.clipboard.setText(self.defaults["point_clipboard_format"] % (pos[0], pos[1]))
 
         except Exception, e:
             App.log.debug("Outside plot?")
@@ -1668,8 +1681,6 @@ class App(QtCore.QObject):
 
         # Remove everything from memory
         App.log.debug("on_file_new()")
-
-        self.plotcanvas.clear()
 
         # tcl needs to be reinitialized, otherwise  old shell variables etc  remains
         self.init_tcl()
@@ -2251,9 +2262,9 @@ class App(QtCore.QObject):
             def obj_init(obj_inst, app_inst):
                 obj_inst.from_dict(obj)
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
-            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=False)
+            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
-        self.plot_all()
+        # self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
 
@@ -2307,7 +2318,6 @@ class App(QtCore.QObject):
         """
         self.log.debug("plot_all()")
 
-        self.plotcanvas.clear()
         self.progress.emit(10)
 
         def worker_task(app_obj):
@@ -2318,8 +2328,9 @@ class App(QtCore.QObject):
                 self.progress.emit(0)
                 return
             for obj in self.collection.get_list():
-                obj.plot()
-                self.plotcanvas.fit_view()              # Fit in proper thread
+                with self.proc_container.new("Plotting"):
+                    obj.plot()
+                    app_obj.object_plotted.emit(obj)
 
                 percentage += delta
                 self.progress.emit(int(percentage*100))
@@ -4182,29 +4193,31 @@ class App(QtCore.QObject):
             "info"
         )
 
-    def enable_all_plots(self, *args):
-        self.plotcanvas.clear()
-
+    def enable_plots(self, objects):
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
-            for obj in self.collection.get_list():
+            for obj in objects:
                 obj.options['plot'] = True
-                obj.visible = True
-                # obj.plot()
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def generate_cnc_job(self, objects):
+        for obj in objects:
+            obj.generatecncjob()
 
     def save_project(self, filename):
         """

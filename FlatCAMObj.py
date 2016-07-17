@@ -11,6 +11,9 @@ from VisPyVisuals import ShapeCollection
 from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
 
+class ObjectDeleted(Exception):
+    pass
+
 ########################################
 ##            FlatCAMObj              ##
 ########################################
@@ -49,6 +52,7 @@ class FlatCAMObj(QtCore.QObject):
         self.item = None  # Link with project view item
 
         self.muted_ui = False
+        self.deleted = False
 
         # assert isinstance(self.ui, ObjectUI)
         # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
@@ -243,6 +247,14 @@ class FlatCAMObj(QtCore.QObject):
         :return: None
         """
         return
+
+    def add_shape(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+        if self.deleted:
+            self.shapes.clear(True)
+            raise ObjectDeleted(self.options['name'] + ' deleted during plot')
+        else:
+            self.shapes.add(shape=shape, color=color, face_color=face_color, visible=visible,
+                            update=update, layer=layer)
 
     @property
     def visible(self):
@@ -675,15 +687,18 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             color[3] = 1
             return color
 
-        if self.options["solid"]:
-            for poly in geometry:
-                self.shapes.add(poly, color='#006E20BF', face_color=random_color() if self.options['multicolored'] else
-                                '#BBF268BF', visible=self.options['plot'])
-        else:
-            for poly in geometry:
-                self.shapes.add(poly, color=random_color() if self.options['multicolored'] else 'black',
-                                visible=self.options['plot'])
-        self.shapes.redraw()
+        try:
+            if self.options["solid"]:
+                for poly in geometry:
+                    self.add_shape(poly, color='#006E20BF', face_color=random_color() if self.options['multicolored'] else
+                                    '#BBF268BF', visible=self.options['plot'])
+            else:
+                for poly in geometry:
+                    self.add_shape(poly, color=random_color() if self.options['multicolored'] else 'black',
+                                    visible=self.options['plot'])
+            self.shapes.redraw()
+        except ObjectDeleted:
+            pass
 
     def serialize(self):
         return {
@@ -1018,17 +1033,20 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         except TypeError:
             self.solid_geometry = [self.solid_geometry]
 
-        # Plot excellon (All polygons?)
-        if self.options["solid"]:
-            for geo in self.solid_geometry:
-                self.shapes.add(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'])
-        else:
-            for geo in self.solid_geometry:
-                self.shapes.add(geo.exterior, color='red', visible=self.options['plot'])
-                for ints in geo.interiors:
-                    self.shapes.add(ints, color='green', visible=self.options['plot'])
+        try:
+            # Plot excellon (All polygons?)
+            if self.options["solid"]:
+                for geo in self.solid_geometry:
+                    self.add_shape(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'])
+            else:
+                for geo in self.solid_geometry:
+                    self.add_shape(geo.exterior, color='red', visible=self.options['plot'])
+                    for ints in geo.interiors:
+                        self.add_shape(ints, color='green', visible=self.options['plot'])
 
-        self.shapes.redraw()
+            self.shapes.redraw()
+        except ObjectDeleted:
+            pass
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
@@ -1192,9 +1210,11 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
-
-        self.shapes.redraw()
+        try:
+            self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
+            self.shapes.redraw()
+        except ObjectDeleted:
+            pass
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -1528,7 +1548,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 self.plot_element(sub_el)
 
         except TypeError:  # Element is not iterable...
-            self.shapes.add(element, color='red', visible=self.options['plot'], layer=0)
+            self.add_shape(element, color='red', visible=self.options['plot'], layer=0)
 
     def plot(self):
         """
@@ -1542,5 +1562,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot_element(self.solid_geometry)
-        self.shapes.redraw()
+        try:
+            self.plot_element(self.solid_geometry)
+            self.shapes.redraw()
+        except ObjectDeleted:
+            pass
