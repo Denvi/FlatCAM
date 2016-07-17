@@ -4,6 +4,7 @@ from vispy.gloo import set_state
 from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
+from multiprocessing import Queue, Process, Pool
 import threading
 import numpy as np
 
@@ -22,6 +23,156 @@ def clear_data(self):
     self.update()
 
 LineVisual.clear_data = clear_data
+
+
+def update_shape_buffers(data, triangulation='gpc'):
+    """
+    Translates Shapely geometry to internal buffers for speedup redraws
+    :param data: dict
+        Input shape data
+    :param triangulation:
+        Triangulation engine
+    """
+    mesh_vertices = []  # Vertices for mesh
+    mesh_tris = []  # Faces for mesh
+    mesh_colors = []  # Face colors
+    line_pts = []  # Vertices for line
+    line_colors = []  # Line color
+
+    geo, color, face_color = data['geometry'], data['color'], data['face_color']
+
+    if geo is not None and not geo.is_empty:
+        simple = geo.simplify(0.01)  # Simplified shape
+        pts = []  # Shape line points
+        tri_pts = []  # Mesh vertices
+        tri_tris = []  # Mesh faces
+
+        if type(geo) == LineString:
+            # Prepare lines
+            pts = _linestring_to_segments(np.asarray(simple)).tolist()
+
+        elif type(geo) == LinearRing:
+            # Prepare lines
+            pts = _linearring_to_segments(np.asarray(simple)).tolist()
+
+        elif type(geo) == Polygon:
+            # Prepare polygon faces
+            if face_color is not None:
+
+                if triangulation == 'vispy':
+                    # VisPy triangulation
+                    # Concatenated arrays of external & internal line rings
+                    vertices = _open_ring(np.asarray(simple.exterior))
+                    edges = _generate_edges(len(vertices))
+
+                    for ints in simple.interiors:
+                        v = _open_ring(np.asarray(ints))
+                        edges = np.append(edges, _generate_edges(len(v)) + len(vertices), 0)
+                        vertices = np.append(vertices, v, 0)
+
+                    tri = Triangulation(vertices, edges)
+                    tri.triangulate()
+                    tri_pts, tri_tris = tri.pts.tolist(), tri.tris.tolist()
+
+                elif triangulation == 'gpc':
+
+                    # GPC triangulation
+                    p = gpc.Polygon(np.asarray(simple.exterior))
+
+                    # Exclude all internal rings from polygon
+                    for ints in simple.interiors:
+                        q = gpc.Polygon(np.asarray(ints))
+                        p -= q
+
+                    # Triangulate polygon
+                    for strip in p.triStrip():
+                        # Generate tris indexes for triangle strip [[0, 1, 2], [1, 2, 3], [2, 3, 4], ... ]
+                        ti = [[x + y + len(tri_pts) for x in range(0, 3)] for y in range(0, len(strip) - 2)]
+
+                        # Append vertices & tris
+                        tri_tris += ti
+                        tri_pts += strip
+
+            # Prepare polygon edges
+            if color is not None:
+                pts = _linearring_to_segments(np.asarray(simple.exterior)).tolist()
+                for ints in simple.interiors:
+                    pts += _linearring_to_segments(np.asarray(ints)).tolist()
+
+        # Appending data for mesh
+        if len(tri_pts) > 0 and len(tri_tris) > 0:
+            mesh_tris += tri_tris
+            mesh_vertices += tri_pts
+            mesh_colors += [Color(face_color).rgba] * len(tri_tris)
+
+        # Appending data for line
+        if len(pts) > 0:
+            line_pts += pts
+            line_colors += [Color(color).rgba] * len(pts)
+
+    # Store buffers
+    data['line_pts'] = line_pts
+    data['line_colors'] = line_colors
+    data['mesh_vertices'] = mesh_vertices
+    data['mesh_tris'] = mesh_tris
+    data['mesh_colors'] = mesh_colors
+
+    # print "data updated", data
+
+    # queue.put(data)
+    return data
+
+
+def _open_ring(vertices):
+    """
+    Make lines ring open
+    :param vertices: numpy.array
+        Array of lines vertices
+    :return: numpy.array
+        Opened line strip
+    """
+    return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
+
+
+def _generate_edges(count):
+    """
+    Generates edges indexes in form: [[0, 1], [1, 2], [2, 3], ... ]
+    :param count: int
+        Edges count
+    :return: numpy.array
+        Edges
+    """
+    edges = np.empty((count, 2), dtype=np.uint32)
+    edges[:, 0] = np.arange(count)
+    edges[:, 1] = edges[:, 0] + 1
+    edges[-1, 1] = 0
+    return edges
+
+
+def _linearring_to_segments(arr):
+    # Close linear ring
+    """
+    Translates linear ring to line segments
+    :param arr: numpy.array
+        Array of linear ring vertices
+    :return: numpy.array
+        Line segments
+    """
+    if np.any(arr[0] != arr[-1]):
+        arr = np.concatenate([arr, arr[:1]], axis=0)
+
+    return _linestring_to_segments(arr)
+
+
+def _linestring_to_segments(arr):
+    """
+    Translates line strip to segments
+    :param arr: numpy.array
+        Array of line strip vertices
+    :return: numpy.array
+        Line segments
+    """
+    return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
 
 
 class ShapeGroup(object):
@@ -112,6 +263,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
+        self.pool = Pool()
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
         self._lines = [LineVisual(antialias=True) for _ in range(0, layers)]
@@ -157,103 +309,12 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
                                     'visible': visible, 'layer': layer}
 
-        # TODO: Make in separate process -> data[key] (dict)
-        self.update_shape_buffers(key)
+        self.data[key] = self.pool.map(update_shape_buffers, [self.data[key]])[0]
 
         if update:
             self._update()
 
         return key
-
-    def update_shape_buffers(self, key):
-        """
-        Translates Shapely geometry to internal buffers for speedup redraws
-        :param key: int
-            Shape index
-        """
-        mesh_vertices = []                      # Vertices for mesh
-        mesh_tris = []                          # Faces for mesh
-        mesh_colors = []                        # Face colors
-        line_pts = []                           # Vertices for line
-        line_colors = []                        # Line color
-
-        geo, color, face_color = self.data[key]['geometry'], self.data[key]['color'], self.data[key]['face_color']
-
-        if geo is not None and not geo.is_empty:
-            simple = geo.simplify(0.01)         # Simplified shape
-            pts = []                            # Shape line points
-            tri_pts = []                        # Mesh vertices
-            tri_tris = []                       # Mesh faces
-
-            if type(geo) == LineString:
-                # Prepare lines
-                pts = self._linestring_to_segments(np.asarray(simple)).tolist()
-
-            elif type(geo) == LinearRing:
-                # Prepare lines
-                pts = self._linearring_to_segments(np.asarray(simple)).tolist()
-
-            elif type(geo) == Polygon:
-                # Prepare polygon faces
-                if face_color is not None:
-
-                    if self._triangulation == 'vispy':
-                        # VisPy triangulation
-                        # Concatenated arrays of external & internal line rings
-                        vertices = self._open_ring(np.asarray(simple.exterior))
-                        edges = self._generate_edges(len(vertices))
-
-                        for ints in simple.interiors:
-                            v = self._open_ring(np.asarray(ints))
-                            edges = np.append(edges, self._generate_edges(len(v)) + len(vertices), 0)
-                            vertices = np.append(vertices, v, 0)
-
-                        tri = Triangulation(vertices, edges)
-                        tri.triangulate()
-                        tri_pts, tri_tris = tri.pts.tolist(), tri.tris.tolist()
-
-                    elif self._triangulation == 'gpc':
-
-                        # GPC triangulation
-                        p = gpc.Polygon(np.asarray(simple.exterior))
-
-                        # Exclude all internal rings from polygon
-                        for ints in simple.interiors:
-                            q = gpc.Polygon(np.asarray(ints))
-                            p -= q
-
-                        # Triangulate polygon
-                        for strip in p.triStrip():
-                            # Generate tris indexes for triangle strip [[0, 1, 2], [1, 2, 3], [2, 3, 4], ... ]
-                            ti = [[x + y + len(tri_pts) for x in range(0, 3)] for y in range(0, len(strip) - 2)]
-
-                            # Append vertices & tris
-                            tri_tris += ti
-                            tri_pts += strip
-
-                # Prepare polygon edges
-                if color is not None:
-                    pts = self._linearring_to_segments(np.asarray(simple.exterior)).tolist()
-                    for ints in simple.interiors:
-                        pts += self._linearring_to_segments(np.asarray(ints)).tolist()
-
-            # Appending data for mesh
-            if len(tri_pts) > 0 and len(tri_tris) > 0:
-                mesh_tris += tri_tris
-                mesh_vertices += tri_pts
-                mesh_colors += [Color(face_color).rgba] * len(tri_tris)
-
-            # Appending data for line
-            if len(pts) > 0:
-                line_pts += pts
-                line_colors += [Color(color).rgba] * len(pts)
-
-        # Store buffers
-        self.data[key]['line_pts'] = line_pts
-        self.data[key]['line_colors'] = line_colors
-        self.data[key]['mesh_vertices'] = mesh_vertices
-        self.data[key]['mesh_tris'] = mesh_tris
-        self.data[key]['mesh_colors'] = mesh_colors
 
     def remove(self, key, update=False):
         """
@@ -327,58 +388,6 @@ class ShapeCollectionVisual(CompoundVisual):
         Redraws collection
         """
         self._update()
-
-    @staticmethod
-    def _open_ring(vertices):
-        """
-        Make lines ring open
-        :param vertices: numpy.array
-            Array of lines vertices
-        :return: numpy.array
-            Opened line strip
-        """
-        return vertices[:-1] if not np.any(vertices[0] != vertices[-1]) else vertices
-
-    @staticmethod
-    def _generate_edges(count):
-        """
-        Generates edges indexes in form: [[0, 1], [1, 2], [2, 3], ... ]
-        :param count: int
-            Edges count
-        :return: numpy.array
-            Edges
-        """
-        edges = np.empty((count, 2), dtype=np.uint32)
-        edges[:, 0] = np.arange(count)
-        edges[:, 1] = edges[:, 0] + 1
-        edges[-1, 1] = 0
-        return edges
-
-    @staticmethod
-    def _linearring_to_segments(arr):
-        # Close linear ring
-        """
-        Translates linear ring to line segments
-        :param arr: numpy.array
-            Array of linear ring vertices
-        :return: numpy.array
-            Line segments
-        """
-        if np.any(arr[0] != arr[-1]):
-            arr = np.concatenate([arr, arr[:1]], axis=0)
-
-        return ShapeCollection._linestring_to_segments(arr)
-
-    @staticmethod
-    def _linestring_to_segments(arr):
-        """
-        Translates line strip to segments
-        :param arr: numpy.array
-            Array of line strip vertices
-        :return: numpy.array
-            Line segments
-        """
-        return np.asarray(np.repeat(arr, 2, axis=0)[1:-1])
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)
