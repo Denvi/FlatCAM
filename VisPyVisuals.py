@@ -184,7 +184,10 @@ class ShapeGroup(object):
         """
         self._collection = collection
         self._indexes = []
+        self._results = {}
         self._visible = True
+
+        self.pool = Pool()
 
     def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
         """
@@ -202,7 +205,10 @@ class ShapeGroup(object):
         :param layer: int
             Layer number. 0 - lowest.
         """
-        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer))
+        key = self._collection.add(shape, color, face_color, visible, update, layer)
+        self._indexes.append(key)
+
+        self._results[key] = self.pool.apply_async(update_shape_buffers, [self._collection.data[key]])
 
     def clear(self, update=False):
         """
@@ -222,6 +228,15 @@ class ShapeGroup(object):
         """
         Redraws shape collection
         """
+        self.pool.close()
+
+        for i in self._indexes:
+            try:
+                self._results[i].wait()
+                self._collection.data[i] = self._results[i].get()
+            except Exception as e:
+                print e
+
         self._collection.redraw()
 
     @property
@@ -263,7 +278,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
-        self.pool = Pool()
+        # self.pool = Pool()
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
         self._lines = [LineVisual(antialias=True) for _ in range(0, layers)]
@@ -309,10 +324,12 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
                                     'visible': visible, 'layer': layer}
 
-        self.data[key] = self.pool.map(update_shape_buffers, [self.data[key]])[0]
+        # self.data[key]['res'] = self.pool.apply_async(update_shape_buffers, [self.data[key]])
+        # self.pool.close()
+        # self.data[key] = self.pool.apply(update_shape_buffers, [self.data[key]])
 
-        if update:
-            self._update()
+        # if update:
+        #     self._update()
 
         return key
 
@@ -359,7 +376,8 @@ class ShapeCollectionVisual(CompoundVisual):
                     mesh_vertices[data['layer']] += data['mesh_vertices']
                     mesh_colors[data['layer']] += data['mesh_colors']
                 except Exception as e:
-                    print "Data error", e
+                    pass
+                    # print "Data error", e
 
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
