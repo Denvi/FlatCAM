@@ -11,7 +11,7 @@ from PyQt4 import QtCore
 import logging
 from VisPyCanvas import VisPyCanvas
 from VisPyVisuals import ShapeGroup, ShapeCollection
-from vispy.scene.visuals import Markers, Text
+from vispy.scene.visuals import Markers, Text, InfiniteLine
 import numpy as np
 from vispy.geometry import Rect
 import multiprocessing
@@ -54,9 +54,15 @@ class PlotCanvas(QtCore.QObject):
         self.shape_collection = self.new_shape_collection(processes=multiprocessing.cpu_count())
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
-        self.origin = self.new_cursor()
-        self.origin.set_data(np.asarray([(0, 0)]), symbol='+', face_color=None, edge_color='black', size=14)
-        self.origin.parent = self.vispy_canvas.view.scene
+        # self.origin = self.new_cursor()
+        # self.origin.set_data(np.asarray([(0, 0)]), symbol='+', face_color=None, edge_color='black', size=14)
+        # self.origin.parent = self.vispy_canvas.view.scene
+
+        self.vline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=True,
+                                  parent=self.vispy_canvas.view.scene)
+
+        self.hline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=False,
+                                  parent=self.vispy_canvas.view.scene)
 
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
