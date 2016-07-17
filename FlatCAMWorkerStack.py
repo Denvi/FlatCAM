@@ -16,7 +16,7 @@ class WorkerStack(QtCore.QObject):
         self.load = {}                                  # {'worker_name': tasks_count}
 
         # Create workers crew
-        for i in range(0, 4):
+        for i in range(0, multiprocessing.cpu_count()):
             worker = Worker(self, 'Slogger-' + str(i))
             thread = QtCore.QThread()
 
@@ -35,7 +35,6 @@ class WorkerStack(QtCore.QObject):
             thread.terminate()
 
     def add_task(self, task):
-        print "New task", self.load
         worker_name = min(self.load, key=self.load.get)
         self.load[worker_name] += 1
         self.worker_task.emit({'worker_name': worker_name, 'fcn': task['fcn'], 'params': task['params']})
