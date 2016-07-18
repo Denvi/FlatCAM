@@ -698,7 +698,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                                     visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
 
     def serialize(self):
         return {
@@ -1046,7 +1046,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
 
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
@@ -1214,7 +1214,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -1566,4 +1566,4 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.plot_element(self.solid_geometry)
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.abort()

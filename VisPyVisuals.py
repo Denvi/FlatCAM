@@ -317,7 +317,7 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         self.data.pop(key)
         if update:
-            self._update()
+            self.__update()
 
     def clear(self, update=False):
         """
@@ -327,9 +327,9 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         self.data.clear()
         if update:
-            self._update()
+            self.__update()
 
-    def _update(self):
+    def __update(self):
         """
         Merges internal buffers, sets data to visuals, redraws collection on scene
         """
@@ -382,11 +382,12 @@ class ShapeCollectionVisual(CompoundVisual):
         for i in self.data.keys() if not indexes else indexes:
             try:
                 self.results[i].wait()
-                self.data[i] = self.results[i].get()
+                if i in self.data:
+                    self.data[i] = self.results[i].get()
             except Exception as e:
                 print e
 
-        self._update()
+        self.__update()
 
 
 ShapeCollection = create_visual_node(ShapeCollectionVisual)

@@ -60,8 +60,6 @@ class PlotCanvas(QtCore.QObject):
         self.shape_collection = self.new_shape_collection()
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
-        print "added lines"
-
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
 

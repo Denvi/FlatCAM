@@ -594,7 +594,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.canvas = app.plotcanvas
 
         ### Drawing Toolbar ###
-        self.drawing_toolbar = QtGui.QToolBar()
+        self.drawing_toolbar = QtGui.QToolBar('Drawing')
         self.drawing_toolbar.setDisabled(disabled)
         self.app.ui.addToolBar(self.drawing_toolbar)
         self.select_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/pointer32.png'), "Select 'Esc'")
@@ -612,7 +612,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.delete_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/deleteshape32.png'), "Delete Shape '-'")
 
         ### Snap Toolbar ###
-        self.snap_toolbar = QtGui.QToolBar()
+        self.snap_toolbar = QtGui.QToolBar('Snap')
         self.grid_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/grid32.png'), 'Snap to grid')
         self.grid_gap_x_entry = QtGui.QLineEdit()
         self.grid_gap_x_entry.setMaximumWidth(70)
