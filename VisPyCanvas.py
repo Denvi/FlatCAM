@@ -1,23 +1,7 @@
 import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
-from vispy.scene.widgets import Grid
 from vispy.scene.cameras.base_camera import BaseCamera
-
-
-# Patch VisPy Grid to prevent updating layout on PaintGL
-def _prepare_draw(self, view):
-    pass
-
-def _update_clipper(self):
-    super(Grid, self)._update_clipper()
-    try:
-        self._update_child_widget_dim()
-    except Exception as e:
-        print e
-
-Grid._prepare_draw = _prepare_draw
-Grid._update_clipper = _update_clipper
 
 
 class VisPyCanvas(scene.SceneCanvas):

@@ -2,7 +2,8 @@ import sys
 from PyQt4 import QtGui, QtCore
 from FlatCAMApp import App
 from multiprocessing import freeze_support
-
+from vispy.visuals import markers, LineVisual
+from vispy.scene.widgets import Grid
 
 def debug_trace():
     """
@@ -18,10 +19,55 @@ def debug_trace():
 # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
 # NOTE: Never talk to the GUI from threads! This is why I commented the above.
 
+
+def apply_patches():
+    # Patch MarkersVisual
+    cross_lines = """
+    float cross(vec2 pointcoord, float size)
+    {
+        //vbar
+        float r1 = abs(pointcoord.x - 0.5)*size;
+        float r2 = abs(pointcoord.y - 0.5)*size - $v_size/2;
+        float vbar = max(r1,r2);
+        //hbar
+        float r3 = abs(pointcoord.y - 0.5)*size;
+        float r4 = abs(pointcoord.x - 0.5)*size - $v_size/2;
+        float hbar = max(r3,r4);
+        return min(vbar, hbar);
+    }
+    """
+
+    markers._marker_dict['++'] = cross_lines
+    markers.marker_types = tuple(sorted(list(markers._marker_dict.keys())))
+
+    # Add clear_data method to LineVisual
+    def clear_data(self):
+        self._bounds = None
+        self._pos = None
+        self._changed['pos'] = True
+        self.update()
+
+    LineVisual.clear_data = clear_data
+
+    # Patch VisPy Grid to prevent updating layout on PaintGL
+    def _prepare_draw(self, view):
+        pass
+
+    def _update_clipper(self):
+        super(Grid, self)._update_clipper()
+        try:
+            self._update_child_widget_dim()
+        except Exception as e:
+            print e
+
+    Grid._prepare_draw = _prepare_draw
+    Grid._update_clipper = _update_clipper
+
 if __name__ == '__main__':
     freeze_support()
 
     debug_trace()
+    apply_patches()
 
     app = QtGui.QApplication(sys.argv)
     fc = App()

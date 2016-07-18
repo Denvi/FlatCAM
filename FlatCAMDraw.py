@@ -1005,7 +1005,7 @@ class FlatCAMDraw(QtCore.QObject):
             self.tool_shape.redraw()
 
         # Update cursor
-        self.cursor.set_data(np.asarray([(x, y)]), symbol='s', edge_color='red', size=5)
+        self.cursor.set_data(np.asarray([(x, y)]), symbol='++', edge_color='black', size=20)
 
     def on_canvas_key(self, event):
         """

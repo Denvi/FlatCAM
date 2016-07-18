@@ -7,22 +7,7 @@ from shapely.geometry import Polygon, LineString, LinearRing
 from multiprocessing import Pool
 import threading
 import numpy as np
-
-try:
-    from shapely.ops import triangulate
-    import Polygon as gpc
-except:
-    pass
-
-
-# Add clear_data method to LineVisual
-def clear_data(self):
-    self._bounds = None
-    self._pos = None
-    self._changed['pos'] = True
-    self.update()
-
-LineVisual.clear_data = clear_data
+import Polygon as gpc
 
 
 def _update_shape_buffers(data, triangulation='gpc'):
@@ -388,7 +373,7 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self._bounds_changed()
 
-    def redraw(self, indexes):
+    def redraw(self, indexes=None):
         """
         Redraws collection
         """

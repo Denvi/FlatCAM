@@ -38,10 +38,6 @@ class PlotCanvas(QtCore.QObject):
 
         self.app = app
 
-        # Options
-        self.x_margin = 15  # pixels
-        self.y_margin = 25  # Pixels
-
         # Parent container
         self.container = container
 
@@ -85,13 +81,15 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.view.camera.zoom(factor, center)
 
     def new_shape_group(self):
-        return ShapeGroup(self.shape_collection)   # TODO: Make local shape collection
+        return ShapeGroup(self.shape_collection)
 
     def new_shape_collection(self, **kwargs):
         return ShapeCollection(**kwargs)
 
     def new_cursor(self):
-        return Markers(pos=np.empty((0, 2)))
+        m = Markers(pos=np.empty((0, 2)))
+        m.antialias = 0
+        return m
 
     def new_annotation(self):
         return Text(parent=self.vispy_canvas.view.scene)
