@@ -37,7 +37,7 @@ class App(QtCore.QObject):
     cmd_line_shellfile = ''
     cmd_line_help = "FlatCam.py --shellfile=<cmd_line_shellfile>"
     try:
-        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", "shellfile=")
+        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", ["shellfile=", "multiprocessing-fork="])
     except getopt.GetoptError:
         print cmd_line_help
         sys.exit(2)
