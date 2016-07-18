@@ -310,3 +310,11 @@ class OptionalInputSection:
             for widget in self.optinputs:
                 widget.setEnabled(False)
 
+
+class FCTable(QtGui.QTableWidget):
+    def __init__(self, parent=None):
+        super(FCTable, self).__init__(parent)
+
+    def sizeHint(self):
+        default_hint_size = super(FCTable, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())

@@ -1,7 +1,7 @@
 import sys
 from PyQt4 import QtGui, QtCore
 #from GUIElements import *
-from GUIElements import FCEntry, FloatEntry, EvalEntry, FCCheckBox, \
+from GUIElements import FCEntry, FloatEntry, EvalEntry, FCCheckBox, FCTable, \
     LengthEntry, FCTextArea, IntEntry, RadioSet, OptionalInputSection
 
 
@@ -443,8 +443,9 @@ class ExcellonObjectUI(ObjectUI):
             "Tools in this Excellon object."
         )
         self.custom_box.addWidget(self.tools_table_label)
-        self.tools_table = QtGui.QTableWidget()
+        self.tools_table = FCTable()
         self.tools_table.setFixedHeight(100)
+
         self.custom_box.addWidget(self.tools_table)
 
         #### Create CNC Job ####
