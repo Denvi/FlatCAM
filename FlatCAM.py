@@ -2,7 +2,8 @@ import sys
 from PyQt4 import QtGui, QtCore
 from FlatCAMApp import App
 from multiprocessing import freeze_support
-from vispy.visuals import markers, LineVisual
+from vispy.visuals import markers, LineVisual, InfiniteLineVisual
+import vispy.app
 from vispy.scene.widgets import Grid
 
 def debug_trace():
@@ -62,6 +63,36 @@ def apply_patches():
 
     Grid._prepare_draw = _prepare_draw
     Grid._update_clipper = _update_clipper
+
+    # Patch InfiniteLine visual
+    def _prepare_draw(self, view=None):
+        """This method is called immediately before each draw.
+        The *view* argument indicates which view is about to be drawn.
+        """
+        GL = None
+        from vispy.app._default_app import default_app
+
+        if default_app is not None and \
+                default_app.backend_name != 'ipynb_webgl':
+            try:
+                import OpenGL.GL as GL
+            except Exception:  # can be other than ImportError sometimes
+                pass
+
+        if GL:
+            GL.glDisable(GL.GL_LINE_SMOOTH)
+            GL.glLineWidth(1.0)
+
+        if self._changed['pos']:
+            self.pos_buf.set_data(self._pos)
+            self._changed['pos'] = False
+
+        if self._changed['color']:
+            self._program.vert['color'] = self._color
+            self._changed['color'] = False
+
+    InfiniteLineVisual._prepare_draw = _prepare_draw
+
 
 if __name__ == '__main__':
     freeze_support()

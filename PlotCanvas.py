@@ -47,9 +47,6 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
 
-        self.shape_collection = self.new_shape_collection()
-        self.shape_collection.parent = self.vispy_canvas.view.scene
-
         # self.origin = self.new_cursor()
         # self.origin.set_data(np.asarray([(0, 0)]), symbol='+', face_color=None, edge_color='black', size=14)
         # self.origin.parent = self.vispy_canvas.view.scene
@@ -59,6 +56,11 @@ class PlotCanvas(QtCore.QObject):
 
         self.hline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=False,
                                   parent=self.vispy_canvas.view.scene)
+
+        self.shape_collection = self.new_shape_collection()
+        self.shape_collection.parent = self.vispy_canvas.view.scene
+
+        print "added lines"
 
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)

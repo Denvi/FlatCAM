@@ -265,9 +265,11 @@ class ShapeCollectionVisual(CompoundVisual):
         CompoundVisual.__init__(self, visuals, **kwargs)
 
         for m in self._meshes:
+            pass
             m.set_gl_state(polygon_offset_fill=True, polygon_offset=(1, 1), cull_face=False)
 
         for l in self._lines:
+            pass
             l.set_gl_state(blend=True)
 
         self.freeze()
