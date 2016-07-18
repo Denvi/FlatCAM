@@ -14,7 +14,7 @@ site_dir = site.getsitepackages()[1]
 include_files = []
 include_files.append((os.path.join(site_dir, "shapely"), "shapely"))
 include_files.append((os.path.join(site_dir, "svg"), "svg"))
-include_files.append((os.path.join(site_dir, "vispy-0.5.0.dev0-py2.7.egg/vispy"), "vispy"))
+include_files.append((os.path.join(site_dir, "vispy"), "vispy"))
 include_files.append((os.path.join(site_dir, "polygon"), "polygon"))
 include_files.append((os.path.join(site_dir, "opengl"), "opengl"))
 include_files.append(("share", "share"))
@@ -24,7 +24,7 @@ include_files.append(("LICENSE", "LICENSE"))
 
 base = None
 
-## Lets not open the console while running the app
+# Lets not open the console while running the app
 if sys.platform == "win32":
     base = "Win32GUI"
 
