@@ -182,7 +182,7 @@ class App(QtCore.QObject):
 
         self.ui = FlatCAMGUI(self.version)
         self.connect(self.ui,
-                     QtCore.SIGNAL("geomUpdate(int, int, int, int)"),
+                     QtCore.SIGNAL("geomUpdate(int, int, int, int, int)"),
                      self.save_geometry)
 
         #### Plot Area ####
@@ -937,11 +937,12 @@ class App(QtCore.QObject):
             return
         self.defaults.update(defaults)
 
-    def save_geometry(self, x, y, width, height):
+    def save_geometry(self, x, y, width, height, notebook_width):
         self.defaults["def_win_x"] = x
         self.defaults["def_win_y"] = y
         self.defaults["def_win_w"] = width
         self.defaults["def_win_h"] = height
+        self.defaults["def_notebook_width"] = notebook_width
         self.save_defaults()
 
     def message_dialog(self, title, message, kind="info"):
@@ -2307,10 +2308,14 @@ class App(QtCore.QObject):
                         self.log.debug("  " + param + " OK!")
 
     def restore_main_win_geom(self):
-        self.ui.setGeometry(self.defaults["def_win_x"],
-                            self.defaults["def_win_y"],
-                            self.defaults["def_win_w"],
-                            self.defaults["def_win_h"])
+        try:
+            self.ui.setGeometry(self.defaults["def_win_x"],
+                                self.defaults["def_win_y"],
+                                self.defaults["def_win_w"],
+                                self.defaults["def_win_h"])
+            self.ui.splitter.setSizes([self.defaults["def_notebook_width"], 0])
+        except KeyError:
+            pass
 
     def plot_all(self):
         """

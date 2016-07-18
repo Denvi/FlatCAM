@@ -25,8 +25,8 @@ include_files.append(("LICENSE", "LICENSE"))
 base = None
 
 ## Lets not open the console while running the app
-# if sys.platform == "win32":
-#     base = "Win32GUI"
+if sys.platform == "win32":
+    base = "Win32GUI"
 
 buildOptions = dict(
     compressed=False,
