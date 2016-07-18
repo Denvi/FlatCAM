@@ -51,7 +51,7 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
 
-        self.shape_collection = self.new_shape_collection(processes=multiprocessing.cpu_count())
+        self.shape_collection = self.new_shape_collection()
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
         # self.origin = self.new_cursor()

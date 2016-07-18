@@ -214,20 +214,14 @@ class ShapeGroup(object):
         del self._indexes[:]
 
         if update:
-            self._collection._update()
+            self._collection.redraw([])             # Skip waiting results
 
     def redraw(self):
         """
         Redraws shape collection
         """
-        for i in self._indexes:
-            try:
-                self._collection.results[i].wait()
-                self._collection.data[i] = self._collection.results[i].get()
-            except Exception as e:
-                print e
 
-        self._collection._update()
+        self._collection.redraw(self._indexes)
 
     @property
     def visible(self):
@@ -247,11 +241,14 @@ class ShapeGroup(object):
         for i in self._indexes:
             self._collection.data[i]['visible'] = value
 
-        self._collection.redraw()
+        self._collection.redraw([])
 
 
 class ShapeCollectionVisual(CompoundVisual):
-    def __init__(self, line_width=1, triangulation='gpc', layers=3, processes=1, **kwargs):
+
+    pool = None
+
+    def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
         """
         Represents collection of shapes to draw on VisPy scene
         :param line_width: float
@@ -268,7 +265,8 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
-        self.pool = Pool(processes=processes)
+        if ShapeCollection.pool == None:
+            ShapeCollection.pool = Pool()
         self.results = {}
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
@@ -356,7 +354,7 @@ class ShapeCollectionVisual(CompoundVisual):
 
         # Merge shapes buffers
         for data in self.data.values():
-            if data['visible']:
+            if data['visible'] and 'line_pts' in data:
                 try:
                     line_pts[data['layer']] += data['line_pts']
                     line_colors[data['layer']] += data['line_colors']
@@ -390,11 +388,11 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self._bounds_changed()
 
-    def redraw(self):
+    def redraw(self, indexes):
         """
         Redraws collection
         """
-        for i in self.data.keys():
+        for i in self.data.keys() if not indexes else indexes:
             try:
                 self.results[i].wait()
                 self.data[i] = self.results[i].get()

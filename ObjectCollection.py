@@ -538,7 +538,7 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         self.endResetModel()
 
-        self.app.plotcanvas.shape_collection.redraw()
+        self.app.plotcanvas.shape_collection.redraw([])
         self.app.dblsidedtool.reset_fields()
 
     def get_list(self):
