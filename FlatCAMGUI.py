@@ -161,8 +161,8 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.zoom_fit_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_fit32.png'), "&Zoom Fit")
         self.zoom_in_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_in32.png'), "&Zoom In")
         self.zoom_out_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_out32.png'), "&Zoom Out")
-        self.replot_btn = self.toolbarview.addAction(QtGui.QIcon('share/replot32.png'), "&Enable all")
-        self.clear_plot_btn = self.toolbarview.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Disable non-selected")
+        self.replot_btn = self.toolbarview.addAction(QtGui.QIcon('share/replot32.png'), "&Replot")
+        self.clear_plot_btn = self.toolbarview.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Clear plot")
 
         self.toolbartools = QtGui.QToolBar('Tools')
         self.addToolBar(self.toolbartools)

@@ -539,8 +539,10 @@ class App(QtCore.QObject):
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
-        self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
+        # self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        # self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
+        self.ui.clear_plot_btn.triggered.connect(self.clear_plots)
+        self.ui.replot_btn.triggered.connect(self.plot_all)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -677,6 +679,13 @@ class App(QtCore.QObject):
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def clear_plots(self):
+
+        objects = self.collection.get_list()
+
+        for obj in objects:
+            obj.shapes.clear(obj == objects[-1])
 
     def edit_geometry(self):
         """

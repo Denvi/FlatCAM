@@ -315,7 +315,8 @@ class ShapeCollectionVisual(CompoundVisual):
         :param update:
             Set True to redraw collection
         """
-        self.data.pop(key)
+        del self.data[key]
+
         if update:
             self.__update()
 
