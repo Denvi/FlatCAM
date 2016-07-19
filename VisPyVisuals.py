@@ -1,16 +1,15 @@
 from vispy.visuals import CompoundVisual, LineVisual, MeshVisual
 from vispy.scene.visuals import create_visual_node
 from vispy.gloo import set_state
-from vispy.geometry.triangulation import Triangulation
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
 from multiprocessing import Pool
 import threading
 import numpy as np
-import Polygon as gpc
+from VisPyTesselators import GLUTess
 
 
-def _update_shape_buffers(data, triangulation='gpc'):
+def _update_shape_buffers(data, triangulation='glu'):
     """
     Translates Shapely geometry to internal buffers for speedup redraws
     :param data: dict
@@ -18,19 +17,19 @@ def _update_shape_buffers(data, triangulation='gpc'):
     :param triangulation:
         Triangulation engine
     """
-    mesh_vertices = []  # Vertices for mesh
-    mesh_tris = []  # Faces for mesh
-    mesh_colors = []  # Face colors
-    line_pts = []  # Vertices for line
-    line_colors = []  # Line color
+    mesh_vertices = []                  # Vertices for mesh
+    mesh_tris = []                      # Faces for mesh
+    mesh_colors = []                    # Face colors
+    line_pts = []                       # Vertices for line
+    line_colors = []                    # Line color
 
     geo, color, face_color = data['geometry'], data['color'], data['face_color']
 
     if geo is not None and not geo.is_empty:
-        simple = geo.simplify(0.01)  # Simplified shape
-        pts = []  # Shape line points
-        tri_pts = []  # Mesh vertices
-        tri_tris = []  # Mesh faces
+        simple = geo.simplify(0.01)     # Simplified shape
+        pts = []                        # Shape line points
+        tri_pts = []                    # Mesh vertices
+        tri_tris = []                   # Mesh faces
 
         if type(geo) == LineString:
             # Prepare lines
@@ -43,40 +42,11 @@ def _update_shape_buffers(data, triangulation='gpc'):
         elif type(geo) == Polygon:
             # Prepare polygon faces
             if face_color is not None:
-
-                if triangulation == 'vispy':
-                    # VisPy triangulation
-                    # Concatenated arrays of external & internal line rings
-                    vertices = _open_ring(np.asarray(simple.exterior))
-                    edges = _generate_edges(len(vertices))
-
-                    for ints in simple.interiors:
-                        v = _open_ring(np.asarray(ints))
-                        edges = np.append(edges, _generate_edges(len(v)) + len(vertices), 0)
-                        vertices = np.append(vertices, v, 0)
-
-                    tri = Triangulation(vertices, edges)
-                    tri.triangulate()
-                    tri_pts, tri_tris = tri.pts.tolist(), tri.tris.tolist()
-
-                elif triangulation == 'gpc':
-
-                    # GPC triangulation
-                    p = gpc.Polygon(list(simple.exterior.coords))
-
-                    # Exclude all internal rings from polygon
-                    for ints in simple.interiors:
-                        q = gpc.Polygon(list(ints.coords))
-                        p -= q
-
-                    # Triangulate polygon
-                    for strip in p.triStrip():
-                        # Generate tris indexes for triangle strip [[0, 1, 2], [1, 2, 3], [2, 3, 4], ... ]
-                        ti = [[x + y + len(tri_pts) for x in range(0, 3)] for y in range(0, len(strip) - 2)]
-
-                        # Append vertices & tris
-                        tri_tris += ti
-                        tri_pts += strip
+                if triangulation == 'glu':
+                    gt = GLUTess()
+                    tri_tris, tri_pts = gt.triangulate(simple)
+                else:
+                    print "Triangulation type '%s' isn't implemented. Drawing only edges." % triangulation
 
             # Prepare polygon edges
             if color is not None:
@@ -88,7 +58,7 @@ def _update_shape_buffers(data, triangulation='gpc'):
         if len(tri_pts) > 0 and len(tri_tris) > 0:
             mesh_tris += tri_tris
             mesh_vertices += tri_pts
-            mesh_colors += [Color(face_color).rgba] * len(tri_tris)
+            mesh_colors += [Color(face_color).rgba] * (len(tri_tris) / 3)
 
         # Appending data for line
         if len(pts) > 0:
@@ -351,8 +321,11 @@ class ShapeCollectionVisual(CompoundVisual):
                 try:
                     line_pts[data['layer']] += data['line_pts']
                     line_colors[data['layer']] += data['line_colors']
-                    mesh_tris[data['layer']] += [[x + len(mesh_vertices[data['layer']])
-                                                  for x in y] for y in data['mesh_tris']]
+                    # mesh_tris[data['layer']] += [[x + len(mesh_vertices[data['layer']])
+                    #                               for x in y] for y in data['mesh_tris']]
+                    mesh_tris[data['layer']] += [x + len(mesh_vertices[data['layer']])
+                                                 for x in data['mesh_tris']]
+
                     mesh_vertices[data['layer']] += data['mesh_vertices']
                     mesh_colors[data['layer']] += data['mesh_colors']
                 except Exception as e:
@@ -362,8 +335,8 @@ class ShapeCollectionVisual(CompoundVisual):
         for i, mesh in enumerate(self._meshes):
             if len(mesh_vertices[i]) > 0:
                 set_state(polygon_offset_fill=False)
-                mesh.set_data(np.asarray(mesh_vertices[i]), np.asarray(mesh_tris[i], dtype=np.uint32),
-                              face_colors=np.asarray(mesh_colors[i]))
+                mesh.set_data(np.asarray(mesh_vertices[i]), np.asarray(mesh_tris[i], dtype=np.uint32)
+                              .reshape((-1, 3)), face_colors=np.asarray(mesh_colors[i]))
             else:
                 mesh.set_data()
 

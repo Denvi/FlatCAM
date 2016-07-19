@@ -5,7 +5,8 @@ from multiprocessing import freeze_support
 from vispy.visuals import markers, LineVisual, InfiniteLineVisual
 import vispy.app
 from vispy.scene.widgets import Grid
-import OpenGL.platform.win32
+if sys.platform == "win32":
+    import OpenGL.platform.win32
 
 def debug_trace():
     """
