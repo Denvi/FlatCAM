@@ -84,4 +84,7 @@ class GLUTess:
         # Start tessellation
         GLU.gluTessEndPolygon(tess)
 
+        # Free resources
+        GLU.gluDeleteTess(tess)
+
         return self.tris, self.pts
