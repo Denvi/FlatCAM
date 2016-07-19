@@ -102,6 +102,9 @@ def _update_shape_buffers(data, triangulation='gpc'):
     data['mesh_tris'] = mesh_tris
     data['mesh_colors'] = mesh_colors
 
+    # Clear shapely geometry
+    del data['geometry']
+
     return data
 
 
@@ -231,6 +234,7 @@ class ShapeGroup(object):
 
 class ShapeCollectionVisual(CompoundVisual):
 
+    # Shared multiprocessing pool
     pool = None
 
     def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
@@ -250,7 +254,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.lock = threading.Lock()
-        if ShapeCollection.pool == None:
+        if not ShapeCollection.pool:
             ShapeCollection.pool = Pool()
         self.results = {}
 
@@ -315,6 +319,7 @@ class ShapeCollectionVisual(CompoundVisual):
         :param update:
             Set True to redraw collection
         """
+        del self.results[key]
         del self.data[key]
 
         if update:
@@ -351,8 +356,7 @@ class ShapeCollectionVisual(CompoundVisual):
                     mesh_vertices[data['layer']] += data['mesh_vertices']
                     mesh_colors[data['layer']] += data['mesh_colors']
                 except Exception as e:
-                    pass
-                    # print "Data error", e
+                    print "Data error", e
 
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
@@ -379,6 +383,8 @@ class ShapeCollectionVisual(CompoundVisual):
     def redraw(self, indexes=None):
         """
         Redraws collection
+        :param indexes: list
+            Shape indexes to get from process pool
         """
         for i in self.data.keys() if not indexes else indexes:
             try:
