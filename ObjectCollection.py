@@ -47,7 +47,7 @@ class TreeItem:
 
     def remove_child(self, item):
         child = self.child_items.pop(self.child_items.index(item))
-        child.obj.clear()
+        child.obj.clear(True)
         child.obj.deleted = True
         del child
 
