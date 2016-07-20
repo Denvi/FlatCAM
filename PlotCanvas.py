@@ -10,11 +10,10 @@ from PyQt4 import QtCore
 
 import logging
 from VisPyCanvas import VisPyCanvas
-from VisPyVisuals import ShapeGroup, ShapeCollection, TextCollection, TextGroup
-from vispy.scene.visuals import Markers, Text, InfiniteLine
+from VisPyVisuals import ShapeGroup, ShapeCollection, TextCollection, TextGroup, Cursor
+from vispy.scene.visuals import InfiniteLine
 import numpy as np
 from vispy.geometry import Rect
-import multiprocessing
 
 log = logging.getLogger('base')
 
@@ -58,10 +57,8 @@ class PlotCanvas(QtCore.QObject):
                                   parent=self.vispy_canvas.view.scene)
 
         self.shape_collection = self.new_shape_collection()
-        self.shape_collection.parent = self.vispy_canvas.view.scene
-
         self.text_collection = self.new_text_collection()
-        self.text_collection.parent = self.vispy_canvas.view.scene
+        self.text_collection.enabled = False
 
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
@@ -80,28 +77,24 @@ class PlotCanvas(QtCore.QObject):
         :type center: list
         :return: None
         """
-
         self.vispy_canvas.view.camera.zoom(factor, center)
 
     def new_shape_group(self):
         return ShapeGroup(self.shape_collection)
 
     def new_shape_collection(self, **kwargs):
-        return ShapeCollection(**kwargs)
+        return ShapeCollection(parent=self.vispy_canvas.view.scene, **kwargs)
 
     def new_cursor(self):
-        m = Markers(pos=np.empty((0, 2)))
-        m.antialias = 0
-        return m
+        c = Cursor(pos=np.empty((0, 2)), parent=self.vispy_canvas.view.scene)
+        c.antialias = 0
+        return c
 
     def new_text_group(self):
         return TextGroup(self.text_collection)
 
     def new_text_collection(self, **kwargs):
-        return TextCollection(**kwargs)
-
-    def new_text(self):
-        return Text(self.annotations)
+        return TextCollection(parent=self.vispy_canvas.view.scene, **kwargs)
 
     def fit_view(self, rect=None):
         if not rect:

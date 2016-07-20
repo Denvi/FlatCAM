@@ -704,6 +704,11 @@ class FlatCAMDraw(QtCore.QObject):
         self.tool_shape = self.app.plotcanvas.new_shape_collection()
         self.cursor = self.app.plotcanvas.new_cursor()
 
+        # Remove from scene
+        self.shapes.enabled = False
+        self.tool_shape.enabled = False
+        self.cursor.enabled = False
+
         ## List of selected shapes.
         self.selected = []
 
@@ -756,12 +761,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
 
     def activate(self):
-
-        print "activate"
-        parent = self.canvas.vispy_canvas.view.scene
-        self.shapes.parent = parent
-        self.tool_shape.parent = parent
-        self.cursor.parent = parent
+        self.shapes.enabled = True
+        self.tool_shape.enabled = True
+        self.cursor.enabled = True
 
     def connect_canvas_event_handlers(self):
         ## Canvas events
@@ -822,11 +824,10 @@ class FlatCAMDraw(QtCore.QObject):
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
-        # Hide vispy visuals
-        if self.shapes.parent is not None:
-            self.shapes.parent = None
-            self.tool_shape.parent = None
-            self.cursor.parent = None
+        # Disable visuals
+        self.shapes.enabled = False
+        self.tool_shape.enabled = False
+        self.cursor.enabled = False
 
         # Show original geometry
         if self.fcgeometry:

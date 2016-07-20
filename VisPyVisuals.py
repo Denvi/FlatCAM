@@ -1,5 +1,5 @@
-from vispy.visuals import CompoundVisual, LineVisual, MeshVisual, TextVisual
-from vispy.scene.visuals import create_visual_node
+from vispy.visuals import CompoundVisual, LineVisual, MeshVisual, TextVisual, MarkersVisual
+from vispy.scene.visuals import VisualNode, generate_docstring, visuals
 from vispy.gloo import set_state
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
@@ -488,5 +488,64 @@ class TextCollectionVisual(TextVisual):
         self.__update()
 
 
-ShapeCollection = create_visual_node(ShapeCollectionVisual)
-TextCollection = create_visual_node(TextCollectionVisual)
+# Add 'enabled' property to visual nodes
+def create_fast_node(subclass):
+    # Create a new subclass of Node.
+
+    # Decide on new class name
+    clsname = subclass.__name__
+    if not (clsname.endswith('Visual') and
+            issubclass(subclass, visuals.BaseVisual)):
+        raise RuntimeError('Class "%s" must end with Visual, and must '
+                           'subclass BaseVisual' % clsname)
+    clsname = clsname[:-6]
+
+    # Generate new docstring based on visual docstring
+    try:
+        doc = generate_docstring(subclass, clsname)
+    except Exception:
+        # If parsing fails, just return the original Visual docstring
+        doc = subclass.__doc__
+
+    # New __init__ method
+    def __init__(self, *args, **kwargs):
+        parent = kwargs.pop('parent', None)
+        name = kwargs.pop('name', None)
+        self.name = name  # to allow __str__ before Node.__init__
+        self._visual_superclass = subclass
+
+        # parent: property,
+        # _parent: attribute of Node class
+        # __parent: attribute of fast_node class
+        self.__parent = parent
+        self._enabled = False
+
+        subclass.__init__(self, *args, **kwargs)
+        self.unfreeze()
+        VisualNode.__init__(self, parent=parent, name=name)
+        self.freeze()
+
+    # Create new class
+    cls = type(clsname, (VisualNode, subclass),
+               {'__init__': __init__, '__doc__': doc})
+
+    # 'Enabled' property clears/restores 'parent' property of Node class
+    # Scene will be painted quicker than when using 'visible' property
+    def get_enabled(self):
+        return self._enabled
+
+    def set_enabled(self, enabled):
+        if enabled:
+            self.parent = self.__parent                 # Restore parent
+        else:
+            if self.parent:                             # Store parent
+                self.__parent = self.parent
+            self.parent = None
+
+    cls.enabled = property(get_enabled, set_enabled)
+
+    return cls
+
+ShapeCollection = create_fast_node(ShapeCollectionVisual)
+TextCollection = create_fast_node(TextCollectionVisual)
+Cursor = create_fast_node(MarkersVisual)
