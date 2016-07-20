@@ -23,7 +23,7 @@ class VisPyCanvas(scene.SceneCanvas):
         top_padding.height_max = 24
 
         yaxis = scene.AxisWidget(orientation='left', axis_color='black', text_color='black', font_size=12)
-        yaxis.width_max = 50
+        yaxis.width_max = 60
         grid.add_widget(yaxis, row=1, col=0)
 
         xaxis = scene.AxisWidget(orientation='bottom', axis_color='black', text_color='black', font_size=12)
@@ -57,6 +57,13 @@ class VisPyCanvas(scene.SceneCanvas):
 
 
 class Camera(scene.PanZoomCamera):
+
+    def __init__(self, **kwargs):
+        super(Camera, self).__init__(**kwargs)
+
+        self.minimum_scene_size = 0.1
+        self.maximum_scene_size = 10000
+
     def zoom(self, factor, center=None):
         center = center if (center is not None) else self.center
         super(Camera, self).zoom(factor, center)
@@ -79,7 +86,8 @@ class Camera(scene.PanZoomCamera):
 
         if event.type == 'mouse_wheel':
             center = self._scene_transform.imap(event.pos)
-            self.zoom((1 + self.zoom_factor) ** (-event.delta[1] * 30), center)
+            scale = (1 + self.zoom_factor) ** (-event.delta[1] * 30)
+            self.limited_zoom(scale, center)
             event.handled = True
 
         elif event.type == 'mouse_move':
@@ -105,7 +113,7 @@ class Camera(scene.PanZoomCamera):
                 scale = ((1 + self.zoom_factor) **
                          ((p1c-p2c) * np.array([1, -1])))
                 center = self._transform.imap(event.press_event.pos[:2])
-                self.zoom(scale, center)
+                self.limited_zoom(scale, center)
                 event.handled = True
             else:
                 event.handled = False
@@ -115,3 +123,14 @@ class Camera(scene.PanZoomCamera):
             event.handled = event.button in [1, 2, 3]
         else:
             event.handled = False
+
+    def limited_zoom(self, scale, center):
+
+        try:
+            zoom_in = scale[1] < 1
+        except IndexError:
+            zoom_in = scale < 1
+
+        if (not zoom_in and self.rect.width < self.maximum_scene_size) \
+                or (zoom_in and self.rect.width > self.minimum_scene_size):
+            self.zoom(scale, center)
