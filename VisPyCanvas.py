@@ -61,7 +61,7 @@ class Camera(scene.PanZoomCamera):
     def __init__(self, **kwargs):
         super(Camera, self).__init__(**kwargs)
 
-        self.minimum_scene_size = 0.1
+        self.minimum_scene_size = 0.01
         self.maximum_scene_size = 10000
 
     def zoom(self, factor, center=None):
