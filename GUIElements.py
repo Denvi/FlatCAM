@@ -6,6 +6,7 @@ import logging
 
 log = logging.getLogger('base')
 
+EDIT_SIZE_HINT = 80
 
 class RadioSet(QtGui.QWidget):
     def __init__(self, choices, orientation='horizontal', parent=None):
@@ -34,6 +35,7 @@ class RadioSet(QtGui.QWidget):
             layout.addWidget(choice['radio'], stretch=0)
             choice['radio'].toggled.connect(self.on_toggle)
 
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addStretch()
         self.setLayout(layout)
 
@@ -105,6 +107,10 @@ class LengthEntry(QtGui.QLineEdit):
     def set_value(self, val):
         self.setText(QtCore.QString(str(val)))
 
+    def sizeHint(self):
+        default_hint_size = super(LengthEntry, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
+
 
 class FloatEntry(QtGui.QLineEdit):
     def __init__(self, parent=None):
@@ -130,6 +136,10 @@ class FloatEntry(QtGui.QLineEdit):
     def set_value(self, val):
         self.setText("%.6f" % val)
 
+    def sizeHint(self):
+        default_hint_size = super(FloatEntry, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
+
 
 class IntEntry(QtGui.QLineEdit):
 
@@ -154,6 +164,10 @@ class IntEntry(QtGui.QLineEdit):
 
         self.setText(QtCore.QString(str(val)))
 
+    def sizeHint(self):
+        default_hint_size = super(IntEntry, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
+
 
 class FCEntry(QtGui.QLineEdit):
     def __init__(self, parent=None):
@@ -164,6 +178,10 @@ class FCEntry(QtGui.QLineEdit):
 
     def set_value(self, val):
         self.setText(QtCore.QString(str(val)))
+
+    def sizeHint(self):
+        default_hint_size = super(FCEntry, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
 
 
 class EvalEntry(QtGui.QLineEdit):
@@ -187,6 +205,10 @@ class EvalEntry(QtGui.QLineEdit):
 
     def set_value(self, val):
         self.setText(QtCore.QString(str(val)))
+
+    def sizeHint(self):
+        default_hint_size = super(EvalEntry, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
 
 
 class FCCheckBox(QtGui.QCheckBox):
@@ -212,6 +234,10 @@ class FCTextArea(QtGui.QPlainTextEdit):
 
     def get_value(self):
         return str(self.toPlainText())
+
+    def sizeHint(self):
+        default_hint_size = super(FCTextArea, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())
 
 
 class VerticalScrollArea(QtGui.QScrollArea):
@@ -284,3 +310,11 @@ class OptionalInputSection:
             for widget in self.optinputs:
                 widget.setEnabled(False)
 
+
+class FCTable(QtGui.QTableWidget):
+    def __init__(self, parent=None):
+        super(FCTable, self).__init__(parent)
+
+    def sizeHint(self):
+        default_hint_size = super(FCTable, self).sizeHint()
+        return QtCore.QSize(EDIT_SIZE_HINT, default_hint_size.height())

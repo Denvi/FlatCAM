@@ -594,7 +594,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.canvas = app.plotcanvas
 
         ### Drawing Toolbar ###
-        self.drawing_toolbar = QtGui.QToolBar()
+        self.drawing_toolbar = QtGui.QToolBar('Drawing')
         self.drawing_toolbar.setDisabled(disabled)
         self.app.ui.addToolBar(self.drawing_toolbar)
         self.select_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/pointer32.png'), "Select 'Esc'")
@@ -612,7 +612,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.delete_btn = self.drawing_toolbar.addAction(QtGui.QIcon('share/deleteshape32.png'), "Delete Shape '-'")
 
         ### Snap Toolbar ###
-        self.snap_toolbar = QtGui.QToolBar()
+        self.snap_toolbar = QtGui.QToolBar('Snap')
         self.grid_snap_btn = self.snap_toolbar.addAction(QtGui.QIcon('share/grid32.png'), 'Snap to grid')
         self.grid_gap_x_entry = QtGui.QLineEdit()
         self.grid_gap_x_entry.setMaximumWidth(70)
@@ -700,9 +700,14 @@ class FlatCAMDraw(QtCore.QObject):
 
         # VisPy visuals
         self.fcgeometry = None
-        self.shapes = self.app.plotcanvas.new_shape_collection()
-        self.tool_shape = self.app.plotcanvas.new_shape_collection()
+        self.shapes = self.app.plotcanvas.new_shape_collection(layers=1)
+        self.tool_shape = self.app.plotcanvas.new_shape_collection(layers=1)
         self.cursor = self.app.plotcanvas.new_cursor()
+
+        # Remove from scene
+        self.shapes.enabled = False
+        self.tool_shape.enabled = False
+        self.cursor.enabled = False
 
         ## List of selected shapes.
         self.selected = []
@@ -756,12 +761,9 @@ class FlatCAMDraw(QtCore.QObject):
         self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
 
     def activate(self):
-
-        print "activate"
-        parent = self.canvas.vispy_canvas.view.scene
-        self.shapes.parent = parent
-        self.tool_shape.parent = parent
-        self.cursor.parent = parent
+        self.shapes.enabled = True
+        self.tool_shape.enabled = True
+        self.cursor.enabled = True
 
     def connect_canvas_event_handlers(self):
         ## Canvas events
@@ -822,11 +824,10 @@ class FlatCAMDraw(QtCore.QObject):
         self.drawing_toolbar.setDisabled(True)
         self.snap_toolbar.setDisabled(True)  # TODO: Combine and move into tool
 
-        # Hide vispy visuals
-        if self.shapes.parent is not None:
-            self.shapes.parent = None
-            self.tool_shape.parent = None
-            self.cursor.parent = None
+        # Disable visuals
+        self.shapes.enabled = False
+        self.tool_shape.enabled = False
+        self.cursor.enabled = False
 
         # Show original geometry
         if self.fcgeometry:
@@ -999,13 +1000,13 @@ class FlatCAMDraw(QtCore.QObject):
             # Add the new utility shape
             try:
                 for el in list(geo.geo):
-                    self.tool_shape.add(el, color='#FF000080', update=False)
+                    self.tool_shape.add(shape=el, color='#FF000080', update=False, layer=0, tolerance=None)
             except TypeError:
-                self.tool_shape.add(geo.geo, color='#FF000080', update=False)
+                self.tool_shape.add(shape=geo.geo, color='#FF000080', update=False, layer=0, tolerance=None)
             self.tool_shape.redraw()
 
         # Update cursor
-        self.cursor.set_data(np.asarray([(x, y)]), symbol='s', edge_color='red', size=5)
+        self.cursor.set_data(np.asarray([(x, y)]), symbol='++', edge_color='black', size=20)
 
     def on_canvas_key(self, event):
         """
@@ -1132,7 +1133,8 @@ class FlatCAMDraw(QtCore.QObject):
                 plot_elements += self.plot_shape(geometry=geometry.interiors, color=color, linewidth=linewidth)
 
             if type(geometry) == LineString or type(geometry) == LinearRing:
-                plot_elements.append(self.shapes.add(geometry, color=color))
+                plot_elements.append(self.shapes.add(shape=geometry, color=color, layer=0,
+                                                     tolerance=self.fcgeometry.drawing_tolerance))
 
             if type(geometry) == Point:
                 pass

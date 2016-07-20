@@ -35,7 +35,7 @@ from shapely.wkt import dumps as sdumps
 from shapely.geometry.base import BaseGeometry
 
 # Used for solid polygons in Matplotlib
-from descartes.patch import PolygonPatch
+# from descartes.patch import PolygonPatch
 
 import simplejson as json
 # TODO: Commented for FlatCAM packaging with cx_freeze
@@ -43,7 +43,6 @@ import simplejson as json
 import xml.etree.ElementTree as ET
 from svg.path import Path, Line, Arc, CubicBezier, QuadraticBezier, parse_path
 import itertools
-
 from svgparse import *
 
 import logging
@@ -3256,7 +3255,7 @@ class CNCjob(Geometry):
         
         if tooldia == 0:
             for geo in self.gcode_parsed:
-                obj.shapes.add(geo['geom'], color=color[geo['kind'][0]][1], visible=visible)
+                obj.add_shape(shape=geo['geom'], color=color[geo['kind'][0]][1], visible=visible)
         else:
             text = []
             pos = []
@@ -3267,11 +3266,10 @@ class CNCjob(Geometry):
                 pos.append(geo['geom'].coords[0])
 
                 poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                obj.shapes.add(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
-                               visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
+                obj.add_shape(shape=poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
+                              visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
 
-            # obj.annotation.text = text
-            # obj.annotation.pos = pos
+            obj.annotation.set(text=text, pos=pos, visible=obj.options['plot'])
 
     def create_geometry(self):
         # TODO: This takes forever. Too much data?
@@ -3608,46 +3606,46 @@ def dict2obj(d):
         return d
 
 
-def plotg(geo, solid_poly=False, color="black"):
-    try:
-        _ = iter(geo)
-    except:
-        geo = [geo]
-
-    for g in geo:
-        if type(g) == Polygon:
-            if solid_poly:
-                patch = PolygonPatch(g,
-                                     facecolor="#BBF268",
-                                     edgecolor="#006E20",
-                                     alpha=0.75,
-                                     zorder=2)
-                ax = subplot(111)
-                ax.add_patch(patch)
-            else:
-                x, y = g.exterior.coords.xy
-                plot(x, y, color=color)
-                for ints in g.interiors:
-                    x, y = ints.coords.xy
-                    plot(x, y, color=color)
-                continue
-
-        if type(g) == LineString or type(g) == LinearRing:
-            x, y = g.coords.xy
-            plot(x, y, color=color)
-            continue
-
-        if type(g) == Point:
-            x, y = g.coords.xy
-            plot(x, y, 'o')
-            continue
-
-        try:
-            _ = iter(g)
-            plotg(g, color=color)
-        except:
-            log.error("Cannot plot: " + str(type(g)))
-            continue
+# def plotg(geo, solid_poly=False, color="black"):
+#     try:
+#         _ = iter(geo)
+#     except:
+#         geo = [geo]
+#
+#     for g in geo:
+#         if type(g) == Polygon:
+#             if solid_poly:
+#                 patch = PolygonPatch(g,
+#                                      facecolor="#BBF268",
+#                                      edgecolor="#006E20",
+#                                      alpha=0.75,
+#                                      zorder=2)
+#                 ax = subplot(111)
+#                 ax.add_patch(patch)
+#             else:
+#                 x, y = g.exterior.coords.xy
+#                 plot(x, y, color=color)
+#                 for ints in g.interiors:
+#                     x, y = ints.coords.xy
+#                     plot(x, y, color=color)
+#                 continue
+#
+#         if type(g) == LineString or type(g) == LinearRing:
+#             x, y = g.coords.xy
+#             plot(x, y, color=color)
+#             continue
+#
+#         if type(g) == Point:
+#             x, y = g.coords.xy
+#             plot(x, y, 'o')
+#             continue
+#
+#         try:
+#             _ = iter(g)
+#             plotg(g, color=color)
+#         except:
+#             log.error("Cannot plot: " + str(type(g)))
+#             continue
 
 
 def parse_gerber_number(strnumber, frac_digits):

@@ -8,7 +8,12 @@ from camlib import *
 from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
 from VisPyVisuals import ShapeCollection
+from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
+
+# Interrupts plotting process if FlatCAMObj has been deleted
+class ObjectDeleted(Exception):
+    pass
 
 ########################################
 ##            FlatCAMObj              ##
@@ -45,7 +50,12 @@ class FlatCAMObj(QtCore.QObject):
         # self.shapes = ShapeCollection(parent=self.app.plotcanvas.vispy_canvas.view.scene)
         self.shapes = self.app.plotcanvas.new_shape_group()
 
+        self.item = None  # Link with project view item
+
         self.muted_ui = False
+        self.deleted = False
+
+        self._drawing_tolerance = 0.01
 
         # assert isinstance(self.ui, ObjectUI)
         # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
@@ -81,18 +91,19 @@ class FlatCAMObj(QtCore.QObject):
         self.form_fields = {"name": self.ui.name_entry}
 
         assert isinstance(self.ui, ObjectUI)
-        self.ui.name_entry.returnPressed.connect(self.on_name_activate)
+        self.ui.name_entry.editingFinished.connect(self.on_name_editing_finished)
         self.ui.offset_button.clicked.connect(self.on_offset_button_click)
         self.ui.scale_button.clicked.connect(self.on_scale_button_click)
 
     def __str__(self):
         return "<FlatCAMObj({:12s}): {:20s}>".format(self.kind, self.options["name"])
 
-    def on_name_activate(self):
+    def on_name_editing_finished(self):
         old_name = copy(self.options["name"])
         new_name = self.ui.name_entry.get_value()
-        self.options["name"] = self.ui.name_entry.get_value()
-        self.app.info("Name changed from %s to %s" % (old_name, new_name))
+        if new_name != old_name:
+            self.options["name"] = new_name
+            self.app.info("Name changed from %s to %s" % (old_name, new_name))
 
     def on_offset_button_click(self):
         self.app.report_usage("obj_on_offset_button")
@@ -163,8 +174,8 @@ class FlatCAMObj(QtCore.QObject):
             self.app.ui.selected_scroll_area.takeWidget()
         except:
             self.app.log.debug("Nothing to remove")
+
         self.app.ui.selected_scroll_area.setWidget(self.ui)
-        self.to_form()
 
         self.muted_ui = False
 
@@ -217,7 +228,8 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
-        self.shapes.clear()
+        self.clear()
+
         return True
 
     def serialize(self):
@@ -240,6 +252,13 @@ class FlatCAMObj(QtCore.QObject):
         """
         return
 
+    def add_shape(self, **kwargs):
+        if self.deleted:
+            self.shapes.clear(True)
+            raise ObjectDeleted(self.options['name'] + ' deleted during plot')
+        else:
+            self.shapes.add(tolerance=self.drawing_tolerance, **kwargs)
+
     @property
     def visible(self):
         return self.shapes.visible
@@ -247,9 +266,27 @@ class FlatCAMObj(QtCore.QObject):
     @visible.setter
     def visible(self, value):
         self.shapes.visible = value
+
+        # Not all object types has annotations
         try:
-            self.annotation.parent = self.app.plotcanvas.vispy_canvas.view.scene \
-                if (value and not self.annotation.parent) else None
+            self.annotation.visible = value
+        except:
+            pass
+
+    @property
+    def drawing_tolerance(self):
+        return self._drawing_tolerance if self.units == 'MM' or not self.units else self._drawing_tolerance / 25.4
+
+    @drawing_tolerance.setter
+    def drawing_tolerance(self, value):
+        self._drawing_tolerance = value if self.units == 'MM' or not self.units else value / 25.4
+
+    def clear(self, update=False):
+        self.shapes.clear(update)
+
+        # Not all object types has annotations
+        try:
+            self.annotation.clear(update)
         except:
             pass
 
@@ -275,6 +312,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": 0.016,
             "isopasses": 1,
             "isooverlap": 0.15,
+            "ncctools": "1.0, 0.5",
+            "nccoverlap": 0.4,
+            "nccmargin": 1,
             "combine_passes": True,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
@@ -320,6 +360,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isotooldia": self.ui.iso_tool_dia_entry,
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
+            "ncctools": self.ui.ncc_tool_dia_entry,
+            "nccoverlap": self.ui.ncc_overlap_entry,
+            "nccmargin": self.ui.ncc_margin_entry,
             "combine_passes": self.ui.combine_passes_cb,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
@@ -331,11 +374,15 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "bboxrounded": self.ui.bbrounded_cb
         })
 
+        # Fill form fields only on object create
+        self.to_form()
+
         assert isinstance(self.ui, GerberObjectUI)
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
         self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
+        self.ui.generate_ncc_button.clicked.connect(self.on_ncc_button_click)
         self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
         self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
@@ -378,7 +425,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         name = self.options["name"] + "_cutout"
 
         def geo_init(geo_obj, app_obj):
-            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"]/2
+            margin = self.options["cutoutmargin"] + self.options["cutouttooldia"] / 2
             gap_size = self.options["cutoutgapsize"] + self.options["cutouttooldia"]
             minx, miny, maxx, maxy = self.bounds()
             minx -= margin
@@ -418,6 +465,89 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.report_usage("gerber_on_iso_button")
         self.read_form()
         self.isolate()
+
+    def on_ncc_button_click(self, *args):
+        self.app.report_usage("gerber_on_ncc_button")
+
+        # Prepare parameters
+        try:
+            tools = [float(eval(dia)) for dia in self.ui.ncc_tool_dia_entry.get_value().split(",")]
+        except:
+            FlatCAMApp.App.log.error("At least one tool diameter needed")
+            return
+
+        over = self.ui.ncc_overlap_entry.get_value()
+        margin = self.ui.ncc_margin_entry.get_value()
+
+        if over is None or margin is None:
+            FlatCAMApp.App.log.error("Overlap and margin values needed")
+            return
+
+        print "non-copper clear button clicked", tools, over, margin
+
+        # Sort tools in descending order
+        tools.sort(reverse=True)
+
+        # Prepare non-copper polygons
+        bounding_box = self.solid_geometry.envelope.buffer(distance=margin, join_style=JOIN_STYLE.mitre)
+        empty = self.get_empty_area(bounding_box)
+        if type(empty) is Polygon:
+            empty = MultiPolygon([empty])
+
+        # Main procedure
+        def clear_non_copper():
+
+            # Already cleared area
+            cleared = MultiPolygon()
+
+            # Geometry object creating callback
+            def geo_init(geo_obj, app_obj):
+                geo_obj.options["cnctooldia"] = tool
+                geo_obj.solid_geometry = []
+                for p in area.geoms:
+                    try:
+                        cp = self.clear_polygon(p, tool, over)
+                        geo_obj.solid_geometry.append(list(cp.get_objects()))
+                    except:
+                        FlatCAMApp.App.log.warning("Polygon is ommited")
+
+            # Generate area for each tool
+            offset = sum(tools)
+            for tool in tools:
+                # Get remaining tools offset
+                offset -= tool
+
+                # Area to clear
+                area = empty.buffer(-offset).difference(cleared)
+
+                # Transform area to MultiPolygon
+                if type(area) is Polygon:
+                    area = MultiPolygon([area])
+
+                # Check if area not empty
+                if len(area.geoms) > 0:
+                    # Overall cleared area
+                    cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
+
+                    # Create geometry object
+                    name = self.options["name"] + "_ncc_" + repr(tool) + "D"
+                    self.app.new_object("geometry", name, geo_init)
+                else:
+                    return
+
+        # Do job in background
+        proc = self.app.proc_container.new("Clearing non-copper areas.")
+
+        def job_thread(app_obj):
+            try:
+                clear_non_copper()
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        self.app.inform.emit("Clear non-copper areas started ...")
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def follow(self, outname=None):
         """
@@ -492,7 +622,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 geo_obj.solid_geometry = []
                 for i in range(passes):
                     offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
-                    geom = generate_envelope (offset, i == 0)
+                    geom = generate_envelope(offset, i == 0)
                     geo_obj.solid_geometry.append(geom)
                 app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
@@ -502,7 +632,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         else:
             for i in range(passes):
 
-                offset = (2 * i + 1) / 2.0 * dia - i * overlap  * dia
+                offset = (2 * i + 1) / 2.0 * dia - i * overlap * dia
                 if passes > 1:
                     iso_name = base_name + str(i + 1)
                 else:
@@ -512,7 +642,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                 def iso_init(geo_obj, app_obj):
                     # Propagate options
                     geo_obj.options["cnctooldia"] = self.options["isotooldia"]
-                    geo_obj.solid_geometry = generate_envelope (offset, i == 0)
+                    geo_obj.solid_geometry = generate_envelope(offset, i == 0)
                     app_obj.info("Isolation geometry created: %s" % geo_obj.options["name"])
 
                 # TODO: Do something if this is None. Offer changing name?
@@ -578,15 +708,18 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             color[3] = 1
             return color
 
-        if self.options["solid"]:
-            for poly in geometry:
-                self.shapes.add(poly, color='#006E20BF', face_color=random_color() if self.options['multicolored'] else
-                                '#BBF268BF', visible=self.options['plot'])
-        else:
-            for poly in geometry:
-                self.shapes.add(poly, color=random_color() if self.options['multicolored'] else 'black',
-                                visible=self.options['plot'])
-        self.shapes.redraw()
+        try:
+            if self.options["solid"]:
+                for poly in geometry:
+                    self.add_shape(shape=poly, color='#006E20BF', face_color=random_color()
+                                   if self.options['multicolored'] else '#BBF268BF', visible=self.options['plot'])
+            else:
+                for poly in geometry:
+                    self.add_shape(shape=poly, color=random_color() if self.options['multicolored'] else 'black',
+                                   visible=self.options['plot'])
+            self.shapes.redraw()
+        except ObjectDeleted:
+            self.shapes.clear()
 
     def serialize(self):
         return {
@@ -717,12 +850,12 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             dia.setFlags(QtCore.Qt.ItemIsEnabled)
             self.ui.tools_table.setItem(i, 1, dia)  # Diameter
             i += 1
-        
+
         # sort the tool diameter column
         self.ui.tools_table.sortItems(1)
         # all the tools are selected by default
         self.ui.tools_table.selectColumn(0)
-        
+
         self.ui.tools_table.resizeColumnsToContents()
         self.ui.tools_table.resizeRowsToContents()
         self.ui.tools_table.horizontalHeader().setStretchLastSection(True)
@@ -753,6 +886,9 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             "toolchangez": self.ui.toolchangez_entry,
             "spindlespeed": self.ui.spindlespeed_entry
         })
+
+        # Fill form fields
+        self.to_form()
 
         assert isinstance(self.ui, ExcellonObjectUI), \
             "Expected a ExcellonObjectUI, got %s" % type(self.ui)
@@ -918,17 +1054,21 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         except TypeError:
             self.solid_geometry = [self.solid_geometry]
 
-        # Plot excellon (All polygons?)
-        if self.options["solid"]:
-            for geo in self.solid_geometry:
-                self.shapes.add(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'])
-        else:
-            for geo in self.solid_geometry:
-                self.shapes.add(geo.exterior, color='red', visible=self.options['plot'])
-                for ints in geo.interiors:
-                    self.shapes.add(ints, color='green', visible=self.options['plot'])
+        try:
+            # Plot excellon (All polygons?)
+            if self.options["solid"]:
+                for geo in self.solid_geometry:
+                    self.add_shape(shape=geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'],
+                                   layer=2)
+            else:
+                for geo in self.solid_geometry:
+                    self.add_shape(shape=geo.exterior, color='red', visible=self.options['plot'])
+                    for ints in geo.interiors:
+                        self.add_shape(shape=ints, color='green', visible=self.options['plot'])
 
-        self.shapes.redraw()
+            self.shapes.redraw()
+        except ObjectDeleted:
+            self.shapes.clear()
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
@@ -965,7 +1105,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-        # self.annotation = self.app.plotcanvas.new_annotation()
+        self.annotation = self.app.plotcanvas.new_text_group()
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)
@@ -983,6 +1123,9 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             "dwell": self.ui.dwell_cb,
             "dwelltime": self.ui.dwelltime_entry
         })
+
+        # Fill form fields only on object create
+        self.to_form()
 
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.updateplot_button.clicked.connect(self.on_updateplot_button_click)
@@ -1089,9 +1232,12 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
-
-        self.shapes.redraw()
+        try:
+            self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
+            self.shapes.redraw()
+        except ObjectDeleted:
+            self.shapes.clear()
+            self.annotation.clear()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -1133,12 +1279,12 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             else:
                 geo_final.solid_geometry.append(geo.solid_geometry)
 
-            # try:  # Iterable
-            #     for shape in geo.solid_geometry:
-            #         geo_final.solid_geometry.append(shape)
-            #
-            # except TypeError:  # Non-iterable
-            #     geo_final.solid_geometry.append(geo.solid_geometry)
+                # try:  # Iterable
+                #     for shape in geo.solid_geometry:
+                #         geo_final.solid_geometry.append(shape)
+                #
+                # except TypeError:  # Non-iterable
+                #     geo_final.solid_geometry.append(geo.solid_geometry)
 
     def __init__(self, name):
         FlatCAMObj.__init__(self, name)
@@ -1192,6 +1338,9 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             "depthperpass": self.ui.maxdepth_entry
         })
 
+        # Fill form fields only on object create
+        self.to_form()
+
         self.ui.plot_cb.stateChanged.connect(self.on_plot_cb_click)
         self.ui.generate_cnc_button.clicked.connect(self.on_generatecnc_button_click)
         self.ui.generate_paint_button.clicked.connect(self.on_paint_button_click)
@@ -1219,7 +1368,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
     def paint_poly(self, inside_pt, tooldia, overlap):
 
         # Which polygon.
-        #poly = find_polygon(self.solid_geometry, inside_pt)
+        # poly = find_polygon(self.solid_geometry, inside_pt)
         poly = self.find_polygon(inside_pt)
 
         # No polygon?
@@ -1236,7 +1385,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         def gen_paintarea(geo_obj, app_obj):
             assert isinstance(geo_obj, FlatCAMGeometry), \
                 "Initializer expected a FlatCAMGeometry, got %s" % type(geo_obj)
-            #assert isinstance(app_obj, App)
+            # assert isinstance(app_obj, App)
 
             if self.options["paintmethod"] == "seed":
                 cp = self.clear_polygon2(poly.buffer(-self.options["paintmargin"]),
@@ -1422,7 +1571,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 self.plot_element(sub_el)
 
         except TypeError:  # Element is not iterable...
-            self.shapes.add(element, color='red', visible=self.options['plot'], layer=0)
+            self.add_shape(shape=element, color='red', visible=self.options['plot'], layer=0)
 
     def plot(self):
         """
@@ -1436,5 +1585,8 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         if not FlatCAMObj.plot(self):
             return
 
-        self.plot_element(self.solid_geometry)
-        self.shapes.redraw()
+        try:
+            self.plot_element(self.solid_geometry)
+            self.shapes.redraw()
+        except ObjectDeleted:
+            self.shapes.abort()

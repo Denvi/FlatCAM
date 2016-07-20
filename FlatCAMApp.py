@@ -1,23 +1,16 @@
-import sys, traceback
-import urllib
-import getopt
-import random
-import logging
-import simplejson as json
-import re
-import webbrowser
-import os
 import Tkinter
-from PyQt4 import QtCore
+import getopt
+import os
+import random
 import time  # Just used for debugging. Double check before removing.
-from xml.dom.minidom import parseString as parse_xml_string
+import urllib
+import webbrowser
 from contextlib import contextmanager
-from vispy.geometry import Rect
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##      Imports part of FlatCAM       ##
 ########################################
-from FlatCAMWorker import Worker
 from ObjectCollection import *
 from FlatCAMObj import *
 from PlotCanvas import *
@@ -26,6 +19,7 @@ from FlatCAMCommon import LoudDict
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
+from FlatCAMWorkerStack import WorkerStack
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
 import tclCommands
@@ -43,7 +37,7 @@ class App(QtCore.QObject):
     cmd_line_shellfile = ''
     cmd_line_help = "FlatCam.py --shellfile=<cmd_line_shellfile>"
     try:
-        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", "shellfile=")
+        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", ["shellfile=", "multiprocessing-fork="])
     except getopt.GetoptError:
         print cmd_line_help
         sys.exit(2)
@@ -102,7 +96,7 @@ class App(QtCore.QObject):
     # on_object_created() adds the object to the collection,
     # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object, bool)
-    object_plotted = QtCore.pyqtSignal()
+    object_plotted = QtCore.pyqtSignal(object)
 
     # Emitted when a new object has been added to the collection
     # and is ready to be used.
@@ -173,6 +167,11 @@ class App(QtCore.QObject):
         self.app_home = os.path.dirname(os.path.realpath(__file__))
         App.log.debug("Application path is " + self.app_home)
         App.log.debug("Started in " + os.getcwd())
+
+        # cx_freeze workaround
+        if os.path.isfile(self.app_home):
+            self.app_home = os.path.dirname(self.app_home)
+
         os.chdir(self.app_home)
 
         ####################
@@ -183,7 +182,7 @@ class App(QtCore.QObject):
 
         self.ui = FlatCAMGUI(self.version)
         self.connect(self.ui,
-                     QtCore.SIGNAL("geomUpdate(int, int, int, int)"),
+                     QtCore.SIGNAL("geomUpdate(int, int, int, int, int)"),
                      self.save_geometry)
 
         #### Plot Area ####
@@ -221,6 +220,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.defaults_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.defaults_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.defaults_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.defaults_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.defaults_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.defaults_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.defaults_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.defaults_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.defaults_form.gerber_group.cutout_margin_entry,
@@ -267,6 +269,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
             "gerber_cutoutgapsize": 0.15,
@@ -359,6 +364,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": self.options_form.gerber_group.iso_tool_dia_entry,
             "gerber_isopasses": self.options_form.gerber_group.iso_width_entry,
             "gerber_isooverlap": self.options_form.gerber_group.iso_overlap_entry,
+            "gerber_ncctools": self.options_form.gerber_group.ncc_tool_dia_entry,
+            "gerber_nccoverlap": self.options_form.gerber_group.ncc_overlap_entry,
+            "gerber_nccmargin": self.options_form.gerber_group.ncc_margin_entry,
             "gerber_combine_passes": self.options_form.gerber_group.combine_passes_cb,
             "gerber_cutouttooldia": self.options_form.gerber_group.cutout_tooldia_entry,
             "gerber_cutoutmargin": self.options_form.gerber_group.cutout_margin_entry,
@@ -401,6 +409,9 @@ class App(QtCore.QObject):
             "gerber_isotooldia": 0.016,
             "gerber_isopasses": 1,
             "gerber_isooverlap": 0.15,
+            "gerber_ncctools": "1.0, 0.5",
+            "gerber_nccoverlap": 0.4,
+            "gerber_nccmargin": 1,
             "gerber_combine_passes": True,
             "gerber_cutouttooldia": 0.07,
             "gerber_cutoutmargin": 0.1,
@@ -442,27 +453,39 @@ class App(QtCore.QObject):
         self.ui.project_tab_layout.addWidget(self.collection.view)
         #### End of Data ####
 
+        #### Adjust tabs width ####
+        self.collection.view.setMinimumWidth(self.ui.options_scroll_area.widget().sizeHint().width() +
+            self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
+
         #### Worker ####
-        App.log.info("Starting Worker...")
-        self.worker = Worker(self)
-        self.thr1 = QtCore.QThread()
-        self.worker.moveToThread(self.thr1)
-        self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
-        self.thr1.start()
+        # App.log.info("Starting Worker...")
+        # self.worker = Worker(self)
+        # self.thr1 = QtCore.QThread()
+        # self.worker.moveToThread(self.thr1)
+        # self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
+        # self.thr1.start()
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
+        # App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
-        self.worker2 = Worker(self, name="worker2")
-        self.thr2 = QtCore.QThread()
-        self.worker2.moveToThread(self.thr2)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
+        # self.worker2 = Worker(self, name="worker2")
+        # self.thr2 = QtCore.QThread()
+        # self.worker2.moveToThread(self.thr2)
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
         # self.connect(self.thr2, QtCore.SIGNAL("started()"),
         #              lambda: self.worker_task.emit({'fcn': self.version_check,
         #                                             'params': [],
         #                                             'worker_name': "worker2"}))
-        self.thr2.start()
+        # self.thr2.start()
+
+        # Create multiprocess pool
+        # self.pool = WorkerPool()
+        # self.worker_task.connect(self.pool.add_task)
+
+        self.workers = WorkerStack()
+        self.worker_task.connect(self.workers.add_task)
+
 
         ### Signal handling ###
         ## Custom signals
@@ -498,19 +521,28 @@ class App(QtCore.QObject):
         self.ui.menuoptions_transfer_p2a.triggered.connect(self.on_options_project2app)
         self.ui.menuoptions_transfer_o2p.triggered.connect(self.on_options_object2project)
         self.ui.menuoptions_transfer_p2o.triggered.connect(self.on_options_project2object)
-        self.ui.menuviewdisableall.triggered.connect(self.disable_plots)
-        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(except_current=True))
-        self.ui.menuviewenable.triggered.connect(self.enable_all_plots)
+        self.ui.menuviewdisableall.triggered.connect(lambda: self.disable_plots(self.collection.get_list()))
+        self.ui.menuviewdisableother.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        self.ui.menuviewenable.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
         self.ui.menutoolshell.triggered.connect(self.on_toggle_shell)
         self.ui.menuhelp_about.triggered.connect(self.on_about)
         self.ui.menuhelp_home.triggered.connect(lambda: webbrowser.open(self.app_url))
         self.ui.menuhelp_manual.triggered.connect(lambda: webbrowser.open(self.manual_url))
+        self.ui.menuprojectenable.triggered.connect(lambda: self.enable_plots(self.collection.get_selected()))
+        self.ui.menuprojectdisable.triggered.connect(lambda: self.disable_plots(self.collection.get_selected()))
+        self.ui.menuprojectgeneratecnc.triggered.connect(lambda: self.generate_cnc_job(self.collection.get_selected()))
+        self.ui.menuprojectdelete.triggered.connect(self.on_delete)
         # Toolbar
+        self.ui.file_new_btn.triggered.connect(self.on_file_new)
+        self.ui.file_open_btn.triggered.connect(self.on_file_openproject)
+        self.ui.file_save_btn.triggered.connect(self.on_file_saveproject)
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(except_current=True))
-        self.ui.replot_btn.triggered.connect(self.enable_all_plots)
+        # self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        # self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
+        self.ui.clear_plot_btn.triggered.connect(self.clear_plots)
+        self.ui.replot_btn.triggered.connect(self.plot_all)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -617,38 +649,43 @@ class App(QtCore.QObject):
             # TODO: Rethink this?
             pass
 
-    def disable_plots(self, except_current=False):
-        """
-        Disables all plots with exception of the current object if specified.
-
-        :param except_current: Wether to skip the current object.
-        :rtype except_current: boolean
-        :return: None
-        """
+    def disable_plots(self, objects):
         # TODO: This method is very similar to replot_all. Try to merge.
+        """
+        Disables plots
+        :param objects: list
+            Objects to be disabled
+        :return:
+        """
         self.progress.emit(10)
 
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
 
-            for obj in self.collection.get_list():
-                if obj != self.collection.get_active() or not except_current:
-                    obj.options['plot'] = False
-                    # obj.plot()
-                    obj.visible = False
+            for obj in objects:
+                obj.options['plot'] = False
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def clear_plots(self):
+
+        objects = self.collection.get_list()
+
+        for obj in objects:
+            obj.clear(obj == objects[-1])
 
     def edit_geometry(self):
         """
@@ -870,7 +907,6 @@ class App(QtCore.QObject):
         :param toshell: Forward the
         :return: None
         """
-
         # Type of message in brackets at the begining of the message.
         match = re.search("\[([^\]]+)\](.*)", msg)
         if match:
@@ -910,11 +946,12 @@ class App(QtCore.QObject):
             return
         self.defaults.update(defaults)
 
-    def save_geometry(self, x, y, width, height):
+    def save_geometry(self, x, y, width, height, notebook_width):
         self.defaults["def_win_x"] = x
         self.defaults["def_win_y"] = y
         self.defaults["def_win_w"] = width
         self.defaults["def_win_h"] = height
+        self.defaults["def_notebook_width"] = notebook_width
         self.save_defaults()
 
     def message_dialog(self, title, message, kind="info"):
@@ -1007,7 +1044,8 @@ class App(QtCore.QObject):
         obj = classdict[kind](name)
         obj.units = self.options["units"]  # TODO: The constructor should look at defaults.
 
-        # Set default options from self.options
+        # Set options from "Project options" form
+        self.options_read_form()
         for option in self.options:
             if option.find(kind + "_") == 0:
                 oname = option[len(kind) + 1:]
@@ -1490,7 +1528,9 @@ class App(QtCore.QObject):
         self.plot_all()
 
     def on_row_activated(self, index):
-        self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
+        if index.isValid():
+            if index.internalPointer().parent_item != self.collection.root_item:
+                self.ui.notebook.setCurrentWidget(self.ui.selected_tab)
 
     def on_object_created(self, obj, plot):
         """
@@ -1506,15 +1546,20 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
-        self.new_object_available.emit(obj)
+
+        def worker_task(obj):
+            with self.proc_container.new("Plotting"):
+                obj.plot()
+                t1 = time.time()  # DEBUG
+                self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
+                self.object_plotted.emit(obj)
+
+        # Send to worker
+        # self.worker.add_task(worker_task, [self])
         if plot:
-            obj.plot()
-            self.object_plotted.emit()
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
-        t1 = time.time()  # DEBUG
-        self.log.debug("%f seconds adding object and plotting." % (t1 - t0))
-
-    def on_object_plotted(self):
+    def on_object_plotted(self, obj):
         self.on_zoom_fit(None)
 
     def on_zoom_fit(self, event):
@@ -1878,6 +1923,9 @@ class App(QtCore.QObject):
         except TypeError:
             filename = QtGui.QFileDialog.getSaveFileName(caption="Save Project As ...")
 
+        if filename == "":
+            return
+
         try:
             f = open(filename, 'r')
             f.close()
@@ -2226,9 +2274,9 @@ class App(QtCore.QObject):
             def obj_init(obj_inst, app_inst):
                 obj_inst.from_dict(obj)
             App.log.debug(obj['kind'] + ":  " + obj['options']['name'])
-            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=False)
+            self.new_object(obj['kind'], obj['options']['name'], obj_init, active=False, fit=False, plot=True)
 
-        self.plot_all()
+        # self.plot_all()
         self.inform.emit("Project loaded from: " + filename)
         App.log.debug("Project loaded")
 
@@ -2269,10 +2317,14 @@ class App(QtCore.QObject):
                         self.log.debug("  " + param + " OK!")
 
     def restore_main_win_geom(self):
-        self.ui.setGeometry(self.defaults["def_win_x"],
-                            self.defaults["def_win_y"],
-                            self.defaults["def_win_w"],
-                            self.defaults["def_win_h"])
+        try:
+            self.ui.setGeometry(self.defaults["def_win_x"],
+                                self.defaults["def_win_y"],
+                                self.defaults["def_win_w"],
+                                self.defaults["def_win_h"])
+            self.ui.splitter.setSizes([self.defaults["def_notebook_width"], 0])
+        except KeyError:
+            pass
 
     def plot_all(self):
         """
@@ -2282,28 +2334,40 @@ class App(QtCore.QObject):
         """
         self.log.debug("plot_all()")
 
-        self.progress.emit(10)
+        for obj in self.collection.get_list():
+            def worker_task(obj):
+                with self.proc_container.new("Plotting"):
+                    obj.plot()
+                    self.object_plotted.emit(obj)
 
-        def worker_task(app_obj):
-            percentage = 0.1
-            try:
-                delta = 0.9 / len(self.collection.get_list())
-            except ZeroDivisionError:
-                self.progress.emit(0)
-                return
-            for obj in self.collection.get_list():
-                obj.plot()
-                app_obj.object_plotted.emit()
+            # Send to worker
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
-                percentage += delta
-                self.progress.emit(int(percentage*100))
 
-            self.progress.emit(0)
-            self.plots_updated.emit()
-
-        # Send to worker
-        #self.worker.add_task(worker_task, [self])
-        self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+        # self.progress.emit(10)
+        #
+        # def worker_task(app_obj):
+        #     print "worker task"
+        #     percentage = 0.1
+        #     try:
+        #         delta = 0.9 / len(self.collection.get_list())
+        #     except ZeroDivisionError:
+        #         self.progress.emit(0)
+        #         return
+        #     for obj in self.collection.get_list():
+        #         with self.proc_container.new("Plotting"):
+        #             obj.plot()
+        #             app_obj.object_plotted.emit(obj)
+        #
+        #         percentage += delta
+        #         self.progress.emit(int(percentage*100))
+        #
+        #     self.progress.emit(0)
+        #     self.plots_updated.emit()
+        #
+        # # Send to worker
+        # #self.worker.add_task(worker_task, [self])
+        # self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
     def register_folder(self, filename):
         self.defaults["last_folder"] = os.path.split(str(filename))[0]
@@ -4098,6 +4162,7 @@ class App(QtCore.QObject):
         :return: None
         """
         FlatCAMObj.app = self
+        ObjectCollection.app = self
 
         FCProcess.app = self
         FCProcessContainer.app = self
@@ -4155,27 +4220,31 @@ class App(QtCore.QObject):
             "info"
         )
 
-    def enable_all_plots(self, *args):
+    def enable_plots(self, objects):
         def worker_task(app_obj):
             percentage = 0.1
             try:
-                delta = 0.9 / len(self.collection.get_list())
+                delta = 0.9 / len(objects)
             except ZeroDivisionError:
                 self.progress.emit(0)
                 return
-            for obj in self.collection.get_list():
+            for obj in objects:
                 obj.options['plot'] = True
-                obj.visible = True
-                # obj.plot()
+                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
             self.progress.emit(0)
             self.plots_updated.emit()
+            self.collection.update_view()
 
         # Send to worker
         # self.worker.add_task(worker_task, [self])
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def generate_cnc_job(self, objects):
+        for obj in objects:
+            obj.generatecncjob()
 
     def save_project(self, filename):
         """

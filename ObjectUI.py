@@ -1,7 +1,7 @@
 import sys
 from PyQt4 import QtGui, QtCore
 #from GUIElements import *
-from GUIElements import FCEntry, FloatEntry, EvalEntry, FCCheckBox, \
+from GUIElements import FCEntry, FloatEntry, EvalEntry, FCCheckBox, FCTable, \
     LengthEntry, FCTextArea, IntEntry, RadioSet, OptionalInputSection
 
 
@@ -443,8 +443,9 @@ class ExcellonObjectUI(ObjectUI):
             "Tools in this Excellon object."
         )
         self.custom_box.addWidget(self.tools_table_label)
-        self.tools_table = QtGui.QTableWidget()
+        self.tools_table = FCTable()
         self.tools_table.setFixedHeight(100)
+
         self.custom_box.addWidget(self.tools_table)
 
         #### Create CNC Job ####
@@ -638,7 +639,6 @@ class GerberObjectUI(ObjectUI):
         )
         grid1.addWidget(self.combine_passes_cb, 3, 0)
 
-
         self.generate_iso_button = QtGui.QPushButton('Generate Geometry')
         self.generate_iso_button.setToolTip(
             "Create the Geometry Object\n"
@@ -646,7 +646,49 @@ class GerberObjectUI(ObjectUI):
         )
         self.custom_box.addWidget(self.generate_iso_button)
 
-        ## Board cuttout
+        ## Clear non-copper regions
+        self.clearcopper_label = QtGui.QLabel("<b>Clear non-copper:</b>")
+        self.clearcopper_label.setToolTip(
+            "Create a Geometry object with\n"
+            "toolpaths to cut all non-copper regions."
+        )
+        self.custom_box.addWidget(self.clearcopper_label)
+
+        grid5 = QtGui.QGridLayout()
+        self.custom_box.addLayout(grid5)
+        ncctdlabel = QtGui.QLabel('Tools dia:')
+        ncctdlabel.setToolTip(
+            "Diameters of the cutting tools, separated by ','"
+        )
+        grid5.addWidget(ncctdlabel, 0, 0)
+        self.ncc_tool_dia_entry = FCEntry()
+        grid5.addWidget(self.ncc_tool_dia_entry, 0, 1)
+
+        nccoverlabel = QtGui.QLabel('Overlap:')
+        nccoverlabel.setToolTip(
+            "How much (fraction of tool width)\n"
+            "to overlap each pass."
+        )
+        grid5.addWidget(nccoverlabel, 1, 0)
+        self.ncc_overlap_entry = FloatEntry()
+        grid5.addWidget(self.ncc_overlap_entry, 1, 1)
+
+        nccmarginlabel = QtGui.QLabel('Margin:')
+        nccmarginlabel.setToolTip(
+            "Bounding box margin."
+        )
+        grid5.addWidget(nccmarginlabel, 2, 0)
+        self.ncc_margin_entry = FloatEntry()
+        grid5.addWidget(self.ncc_margin_entry, 2, 1)
+
+        self.generate_ncc_button = QtGui.QPushButton('Generate Geometry')
+        self.generate_ncc_button.setToolTip(
+            "Create the Geometry Object\n"
+            "for non-copper routing."
+        )
+        self.custom_box.addWidget(self.generate_ncc_button)
+
+        ## Board cutout
         self.board_cutout_label = QtGui.QLabel("<b>Board cutout:</b>")
         self.board_cutout_label.setToolTip(
             "Create toolpaths to cut around\n"
