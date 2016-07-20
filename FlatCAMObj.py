@@ -1353,17 +1353,14 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         tooldia = self.options["painttooldia"]
         overlap = self.options["paintoverlap"]
 
-        # Connection ID for the click event
-        subscription = None
-
         # To be called after clicking on the plot.
         def doit(event):
             self.app.info("Painting polygon...")
-            self.app.plotcanvas.mpl_disconnect(subscription)
-            point = [event.xdata, event.ydata]
-            self.paint_poly(point, tooldia, overlap)
+            self.app.plotcanvas.vis_disconnect('mouse_release', doit)
+            pos = self.app.plotcanvas.vispy_canvas.translate_coords(event.pos)
+            self.paint_poly([pos[0], pos[1]], tooldia, overlap)
 
-        subscription = self.app.plotcanvas.mpl_connect('button_press_event', doit)
+        self.app.plotcanvas.vis_connect('mouse_release', doit)
 
     def paint_poly(self, inside_pt, tooldia, overlap):
 
