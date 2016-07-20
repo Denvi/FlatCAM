@@ -1,4 +1,4 @@
-from vispy.visuals import CompoundVisual, LineVisual, MeshVisual
+from vispy.visuals import CompoundVisual, LineVisual, MeshVisual, TextVisual
 from vispy.scene.visuals import create_visual_node
 from vispy.gloo import set_state
 from vispy.color import Color
@@ -337,4 +337,156 @@ class ShapeCollectionVisual(CompoundVisual):
         self.__update()
 
 
+class TextGroup(object):
+    def __init__(self, collection):
+        self._collection = collection
+        self._index = None
+        self._visible = None
+
+    def set(self, **kwargs):
+        """
+        Adds text to collection and store index
+        :param kwargs: keyword arguments
+            Arguments for TextCollection.add function
+        """
+        self._index = self._collection.add(**kwargs)
+
+    def clear(self, update=False):
+        """
+        Removes text from collection, clear index
+        :param update: bool
+            Set True to redraw collection
+        """
+
+        self._collection.remove(self._index, False)
+        self._index = None
+
+        if update:
+            self._collection.redraw()
+
+    def redraw(self):
+        """
+        Redraws text collection
+        """
+        self._collection.redraw()
+
+    @property
+    def visible(self):
+        """
+        Visibility of group
+        :return: bool
+        """
+        return self._visible
+
+    @visible.setter
+    def visible(self, value):
+        """
+        Visibility of group
+        :param value: bool
+        """
+        self._visible = value
+        self._collection.data[self._index]['visible'] = value
+
+        self._collection.redraw()
+
+
+class TextCollectionVisual(TextVisual):
+
+    def __init__(self, **kwargs):
+        """
+        Represents collection of shapes to draw on VisPy scene
+        :param kwargs: keyword arguments
+            Arguments to pass for TextVisual
+        """
+        self.data = {}
+        self.last_key = -1
+        self.lock = threading.Lock()
+
+        super(TextCollectionVisual, self).__init__(**kwargs)
+
+        self.freeze()
+
+    def add(self, text, pos, visible=True, update=True):
+        """
+        Adds array of text to collection
+        :param text: list
+            Array of strings ['str1', 'str2', ... ]
+        :param pos: list
+            Array of string positions   [(0, 0), (10, 10), ... ]
+        :param update: bool
+            Set True to redraw collection
+        :return: int
+            Index of array
+        """
+        # Get new key
+        self.lock.acquire(True)
+        self.last_key += 1
+        key = self.last_key
+        self.lock.release()
+
+        # Prepare data for translation
+        self.data[key] = {'text': text, 'pos': pos, 'visible': visible}
+
+        if update:
+            self.redraw()                       # redraw() waits for pool process end
+
+        return key
+
+    def remove(self, key, update=False):
+        """
+        Removes shape from collection
+        :param key: int
+            Shape index to remove
+        :param update:
+            Set True to redraw collection
+        """
+        del self.data[key]
+
+        if update:
+            self.__update()
+
+    def clear(self, update=False):
+        """
+        Removes all shapes from colleciton
+        :param update: bool
+            Set True to redraw collection
+        """
+        self.data.clear()
+        if update:
+            self.__update()
+
+    def __update(self):
+        """
+        Merges internal buffers, sets data to visuals, redraws collection on scene
+        """
+        labels = []
+        pos = []
+
+        # Merge buffers
+        for data in self.data.values():
+            if data['visible']:
+                try:
+                    labels += data['text']
+                    pos += data['pos']
+                except Exception as e:
+                    print "Data error", e
+
+        # Updating text
+        if len(labels) > 0:
+            self.text = labels
+            self.pos = pos
+        else:
+            self.text = None
+            self.pos = (0, 0)
+
+        self._bounds_changed()
+
+    def redraw(self):
+        """
+        Redraws collection
+        """
+        self.__update()
+
+
 ShapeCollection = create_visual_node(ShapeCollectionVisual)
+TextCollection = create_visual_node(TextCollectionVisual)

@@ -685,7 +685,7 @@ class App(QtCore.QObject):
         objects = self.collection.get_list()
 
         for obj in objects:
-            obj.shapes.clear(obj == objects[-1])
+            obj.clear(obj == objects[-1])
 
     def edit_geometry(self):
         """

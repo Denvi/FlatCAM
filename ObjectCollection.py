@@ -47,13 +47,13 @@ class TreeItem:
 
     def remove_child(self, item):
         child = self.child_items.pop(self.child_items.index(item))
-        child.obj.shapes.clear(True)
+        child.obj.clear()
         child.obj.deleted = True
         del child
 
     def remove_children(self):
         for child in self.child_items:
-            child.obj.shapes.clear()
+            child.obj.clear()
             child.obj.deleted = True
             del child
 
@@ -538,7 +538,8 @@ class ObjectCollection(QtCore.QAbstractItemModel):
 
         self.endResetModel()
 
-        self.app.plotcanvas.shape_collection.redraw([])
+        self.app.plotcanvas.redraw()
+
         self.app.dblsidedtool.reset_fields()
 
     def get_list(self):

@@ -10,7 +10,7 @@ from PyQt4 import QtCore
 
 import logging
 from VisPyCanvas import VisPyCanvas
-from VisPyVisuals import ShapeGroup, ShapeCollection
+from VisPyVisuals import ShapeGroup, ShapeCollection, TextCollection, TextGroup
 from vispy.scene.visuals import Markers, Text, InfiniteLine
 import numpy as np
 from vispy.geometry import Rect
@@ -60,6 +60,9 @@ class PlotCanvas(QtCore.QObject):
         self.shape_collection = self.new_shape_collection()
         self.shape_collection.parent = self.vispy_canvas.view.scene
 
+        self.text_collection = self.new_text_collection()
+        self.text_collection.parent = self.vispy_canvas.view.scene
+
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
 
@@ -91,8 +94,14 @@ class PlotCanvas(QtCore.QObject):
         m.antialias = 0
         return m
 
-    def new_annotation(self):
-        return Text(parent=self.vispy_canvas.view.scene)
+    def new_text_group(self):
+        return TextGroup(self.text_collection)
+
+    def new_text_collection(self, **kwargs):
+        return TextCollection(**kwargs)
+
+    def new_text(self):
+        return Text(self.annotations)
 
     def fit_view(self, rect=None):
         if not rect:
@@ -107,3 +116,7 @@ class PlotCanvas(QtCore.QObject):
 
     def clear(self):
         pass
+
+    def redraw(self):
+        self.shape_collection.redraw([])
+        self.text_collection.redraw()

@@ -228,7 +228,8 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
-        self.shapes.clear()
+        self.clear()
+
         return True
 
     def serialize(self):
@@ -265,9 +266,10 @@ class FlatCAMObj(QtCore.QObject):
     @visible.setter
     def visible(self, value):
         self.shapes.visible = value
+
+        # Not all object types has annotations
         try:
-            self.annotation.parent = self.app.plotcanvas.vispy_canvas.view.scene \
-                if (value and not self.annotation.parent) else None
+            self.annotation.visible = value
         except:
             pass
 
@@ -279,6 +281,14 @@ class FlatCAMObj(QtCore.QObject):
     def drawing_tolerance(self, value):
         self._drawing_tolerance = value if self.units == 'MM' or not self.units else value / 25.4
 
+    def clear(self, update=False):
+        self.shapes.clear(update)
+
+        # Not all object types has annotations
+        try:
+            self.annotation.clear(update)
+        except:
+            pass
 
 class FlatCAMGerber(FlatCAMObj, Gerber):
     """
@@ -1095,7 +1105,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-        # self.annotation = self.app.plotcanvas.new_annotation()
+        self.annotation = self.app.plotcanvas.new_text_group()
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)
@@ -1227,6 +1237,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             self.shapes.redraw()
         except ObjectDeleted:
             self.shapes.clear()
+            self.annotation.clear()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
