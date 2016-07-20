@@ -17,19 +17,19 @@ def _update_shape_buffers(data, triangulation='glu'):
     :param triangulation:
         Triangulation engine
     """
-    mesh_vertices = []                  # Vertices for mesh
-    mesh_tris = []                      # Faces for mesh
-    mesh_colors = []                    # Face colors
-    line_pts = []                       # Vertices for line
-    line_colors = []                    # Line color
+    mesh_vertices = []                                              # Vertices for mesh
+    mesh_tris = []                                                  # Faces for mesh
+    mesh_colors = []                                                # Face colors
+    line_pts = []                                                   # Vertices for line
+    line_colors = []                                                # Line color
 
-    geo, color, face_color = data['geometry'], data['color'], data['face_color']
+    geo, color, face_color, tolerance = data['geometry'], data['color'], data['face_color'], data['tolerance']
 
     if geo is not None and not geo.is_empty:
-        simple = geo.simplify(0.01)     # Simplified shape
-        pts = []                        # Shape line points
-        tri_pts = []                    # Mesh vertices
-        tri_tris = []                   # Mesh faces
+        simple = geo.simplify(tolerance) if tolerance else geo      # Simplified shape
+        pts = []                                                    # Shape line points
+        tri_pts = []                                                # Mesh vertices
+        tri_tris = []                                               # Mesh faces
 
         if type(geo) == LineString:
             # Prepare lines
@@ -142,23 +142,13 @@ class ShapeGroup(object):
         self._results = {}
         self._visible = True
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+    def add(self, **kwargs):
         """
         Adds shape to collection and store index in group
-        :param shape: shapely.geometry
-            Shapely geometry object
-        :param color: str, tuple
-            Line/edge color
-        :param face_color: str, tuple
-            Polygon face color
-        :param visible: bool
-            Shape visibility
-        :param update: bool
-            Set True to redraw collection
-        :param layer: int
-            Layer number. 0 - lowest.
+        :param kwargs: keyword arguments
+            Arguments for ShapeCollection.add function
         """
-        self._indexes.append(self._collection.add(shape, color, face_color, visible, update, layer))
+        self._indexes.append(self._collection.add(**kwargs))
 
     def clear(self, update=False):
         """
@@ -178,7 +168,6 @@ class ShapeGroup(object):
         """
         Redraws shape collection
         """
-
         self._collection.redraw(self._indexes)
 
     @property
@@ -248,9 +237,10 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self.freeze()
 
-    def add(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+    def add(self, shape=None, color=None, face_color=None, visible=True, update=False, layer=1, tolerance=0.01):
         """
         Adds shape to collection
+        :return:
         :param shape: shapely.geometry
             Shapely geometry object
         :param color: str, tuple
@@ -263,6 +253,8 @@ class ShapeCollectionVisual(CompoundVisual):
             Set True to redraw collection
         :param layer: int
             Layer number. 0 - lowest.
+        :param tolerance: float
+            Geometry simplify tolerance
         :return: int
             Index of shape
         """
@@ -272,7 +264,7 @@ class ShapeCollectionVisual(CompoundVisual):
         self.lock.release()
 
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
-                                    'visible': visible, 'layer': layer}
+                                    'visible': visible, 'layer': layer, 'tolerance': tolerance}
 
         self.results[key] = self.pool.apply_async(_update_shape_buffers, [self.data[key]])
 

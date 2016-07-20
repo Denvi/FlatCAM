@@ -999,9 +999,9 @@ class FlatCAMDraw(QtCore.QObject):
             # Add the new utility shape
             try:
                 for el in list(geo.geo):
-                    self.tool_shape.add(el, color='#FF000080', update=False)
+                    self.tool_shape.add(shape=el, color='#FF000080', update=False, tolerance=None)
             except TypeError:
-                self.tool_shape.add(geo.geo, color='#FF000080', update=False)
+                self.tool_shape.add(shape=geo.geo, color='#FF000080', update=False, tolerance=None)
             self.tool_shape.redraw()
 
         # Update cursor
@@ -1132,7 +1132,8 @@ class FlatCAMDraw(QtCore.QObject):
                 plot_elements += self.plot_shape(geometry=geometry.interiors, color=color, linewidth=linewidth)
 
             if type(geometry) == LineString or type(geometry) == LinearRing:
-                plot_elements.append(self.shapes.add(geometry, color=color))
+                plot_elements.append(self.shapes.add(shape=geometry, color=color,
+                                                     tolerance=self.fcgeometry.drawing_tolerance))
 
             if type(geometry) == Point:
                 pass

@@ -3255,7 +3255,7 @@ class CNCjob(Geometry):
         
         if tooldia == 0:
             for geo in self.gcode_parsed:
-                obj.add_shape(geo['geom'], color=color[geo['kind'][0]][1], visible=visible)
+                obj.add_shape(shape=geo['geom'], color=color[geo['kind'][0]][1], visible=visible)
         else:
             text = []
             pos = []
@@ -3266,8 +3266,8 @@ class CNCjob(Geometry):
                 pos.append(geo['geom'].coords[0])
 
                 poly = geo['geom'].buffer(tooldia / 2.0).simplify(tool_tolerance)
-                obj.add_shape(poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
-                               visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
+                obj.add_shape(shape=poly, color=color[geo['kind'][0]][1], face_color=color[geo['kind'][0]][0],
+                              visible=visible, layer=1 if geo['kind'][0] == 'C' else 2)
 
             # obj.annotation.text = text
             # obj.annotation.pos = pos

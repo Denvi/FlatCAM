@@ -54,6 +54,8 @@ class FlatCAMObj(QtCore.QObject):
         self.muted_ui = False
         self.deleted = False
 
+        self._drawing_tolerance = 0.01
+
         # assert isinstance(self.ui, ObjectUI)
         # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
         # self.ui.offset_button.clicked.connect(self.on_offset_button_click)
@@ -248,13 +250,12 @@ class FlatCAMObj(QtCore.QObject):
         """
         return
 
-    def add_shape(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+    def add_shape(self, **kwargs):
         if self.deleted:
             self.shapes.clear(True)
             raise ObjectDeleted(self.options['name'] + ' deleted during plot')
         else:
-            self.shapes.add(shape=shape, color=color, face_color=face_color, visible=visible,
-                            update=update, layer=layer)
+            self.shapes.add(tolerance=self.drawing_tolerance, **kwargs)
 
     @property
     def visible(self):
@@ -268,6 +269,15 @@ class FlatCAMObj(QtCore.QObject):
                 if (value and not self.annotation.parent) else None
         except:
             pass
+
+    @property
+    def drawing_tolerance(self):
+        return self._drawing_tolerance if self.units == 'MM' or not self.units else self._drawing_tolerance / 25.4
+
+    @drawing_tolerance.setter
+    def drawing_tolerance(self, value):
+        self._drawing_tolerance = value if self.units == 'MM' or not self.units else value / 25.4
+
 
 class FlatCAMGerber(FlatCAMObj, Gerber):
     """
@@ -690,12 +700,12 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         try:
             if self.options["solid"]:
                 for poly in geometry:
-                    self.add_shape(poly, color='#006E20BF', face_color=random_color() if self.options['multicolored'] else
-                                    '#BBF268BF', visible=self.options['plot'])
+                    self.add_shape(shape=poly, color='#006E20BF', face_color=random_color()
+                                   if self.options['multicolored'] else '#BBF268BF', visible=self.options['plot'])
             else:
                 for poly in geometry:
-                    self.add_shape(poly, color=random_color() if self.options['multicolored'] else 'black',
-                                    visible=self.options['plot'])
+                    self.add_shape(shape=poly, color=random_color() if self.options['multicolored'] else 'black',
+                                   visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
             self.shapes.clear()
@@ -1037,13 +1047,13 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             # Plot excellon (All polygons?)
             if self.options["solid"]:
                 for geo in self.solid_geometry:
-                    self.add_shape(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'],
+                    self.add_shape(shape=geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'],
                                    layer=2)
             else:
                 for geo in self.solid_geometry:
-                    self.add_shape(geo.exterior, color='red', visible=self.options['plot'])
+                    self.add_shape(shape=geo.exterior, color='red', visible=self.options['plot'])
                     for ints in geo.interiors:
-                        self.add_shape(ints, color='green', visible=self.options['plot'])
+                        self.add_shape(shape=ints, color='green', visible=self.options['plot'])
 
             self.shapes.redraw()
         except ObjectDeleted:
@@ -1549,7 +1559,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 self.plot_element(sub_el)
 
         except TypeError:  # Element is not iterable...
-            self.add_shape(element, color='red', visible=self.options['plot'], layer=0)
+            self.add_shape(shape=element, color='red', visible=self.options['plot'], layer=0)
 
     def plot(self):
         """
