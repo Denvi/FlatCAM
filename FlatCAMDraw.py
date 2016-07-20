@@ -700,8 +700,8 @@ class FlatCAMDraw(QtCore.QObject):
 
         # VisPy visuals
         self.fcgeometry = None
-        self.shapes = self.app.plotcanvas.new_shape_collection()
-        self.tool_shape = self.app.plotcanvas.new_shape_collection()
+        self.shapes = self.app.plotcanvas.new_shape_collection(layers=1)
+        self.tool_shape = self.app.plotcanvas.new_shape_collection(layers=1)
         self.cursor = self.app.plotcanvas.new_cursor()
 
         # Remove from scene
@@ -1000,9 +1000,9 @@ class FlatCAMDraw(QtCore.QObject):
             # Add the new utility shape
             try:
                 for el in list(geo.geo):
-                    self.tool_shape.add(shape=el, color='#FF000080', update=False, tolerance=None)
+                    self.tool_shape.add(shape=el, color='#FF000080', update=False, layer=0, tolerance=None)
             except TypeError:
-                self.tool_shape.add(shape=geo.geo, color='#FF000080', update=False, tolerance=None)
+                self.tool_shape.add(shape=geo.geo, color='#FF000080', update=False, layer=0, tolerance=None)
             self.tool_shape.redraw()
 
         # Update cursor
@@ -1133,7 +1133,7 @@ class FlatCAMDraw(QtCore.QObject):
                 plot_elements += self.plot_shape(geometry=geometry.interiors, color=color, linewidth=linewidth)
 
             if type(geometry) == LineString or type(geometry) == LinearRing:
-                plot_elements.append(self.shapes.add(shape=geometry, color=color,
+                plot_elements.append(self.shapes.add(shape=geometry, color=color, layer=0,
                                                      tolerance=self.fcgeometry.drawing_tolerance))
 
             if type(geometry) == Point:

@@ -46,10 +46,6 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
 
-        # self.origin = self.new_cursor()
-        # self.origin.set_data(np.asarray([(0, 0)]), symbol='+', face_color=None, edge_color='black', size=14)
-        # self.origin.parent = self.vispy_canvas.view.scene
-
         self.vline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=True,
                                   parent=self.vispy_canvas.view.scene)
 
@@ -58,6 +54,8 @@ class PlotCanvas(QtCore.QObject):
 
         self.shape_collection = self.new_shape_collection()
         self.text_collection = self.new_text_collection()
+
+        # TODO: Should be setting to show/hide CNC job annotations (global or per object)
         self.text_collection.enabled = False
 
     def vis_connect(self, event_name, callback):
