@@ -11,6 +11,7 @@ from VisPyVisuals import ShapeCollection
 from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
 
+# Interrupts plotting process if FlatCAMObj has been deleted
 class ObjectDeleted(Exception):
     pass
 

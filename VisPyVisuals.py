@@ -14,7 +14,7 @@ def _update_shape_buffers(data, triangulation='glu'):
     Translates Shapely geometry to internal buffers for speedup redraws
     :param data: dict
         Input shape data
-    :param triangulation:
+    :param triangulation: str
         Triangulation engine
     """
     mesh_vertices = []                                              # Vertices for mesh
@@ -76,32 +76,6 @@ def _update_shape_buffers(data, triangulation='glu'):
     del data['geometry']
 
     return data
-
-
-def _open_ring(vertices):
-    """
-    Make lines ring open
-    :param vertices: numpy.array
-        Array of lines vertices
-    :return: numpy.array
-        Opened line strip
-    """
-    return vertices[:-1] if not vertices[0] != vertices[-1] else vertices
-
-
-def _generate_edges(count):
-    """
-    Generates edges indexes in form: [[0, 1], [1, 2], [2, 3], ... ]
-    :param count: int
-        Edges count
-    :return: numpy.array
-        Edges
-    """
-    edges = np.empty((count, 2), dtype=np.uint32)
-    edges[:, 0] = np.arange(count)
-    edges[:, 1] = edges[:, 0] + 1
-    edges[-1, 1] = 0
-    return edges
 
 
 def _linearring_to_segments(arr):
@@ -254,18 +228,21 @@ class ShapeCollectionVisual(CompoundVisual):
         :param layer: int
             Layer number. 0 - lowest.
         :param tolerance: float
-            Geometry simplify tolerance
+            Geometry simplifying tolerance
         :return: int
             Index of shape
         """
+        # Get new key
         self.lock.acquire(True)
         self.last_key += 1
         key = self.last_key
         self.lock.release()
 
+        # Prepare data for translation
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
-                                    'visible': visible, 'layer': layer, 'tolerance': tolerance}
+                          'visible': visible, 'layer': layer, 'tolerance': tolerance}
 
+        # Add data to process pool
         self.results[key] = self.pool.apply_async(_update_shape_buffers, [self.data[key]])
 
         if update:
@@ -313,8 +290,6 @@ class ShapeCollectionVisual(CompoundVisual):
                 try:
                     line_pts[data['layer']] += data['line_pts']
                     line_colors[data['layer']] += data['line_colors']
-                    # mesh_tris[data['layer']] += [[x + len(mesh_vertices[data['layer']])
-                    #                               for x in y] for y in data['mesh_tris']]
                     mesh_tris[data['layer']] += [x + len(mesh_vertices[data['layer']])
                                                  for x in data['mesh_tris']]
 
@@ -353,9 +328,9 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         for i in self.data.keys() if not indexes else indexes:
             try:
-                self.results[i].wait()
+                self.results[i].wait()                              # Wait for process results
                 if i in self.data:
-                    self.data[i] = self.results[i].get()
+                    self.data[i] = self.results[i].get()            # Store translated data
             except Exception as e:
                 print e
 

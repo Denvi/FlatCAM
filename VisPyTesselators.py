@@ -30,7 +30,6 @@ class GLUTess:
         pass
 
     def triangulate(self, polygon):
-        # Create tessellation object
         """
         Triangulates polygon
         :param polygon: shapely.geometry.polygon
@@ -39,6 +38,7 @@ class GLUTess:
             Array of triangle vertex indices [t0i0, t0i1, t0i2, t1i0, t1i1, ... ]
             Array of polygon points [(x0, y0), (x1, y1), ... ]
         """
+        # Create tessellation object
         tess = GLU.gluNewTess()
 
         # Setup callbacks
