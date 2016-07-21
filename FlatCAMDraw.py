@@ -68,6 +68,8 @@ class DrawToolShape(object):
     Encapsulates "shapes" under a common class.
     """
 
+    tolerance = None
+
     @staticmethod
     def get_pts(o):
         """
@@ -101,7 +103,7 @@ class DrawToolShape(object):
 
             ## Has .coords: list them.
             else:
-                pts += list(o.coords)
+                pts += list(o.simplify(DrawToolShape.tolerance).coords)
 
         return pts
 
@@ -888,6 +890,9 @@ class FlatCAMDraw(QtCore.QObject):
         # Hide original geometry
         self.fcgeometry = fcgeometry
         fcgeometry.visible = False
+
+        # Set selection tolerance
+        DrawToolShape.tolerance = fcgeometry.drawing_tolerance * 10
 
         self.connect_canvas_event_handlers()
         self.select_tool("select")
