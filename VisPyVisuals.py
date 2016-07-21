@@ -186,7 +186,8 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         self.data = {}
         self.last_key = -1
-        self.lock = threading.Lock()
+        self.key_lock = threading.Lock()
+        self.draw_lock = threading.Lock()
         if not ShapeCollection.pool:
             ShapeCollection.pool = Pool()
         self.results = {}
@@ -233,10 +234,10 @@ class ShapeCollectionVisual(CompoundVisual):
             Index of shape
         """
         # Get new key
-        self.lock.acquire(True)
+        self.key_lock.acquire(True)
         self.last_key += 1
         key = self.last_key
-        self.lock.release()
+        self.key_lock.release()
 
         # Prepare data for translation
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
@@ -298,6 +299,9 @@ class ShapeCollectionVisual(CompoundVisual):
                 except Exception as e:
                     print "Data error", e
 
+        # Only one thread can update data
+        self.draw_lock.acquire(True)
+
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
             if len(mesh_vertices[i]) > 0:
@@ -319,6 +323,8 @@ class ShapeCollectionVisual(CompoundVisual):
             line._bounds_changed()
 
         self._bounds_changed()
+
+        self.draw_lock.release()
 
     def redraw(self, indexes=None):
         """
