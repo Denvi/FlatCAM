@@ -45,13 +45,6 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Separator
         self.menufile.addSeparator()
 
-        # Save Defaults
-        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
-        self.menufile.addAction(self.menufilesavedefaults)
-
-        # Separator
-        self.menufile.addSeparator()
-
         # Import SVG ...
         self.menufileimportsvg = QtGui.QAction('Import &SVG ...', self)
         self.menufile.addAction(self.menufileimportsvg)
@@ -59,6 +52,13 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Export SVG ...
         self.menufileexportsvg = QtGui.QAction('Export &SVG ...', self)
         self.menufile.addAction(self.menufileexportsvg)
+
+        # Separator
+        self.menufile.addSeparator()
+
+        # Save Defaults
+        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
+        self.menufile.addAction(self.menufilesavedefaults)
 
         # Separator
         self.menufile.addSeparator()
