@@ -244,7 +244,7 @@ class ShapeCollectionVisual(CompoundVisual):
                           'visible': visible, 'layer': layer, 'tolerance': tolerance}
 
         # Add data to process pool
-        self.results[key] = self.pool.apply_async(_update_shape_buffers, [self.data[key]])
+        self.results[key] = self.pool.map_async(_update_shape_buffers, [self.data[key]])
 
         if update:
             self.redraw()                       # redraw() waits for pool process end
@@ -299,9 +299,6 @@ class ShapeCollectionVisual(CompoundVisual):
                 except Exception as e:
                     print "Data error", e
 
-        # Only one thread can update data
-        self.draw_lock.acquire(True)
-
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
             if len(mesh_vertices[i]) > 0:
@@ -324,23 +321,26 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self._bounds_changed()
 
-        self.draw_lock.release()
-
     def redraw(self, indexes=None):
         """
         Redraws collection
         :param indexes: list
             Shape indexes to get from process pool
         """
+        # Only one thread can update data
+        self.draw_lock.acquire(True)
+
         for i in self.data.keys() if not indexes else indexes:
             try:
                 self.results[i].wait()                              # Wait for process results
                 if i in self.data:
-                    self.data[i] = self.results[i].get()            # Store translated data
+                    self.data[i] = self.results[i].get()[0]            # Store translated data
             except Exception as e:
-                print e
+                print e, indexes
 
         self.__update()
+
+        self.draw_lock.release()
 
 
 class TextGroup(object):
