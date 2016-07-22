@@ -228,6 +228,9 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
+        if self.deleted:
+            return False
+
         self.clear()
 
         return True
@@ -255,7 +258,7 @@ class FlatCAMObj(QtCore.QObject):
     def add_shape(self, **kwargs):
         if self.deleted:
             self.shapes.clear(True)
-            raise ObjectDeleted(self.options['name'] + ' deleted during plot')
+            raise ObjectDeleted()
         else:
             self.shapes.add(tolerance=self.drawing_tolerance, **kwargs)
 
@@ -294,8 +297,6 @@ class FlatCAMObj(QtCore.QObject):
         # Free resources
         del self.ui
         del self.options
-        del self.form_fields
-        del self.shapes
 
         # Set flag
         self.deleted = True
@@ -1597,4 +1598,4 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.plot_element(self.solid_geometry)
             self.shapes.redraw()
         except ObjectDeleted:
-            self.shapes.abort()
+            self.shapes.clear()

@@ -80,7 +80,6 @@ class TreeItem:
         self.parent_item = parent_item
 
     def __del__(self):
-        del self.obj
         del self.icon
 
 

@@ -261,7 +261,8 @@ class ShapeCollectionVisual(CompoundVisual):
         :param update:
             Set True to redraw collection
         """
-        del self.results[key]
+        # if key in self.results.keys():
+        #     del self.results[key]
         del self.data[key]
 
         if update:
@@ -343,6 +344,7 @@ class ShapeCollectionVisual(CompoundVisual):
                     self.results[i].wait()                                  # Wait for process results
                     if i in self.data:
                         self.data[i] = self.results[i].get()[0]             # Store translated data
+                        del self.results[i]
                 except Exception as e:
                     print e, indexes
 
@@ -378,8 +380,9 @@ class TextGroup(object):
             Set True to redraw collection
         """
 
-        self._collection.remove(self._index, False)
-        self._index = None
+        if self._index:
+            self._collection.remove(self._index, False)
+            self._index = None
 
         if update:
             self._collection.redraw()
