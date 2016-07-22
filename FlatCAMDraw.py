@@ -705,6 +705,7 @@ class FlatCAMDraw(QtCore.QObject):
         self.shapes = self.app.plotcanvas.new_shape_collection(layers=1)
         self.tool_shape = self.app.plotcanvas.new_shape_collection(layers=1)
         self.cursor = self.app.plotcanvas.new_cursor()
+        self.app.pool_recreated.connect(self.pool_recreated)
 
         # Remove from scene
         self.shapes.enabled = False
@@ -761,6 +762,10 @@ class FlatCAMDraw(QtCore.QObject):
         self.grid_gap_y_entry.editingFinished.connect(lambda: entry2option("snap-y", self.grid_gap_y_entry))
         self.snap_max_dist_entry.setValidator(QtGui.QDoubleValidator())
         self.snap_max_dist_entry.editingFinished.connect(lambda: entry2option("snap_max", self.snap_max_dist_entry))
+
+    def pool_recreated(self, pool):
+        self.shapes.pool = pool
+        self.tool_shape.pool = pool
 
     def activate(self):
         self.shapes.enabled = True

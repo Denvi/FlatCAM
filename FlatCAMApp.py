@@ -22,6 +22,8 @@ from FlatCAMProcess import *
 from FlatCAMWorkerStack import WorkerStack
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
+from multiprocessing import Pool
+import gc
 import tclCommands
 
 
@@ -106,6 +108,9 @@ class App(QtCore.QObject):
     # Emmited when shell command is finished(one command only)
     shell_command_finished = QtCore.pyqtSignal(object)
 
+    # Emitted when multiprocess pool has been recreated
+    pool_recreated = QtCore.pyqtSignal(object)
+
     # Emitted when an unhandled exception happens
     # in the worker task.
     thread_exception = QtCore.pyqtSignal(object)
@@ -173,6 +178,9 @@ class App(QtCore.QObject):
             self.app_home = os.path.dirname(self.app_home)
 
         os.chdir(self.app_home)
+
+        # Create multiprocessing pool
+        self.pool = Pool()
 
         ####################
         ## Initialize GUI ##
@@ -680,12 +688,23 @@ class App(QtCore.QObject):
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
+    def clear_pool(self):
+        self.pool.close()
+        self.pool = Pool()
+
+        self.pool_recreated.emit(self.pool)
+
+        gc.collect()
+
     def clear_plots(self):
 
         objects = self.collection.get_list()
 
         for obj in objects:
             obj.clear(obj == objects[-1])
+
+        # Clear pool to free memory
+        self.clear_pool()
 
     def edit_geometry(self):
         """
@@ -1505,7 +1524,7 @@ class App(QtCore.QObject):
         :return: None
         """
         # self.plotcanvas.auto_adjust_axes()
-        self.plotcanvas.vispy_canvas.update()
+        self.plotcanvas.vispy_canvas.update()           # TODO: Need update canvas?
         self.on_zoom_fit(None)
 
     # TODO: Rework toolbar 'clear', 'replot' functions
@@ -1706,6 +1725,9 @@ class App(QtCore.QObject):
 
         # Re-fresh project options
         self.on_options_app2project()
+
+        # Clear pool
+        self.clear_pool()
 
     def on_fileopengerber(self):
         """

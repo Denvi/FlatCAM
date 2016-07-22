@@ -3,7 +3,6 @@ from vispy.scene.visuals import VisualNode, generate_docstring, visuals
 from vispy.gloo import set_state
 from vispy.color import Color
 from shapely.geometry import Polygon, LineString, LinearRing
-from multiprocessing import Pool
 import threading
 import numpy as np
 from VisPyTesselators import GLUTess
@@ -113,7 +112,6 @@ class ShapeGroup(object):
         """
         self._collection = collection
         self._indexes = []
-        self._results = {}
         self._visible = True
 
     def add(self, **kwargs):
@@ -167,10 +165,7 @@ class ShapeGroup(object):
 
 class ShapeCollectionVisual(CompoundVisual):
 
-    # Shared multiprocessing pool
-    pool = None
-
-    def __init__(self, line_width=1, triangulation='gpc', layers=3, **kwargs):
+    def __init__(self, line_width=1, triangulation='gpc', layers=3, pool=None, **kwargs):
         """
         Represents collection of shapes to draw on VisPy scene
         :param line_width: float
@@ -186,11 +181,14 @@ class ShapeCollectionVisual(CompoundVisual):
         """
         self.data = {}
         self.last_key = -1
+
+        # Thread locks
         self.key_lock = threading.Lock()
         self.results_lock = threading.Lock()
         self.update_lock = threading.Lock()
-        if not ShapeCollectionVisual.pool:
-            ShapeCollectionVisual.pool = Pool()
+
+        # Process pool
+        self.pool = pool
         self.results = {}
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
@@ -244,8 +242,11 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data[key] = {'geometry': shape, 'color': color, 'face_color': face_color,
                           'visible': visible, 'layer': layer, 'tolerance': tolerance}
 
-        # Add data to process pool
-        self.results[key] = self.pool.map_async(_update_shape_buffers, [self.data[key]])
+        # Add data to process pool if pool exists
+        try:
+            self.results[key] = self.pool.map_async(_update_shape_buffers, [self.data[key]])
+        except:
+            self.data[key] = _update_shape_buffers(self.data[key])
 
         if update:
             self.redraw()                       # redraw() waits for pool process end
@@ -337,16 +338,23 @@ class ShapeCollectionVisual(CompoundVisual):
         self.results_lock.acquire(True)
 
         for i in self.data.keys() if not indexes else indexes:
-            try:
-                self.results[i].wait()                              # Wait for process results
-                if i in self.data:
-                    self.data[i] = self.results[i].get()[0]            # Store translated data
-            except Exception as e:
-                print e, indexes
+            if i in self.results.keys():
+                try:
+                    self.results[i].wait()                                  # Wait for process results
+                    if i in self.data:
+                        self.data[i] = self.results[i].get()[0]             # Store translated data
+                except Exception as e:
+                    print e, indexes
 
         self.results_lock.release()
 
         self.__update()
+
+    def lock_updates(self):
+        self.update_lock.acquire(True)
+
+    def unlock_updates(self):
+        self.update_lock.release()
 
 
 class TextGroup(object):
@@ -440,7 +448,7 @@ class TextCollectionVisual(TextVisual):
         self.data[key] = {'text': text, 'pos': pos, 'visible': visible}
 
         if update:
-            self.redraw()                       # redraw() waits for pool process end
+            self.redraw()
 
         return key
 

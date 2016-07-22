@@ -52,7 +52,10 @@ class PlotCanvas(QtCore.QObject):
         self.hline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=False,
                                   parent=self.vispy_canvas.view.scene)
 
+        # self.shape_collections = []
+
         self.shape_collection = self.new_shape_collection()
+        self.app.pool_recreated.connect(self.on_pool_recreated)
         self.text_collection = self.new_text_collection()
 
         # TODO: Should be setting to show/hide CNC job annotations (global or per object)
@@ -81,7 +84,10 @@ class PlotCanvas(QtCore.QObject):
         return ShapeGroup(self.shape_collection)
 
     def new_shape_collection(self, **kwargs):
-        return ShapeCollection(parent=self.vispy_canvas.view.scene, **kwargs)
+        # sc = ShapeCollection(parent=self.vispy_canvas.view.scene, pool=self.app.pool, **kwargs)
+        # self.shape_collections.append(sc)
+        # return sc
+        return ShapeCollection(parent=self.vispy_canvas.view.scene, pool=self.app.pool, **kwargs)
 
     def new_cursor(self):
         c = Cursor(pos=np.empty((0, 2)), parent=self.vispy_canvas.view.scene)
@@ -97,7 +103,7 @@ class PlotCanvas(QtCore.QObject):
     def fit_view(self, rect=None):
 
         # Lock updates in other threads
-        self.shape_collection.update_lock.acquire(True)
+        self.shape_collection.lock_updates()
 
         if not rect:
             rect = Rect(0, 0, 10, 10)
@@ -109,7 +115,7 @@ class PlotCanvas(QtCore.QObject):
 
         self.vispy_canvas.view.camera.rect = rect
 
-        self.shape_collection.update_lock.release()
+        self.shape_collection.unlock_updates()
 
     def clear(self):
         pass
@@ -117,3 +123,6 @@ class PlotCanvas(QtCore.QObject):
     def redraw(self):
         self.shape_collection.redraw([])
         self.text_collection.redraw()
+
+    def on_pool_recreated(self, pool):
+        self.shape_collection.pool = pool

@@ -290,6 +290,17 @@ class FlatCAMObj(QtCore.QObject):
         except:
             pass
 
+    def delete(self):
+        # Free resources
+        del self.ui
+        del self.options
+        del self.form_fields
+        del self.shapes
+
+        # Set flag
+        self.deleted = True
+
+
 class FlatCAMGerber(FlatCAMObj, Gerber):
     """
     Represents Gerber code.
