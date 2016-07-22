@@ -261,8 +261,13 @@ class ShapeCollectionVisual(CompoundVisual):
         :param update:
             Set True to redraw collection
         """
-        # if key in self.results.keys():
-        #     del self.results[key]
+        # Remove process result
+        self.results_lock.acquire(True)
+        if key in self.results.keys():
+            del self.results[key]
+        self.results_lock.release()
+
+        # Remove data
         del self.data[key]
 
         if update:
