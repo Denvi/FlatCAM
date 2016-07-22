@@ -49,7 +49,7 @@ class VisPyCanvas(scene.SceneCanvas):
         self.view = view
         self.freeze()
 
-        self.measure_fps()
+        # self.measure_fps()
 
     def translate_coords(self, pos):
         tr = self.grid.get_transform('canvas', 'visual')

@@ -95,6 +95,10 @@ class PlotCanvas(QtCore.QObject):
         return TextCollection(parent=self.vispy_canvas.view.scene, **kwargs)
 
     def fit_view(self, rect=None):
+
+        # Lock updates in other threads
+        self.shape_collection.update_lock.acquire(True)
+
         if not rect:
             rect = Rect(0, 0, 10, 10)
             try:
@@ -104,7 +108,8 @@ class PlotCanvas(QtCore.QObject):
                 pass
 
         self.vispy_canvas.view.camera.rect = rect
-        self.vispy_canvas.update()
+
+        self.shape_collection.update_lock.release()
 
     def clear(self):
         pass

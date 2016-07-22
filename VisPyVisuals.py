@@ -187,9 +187,10 @@ class ShapeCollectionVisual(CompoundVisual):
         self.data = {}
         self.last_key = -1
         self.key_lock = threading.Lock()
-        self.draw_lock = threading.Lock()
-        if not ShapeCollection.pool:
-            ShapeCollection.pool = Pool()
+        self.results_lock = threading.Lock()
+        self.update_lock = threading.Lock()
+        if not ShapeCollectionVisual.pool:
+            ShapeCollectionVisual.pool = Pool()
         self.results = {}
 
         self._meshes = [MeshVisual() for _ in range(0, layers)]
@@ -198,9 +199,9 @@ class ShapeCollectionVisual(CompoundVisual):
         self._line_width = line_width
         self._triangulation = triangulation
 
-        visuals = [self._lines[i / 2] if i % 2 else self._meshes[i / 2] for i in range(0, layers * 2)]
+        visuals_ = [self._lines[i / 2] if i % 2 else self._meshes[i / 2] for i in range(0, layers * 2)]
 
-        CompoundVisual.__init__(self, visuals, **kwargs)
+        CompoundVisual.__init__(self, visuals_, **kwargs)
 
         for m in self._meshes:
             pass
@@ -299,6 +300,9 @@ class ShapeCollectionVisual(CompoundVisual):
                 except Exception as e:
                     print "Data error", e
 
+        # Lock sub-visuals updates
+        self.update_lock.acquire(True)
+
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
             if len(mesh_vertices[i]) > 0:
@@ -321,6 +325,8 @@ class ShapeCollectionVisual(CompoundVisual):
 
         self._bounds_changed()
 
+        self.update_lock.release()
+
     def redraw(self, indexes=None):
         """
         Redraws collection
@@ -328,7 +334,7 @@ class ShapeCollectionVisual(CompoundVisual):
             Shape indexes to get from process pool
         """
         # Only one thread can update data
-        self.draw_lock.acquire(True)
+        self.results_lock.acquire(True)
 
         for i in self.data.keys() if not indexes else indexes:
             try:
@@ -338,9 +344,9 @@ class ShapeCollectionVisual(CompoundVisual):
             except Exception as e:
                 print e, indexes
 
-        self.__update()
+        self.results_lock.release()
 
-        self.draw_lock.release()
+        self.__update()
 
 
 class TextGroup(object):
