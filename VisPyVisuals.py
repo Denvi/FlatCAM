@@ -293,6 +293,9 @@ class ShapeCollectionVisual(CompoundVisual):
         line_pts = [[] for _ in range(0, len(self._lines))]             # Vertices for line
         line_colors = [[] for _ in range(0, len(self._lines))]          # Line color
 
+        # Lock sub-visuals updates
+        self.update_lock.acquire(True)
+
         # Merge shapes buffers
         for data in self.data.values():
             if data['visible'] and 'line_pts' in data:
@@ -306,9 +309,6 @@ class ShapeCollectionVisual(CompoundVisual):
                     mesh_colors[data['layer']] += data['mesh_colors']
                 except Exception as e:
                     print "Data error", e
-
-        # Lock sub-visuals updates
-        self.update_lock.acquire(True)
 
         # Updating meshes
         for i, mesh in enumerate(self._meshes):
