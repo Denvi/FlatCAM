@@ -14,10 +14,6 @@ This fork features:
 - "Clear non-copper" feature, supporting multi-tool work.
 - Groups in Project view.
 - Pan view by dragging in visualizer window with pressed MMB.
-- Basic visualizer performance tricks.
-
-Plans for the far future:
-
 - OpenGL-based visualizer.
 
 Some screenshots:
