@@ -13,11 +13,9 @@ site_dir = site.getsitepackages()[1]
 
 include_files = []
 include_files.append((os.path.join(site_dir, "shapely"), "shapely"))
-include_files.append((os.path.join(site_dir, "matplotlib"), "matplotlib"))
 include_files.append((os.path.join(site_dir, "svg"), "svg"))
+include_files.append((os.path.join(site_dir, "svg/path"), "svg"))
 include_files.append((os.path.join(site_dir, "vispy"), "vispy"))
-include_files.append((os.path.join(site_dir, "polygon"), "polygon"))
-include_files.append((os.path.join(site_dir, "opengl"), "opengl"))
 include_files.append(("share", "share"))
 include_files.append((os.path.join(site_dir, "rtree"), "rtree"))
 include_files.append(("README.md", "README.md"))
@@ -25,9 +23,9 @@ include_files.append(("LICENSE", "LICENSE"))
 
 base = None
 
-## Lets not open the console while running the app
-# if sys.platform == "win32":
-#     base = "Win32GUI"
+# Lets not open the console while running the app
+if sys.platform == "win32":
+    base = "Win32GUI"
 
 buildOptions = dict(
     compressed=False,
@@ -36,7 +34,8 @@ buildOptions = dict(
     # excludes=['PyQt4', 'tk', 'tcl']
     excludes=['scipy.lib.lapack.flapack.pyd',
               'scipy.lib.blas.fblas.pyd',
-              'QtOpenGL4.dll']
+              'QtOpenGL4.dll', 'tkinter'],
+    packages=['OpenGL']
 )
 
 print "INCLUDE_FILES", include_files

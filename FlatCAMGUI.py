@@ -5,7 +5,7 @@ from GUIElements import *
 class FlatCAMGUI(QtGui.QMainWindow):
 
     # Emitted when persistent window geometry needs to be retained
-    geom_update = QtCore.pyqtSignal(int, int, int, int, name='geomUpdate')
+    geom_update = QtCore.pyqtSignal(int, int, int, int, int, name='geomUpdate')
 
     def __init__(self, version):
         super(FlatCAMGUI, self).__init__()
@@ -45,13 +45,6 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Separator
         self.menufile.addSeparator()
 
-        # Save Defaults
-        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
-        self.menufile.addAction(self.menufilesavedefaults)
-
-        # Separator
-        self.menufile.addSeparator()
-
         # Import SVG ...
         self.menufileimportsvg = QtGui.QAction('Import &SVG ...', self)
         self.menufile.addAction(self.menufileimportsvg)
@@ -59,6 +52,13 @@ class FlatCAMGUI(QtGui.QMainWindow):
         # Export SVG ...
         self.menufileexportsvg = QtGui.QAction('Export &SVG ...', self)
         self.menufile.addAction(self.menufileexportsvg)
+
+        # Separator
+        self.menufile.addSeparator()
+
+        # Save Defaults
+        self.menufilesavedefaults = QtGui.QAction('Save &Defaults', self)
+        self.menufile.addAction(self.menufilesavedefaults)
 
         # Separator
         self.menufile.addSeparator()
@@ -140,13 +140,13 @@ class FlatCAMGUI(QtGui.QMainWindow):
         ###############
         ### Toolbar ###
         ###############
-        self.toolbarfile = QtGui.QToolBar()
+        self.toolbarfile = QtGui.QToolBar('File')
         self.addToolBar(self.toolbarfile)
         self.file_new_btn = self.toolbarfile.addAction(QtGui.QIcon('share/file32.png'), "New project")
         self.file_open_btn = self.toolbarfile.addAction(QtGui.QIcon('share/folder32.png'), "Open project")
         self.file_save_btn = self.toolbarfile.addAction(QtGui.QIcon('share/floppy32.png'), "Save project")
 
-        self.toolbargeo = QtGui.QToolBar()
+        self.toolbargeo = QtGui.QToolBar('Edit')
         self.addToolBar(self.toolbargeo)
 
         self.newgeo_btn = self.toolbargeo.addAction(QtGui.QIcon('share/new_geo32.png'), "New Blank Geometry")
@@ -156,15 +156,15 @@ class FlatCAMGUI(QtGui.QMainWindow):
         self.updategeo_btn.setEnabled(False)
         #self.canceledit_btn = self.toolbar.addAction(QtGui.QIcon('share/cancel_edit32.png'), "Cancel Edit")
 
-        self.toolbarview = QtGui.QToolBar()
+        self.toolbarview = QtGui.QToolBar('View')
         self.addToolBar(self.toolbarview)
         self.zoom_fit_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_fit32.png'), "&Zoom Fit")
         self.zoom_in_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_in32.png'), "&Zoom In")
         self.zoom_out_btn = self.toolbarview.addAction(QtGui.QIcon('share/zoom_out32.png'), "&Zoom Out")
-        self.replot_btn = self.toolbarview.addAction(QtGui.QIcon('share/replot32.png'), "&Enable all")
-        self.clear_plot_btn = self.toolbarview.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Disable non-selected")
+        self.replot_btn = self.toolbarview.addAction(QtGui.QIcon('share/replot32.png'), "&Replot")
+        self.clear_plot_btn = self.toolbarview.addAction(QtGui.QIcon('share/clear_plot32.png'), "&Clear plot")
 
-        self.toolbartools = QtGui.QToolBar()
+        self.toolbartools = QtGui.QToolBar('Tools')
         self.addToolBar(self.toolbartools)
         self.shell_btn = self.toolbartools.addAction(QtGui.QIcon('share/shell32.png'), "&Command Line")
 
@@ -287,7 +287,7 @@ class FlatCAMGUI(QtGui.QMainWindow):
 
     def closeEvent(self, event):
         grect = self.geometry()
-        self.geom_update.emit(grect.x(), grect.y(), grect.width(), grect.height())
+        self.geom_update.emit(grect.x(), grect.y(), grect.width(), grect.height(), self.splitter.sizes()[0])
         QtGui.qApp.quit()
 
 

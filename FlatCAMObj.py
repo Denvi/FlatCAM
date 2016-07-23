@@ -11,6 +11,7 @@ from VisPyVisuals import ShapeCollection
 from shapely.geometry.base import CAP_STYLE, JOIN_STYLE
 
 
+# Interrupts plotting process if FlatCAMObj has been deleted
 class ObjectDeleted(Exception):
     pass
 
@@ -53,6 +54,8 @@ class FlatCAMObj(QtCore.QObject):
 
         self.muted_ui = False
         self.deleted = False
+
+        self._drawing_tolerance = 0.01
 
         # assert isinstance(self.ui, ObjectUI)
         # self.ui.name_entry.returnPressed.connect(self.on_name_activate)
@@ -225,7 +228,11 @@ class FlatCAMObj(QtCore.QObject):
         """
         FlatCAMApp.App.log.debug(str(inspect.stack()[1][3]) + " --> FlatCAMObj.plot()")
 
-        self.shapes.clear()
+        if self.deleted:
+            return False
+
+        self.clear()
+
         return True
 
     def serialize(self):
@@ -248,13 +255,12 @@ class FlatCAMObj(QtCore.QObject):
         """
         return
 
-    def add_shape(self, shape, color=None, face_color=None, visible=True, update=False, layer=1):
+    def add_shape(self, **kwargs):
         if self.deleted:
             self.shapes.clear(True)
-            raise ObjectDeleted(self.options['name'] + ' deleted during plot')
+            raise ObjectDeleted()
         else:
-            self.shapes.add(shape=shape, color=color, face_color=face_color, visible=visible,
-                            update=update, layer=layer)
+            self.shapes.add(tolerance=self.drawing_tolerance, **kwargs)
 
     @property
     def visible(self):
@@ -263,11 +269,38 @@ class FlatCAMObj(QtCore.QObject):
     @visible.setter
     def visible(self, value):
         self.shapes.visible = value
+
+        # Not all object types has annotations
         try:
-            self.annotation.parent = self.app.plotcanvas.vispy_canvas.view.scene \
-                if (value and not self.annotation.parent) else None
+            self.annotation.visible = value
         except:
             pass
+
+    @property
+    def drawing_tolerance(self):
+        return self._drawing_tolerance if self.units == 'MM' or not self.units else self._drawing_tolerance / 25.4
+
+    @drawing_tolerance.setter
+    def drawing_tolerance(self, value):
+        self._drawing_tolerance = value if self.units == 'MM' or not self.units else value / 25.4
+
+    def clear(self, update=False):
+        self.shapes.clear(update)
+
+        # Not all object types has annotations
+        try:
+            self.annotation.clear(update)
+        except:
+            pass
+
+    def delete(self):
+        # Free resources
+        del self.ui
+        del self.options
+
+        # Set flag
+        self.deleted = True
+
 
 class FlatCAMGerber(FlatCAMObj, Gerber):
     """
@@ -690,15 +723,15 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         try:
             if self.options["solid"]:
                 for poly in geometry:
-                    self.add_shape(poly, color='#006E20BF', face_color=random_color() if self.options['multicolored'] else
-                                    '#BBF268BF', visible=self.options['plot'])
+                    self.add_shape(shape=poly, color='#006E20BF', face_color=random_color()
+                                   if self.options['multicolored'] else '#BBF268BF', visible=self.options['plot'])
             else:
                 for poly in geometry:
-                    self.add_shape(poly, color=random_color() if self.options['multicolored'] else 'black',
-                                    visible=self.options['plot'])
+                    self.add_shape(shape=poly, color=random_color() if self.options['multicolored'] else 'black',
+                                   visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
 
     def serialize(self):
         return {
@@ -1037,16 +1070,17 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
             # Plot excellon (All polygons?)
             if self.options["solid"]:
                 for geo in self.solid_geometry:
-                    self.add_shape(geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'])
+                    self.add_shape(shape=geo, color='#750000BF', face_color='#C40000BF', visible=self.options['plot'],
+                                   layer=2)
             else:
                 for geo in self.solid_geometry:
-                    self.add_shape(geo.exterior, color='red', visible=self.options['plot'])
+                    self.add_shape(shape=geo.exterior, color='red', visible=self.options['plot'])
                     for ints in geo.interiors:
-                        self.add_shape(ints, color='green', visible=self.options['plot'])
+                        self.add_shape(shape=ints, color='green', visible=self.options['plot'])
 
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
@@ -1083,7 +1117,7 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         # from predecessors.
         self.ser_attrs += ['options', 'kind']
 
-        # self.annotation = self.app.plotcanvas.new_annotation()
+        self.annotation = self.app.plotcanvas.new_text_group()
 
     def set_ui(self, ui):
         FlatCAMObj.set_ui(self, ui)
@@ -1214,7 +1248,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()
+            self.annotation.clear()
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -1330,17 +1365,14 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         tooldia = self.options["painttooldia"]
         overlap = self.options["paintoverlap"]
 
-        # Connection ID for the click event
-        subscription = None
-
         # To be called after clicking on the plot.
         def doit(event):
             self.app.info("Painting polygon...")
-            self.app.plotcanvas.mpl_disconnect(subscription)
-            point = [event.xdata, event.ydata]
-            self.paint_poly(point, tooldia, overlap)
+            self.app.plotcanvas.vis_disconnect('mouse_release', doit)
+            pos = self.app.plotcanvas.vispy_canvas.translate_coords(event.pos)
+            self.paint_poly([pos[0], pos[1]], tooldia, overlap)
 
-        subscription = self.app.plotcanvas.mpl_connect('button_press_event', doit)
+        self.app.plotcanvas.vis_connect('mouse_release', doit)
 
     def paint_poly(self, inside_pt, tooldia, overlap):
 
@@ -1548,7 +1580,7 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
                 self.plot_element(sub_el)
 
         except TypeError:  # Element is not iterable...
-            self.add_shape(element, color='red', visible=self.options['plot'], layer=0)
+            self.add_shape(shape=element, color='red', visible=self.options['plot'], layer=0)
 
     def plot(self):
         """
@@ -1566,4 +1598,4 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.plot_element(self.solid_geometry)
             self.shapes.redraw()
         except ObjectDeleted:
-            pass
+            self.shapes.clear()

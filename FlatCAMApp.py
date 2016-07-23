@@ -1,23 +1,16 @@
-import sys, traceback
-import urllib
-import getopt
-import random
-import logging
-import simplejson as json
-import re
-import webbrowser
-import os
 import Tkinter
-from PyQt4 import QtCore
+import getopt
+import os
+import random
 import time  # Just used for debugging. Double check before removing.
-from xml.dom.minidom import parseString as parse_xml_string
+import urllib
+import webbrowser
 from contextlib import contextmanager
-from vispy.geometry import Rect
+from xml.dom.minidom import parseString as parse_xml_string
 
 ########################################
 ##      Imports part of FlatCAM       ##
 ########################################
-from FlatCAMWorker import Worker
 from ObjectCollection import *
 from FlatCAMObj import *
 from PlotCanvas import *
@@ -26,8 +19,11 @@ from FlatCAMCommon import LoudDict
 from FlatCAMShell import FCShell
 from FlatCAMDraw import FlatCAMDraw
 from FlatCAMProcess import *
+from FlatCAMWorkerStack import WorkerStack
 from MeasurementTool import Measurement
 from DblSidedTool import DblSidedTool
+from multiprocessing import Pool
+import gc
 import tclCommands
 
 
@@ -43,7 +39,7 @@ class App(QtCore.QObject):
     cmd_line_shellfile = ''
     cmd_line_help = "FlatCam.py --shellfile=<cmd_line_shellfile>"
     try:
-        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", "shellfile=")
+        cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", ["shellfile=", "multiprocessing-fork="])
     except getopt.GetoptError:
         print cmd_line_help
         sys.exit(2)
@@ -111,6 +107,9 @@ class App(QtCore.QObject):
 
     # Emmited when shell command is finished(one command only)
     shell_command_finished = QtCore.pyqtSignal(object)
+
+    # Emitted when multiprocess pool has been recreated
+    pool_recreated = QtCore.pyqtSignal(object)
 
     # Emitted when an unhandled exception happens
     # in the worker task.
@@ -180,6 +179,9 @@ class App(QtCore.QObject):
 
         os.chdir(self.app_home)
 
+        # Create multiprocessing pool
+        self.pool = Pool()
+
         ####################
         ## Initialize GUI ##
         ####################
@@ -188,7 +190,7 @@ class App(QtCore.QObject):
 
         self.ui = FlatCAMGUI(self.version)
         self.connect(self.ui,
-                     QtCore.SIGNAL("geomUpdate(int, int, int, int)"),
+                     QtCore.SIGNAL("geomUpdate(int, int, int, int, int)"),
                      self.save_geometry)
 
         #### Plot Area ####
@@ -464,26 +466,34 @@ class App(QtCore.QObject):
             self.ui.options_scroll_area.verticalScrollBar().sizeHint().width())
 
         #### Worker ####
-        App.log.info("Starting Worker...")
-        self.worker = Worker(self)
-        self.thr1 = QtCore.QThread()
-        self.worker.moveToThread(self.thr1)
-        self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
-        self.thr1.start()
+        # App.log.info("Starting Worker...")
+        # self.worker = Worker(self)
+        # self.thr1 = QtCore.QThread()
+        # self.worker.moveToThread(self.thr1)
+        # self.connect(self.thr1, QtCore.SIGNAL("started()"), self.worker.run)
+        # self.thr1.start()
 
         #### Check for updates ####
         # Separate thread (Not worker)
-        App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
+        # App.log.info("Checking for updates in backgroud (this is version %s)." % str(self.version))
 
-        self.worker2 = Worker(self, name="worker2")
-        self.thr2 = QtCore.QThread()
-        self.worker2.moveToThread(self.thr2)
-        self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
+        # self.worker2 = Worker(self, name="worker2")
+        # self.thr2 = QtCore.QThread()
+        # self.worker2.moveToThread(self.thr2)
+        # self.connect(self.thr2, QtCore.SIGNAL("started()"), self.worker2.run)
         # self.connect(self.thr2, QtCore.SIGNAL("started()"),
         #              lambda: self.worker_task.emit({'fcn': self.version_check,
         #                                             'params': [],
         #                                             'worker_name': "worker2"}))
-        self.thr2.start()
+        # self.thr2.start()
+
+        # Create multiprocess pool
+        # self.pool = WorkerPool()
+        # self.worker_task.connect(self.pool.add_task)
+
+        self.workers = WorkerStack()
+        self.worker_task.connect(self.workers.add_task)
+
 
         ### Signal handling ###
         ## Custom signals
@@ -537,8 +547,10 @@ class App(QtCore.QObject):
         self.ui.zoom_fit_btn.triggered.connect(self.on_zoom_fit)
         self.ui.zoom_in_btn.triggered.connect(lambda: self.plotcanvas.zoom(1 / 1.5))
         self.ui.zoom_out_btn.triggered.connect(lambda: self.plotcanvas.zoom(1.5))
-        self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
-        self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
+        # self.ui.clear_plot_btn.triggered.connect(lambda: self.disable_plots(self.collection.get_non_selected()))
+        # self.ui.replot_btn.triggered.connect(lambda: self.enable_plots(self.collection.get_list()))
+        self.ui.clear_plot_btn.triggered.connect(self.clear_plots)
+        self.ui.replot_btn.triggered.connect(self.plot_all)
         self.ui.newgeo_btn.triggered.connect(lambda: self.new_object('geometry', 'New Geometry', lambda x, y: None))
         self.ui.editgeo_btn.triggered.connect(self.edit_geometry)
         self.ui.updategeo_btn.triggered.connect(self.editor2geometry)
@@ -675,6 +687,24 @@ class App(QtCore.QObject):
 
         # Send to worker
         self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+
+    def clear_pool(self):
+        self.pool.close()
+        self.pool = Pool()
+
+        self.pool_recreated.emit(self.pool)
+
+        gc.collect()
+
+    def clear_plots(self):
+
+        objects = self.collection.get_list()
+
+        for obj in objects:
+            obj.clear(obj == objects[-1])
+
+        # Clear pool to free memory
+        self.clear_pool()
 
     def edit_geometry(self):
         """
@@ -935,11 +965,12 @@ class App(QtCore.QObject):
             return
         self.defaults.update(defaults)
 
-    def save_geometry(self, x, y, width, height):
+    def save_geometry(self, x, y, width, height, notebook_width):
         self.defaults["def_win_x"] = x
         self.defaults["def_win_y"] = y
         self.defaults["def_win_w"] = width
         self.defaults["def_win_h"] = height
+        self.defaults["def_notebook_width"] = notebook_width
         self.save_defaults()
 
     def message_dialog(self, title, message, kind="info"):
@@ -1493,7 +1524,7 @@ class App(QtCore.QObject):
         :return: None
         """
         # self.plotcanvas.auto_adjust_axes()
-        self.plotcanvas.vispy_canvas.update()
+        self.plotcanvas.vispy_canvas.update()           # TODO: Need update canvas?
         self.on_zoom_fit(None)
 
     # TODO: Rework toolbar 'clear', 'replot' functions
@@ -1694,6 +1725,9 @@ class App(QtCore.QObject):
 
         # Re-fresh project options
         self.on_options_app2project()
+
+        # Clear pool
+        self.clear_pool()
 
     def on_fileopengerber(self):
         """
@@ -2305,10 +2339,14 @@ class App(QtCore.QObject):
                         self.log.debug("  " + param + " OK!")
 
     def restore_main_win_geom(self):
-        self.ui.setGeometry(self.defaults["def_win_x"],
-                            self.defaults["def_win_y"],
-                            self.defaults["def_win_w"],
-                            self.defaults["def_win_h"])
+        try:
+            self.ui.setGeometry(self.defaults["def_win_x"],
+                                self.defaults["def_win_y"],
+                                self.defaults["def_win_w"],
+                                self.defaults["def_win_h"])
+            self.ui.splitter.setSizes([self.defaults["def_notebook_width"], 0])
+        except KeyError:
+            pass
 
     def plot_all(self):
         """
@@ -2318,29 +2356,40 @@ class App(QtCore.QObject):
         """
         self.log.debug("plot_all()")
 
-        self.progress.emit(10)
-
-        def worker_task(app_obj):
-            percentage = 0.1
-            try:
-                delta = 0.9 / len(self.collection.get_list())
-            except ZeroDivisionError:
-                self.progress.emit(0)
-                return
-            for obj in self.collection.get_list():
+        for obj in self.collection.get_list():
+            def worker_task(obj):
                 with self.proc_container.new("Plotting"):
                     obj.plot()
-                    app_obj.object_plotted.emit(obj)
+                    self.object_plotted.emit(obj)
 
-                percentage += delta
-                self.progress.emit(int(percentage*100))
+            # Send to worker
+            self.worker_task.emit({'fcn': worker_task, 'params': [obj]})
 
-            self.progress.emit(0)
-            self.plots_updated.emit()
 
-        # Send to worker
-        #self.worker.add_task(worker_task, [self])
-        self.worker_task.emit({'fcn': worker_task, 'params': [self]})
+        # self.progress.emit(10)
+        #
+        # def worker_task(app_obj):
+        #     print "worker task"
+        #     percentage = 0.1
+        #     try:
+        #         delta = 0.9 / len(self.collection.get_list())
+        #     except ZeroDivisionError:
+        #         self.progress.emit(0)
+        #         return
+        #     for obj in self.collection.get_list():
+        #         with self.proc_container.new("Plotting"):
+        #             obj.plot()
+        #             app_obj.object_plotted.emit(obj)
+        #
+        #         percentage += delta
+        #         self.progress.emit(int(percentage*100))
+        #
+        #     self.progress.emit(0)
+        #     self.plots_updated.emit()
+        #
+        # # Send to worker
+        # #self.worker.add_task(worker_task, [self])
+        # self.worker_task.emit({'fcn': worker_task, 'params': [self]})
 
     def register_folder(self, filename):
         self.defaults["last_folder"] = os.path.split(str(filename))[0]

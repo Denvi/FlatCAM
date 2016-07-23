@@ -10,8 +10,8 @@ from PyQt4 import QtCore
 
 import logging
 from VisPyCanvas import VisPyCanvas
-from VisPyVisuals import ShapeGroup, ShapeCollection
-from vispy.scene.visuals import Markers, Text
+from VisPyVisuals import ShapeGroup, ShapeCollection, TextCollection, TextGroup, Cursor
+from vispy.scene.visuals import InfiniteLine
 import numpy as np
 from vispy.geometry import Rect
 
@@ -37,10 +37,6 @@ class PlotCanvas(QtCore.QObject):
 
         self.app = app
 
-        # Options
-        self.x_margin = 15  # pixels
-        self.y_margin = 25  # Pixels
-
         # Parent container
         self.container = container
 
@@ -50,8 +46,20 @@ class PlotCanvas(QtCore.QObject):
         self.vispy_canvas.native.setParent(self.app.ui)
         self.container.addWidget(self.vispy_canvas.native)
 
+        self.vline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=True,
+                                  parent=self.vispy_canvas.view.scene)
+
+        self.hline = InfiniteLine(pos=0, color=(0.0, 0.0, 0.0, 1.0), vertical=False,
+                                  parent=self.vispy_canvas.view.scene)
+
+        # self.shape_collections = []
+
         self.shape_collection = self.new_shape_collection()
-        self.shape_collection.parent = self.vispy_canvas.view.scene
+        self.app.pool_recreated.connect(self.on_pool_recreated)
+        self.text_collection = self.new_text_collection()
+
+        # TODO: Should be setting to show/hide CNC job annotations (global or per object)
+        self.text_collection.enabled = False
 
     def vis_connect(self, event_name, callback):
         return getattr(self.vispy_canvas.events, event_name).connect(callback)
@@ -70,22 +78,33 @@ class PlotCanvas(QtCore.QObject):
         :type center: list
         :return: None
         """
-
         self.vispy_canvas.view.camera.zoom(factor, center)
 
     def new_shape_group(self):
-        return ShapeGroup(self.shape_collection)   # TODO: Make local shape collection
+        return ShapeGroup(self.shape_collection)
 
-    def new_shape_collection(self):
-        return ShapeCollection()
+    def new_shape_collection(self, **kwargs):
+        # sc = ShapeCollection(parent=self.vispy_canvas.view.scene, pool=self.app.pool, **kwargs)
+        # self.shape_collections.append(sc)
+        # return sc
+        return ShapeCollection(parent=self.vispy_canvas.view.scene, pool=self.app.pool, **kwargs)
 
     def new_cursor(self):
-        return Markers(pos=np.empty((0, 2)))
+        c = Cursor(pos=np.empty((0, 2)), parent=self.vispy_canvas.view.scene)
+        c.antialias = 0
+        return c
 
-    def new_annotation(self):
-        return Text(parent=self.vispy_canvas.view.scene)
+    def new_text_group(self):
+        return TextGroup(self.text_collection)
+
+    def new_text_collection(self, **kwargs):
+        return TextCollection(parent=self.vispy_canvas.view.scene, **kwargs)
 
     def fit_view(self, rect=None):
+
+        # Lock updates in other threads
+        self.shape_collection.lock_updates()
+
         if not rect:
             rect = Rect(0, 0, 10, 10)
             try:
@@ -96,5 +115,14 @@ class PlotCanvas(QtCore.QObject):
 
         self.vispy_canvas.view.camera.rect = rect
 
+        self.shape_collection.unlock_updates()
+
     def clear(self):
         pass
+
+    def redraw(self):
+        self.shape_collection.redraw([])
+        self.text_collection.redraw()
+
+    def on_pool_recreated(self, pool):
+        self.shape_collection.pool = pool
