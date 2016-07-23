@@ -385,7 +385,7 @@ class TextGroup(object):
             Set True to redraw collection
         """
 
-        if self._index:
+        if self._index is not None:
             self._collection.remove(self._index, False)
             self._index = None
 
