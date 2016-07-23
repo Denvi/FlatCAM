@@ -257,7 +257,6 @@ class FlatCAMObj(QtCore.QObject):
 
     def add_shape(self, **kwargs):
         if self.deleted:
-            self.shapes.clear(True)
             raise ObjectDeleted()
         else:
             self.shapes.add(tolerance=self.drawing_tolerance, **kwargs)
@@ -731,7 +730,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
                                    visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            self.shapes.clear()
+            self.shapes.clear(update=True)
 
     def serialize(self):
         return {
@@ -1080,7 +1079,7 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
 
             self.shapes.redraw()
         except ObjectDeleted:
-            self.shapes.clear()
+            self.shapes.clear(update=True)
 
 class FlatCAMCNCjob(FlatCAMObj, CNCjob):
     """
@@ -1248,8 +1247,8 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
             self.plot2(tooldia=self.options["tooldia"], obj=self, visible=self.options['plot'])
             self.shapes.redraw()
         except ObjectDeleted:
-            self.shapes.clear()
-            self.annotation.clear()
+            self.shapes.clear(update=True)
+            self.annotation.clear(update=True)
 
     def convert_units(self, units):
         factor = CNCjob.convert_units(self, units)
@@ -1598,4 +1597,4 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
             self.plot_element(self.solid_geometry)
             self.shapes.redraw()
         except ObjectDeleted:
-            self.shapes.clear()
+            self.shapes.clear(update=True)
