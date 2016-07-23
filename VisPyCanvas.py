@@ -2,6 +2,7 @@ import numpy as np
 from PyQt4.QtGui import QPalette
 import vispy.scene as scene
 from vispy.scene.cameras.base_camera import BaseCamera
+import time
 
 
 class VisPyCanvas(scene.SceneCanvas):
@@ -49,7 +50,7 @@ class VisPyCanvas(scene.SceneCanvas):
         self.view = view
         self.freeze()
 
-        # self.measure_fps()
+        self.measure_fps()
 
     def translate_coords(self, pos):
         tr = self.grid.get_transform('canvas', 'visual')
@@ -63,6 +64,9 @@ class Camera(scene.PanZoomCamera):
 
         self.minimum_scene_size = 0.01
         self.maximum_scene_size = 10000
+
+        self.last_event = None
+        self.last_time = 0
 
     def zoom(self, factor, center=None):
         center = center if (center is not None) else self.center
@@ -81,6 +85,20 @@ class Camera(scene.PanZoomCamera):
         if event.handled or not self.interactive:
             return
 
+        # Limit mouse move events
+        last_event = event.last_event
+        t = time.time()
+        if t - self.last_time > 0.015:
+            self.last_time = t
+            if self.last_event:
+                last_event = self.last_event
+                self.last_event = None
+        else:
+            if not self.last_event:
+                self.last_event = last_event
+            event.handled = True
+            return
+
         # Scrolling
         BaseCamera.viewbox_mouse_event(self, event)
 
@@ -95,12 +113,10 @@ class Camera(scene.PanZoomCamera):
                 return
 
             modifiers = event.mouse_event.modifiers
-            p1 = event.mouse_event.press_event.pos
-            p2 = event.mouse_event.pos
 
             if event.button in [2, 3] and not modifiers:
                 # Translate
-                p1 = np.array(event.last_event.pos)[:2]
+                p1 = np.array(last_event.pos)[:2]
                 p2 = np.array(event.pos)[:2]
                 p1s = self._transform.imap(p1)
                 p2s = self._transform.imap(p2)
@@ -108,7 +124,7 @@ class Camera(scene.PanZoomCamera):
                 event.handled = True
             elif event.button in [2, 3] and 'Shift' in modifiers:
                 # Zoom
-                p1c = np.array(event.last_event.pos)[:2]
+                p1c = np.array(last_event.pos)[:2]
                 p2c = np.array(event.pos)[:2]
                 scale = ((1 + self.zoom_factor) **
                          ((p1c-p2c) * np.array([1, -1])))
