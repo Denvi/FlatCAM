@@ -677,7 +677,6 @@ class App(QtCore.QObject):
 
             for obj in objects:
                 obj.options['plot'] = False
-                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -1565,6 +1564,7 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
+        self.new_object_available.emit(obj)
 
         def worker_task(obj):
             with self.proc_container.new("Plotting"):
@@ -4252,7 +4252,6 @@ class App(QtCore.QObject):
                 return
             for obj in objects:
                 obj.options['plot'] = True
-                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
