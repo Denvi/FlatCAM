@@ -39,6 +39,7 @@ class App(QtCore.QObject):
     cmd_line_shellfile = ''
     cmd_line_help = "FlatCam.py --shellfile=<cmd_line_shellfile>"
     try:
+        # Multiprocessing pool will spawn additional processes with 'multiprocessing-fork' flag
         cmd_line_options, args = getopt.getopt(sys.argv[1:], "h:", ["shellfile=", "multiprocessing-fork="])
     except getopt.GetoptError:
         print cmd_line_help
@@ -94,10 +95,13 @@ class App(QtCore.QObject):
 
     plots_updated = QtCore.pyqtSignal()
 
-    # Emitted by new_object() and passes the new object as argument.
-    # on_object_created() adds the object to the collection,
+    # Emitted by new_object() and passes the new object as argument, plot flag.
+    # on_object_created() adds the object to the collection, plots on appropriate flag
     # and emits new_object_available.
     object_created = QtCore.pyqtSignal(object, bool)
+
+    # Emitted after object has been plotted.
+    # Calls 'on_zoom_fit' method to fit object in scene view in main thread to prevent drawing glitches.
     object_plotted = QtCore.pyqtSignal(object)
 
     # Emitted when a new object has been added to the collection
@@ -677,7 +681,6 @@ class App(QtCore.QObject):
 
             for obj in objects:
                 obj.options['plot'] = False
-                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 
@@ -1565,6 +1568,7 @@ class App(QtCore.QObject):
         self.collection.append(obj)
 
         self.inform.emit("Object (%s) created: %s" % (obj.kind, obj.options['name']))
+        self.new_object_available.emit(obj)
 
         def worker_task(obj):
             with self.proc_container.new("Plotting"):
@@ -4252,7 +4256,6 @@ class App(QtCore.QObject):
                 return
             for obj in objects:
                 obj.options['plot'] = True
-                obj.set_form_item('plot')
                 percentage += delta
                 self.progress.emit(int(percentage*100))
 

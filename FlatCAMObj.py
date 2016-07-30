@@ -81,6 +81,13 @@ class FlatCAMObj(QtCore.QObject):
                 setattr(self, attr, d[attr])
 
     def on_options_change(self, key):
+        # Update form on programmatically options change
+        self.set_form_item(key)
+
+        # Set object visibility
+        if key == 'plot':
+            self.visible = self.options['plot']
+
         self.emit(QtCore.SIGNAL("optionChanged"), key)
 
     def set_ui(self, ui):
@@ -569,7 +576,6 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.visible = self.options['plot']
 
     def on_solid_cb_click(self, *args):
         if self.muted_ui:
@@ -942,8 +948,6 @@ class FlatCAMExcellon(FlatCAMObj, Excellon):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.visible = self.options['plot']
-        # self.plot()
 
     def on_solid_cb_click(self, *args):
         if self.muted_ui:
@@ -1138,7 +1142,6 @@ class FlatCAMCNCjob(FlatCAMObj, CNCjob):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.visible = self.options['plot']
 
     def plot(self):
 
@@ -1422,7 +1425,6 @@ class FlatCAMGeometry(FlatCAMObj, Geometry):
         if self.muted_ui:
             return
         self.read_form_item('plot')
-        self.visible = self.options['plot']
 
     def scale(self, factor):
         """
