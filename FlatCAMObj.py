@@ -7,7 +7,7 @@ import inspect  # TODO: For debugging only.
 from camlib import *
 from FlatCAMCommon import LoudDict
 from FlatCAMDraw import FlatCAMDraw
-
+from shapely.geometry.base import JOIN_STYLE
 
 # Interrupts plotting process if FlatCAMObj has been deleted
 class ObjectDeleted(Exception):
@@ -327,6 +327,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isopasses": 1,
             "isooverlap": 0.15,
             "combine_passes": True,
+            "ncctools": "1.0, 0.5",
+            "nccoverlap": 0.4,
+            "nccmargin": 1,
             "cutouttooldia": 0.07,
             "cutoutmargin": 0.2,
             "cutoutgapsize": 0.15,
@@ -372,6 +375,9 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
             "isopasses": self.ui.iso_width_entry,
             "isooverlap": self.ui.iso_overlap_entry,
             "combine_passes": self.ui.combine_passes_cb,
+            "ncctools": self.ui.ncc_tool_dia_entry,
+            "nccoverlap": self.ui.ncc_overlap_entry,
+            "nccmargin": self.ui.ncc_margin_entry,
             "cutouttooldia": self.ui.cutout_tooldia_entry,
             "cutoutmargin": self.ui.cutout_margin_entry,
             "cutoutgapsize": self.ui.cutout_gap_entry,
@@ -390,6 +396,7 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.ui.solid_cb.stateChanged.connect(self.on_solid_cb_click)
         self.ui.multicolored_cb.stateChanged.connect(self.on_multicolored_cb_click)
         self.ui.generate_iso_button.clicked.connect(self.on_iso_button_click)
+        self.ui.generate_ncc_button.clicked.connect(self.on_ncc_button_click)
         self.ui.generate_cutout_button.clicked.connect(self.on_generatecutout_button_click)
         self.ui.generate_bb_button.clicked.connect(self.on_generatebb_button_click)
         self.ui.generate_noncopper_button.clicked.connect(self.on_generatenoncopper_button_click)
@@ -472,6 +479,89 @@ class FlatCAMGerber(FlatCAMObj, Gerber):
         self.app.report_usage("gerber_on_iso_button")
         self.read_form()
         self.isolate()
+
+    def on_ncc_button_click(self, *args):
+        self.app.report_usage("gerber_on_ncc_button")
+
+        # Prepare parameters
+        try:
+            tools = [float(eval(dia)) for dia in self.ui.ncc_tool_dia_entry.get_value().split(",")]
+        except:
+            FlatCAMApp.App.log.error("At least one tool diameter needed")
+            return
+
+        over = self.ui.ncc_overlap_entry.get_value()
+        margin = self.ui.ncc_margin_entry.get_value()
+
+        if over is None or margin is None:
+            FlatCAMApp.App.log.error("Overlap and margin values needed")
+            return
+
+        print "non-copper clear button clicked", tools, over, margin
+
+        # Sort tools in descending order
+        tools.sort(reverse=True)
+
+        # Prepare non-copper polygons
+        bounding_box = self.solid_geometry.envelope.buffer(distance=margin, join_style=JOIN_STYLE.mitre)
+        empty = self.get_empty_area(bounding_box)
+        if type(empty) is Polygon:
+            empty = MultiPolygon([empty])
+
+        # Main procedure
+        def clear_non_copper():
+
+            # Already cleared area
+            cleared = MultiPolygon()
+
+            # Geometry object creating callback
+            def geo_init(geo_obj, app_obj):
+                geo_obj.options["cnctooldia"] = tool
+                geo_obj.solid_geometry = []
+                for p in area.geoms:
+                    try:
+                        cp = self.clear_polygon(p, tool, over)
+                        geo_obj.solid_geometry.append(list(cp.get_objects()))
+                    except:
+                        FlatCAMApp.App.log.warning("Polygon is ommited")
+
+            # Generate area for each tool
+            offset = sum(tools)
+            for tool in tools:
+                # Get remaining tools offset
+                offset -= tool
+
+                # Area to clear
+                area = empty.buffer(-offset).difference(cleared)
+
+                # Transform area to MultiPolygon
+                if type(area) is Polygon:
+                    area = MultiPolygon([area])
+
+                # Check if area not empty
+                if len(area.geoms) > 0:
+                    # Overall cleared area
+                    cleared = empty.buffer(-offset * (1 + over)).buffer(-tool / 2).buffer(tool / 2)
+
+                    # Create geometry object
+                    name = self.options["name"] + "_ncc_" + repr(tool) + "D"
+                    self.app.new_object("geometry", name, geo_init)
+                else:
+                    return
+
+        # Do job in background
+        proc = self.app.proc_container.new("Clearing non-copper areas.")
+
+        def job_thread(app_obj):
+            try:
+                clear_non_copper()
+            except Exception as e:
+                proc.done()
+                raise e
+            proc.done()
+
+        self.app.inform.emit("Clear non-copper areas started ...")
+        self.app.worker_task.emit({'fcn': job_thread, 'params': [self.app]})
 
     def follow(self, outname=None):
         """
