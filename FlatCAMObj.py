@@ -275,7 +275,7 @@ class FlatCAMObj(QtCore.QObject):
         # Not all object types has annotations
         try:
             self.annotation.visible = value
-        except:
+        except AttributeError:
             pass
 
     @property
@@ -292,7 +292,7 @@ class FlatCAMObj(QtCore.QObject):
         # Not all object types has annotations
         try:
             self.annotation.clear(update)
-        except:
+        except AttributeError:
             pass
 
     def delete(self):
