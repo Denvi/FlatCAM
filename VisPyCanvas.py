@@ -37,14 +37,15 @@ class VisPyCanvas(scene.SceneCanvas):
         view = grid.add_view(row=1, col=1, border_color='black', bgcolor='white')
         view.camera = Camera(aspect=1)
 
+        # Following function was removed from 'prepare_draw()' of 'Grid' class by patch,
+        # it is necessary to call manually
+        grid._update_child_widget_dim()
+
         grid1 = scene.GridLines(parent=view.scene, color='gray')
         grid1.set_gl_state(depth_test=False)
 
         xaxis.link_view(view)
         yaxis.link_view(view)
-
-        # shapes = scene.Line(parent=view.scene)
-        # view.add(shapes)
 
         self.grid = grid1
         self.view = view
