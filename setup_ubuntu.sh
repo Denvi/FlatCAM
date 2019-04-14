@@ -7,10 +7,9 @@ apt-get install python-qt4
 apt-get install python-numpy python-scipy python-matplotlib
 apt-get install libgeos-dev
 apt-get install python-shapely
-easy_install -U distribute
 apt-get install python-pip
-pip install --upgrade matplotlib
-pip install --upgrade Shapely
+pip3 install --upgrade matplotlib
+pip3 install --upgrade Shapely
 apt-get install libspatialindex-dev
-pip install rtree
-pip install svg.path
+pip3 install rtree
+pip3 install svg.path
