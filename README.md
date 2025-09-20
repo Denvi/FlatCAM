@@ -9,6 +9,10 @@ CAD program, and create G-Code for Isolation routing.
 
 ============================================
 
+Build instructions here:
+
+https://github.com/Denvi/FlatCAM/releases/tag/v8.4-dev
+
 This fork features:
 
 - "Clear non-copper" feature, supporting multi-tool work.
