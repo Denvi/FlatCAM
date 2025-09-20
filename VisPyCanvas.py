@@ -23,11 +23,11 @@ class VisPyCanvas(scene.SceneCanvas):
         top_padding = grid.add_widget(row=0, col=0, col_span=2)
         top_padding.height_max = 24
 
-        yaxis = scene.AxisWidget(orientation='left', axis_color='black', text_color='black', font_size=12)
-        yaxis.width_max = 60
+        yaxis = scene.AxisWidget(orientation='left', axis_color='black', text_color='black', font_size=8)
+        yaxis.width_max = 80
         grid.add_widget(yaxis, row=1, col=0)
 
-        xaxis = scene.AxisWidget(orientation='bottom', axis_color='black', text_color='black', font_size=12)
+        xaxis = scene.AxisWidget(orientation='bottom', axis_color='black', text_color='black', font_size=8)
         xaxis.height_max = 40
         grid.add_widget(xaxis, row=2, col=1)
 
