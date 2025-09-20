@@ -8,4 +8,4 @@ simplejson
 rtree
 scipy
 svg.path==2.1.1
-pywin32==228
+pywin32==301
