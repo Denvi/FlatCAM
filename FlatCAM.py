@@ -1,4 +1,9 @@
+import os
 import sys
+
+if hasattr(sys, 'frozen'):
+    os.environ['PATH'] = os.path.dirname(sys.executable) + os.pathsep + os.environ.get('PATH', '')
+
 from PyQt4 import QtGui, QtCore
 from FlatCAMApp import App
 from multiprocessing import freeze_support
